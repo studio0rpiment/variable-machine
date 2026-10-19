@@ -9,6 +9,7 @@ import { PY_ENV, preferArgs, preferLine, type PreferParams } from '@shared/recip
 import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
+import LossNotes from './LossNotes'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
@@ -165,7 +166,19 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
       </details>
 
       {pipe && <PipelineSteps p={pipe} />}
-      {pipe ? <LossChart points={pipe.points} iters={(pipe.params as PreferParams).iters} live={!pipe.done} /> : shown && <LossChart points={shown.points} iters={shown.iters} />}
+      {pipe ? (
+        <>
+          <LossChart points={pipe.points} iters={(pipe.params as PreferParams).iters} live={!pipe.done} />
+          <LossNotes points={pipe.points} live={!pipe.done} kind="prefer" />
+        </>
+      ) : (
+        shown && (
+          <>
+            <LossChart points={shown.points} iters={shown.iters} />
+            <LossNotes points={shown.points} kind="prefer" />
+          </>
+        )
+      )}
 
       {latest?.heldOut && (
         <>

@@ -636,3 +636,9 @@ a.text-button { text-decoration: none; }
 .data-guide { max-width: 52rem; border-top: 1px solid var(--line); }
 .data-describe { align-items: flex-end; max-width: 52rem; }
 .data-describe .field { flex: 1 1 20rem; }
+
+/* ---- under the loss chart: this run in words, and what the chart means ---- */
+.loss-notes { display: flex; flex-direction: column; gap: 1rem; max-width: 52rem; }
+.loss-notes__reading { display: flex; flex-direction: column; gap: 0.35rem; border-left: 1px solid var(--line); padding-left: 0.85rem; }
+.loss-notes__verdict { margin: 0; line-height: 1.55; }
+.loss-notes__verdict::first-letter { text-transform: uppercase; }

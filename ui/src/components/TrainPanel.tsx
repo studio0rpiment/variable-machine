@@ -9,6 +9,7 @@ import { PY_ENV, TIER_DEFAULTS, trainArgs, trainLine, type FineTune, type TrainP
 import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
+import LossNotes from './LossNotes'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
@@ -185,7 +186,19 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
       </details>
 
       {pipe && <PipelineSteps p={pipe} />}
-      {pipe ? <LossChart points={pipe.points} iters={(pipe.params as TrainParams).iters} live={!pipe.done} /> : shown && <LossChart points={shown.points} iters={shown.iters} />}
+      {pipe ? (
+        <>
+          <LossChart points={pipe.points} iters={(pipe.params as TrainParams).iters} live={!pipe.done} />
+          <LossNotes points={pipe.points} live={!pipe.done} kind="train" />
+        </>
+      ) : (
+        shown && (
+          <>
+            <LossChart points={shown.points} iters={shown.iters} />
+            <LossNotes points={shown.points} kind="train" />
+          </>
+        )
+      )}
 
       <h2 className="panel__title label">runs · workspace/runs</h2>
       <div className="cards">
