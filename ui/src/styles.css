@@ -557,3 +557,7 @@ a.text-button { text-decoration: none; }
 .mf-check { display: flex; gap: 0.75rem; align-items: flex-start; cursor: pointer; }
 .mf-check input { margin-top: 0.15rem; accent-color: var(--line); }
 .mf-check__body { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+
+/* The first step's line, in full line colour so it stands out; it carries the presets' explanation flag. */
+.mf-lead { color: var(--line); font-size: 0.85rem; width: fit-content; cursor: help; }
+.mf-lead:focus-visible { outline: 1px solid var(--line); outline-offset: 3px; }

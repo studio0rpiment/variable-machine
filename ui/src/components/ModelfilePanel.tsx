@@ -258,17 +258,20 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
         <p className="start__text">{MODELFILE_INTRO.text}</p>
       </header>
 
-      <h2 className="panel__title label">1 · start from a preset, or write your own below</h2>
+      {/* The one flag about presets lives on this line (focusable so the keyboard can open it too), not on every card. */}
+      <Explained id="modelfile.preset">
+        <h2 className="panel__title label mf-lead" tabIndex={0}>
+          1 · start from a preset, or write your own below
+        </h2>
+      </Explained>
       <div className="mf-presets">
         {PRESETS.map((p) => (
-          <Explained key={p.id} id="modelfile.preset">
-            <button type="button" className={`mf-preset ${preset?.id === p.id ? 'is-active' : ''}`.trim()} onClick={() => applyPreset(p)} aria-pressed={preset?.id === p.id}>
-              <span className="mf-preset__group label label--muted">{p.group}</span>
-              <span className="mf-preset__title">{p.title}</span>
-              <span className="mf-preset__blurb">{p.blurb}</span>
-              {p.followsWell && <span className="mf-preset__follows label label--muted">follows well: {p.followsWell}</span>}
-            </button>
-          </Explained>
+          <button key={p.id} type="button" className={`mf-preset ${preset?.id === p.id ? 'is-active' : ''}`.trim()} onClick={() => applyPreset(p)} aria-pressed={preset?.id === p.id}>
+            <span className="mf-preset__group label label--muted">{p.group}</span>
+            <span className="mf-preset__title">{p.title}</span>
+            <span className="mf-preset__blurb">{p.blurb}</span>
+            {p.followsWell && <span className="mf-preset__follows label label--muted">follows well: {p.followsWell}</span>}
+          </button>
         ))}
       </div>
 
