@@ -22,21 +22,25 @@ export const EXPLAIN = {
     title: 'Data',
     text: 'Training data is a pile of examples: a question, and the answer you would like the model to give. Here you collect them. Bring in a public set, start from one of the examples, or ask a model to write new ones from a book or a table and keep only the ones you like. You also check them for mistakes and set a few aside to test with later. Every set keeps a record of where each example came from and the license it came with, so you always know whose words these are.',
   },
+  'panel.start': {
+    title: 'Start',
+    text: 'The map of the whole app: the order the tabs run in, and the three ways to change a model (imitate, prefer and blend), each explained in plain words. Start here if you are new.',
+  },
   'panel.train': {
-    title: 'Train',
-    text: 'Training shows the model your examples over and over and nudges its numbers so its answers come out more like them. It does not rewrite the whole model: it learns a small add-on, called an adapter, that sits on top. The solid line on the chart is how far off the model still is on your examples, and it should fall. The dashed line is the examples you set aside. If it starts rising while the solid line keeps falling, the model is memorising your examples rather than learning from them.',
+    title: 'Train · imitate',
+    text: 'The first of the three ways to change a model. Training shows the model your examples over and over and nudges its numbers so its answers come out more like them. It does not rewrite the whole model: it learns a small add-on, called an adapter, that sits on top. The solid line on the chart is how far off the model still is on your examples, and it should fall. The dashed line is the examples you set aside. If it starts rising while the solid line keeps falling, the model is memorising your examples rather than learning from them.',
   },
   'panel.prefer': {
     title: 'Prefer',
-    text: 'Instead of showing the model the right answer, here you show it two answers and say which one you like better, and it learns to lean toward the kind you chose. The pairs come from your own conversations in Chat. Afterwards it is tested on pairs it never saw, to see whether it now favours the ones you would. Push it too hard and its answers can fall apart, which is worth seeing too.',
+    text: 'The second of the three ways to change a model. Instead of showing the model the right answer, here you show it two answers and say which one you like better, and it learns to lean toward the kind you chose. The pairs come from your own conversations in Chat. Afterwards it is tested on pairs it never saw, to see whether it now favours the ones you would. Push it too hard and its answers can fall apart, which is worth seeing too.',
   },
   'panel.adapters': {
     title: 'Adapters',
-    text: 'An adapter is what training leaves behind: a small file of changes that only works on top of the model it was trained on. Here you fold an adapter into its model and hand the result to Ollama, so it becomes a model you can chat with next to the original and hear what changed. Adapters are small, which also makes them the easiest thing to share.',
+    text: 'An adapter is what each of the three ways leaves behind: a small file of changes that only works on top of the model it started from. Here you fold an adapter into its model and hand the result to Ollama, so it becomes a model you can chat with next to the original and hear what changed. Adapters are small, which also makes them the easiest thing to share.',
   },
   'panel.merge': {
-    title: 'Merge',
-    text: 'Merging blends two adapters that were trained on the same starting model into a third one. The slider sets the mix: all of A at one end, all of B at the other, an even blend in the middle. What the blend does is not always halfway between the two. Chatting with all three side by side is how you find out.',
+    title: 'Merge · blend',
+    text: 'The third of the three ways to change a model. Merging blends two adapters that were trained on the same starting model into a third one. The slider sets the mix: all of A at one end, all of B at the other, an even blend in the middle. What the blend does is not always halfway between the two. Chatting with all three side by side is how you find out.',
   },
   'panel.chat': {
     title: 'Chat',

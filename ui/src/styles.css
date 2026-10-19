@@ -102,7 +102,14 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
   gap: 2rem;
   padding: 0.75rem 1rem 0.75rem 2rem;
 }
-.shell__nav { display: flex; gap: 0.5rem 1.5rem; flex: 1; flex-wrap: wrap; }
+.shell__nav { display: flex; gap: 0.5rem 1rem; flex: 1; flex-wrap: wrap; align-items: center; }
+/* Tabs in groups, in the order you'd use them; a thin rule between groups. */
+.nav-group { display: inline-flex; align-items: center; gap: 0.5rem 1.25rem; flex-wrap: wrap; }
+.nav-group + .nav-group { padding-left: 1rem; border-left: 1px solid color-mix(in srgb, var(--muted) 50%, transparent); }
+/* The three ways to change a model, outlined as one set. */
+.nav-group--ways { padding: 0.2rem 0.65rem; border: 1px dashed var(--muted); }
+.nav-group + .nav-group--ways { padding-left: 0.65rem; }
+.nav-group--ways + .nav-group { border-left: 0; }
 .nav-link { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); text-decoration: none; padding-bottom: 0.15rem; border-bottom: 1px solid transparent; }
 .nav-link:hover { color: var(--line); }
 .nav-link.is-active { color: var(--line); border-bottom-color: var(--line); }
@@ -430,3 +437,29 @@ a.text-button { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .flag { animation: flag-in 0.01s linear 0.35s both; --flag-from: 0; }
 }
+
+/* ---- start ---- */
+.start { gap: 1.75rem; max-width: 72rem; }
+.start__intro { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 1rem; max-width: 44rem; }
+.start__title { margin: 0; font-size: 1.2rem; font-weight: 500; letter-spacing: 0.02em; }
+.start__text { margin: 0; line-height: 1.65; }
+.start__row { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.25rem; }
+.start__row > li { display: flex; }
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1px dashed var(--muted);
+  color: inherit;
+  text-decoration: none;
+}
+.step:hover, .step:focus-visible { border-style: solid; border-color: var(--line); outline: none; }
+.step__head { display: flex; align-items: center; justify-content: space-between; min-height: 1.6rem; }
+.step__title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.step__text { line-height: 1.6; color: var(--muted); }
+.step:hover .step__text, .step:focus-visible .step__text { color: var(--line); }
+.start__ways { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.1rem 1.25rem 1.25rem; border: 1px solid var(--line); }
+.start__ways-title { margin: 0; font-size: 0.9rem; font-weight: normal; text-transform: uppercase; letter-spacing: 0.08em; display: flex; gap: 0.75rem; align-items: baseline; }
+.start__note { margin: 0; text-transform: none; }

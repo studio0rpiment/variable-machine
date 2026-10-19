@@ -26,22 +26,26 @@ The first training run downloads its base model into `workspace/hf`: about 700MB
 
 `npm run dev` rebuilds the page on save (reload to see it) and restarts the helper on save. `VARIABLE_MACHINE_PORT` picks another port and `VARIABLE_MACHINE_OPEN=0` stops it opening a browser.
 
-## The panels, in the order you'd use them
+## The tabs, in the order you'd use them
 
-- **Models.** There are two inventories: what runs (Ollama models) and what trains (Hugging Face bases). Each card shows the license the model actually carries, read from Ollama, and flags any that aren't open-license. The curated library pulls with progress in the card and in the terminal.
-- **Modelfile.** Start from any model, edit the text and create a variant. A column beside the text marks which lines are weights (FROM, ADAPTER) and which only travel with them (SYSTEM, PARAMETER, TEMPLATE…).
-- **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. You can:
-  - import Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples, with each license read from Hugging Face at import;
-  - fetch raw material (a Project Gutenberg book, or a CSV or TXT with its stated license) and have a model write rows from a passage;
-  - validate, split and count rows;
-  - curate generated rows by keeping, editing or rejecting each one;
-  - build preference sets from the chat log.
-- **Train.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live.
-- **Prefer.** DPO on a base or a fused model, from a preference set. It shows the loss and a held-out before/after check.
-- **Adapters.** What training made. Export folds an adapter into its base and imports the result into Ollama, ready to chat with next to the untouched base.
-- **Merge.** Blend two compatible adapters: out = (1 − t)·A + t·B.
-- **Chat.** Two to four models side by side, one prompt, every answer streaming. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data panel can mine it for preference pairs.
-- **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
+The tabs run left to right in the order you'd use them, in groups. **Start** lays out the same path as a map, with each step explained.
+
+1. **Start.** The map: the order of the tabs, and the three ways to change a model, each in plain words.
+2. **Models.** There are two inventories: what runs (Ollama models) and what trains (Hugging Face bases). Each card shows the license the model actually carries, read from Ollama, and flags any that aren't open-license. The curated library pulls with progress in the card and in the terminal.
+3. **Modelfile.** Change a model without training. Start from any model, edit the instructions it carries, and create a variant. A column beside the text marks which lines are weights (FROM, ADAPTER) and which only travel with them (SYSTEM, PARAMETER, TEMPLATE…).
+4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. You can:
+   - import Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples, with each license read from Hugging Face at import;
+   - fetch raw material (a Project Gutenberg book, or a CSV or TXT with its stated license) and have a model write rows from a passage;
+   - validate, split and count rows;
+   - curate generated rows by keeping, editing or rejecting each one;
+   - build preference sets from the chat log.
+5. **The three ways to change the numbers** (plan §2), outlined together in the tab row. Each leaves an adapter:
+   - **Train: imitate.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live.
+   - **Prefer: prefer.** DPO on a base or a fused model, from a preference set. It shows the loss and a held-out before/after check.
+   - **Merge: blend.** Blend two compatible adapters: out = (1 − t)·A + t·B.
+6. **Adapters.** Everything the three ways made: trained adapters, preference adapters and blends. Export folds one into its base and imports the result into Ollama, ready to chat with next to the untouched base.
+7. **Chat.** Two to four models side by side, one prompt, every answer streaming. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
+8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
 **The explanation layer.** Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
 

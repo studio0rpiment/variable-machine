@@ -9,16 +9,24 @@ import AdaptersPanel from './components/AdaptersPanel'
 import MergePanel from './components/MergePanel'
 import PreferPanel from './components/PreferPanel'
 import SharePanel from './components/SharePanel'
+import StartPanel from './components/StartPanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
 import { Explained } from './explain/Explained'
 import type { ExplainId } from './explain/text'
-import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, TrainMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark } from './icons'
 
-const PANELS = ['models', 'modelfile', 'data', 'train', 'prefer', 'adapters', 'merge', 'chat', 'share'] as const
-type Panel = (typeof PANELS)[number]
+/**
+ * The tabs, in the order you'd use them, grouped: the map; what to start from;
+ * what to show it; the three ways to change it (imitate, prefer, blend); then
+ * making it a model, comparing, sharing. The Start panel tells the same story.
+ */
+const GROUPS = [['start'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share']] as const
+const PANELS = GROUPS.flat()
+type Panel = (typeof GROUPS)[number][number]
 const MARKS: Record<Panel, ReactNode> = {
+  start: <StartMark size={0.9} />,
   models: <ModelsMark size={0.9} />,
   modelfile: <ModelfileMark size={0.9} />,
   data: <DataMark size={0.9} />,
@@ -33,7 +41,7 @@ const MARKS: Record<Panel, ReactNode> = {
 /** The panel lives in the hash so a reload stays put (it's navigation, not saved state). */
 function panelFromHash(): Panel {
   const h = location.hash.slice(1)
-  return (PANELS as readonly string[]).includes(h) ? (h as Panel) : 'chat'
+  return (PANELS as readonly string[]).includes(h) ? (h as Panel) : 'start'
 }
 
 /**
@@ -72,19 +80,30 @@ export default function App() {
       <header className="shell__top">
         <span className="label label--name">Variable Machine</span>
         <nav className="shell__nav" aria-label="panels">
-          {PANELS.map((p) => (
-            <Explained key={p} id={`panel.${p}` as ExplainId}>
-              <a href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>
-                {MARKS[p]}
-                {p}
-              </a>
-            </Explained>
+          {GROUPS.map((group, g) => (
+            <span
+              key={g}
+              className={`nav-group ${group[0] === 'train' ? 'nav-group--ways' : ''}`.trim()}
+              {...(group[0] === 'train' ? { role: 'group', 'aria-label': 'three ways to change a model' } : {})}
+            >
+              {group.map((p) => (
+                <Explained key={p} id={`panel.${p}` as ExplainId}>
+                  <a href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>
+                    {MARKS[p]}
+                    {p}
+                  </a>
+                </Explained>
+              ))}
+            </span>
           ))}
         </nav>
         <StatusLine />
         <ThemeToggle mode={theme.mode} onToggle={toggle} />
       </header>
       <main className="shell__main">
+        <div className="panel-slot" hidden={panel !== 'start'}>
+          <StartPanel />
+        </div>
         <div className="panel-slot" hidden={panel !== 'models'}>
           <ModelsPanel onChat={chatWith} onModelfile={editModelfile} />
         </div>
