@@ -561,3 +561,31 @@ a.text-button { text-decoration: none; }
 /* The first step's line, in full line colour so it stands out; it carries the presets' explanation flag. */
 .mf-lead { color: var(--line); font-size: 0.85rem; width: fit-content; cursor: help; }
 .mf-lead:focus-visible { outline: 1px solid var(--line); outline-offset: 3px; }
+
+/* Before choosing: all presets as cards. After: the chosen one on the left with what it adds and a way to try it,
+   the others shrunk to one line each in a column on the right. Each card glides to its new place (view transitions). */
+.mf-next { margin: -0.5rem 0 0; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.mf-preset--own { border-color: var(--line); }
+.mf-studio { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: 2rem 2.5rem; align-items: start; }
+.mf-studio__main { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.mf-chosen { display: flex; flex-direction: column; gap: 0.4rem; padding: 1rem 1.1rem; border: 1px solid var(--line); max-width: 52rem; }
+.mf-chosen__title { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.mf-chosen__blurb { line-height: 1.55; }
+.mf-steps { margin: 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 0.3rem; line-height: 1.55; max-width: 52rem; }
+.mf-steps li::marker { color: var(--muted); }
+.mf-part { display: flex; flex-direction: column; gap: 1.25rem; scroll-margin-top: 1rem; }
+.mf-lead-plain { color: var(--line); font-size: 0.85rem; }
+.mf-rail { position: sticky; top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; border-left: 1px solid var(--muted); padding-left: 1rem; }
+.mf-rail__all { align-self: flex-start; margin: 0 0 0.4rem -0.4rem; }
+.mf-rail__item { text-align: left; padding: 0.35rem 0.5rem; border: 1px dashed transparent; font-size: 0.8rem; line-height: 1.35; }
+.mf-rail__item:hover, .mf-rail__item:focus-visible { border-color: var(--line); outline: none; }
+.mf-rail__item .label { text-transform: none; }
+@media (max-width: 48rem) {
+  .mf-studio { grid-template-columns: 1fr; }
+  .mf-rail { position: static; border-left: 0; border-top: 1px solid var(--muted); padding: 1rem 0 0; flex-direction: row; flex-wrap: wrap; }
+}
+::view-transition-group(*) { animation-duration: 0.4s; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
+/* The top bar and the terminal stay above cards in flight, as they do above the page. */
+.shell__top { view-transition-name: vm-top; background: var(--bg); }
+.dock { view-transition-name: vm-dock; background: var(--bg); }
+::view-transition-group(vm-top), ::view-transition-group(vm-dock) { z-index: 1; animation: none; }
