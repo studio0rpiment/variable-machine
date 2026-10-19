@@ -616,3 +616,6 @@ a.text-button { text-decoration: none; }
 .mf-preset .mf-preset__title { color: var(--act); }
 .mf-preset:hover, .mf-preset:focus-visible { border-color: var(--act); background: var(--act-wash); }
 [aria-label="ask both"] > .mf-make__run { align-items: flex-end; }
+/* The top bar is navigation, not an action: it stays cream. */
+.shell__top .icon-button, .shell__top .text-button { color: var(--muted); background: none; }
+.shell__top .icon-button:hover, .shell__top .text-button:hover { color: var(--line); background: none; }
