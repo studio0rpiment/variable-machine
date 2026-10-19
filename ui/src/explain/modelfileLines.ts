@@ -6,7 +6,7 @@
 
 export const MODELFILE_INTRO = {
   title: 'Change how a model behaves, with words only',
-  text: 'Give a model standing instructions, a setting for how adventurous it is, and an example to imitate. No training happens and no numbers change: the new model, a variant, uses exactly the same weights as the original, plus your words. It takes a second to make and almost no disk.',
+  text: 'Give a model SYSTEM instructions, a TEMPERATURE setting for how adventurous it is, and a MESSAGE example with a question and answer to imitate. No training happens and no numbers change: the new model, a variant, uses exactly the same weights as the original, plus your words.',
 }
 
 export const SIZE_NOTE =
