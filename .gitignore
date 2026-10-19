@@ -1,0 +1,10 @@
+node_modules/
+ui/dist/
+python/.venv/
+.DS_Store
+*.log
+
+# workspace/ is the state: everything in it stays local, except its README and example manifests
+workspace/*
+!workspace/README.md
+!workspace/examples/

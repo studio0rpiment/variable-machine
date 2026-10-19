@@ -1,0 +1,15 @@
+{
+  "name": "retension",
+  "private": true,
+  "type": "module",
+  "description": "A localhost instrument for changing small language models on a Mac.",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "workspaces": ["helper", "ui"],
+  "scripts": {
+    "dev": "tsx scripts/dev.ts",
+    "build": "npm run build -w ui",
+    "start": "npm run build && npm run start -w helper",
+    "typecheck": "npm run typecheck -w helper && npm run typecheck -w ui"
+  }
+}

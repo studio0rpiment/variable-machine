@@ -1,0 +1,14 @@
+/* hand-icons — sizing and colour helpers for the sprite */
+.hi {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  color: inherit;          /* icon takes the text colour; set `color` to recolour or invert */
+  flex: none;
+}
+.hi--sm { font-size: 1rem; }
+.hi--md { font-size: 1.5rem; }
+.hi--lg { font-size: 2.5rem; }
+.hi--xl { font-size: 4rem; }
+.hi--invert { color: #fff; }
