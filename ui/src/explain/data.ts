@@ -60,6 +60,18 @@ export const BRING = {
   },
 }
 
+/** Public data: a table from an open-data portal, and the step that turns its rows into questions and answers. */
+export const OPEN = {
+  search: {
+    title: 'public data: a table from an open-data portal',
+    when: 'Cities, states and the federal government publish tables of facts: traffic counts, trees, libraries, school enrollment. Search DC Open Data (opendata.dc.gov) or data.gov here, check the license, and bring a table in. It arrives as raw material, not yet questions and answers.',
+  },
+  template: {
+    title: 'turn a table into questions and answers',
+    when: 'A table is facts in rows and columns; training needs questions with answers. Write one question and its answer with {column} where each row fills in, and every row becomes an example. The answers are the table\'s own facts, so nothing is made up. (A model can also write rows from a table: choose a dataset and use "write more rows".)',
+  },
+}
+
 /** How to find a dataset worth training on: the guide in "make a new one". */
 export const FIND_GUIDE: { title: string; text: string }[] = [
   {

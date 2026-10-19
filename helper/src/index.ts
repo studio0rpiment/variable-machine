@@ -10,6 +10,7 @@ import { serveStatic } from './static.ts'
 import { watchWorkspace } from './watcher.ts'
 import { handleCommand, handleLine, saveModelfile, stopRunning } from './terminal.ts'
 import { serveWorkspaceApi } from './workspace.ts'
+import { serveOpenData } from './opendata.ts'
 import { stopPipeline } from './pipeline.ts'
 import { ollamaPost } from './ollama.ts'
 import type { ClientEvent } from './shared/events.ts'
@@ -35,6 +36,10 @@ const server = http.createServer((req, res) => {
   }
   if (req.url?.startsWith('/ollama/')) {
     void proxyOllama(req, res)
+    return
+  }
+  if (req.url?.startsWith('/api/opendata/')) {
+    void serveOpenData(req, res)
     return
   }
   if (req.url?.startsWith('/api/workspace')) {

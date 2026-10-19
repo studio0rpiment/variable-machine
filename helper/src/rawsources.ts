@@ -4,6 +4,7 @@ import { WORKSPACE } from './config.ts'
 import { print } from './hub.ts'
 import { formatBytes, setRunning, write } from './run.ts'
 import { RAW_SOURCES } from './shared/library.ts'
+import { parseCsv } from './shared/rowShapes.ts'
 
 /**
  * Raw sources (plan §8): text or tables that aren't training rows yet. Each
@@ -14,7 +15,14 @@ import { RAW_SOURCES } from './shared/library.ts'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const CHUNK = 1200
+/** More than this isn't needed to make a few hundred rows, and fills the disk: only this much is kept. */
+const MAX_CHARS = 20 * 1024 * 1024
 
+/**
+ * Download text. Past MAX_CHARS it stops and keeps what came, cut at the last
+ * whole line: a table's first rows are plenty for a class dataset, and the
+ * rest would only fill the disk.
+ */
 async function fetchText(url: string, abort: AbortController): Promise<string | null> {
   print(`GET ${url}`)
   const res = await fetch(url, { signal: abort.signal, redirect: 'follow' })
@@ -28,6 +36,12 @@ async function fetchText(url: string, abort: AbortController): Promise<string | 
   let shown = ''
   for await (const chunk of res.body) {
     text += decoder.decode(chunk, { stream: true })
+    if (text.length > MAX_CHARS) {
+      write('\n')
+      const cut = text.slice(0, text.lastIndexOf('\n', MAX_CHARS) + 1)
+      print(`kept the first ${formatBytes(cut.length)} (${(cut.split('\n').length - 2).toLocaleString('en-US')} rows of a table): plenty for a class dataset; the rest stays on the portal`)
+      return cut
+    }
     const line = `downloading ${formatBytes(text.length)}${total ? ` / ${formatBytes(total)}` : ''}`
     if (line !== shown) write(`\r\x1b[2K${(shown = line)}`)
   }
@@ -87,14 +101,38 @@ function chunkCsv(text: string): string[] {
   return out
 }
 
-async function save(name: string, ext: string, text: string, chunks: string[], meta: { url: string; license: string; licenseChecked: boolean; line: string; kind: string }) {
+function tableHead(text: string) {
+  const rows = parseCsv(text.slice(0, 200_000))
+  return { columns: rows[0] ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3), rows: text.split('\n').filter((l) => l.trim()).length - 1 }
+}
+
+async function save(name: string, ext: string, text: string, chunks: string[], meta: { url: string; license: string; licenseChecked: boolean; line: string; kind: string; about?: string; page?: string }) {
   const dir = path.join(WORKSPACE, 'raw', name)
   await fs.mkdir(dir, { recursive: true })
   await fs.writeFile(path.join(dir, `source.${ext}`), text)
   await fs.writeFile(path.join(dir, 'chunks.jsonl'), chunks.map((t, i) => JSON.stringify({ i, text: t })).join('\n') + '\n')
   await fs.writeFile(
     path.join(dir, 'manifest.json'),
-    JSON.stringify({ name, kind: 'raw', created: new Date().toISOString(), license: meta.license, licenseChecked: meta.licenseChecked, inputs: [meta.url], command: [meta.line], source: meta.kind, chunks: chunks.length, chars: text.length }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        name,
+        kind: 'raw',
+        created: new Date().toISOString(),
+        license: meta.license,
+        licenseChecked: meta.licenseChecked,
+        inputs: [meta.url],
+        command: [meta.line],
+        source: meta.kind,
+        chunks: chunks.length,
+        chars: text.length,
+        ...(meta.about && { about: meta.about }),
+        ...(meta.page && { page: meta.page }),
+        // A table's columns and first rows, so the template step can offer them without reading the whole file.
+        ...(ext === 'csv' && tableHead(text)),
+      },
+      null,
+      2,
+    ) + '\n',
   )
   print(`  ◂ workspace/raw/${name}: ${chunks.length} passages · ${meta.license}`)
 }
@@ -102,7 +140,7 @@ async function save(name: string, ext: string, text: string, chunks: string[], m
 export async function rawCommand(args: string[], opts: Record<string, string>, line: string): Promise<boolean> {
   const [kind, what, name] = args
   if (!kind || !(kind in RAW_SOURCES) || !what || !name || !NAME.test(name)) {
-    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>"\n       data raw txt <url> <name> --license "<what the source states>"')
+    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw txt <url> <name> --license "<what the source states>"')
     return false
   }
   try {
@@ -137,7 +175,7 @@ export async function rawCommand(args: string[], opts: Record<string, string>, l
     const text = await fetchText(what, abort)
     if (!text) return false
     const chunks = kind === 'csv' ? chunkCsv(text) : chunkText(text)
-    await save(name, kind, text, chunks, { url: what, license: `${opts.license.trim()} (as stated at import)`, licenseChecked: false, line, kind })
+    await save(name, kind, text, chunks, { url: what, license: `${opts.license.trim()} (as stated at import)`, licenseChecked: false, line, kind, about: opts.about?.trim(), page: opts.page?.trim() })
     return true
   } catch (err) {
     print(abort.signal.aborted ? '  ◂ stopped' : `data raw: ${(err as Error).message}`)

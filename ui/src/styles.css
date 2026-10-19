@@ -656,3 +656,17 @@ a.text-button { text-decoration: none; }
 /* a web address in explanation text: green like anything you click, underlined because it sits in a sentence */
 .text-link { color: var(--act); text-decoration: underline; text-underline-offset: 0.2em; }
 .text-link:hover { background: var(--act-wash); }
+
+/* ---- public data: search results, bringing one in, the template ---- */
+.od-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; max-height: 26rem; overflow-y: auto; }
+.od-result { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.6rem 0.75rem; border: 1px dashed transparent; border-top-color: var(--muted); }
+.od-result.is-active { border: 1px solid var(--line); }
+.od-result__title { font-size: 0.85rem; }
+.od-result__about { margin: 0; color: var(--muted); line-height: 1.5; }
+.od-result__pick { align-self: flex-start; margin-left: -0.4rem; }
+.od-bring { display: flex; flex-direction: column; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+.od-columns { display: flex; flex-wrap: wrap; gap: 0.1rem 0.25rem; align-items: baseline; }
+.od-col { font-size: 0.7rem; padding: 0.15rem 0.35rem; text-transform: none; }
+.od-preview { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.6rem 0.8rem; border: 1px dotted var(--muted); }
+.od-preview__row { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.od-preview__row--out { color: var(--muted); }

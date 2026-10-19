@@ -4,7 +4,7 @@ import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { print } from './hub.ts'
 
-const KINDS = ['data', 'runs', 'adapters', 'merges', 'fused'] as const
+const KINDS = ['data', 'raw', 'runs', 'adapters', 'merges', 'fused'] as const
 const NAME = /^[A-Za-z0-9][\w.-]{0,127}$/
 
 /**

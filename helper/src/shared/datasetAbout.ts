@@ -25,7 +25,15 @@ function sourcePhrase(id: string, kind: string, command: string[]): string {
   }
   if (id === 'OpenAssistant/oasst1') return 'conversations written and ranked by OpenAssistant volunteers, each a first question with its best-rated reply'
   if (id.startsWith('HuggingFaceTB/smoltalk')) return `conversations Hugging Face generated to teach small models to chat (${id.split('/').pop()})`
-  if (id.startsWith('raw/')) return `passages of ${id.slice(4)}, which a model turned into questions and answers`
+  if (id.startsWith('raw/')) {
+    // A template fills questions from a table's rows; otherwise a model wrote rows from its passages.
+    const t = command.find((c) => c.startsWith(`data template ${id} `))
+    if (t) {
+      const q = t.match(/--question "([^"]+)"/)?.[1]
+      return `the rows of the table ${id.slice(4)}, made into questions and answers by a template${q ? ` ("${q}")` : ''}`
+    }
+    return `passages of ${id.slice(4)}, which a model turned into questions and answers`
+  }
   if (id.startsWith('uploads/')) return `a file you brought in (${id.slice(8)})`
   if (id.startsWith('examples/')) return 'examples written for Variable Machine'
   if (kind === 'chat-log') return 'answers from your Chat log: two models answered the same question and the better one was marked'

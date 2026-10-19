@@ -32,6 +32,7 @@ data import example <example> <name>   (workspace/examples/data)
 data import hf <owner/name> <name> [--config <c>] [--split train] [--limit 300]   (any dataset on huggingface.co/datasets)
 data import file uploads/<file> <name> --license "<terms>"   (a .csv, .jsonl or .json uploaded on the Data tab)
 data describe <name> <a sentence about it>
+data template raw/<table> <name> --question "…{column}…" --answer "…{column}…" [--skip 0] [--limit 300]   (a table's rows as questions and answers)
 data raw gutenberg <book number> <name>
 data raw csv|txt <url> <name> --license "<what the source states>"
 data validate <name>
@@ -541,6 +542,77 @@ async function describe(name: string, words: string[], line: string): Promise<bo
   return true
 }
 
+/**
+ * `data template raw/<table> <dataset> --question "…{column}…" --answer "…{column}…"`:
+ * the formatting step for a table. Each row fills the blanks, so a row of
+ * traffic counts becomes "How many vehicles a day use 14th St NW?" → "About
+ * 18,000.". No model involved: the answers are the table's own facts.
+ */
+async function template(rel: string, name: string, opts: Record<string, string>, line: string): Promise<boolean> {
+  const q = opts.question?.trim()
+  const a = opts.answer?.trim()
+  if (!/^raw\/[a-z0-9._-]+$/.test(rel ?? '') || !q || !a) {
+    print('usage: data template raw/<table> <dataset> --question "…{column}…" --answer "…{column}…" [--skip 0] [--limit 300] [--seed 0]')
+    return false
+  }
+  const raw = await readJson<{ license: string; licenseChecked?: boolean; inputs?: string[] }>(path.join(WORKSPACE, rel, 'manifest.json'))
+  const text = await fs.readFile(path.join(WORKSPACE, rel, 'source.csv'), 'utf8').catch(() => null)
+  if (!raw || text === null) {
+    print(`${rel} isn't a table: bring one in with data raw csv first`)
+    return false
+  }
+  const rows = parseCsv(text)
+  const columns = rows[0] ? Object.keys(rows[0]) : []
+  // {column}, or {column|round} for a whole number with thousands commas (18,204 rather than 18204.3349)
+  const blanks = [...new Set([...`${q} ${a}`.matchAll(/\{([^{}|]+)(?:\|round)?\}/g)].map((m) => m[1]))]
+  const unknown = blanks.filter((b) => !columns.includes(b))
+  if (!blanks.length) {
+    print('the question or the answer needs at least one {column} from the table, or every row says the same thing')
+    return false
+  }
+  if (unknown.length) {
+    print(`no column called ${unknown.map((u) => `{${u}}`).join(', ')}. columns: ${columns.join(', ')}`)
+    return false
+  }
+  // --skip 0 (or "n/a", "-", …): a value that means "not recorded" in this table, so rows with it are left out.
+  const skip = (opts.skip ?? '').split(',').map((v) => v.trim()).filter((v, i, all) => v || all.length === 1)
+  const round = (v: string) => (Number.isFinite(Number(v)) && v.trim() !== '' ? Math.round(Number(v)).toLocaleString('en-US') : v)
+  const fill = (t: string, r: Record<string, string>) => t.replace(/\{([^{}|]+)(\|round)?\}/g, (_, c: string, how?: string) => (how ? round(r[c].trim()) : r[c].trim()))
+  // Rows with a blank in any column used would make half-empty questions; leave them out. Same question twice: keep the first.
+  const seen = new Set<string>()
+  const made: ChatRow[] = []
+  for (const r of shuffle(rows, Number(opts.seed ?? 0))) {
+    if (blanks.some((b) => !r[b]?.trim() || (skip.length && skip.includes(r[b].trim())))) continue
+    const question = fill(q, r)
+    if (seen.has(question)) continue
+    seen.add(question)
+    made.push({ messages: [{ role: 'user', content: question }, { role: 'assistant', content: fill(a, r) }] })
+    if (made.length >= Number(opts.limit ?? 300)) break
+  }
+  const why = `the rest had blanks${opts.skip !== undefined ? ` or ${opts.skip || 'empty'}` : ''}, repeated a question, or were past the limit`
+  print(`${rows.length} rows in the table · ${made.length} made into questions and answers${rows.length > made.length ? ` (${why})` : ''}`)
+  if (!made.length) return false
+  const first = made[0].messages
+  print(`  e.g. "${first[0].content}" → "${first[1].content}"`)
+  const existing = await readManifest(name)
+  if (existing && existing.format === 'preference') {
+    print(`${name} is a preference set; template rows are questions and answers: use a new dataset`)
+    return false
+  }
+  const m = existing ?? (await ensureDataset(name, line))
+  await fs.appendFile(path.join(dir(name), 'train.jsonl'), toJsonl(made))
+  m.counts.train += made.length
+  const prev = m.sources.find((x) => x.id === rel)
+  if (prev) prev.rows += made.length
+  else m.sources.push({ id: rel, kind: 'import', license: raw.license, licenseChecked: !!raw.licenseChecked, rows: made.length, ...(raw.inputs?.[0] && { url: raw.inputs[0] }) })
+  if (!m.inputs.includes(`workspace/${rel}`)) m.inputs.push(`workspace/${rel}`)
+  if (opts.about) m.about = opts.about
+  recordCommand(m, line)
+  await writeManifest(m)
+  print(`  ◂ ${made.length} rows → workspace/data/${name}/train.jsonl · ${raw.license}`)
+  return true
+}
+
 /* ---------- validate / split / count / append ---------- */
 
 async function validate(name: string, line: string): Promise<boolean> {
@@ -692,8 +764,8 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
   const [sub, ...rest] = args
   const { pos, opts } = flags(rest)
   if (sub === 'raw') return rawCommand(pos, opts, line)
-  const name = sub === 'import' ? (['example', 'hf', 'file'].includes(pos[0]) ? pos[2] : pos[1]) : pos[0]
-  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe'].includes(sub)) {
+  const name = sub === 'import' ? (['example', 'hf', 'file'].includes(pos[0]) ? pos[2] : pos[1]) : sub === 'template' ? pos[1] : pos[0]
+  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe', 'template'].includes(sub)) {
     print(HELP)
     return !sub || sub === 'help'
   }
@@ -702,7 +774,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     return false
   }
   for (const k of Object.keys(opts)) {
-    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from'] }
+    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from'], template: ['question', 'answer', 'limit', 'seed', 'about', 'skip'] }
     if (!(allowed[sub] ?? []).includes(k)) {
       print(`data ${sub}: unknown option --${k}`)
       return false
@@ -744,6 +816,8 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
       return append(name, pos[1], opts, line)
     case 'describe':
       return describe(name, pos.slice(1), line)
+    case 'template':
+      return template(pos[0], name, opts, line)
   }
   return false
 }

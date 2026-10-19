@@ -13,7 +13,8 @@ import ImportCard from './ImportCard'
 import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
 import { Explained } from '../explain/Explained'
-import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, READY } from '../explain/data'
+import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, OPEN, READY } from '../explain/data'
+import { OpenDataCard, TemplateCard } from './OpenData'
 import { HfCard, UploadCard } from './DataBringIn'
 import { Linked } from '../explain/Linked'
 import { describeDataset } from '@shared/datasetAbout'
@@ -45,6 +46,8 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
   const [validFrac, setValidFrac] = useState(0.1)
   const [busy, setBusy] = useState('')
   const [about, setAbout] = useState('')
+  /** a table just brought in from an open-data portal, for the template step */
+  const [newTable, setNewTable] = useState('')
 
   const loadSets = useCallback(() => void readManifests<DatasetManifest>('data').then((m) => setSets(m.sort((a, b) => b.created.localeCompare(a.created)))), [])
   const loadFiles = useCallback(async (name: string) => {
@@ -210,6 +213,18 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                     <Linked text={BRING.file.when} />
                   </p>
                   <UploadCard busy={busy === 'file'} onRun={(line, name) => void run('file', line).then(created(name))} />
+                </div>
+                <div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{OPEN.search.title}</h2>
+                  <p className="mf-next">
+                    <Linked text={OPEN.search.when} />
+                  </p>
+                  <OpenDataCard busy={busy === 'opendata'} onRun={(line, raw) => void run('opendata', line).then(() => setNewTable(raw))} />
+                </div>
+                <div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{OPEN.template.title}</h2>
+                  <p className="mf-next">{OPEN.template.when}</p>
+                  <TemplateCard busy={busy === 'template'} prefer={newTable} onRun={(line, name) => void run('template', line).then(created(name))} />
                 </div>
                 <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{MAKE.import.title}</h2>

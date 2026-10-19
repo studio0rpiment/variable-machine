@@ -32,7 +32,7 @@ const HELP = `commands
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused>/<name>     share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|runs|adapters|merges|fused>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 

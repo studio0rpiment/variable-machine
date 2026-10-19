@@ -145,6 +145,14 @@ export const EXPLAIN = {
     title: 'All datasets',
     text: 'Back to every dataset as cards, where you can choose another or make a new one.',
   },
+  'data.opendata': {
+    title: 'Search',
+    text: 'Searches the portal\'s catalog for tables. Each result says who published it and its license; its title opens the dataset\'s page, where you can read more. Nothing downloads until you choose a table and bring it in.',
+  },
+  'data.template': {
+    title: 'Make questions and answers',
+    text: 'Fills your question and answer from each row of the table and saves them as a dataset, ready to check, split and train on. Rows with an empty blank (or a 0, if you said so) are left out, and so are repeated questions.',
+  },
   'data.hf': {
     title: 'Bring it in from Hugging Face',
     text: 'Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns.',
