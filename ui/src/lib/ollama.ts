@@ -49,11 +49,11 @@ export interface ChatDelta {
  * terminal as `ollama run-once …` and, because of the header, logs it to
  * workspace/chat/<date>.jsonl when it finishes.
  */
-export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal) {
+export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal, options?: Record<string, number>) {
   const res = await fetch('/ollama/api/chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-variable-machine-source': 'chat' },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], stream: true }),
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], stream: true, ...(options && { options }) }),
     signal,
   })
   if (!res.body) throw new Error(`ollama: ${res.status}`)

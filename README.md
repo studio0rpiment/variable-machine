@@ -15,7 +15,7 @@ The floor is a 16GB Apple Silicon Mac on macOS 14 or later. Bigger machines just
 
 ## Install
 
-1. Install [Ollama](https://ollama.com) and open it.
+1. Install [Ollama](https://ollama.com). `npm run dev` opens it if it isn't already running.
 2. Install `uv`: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 3. Install Node 22 or newer (directly, or with `fnm` / `nvm`; `.nvmrc` says 22).
 4. `git clone https://github.com/studio0rpiment/variable-machine && cd variable-machine && npm install && uv sync --project python`

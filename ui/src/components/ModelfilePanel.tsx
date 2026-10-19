@@ -55,7 +55,8 @@ function buildModelfile(f: Form, inherited: string[]) {
 interface Answer {
   text: string
   thinking: string
-  state: 'idle' | 'streaming' | 'done' | 'error'
+  /** waiting: queued behind the other model (Ollama runs one at a time on a 16GB Mac) */
+  state: 'idle' | 'waiting' | 'streaming' | 'done' | 'error'
   meta?: string
 }
 const EMPTY: Answer = { text: '', thinking: '', state: 'idle' }
@@ -85,7 +86,9 @@ function AnswerColumn({ label, model, a, placeholder }: { label: string; model: 
           <p>{a.thinking}</p>
         </details>
       )}
-      {a.state === 'idle' && !a.text && placeholder ? (
+      {a.state === 'waiting' ? (
+        <p className="mf-answer__text mf-answer__text--waiting">Waiting its turn: this Mac runs one model at a time, so this answer starts as soon as the one beside it finishes.</p>
+      ) : a.state === 'idle' && !a.text && placeholder ? (
         <p className="mf-answer__text mf-answer__text--waiting">{placeholder}</p>
       ) : (
         <p className={`mf-answer__text ${a.state === 'streaming' ? 'is-streaming' : ''}`.trim()}>{a.text || '…'}</p>
@@ -124,6 +127,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
   const [answers, setAnswers] = useState<{ original: Answer; variant: Answer }>({ original: EMPTY, variant: EMPTY })
   const [yours, setYours] = useState<{ name: string; from: string; system?: string }[]>([])
   const aborts = useRef<AbortController[]>([])
+  const asked = useRef(0)
   const formRef = useRef<HTMLElement>(null)
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
@@ -251,14 +255,19 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
   const command = joinWords(['ollama', 'create', name, '-f', file])
   const valid = NAME.test(name) && !!form.base && name !== bare(form.base)
 
+  /** A short context window: plenty for one question, and a model needs 3GB instead of 7.6GB, so switching between the two is quick. */
+  const ASK_OPTIONS = { num_ctx: 4096 }
+
+  // On a 16GB Mac Ollama keeps one model in memory at a time, so the two answer in turn: the original, then the variant.
   const ask = (question: string, pair: { name: string; base: string }) => {
     aborts.current.forEach((a) => a.abort())
     aborts.current = []
+    const turn = ++asked.current
     const run = (key: 'original' | 'variant', model: string) => {
       const ctrl = new AbortController()
       aborts.current.push(ctrl)
       setAnswers((s) => ({ ...s, [key]: { text: '', thinking: '', state: 'streaming' } }))
-      chatOnce(
+      return chatOnce(
         model,
         question,
         (d) =>
@@ -272,10 +281,16 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
             },
           })),
         ctrl.signal,
-      ).catch((e: Error) => !ctrl.signal.aborted && setAnswers((s) => ({ ...s, [key]: { ...s[key], state: 'error', meta: e.message } })))
+        ASK_OPTIONS,
+      ).catch((e: Error) => {
+        if (!ctrl.signal.aborted) setAnswers((s) => ({ ...s, [key]: { ...s[key], state: 'error', meta: e.message } }))
+      })
     }
-    run('original', pair.base)
-    run('variant', pair.name)
+    setAnswers({ original: EMPTY, variant: { ...EMPTY, state: 'waiting' } })
+    void run('original', pair.base).then(() => {
+      if (turn !== asked.current) return // a newer question replaced this one
+      void run('variant', pair.name)
+    })
   }
 
   const make = async () => {
@@ -291,7 +306,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
     if (sample.trim()) ask(sample.trim(), pair)
   }
 
-  const asking = answers.original.state === 'streaming' || answers.variant.state === 'streaming'
+  const asking = [answers.original.state, answers.variant.state].some((x) => x === 'streaming' || x === 'waiting')
 
   return (
     <section className="panel mf" aria-label="modelfile">
