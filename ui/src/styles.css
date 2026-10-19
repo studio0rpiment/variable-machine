@@ -653,3 +653,6 @@ a.text-button { text-decoration: none; }
 @media (max-width: 64rem) { .mf-compare--three { grid-template-columns: 1fr; } }
 .mf-flagged { width: fit-content; cursor: help; }
 .mf-flagged:focus-visible { outline: 1px solid var(--line); outline-offset: 3px; }
+/* a web address in explanation text: green like anything you click, underlined because it sits in a sentence */
+.text-link { color: var(--act); text-decoration: underline; text-underline-offset: 0.2em; }
+.text-link:hover { background: var(--act-wash); }

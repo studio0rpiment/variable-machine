@@ -15,6 +15,7 @@ import PreferenceBuilder from './PreferenceBuilder'
 import { Explained } from '../explain/Explained'
 import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, READY } from '../explain/data'
 import { HfCard, UploadCard } from './DataBringIn'
+import { Linked } from '../explain/Linked'
 import { describeDataset } from '@shared/datasetAbout'
 import { glide as glideAs, moving } from '../lib/moving'
 
@@ -188,7 +189,9 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       {FIND_GUIDE.map((g) => (
                         <Fragment key={g.title}>
                           <dt>{g.title}</dt>
-                          <dd>{g.text}</dd>
+                          <dd>
+                            <Linked text={g.text} />
+                          </dd>
                         </Fragment>
                       ))}
                     </dl>
@@ -196,12 +199,16 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 </details>
                 <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{BRING.hf.title}</h2>
-                  <p className="mf-next">{BRING.hf.when}</p>
+                  <p className="mf-next">
+                    <Linked text={BRING.hf.when} />
+                  </p>
                   <HfCard busy={busy === 'hf'} onRun={(line, name) => void run('hf', line).then(created(name))} />
                 </div>
                 <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{BRING.file.title}</h2>
-                  <p className="mf-next">{BRING.file.when}</p>
+                  <p className="mf-next">
+                    <Linked text={BRING.file.when} />
+                  </p>
                   <UploadCard busy={busy === 'file'} onRun={(line, name) => void run('file', line).then(created(name))} />
                 </div>
                 <div className="data-way">

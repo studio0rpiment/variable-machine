@@ -56,7 +56,7 @@ export const BRING = {
   },
   file: {
     title: 'your own file',
-    when: 'A table (.csv) or a .jsonl or .json file: from Kaggle, a teacher, a spreadsheet you wrote. Say what license it came with; for your own writing, "mine".',
+    when: 'A table (.csv) or a .jsonl or .json file: from Kaggle (kaggle.com/datasets), an open-data portal, a teacher, a spreadsheet you wrote. Say what license it came with; for your own writing, "mine".',
   },
 }
 
@@ -64,7 +64,7 @@ export const BRING = {
 export const FIND_GUIDE: { title: string; text: string }[] = [
   {
     title: 'Where to look',
-    text: 'Hugging Face (huggingface.co/datasets) has hundreds of thousands, most of them ready to bring in by name. Kaggle (kaggle.com/datasets) has tables you download as .csv. Project Gutenberg has public-domain books, open-data portals (data.gov, your city\'s) have tables: both are raw material for a model to write examples from. And your own writing: a spreadsheet with a question column and an answer column is a dataset.',
+    text: 'Hugging Face (huggingface.co/datasets) has hundreds of thousands of datasets, most of them ready to bring in by name. Kaggle (kaggle.com/datasets) has tables you download as .csv. Project Gutenberg (gutenberg.org) has public-domain books. Open-data portals have tables of public facts: data.gov for the United States, opendata.dc.gov for Washington DC, and most cities and states have one. Books and tables are raw material: a model writes question-and-answer rows from them. And your own writing: a spreadsheet with a question column and an answer column is a dataset.',
   },
   {
     title: 'Searching Hugging Face',
