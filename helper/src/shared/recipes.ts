@@ -70,7 +70,22 @@ export function trainLine(p: TrainParams): string[] {
   return ['train', p.name, '--base', p.base, '--data', p.data, '--type', p.type, '--rank', String(p.rank), '--layers', String(p.layers), '--lr', String(p.lr), '--iters', String(p.iters), '--batch', String(p.batch), '--max-seq', String(p.maxSeq), '--eval-every', String(p.evalEvery)]
 }
 
-export const fuseArgs = (base: string, adapter: string, out: string) => [...UV, 'mlx_lm.fuse', '--model', base, '--adapter-path', `workspace/adapters/${adapter}`, '--save-path', `workspace/fused/${out}`]
+/** adapterDir is 'adapters' for trained adapters, 'merges' for merged ones. */
+export const fuseArgs = (base: string, adapter: string, out: string, adapterDir: 'adapters' | 'merges' = 'adapters') => [...UV, 'mlx_lm.fuse', '--model', base, '--adapter-path', `workspace/${adapterDir}/${adapter}`, '--save-path', `workspace/fused/${out}`]
+
+export type MergeMethod = 'linear'
+
+export const mergeArgs = (a: string, b: string, t: number, out: string) => [
+  ...UV,
+  'python',
+  'python/variable_machine/merge_adapters.py',
+  '--a', `workspace/adapters/${a}`,
+  '--b', `workspace/adapters/${b}`,
+  '--t', String(t),
+  '--out', `workspace/merges/${out}`,
+]
+
+export const mergeLine = (name: string, a: string, b: string, t: number, method: MergeMethod = 'linear') => ['merge', name, '--a', a, '--b', b, '--t', String(t), '--method', method]
 
 /** SmolLM2's chat template (ChatML), as Ollama's own smollm2 models carry it. Imported models don't bring one, so register writes it into the Modelfile. */
 export const CHATML_TEMPLATE = `{{- if .Messages }}

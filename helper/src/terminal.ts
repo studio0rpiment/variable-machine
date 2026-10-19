@@ -30,16 +30,16 @@ const HELP = `commands
   ctrl-c stops what is running
 
   train <adapter> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank] [--layers] [--lr] [--iters] [--batch] [--max-seq]
-  fuse <adapter> [--name]
+  fuse <adapter|merge> [--name]
   register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
-  export <adapter> [--name <model>] [--quantize int8|int4|none]    fuse + register in one go
+  export <adapter|merge> [--name <model>] [--quantize int8|int4|none]    fuse + register in one go
+  merge <name> --a <adapter> --b <adapter> [--t 0.5]    (1 - t)·A + t·B, tensor by tensor
 
 coming in later milestones
-  merge                                 (5)
   prefer                                (6)
   doctor                                (7)`
 
-const LATER: Record<string, number> = { merge: 5, prefer: 6, doctor: 7 }
+const LATER: Record<string, number> = { prefer: 6, doctor: 7 }
 
 /** Flags each file command may take. Anything else, and anything that would follow a file (tail -f), is refused. */
 const FILE_FLAGS: Record<string, RegExp> = {
@@ -110,7 +110,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd in FILE_FLAGS) return fileCommand(cmd, args)
   if (cmd === 'ollama') return ollamaCommand(args)
   if (cmd === 'data') return dataCommand(args, line)
-  if (['train', 'fuse', 'register', 'export'].includes(cmd)) return recipeCommand(cmd, args, line)
+  if (['train', 'fuse', 'register', 'export', 'merge'].includes(cmd)) return recipeCommand(cmd, args, line)
   if (cmd === 'help') return print(HELP), true
   if (cmd === 'status') return printStatus()
   if (cmd === 'clear') return broadcast({ type: 'terminal.output', text: '\x1b[2J\x1b[3J\x1b[H' }), true

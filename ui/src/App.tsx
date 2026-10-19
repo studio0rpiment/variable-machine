@@ -6,12 +6,13 @@ import ModelfilePanel from './components/ModelfilePanel'
 import DataPanel from './components/DataPanel'
 import TrainPanel from './components/TrainPanel'
 import AdaptersPanel from './components/AdaptersPanel'
+import MergePanel from './components/MergePanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
-import { AdaptersMark, ChatMark, DataMark, ModelfileMark, ModelsMark, TrainMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, TrainMark } from './icons'
 
-const PANELS = ['models', 'modelfile', 'data', 'train', 'adapters', 'chat'] as const
+const PANELS = ['models', 'modelfile', 'data', 'train', 'adapters', 'merge', 'chat'] as const
 type Panel = (typeof PANELS)[number]
 const MARKS: Record<Panel, ReactNode> = {
   models: <ModelsMark size={0.9} />,
@@ -19,6 +20,7 @@ const MARKS: Record<Panel, ReactNode> = {
   data: <DataMark size={0.9} />,
   train: <TrainMark size={0.9} />,
   adapters: <AdaptersMark size={0.9} />,
+  merge: <MergeMark size={0.9} />,
   chat: <ChatMark size={0.9} />,
 }
 
@@ -36,7 +38,7 @@ function panelFromHash(): Panel {
 export default function App() {
   const { theme, toggle } = useTheme()
   const [panel, setPanel] = useState<Panel>(panelFromHash)
-  const [chatRequest, setChatRequest] = useState<{ model: string; a?: string; n: number }>()
+  const [chatRequest, setChatRequest] = useState<{ models: (string | null)[]; n: number }>()
   const [modelfileFrom, setModelfileFrom] = useState<{ model: string; n: number }>()
 
   useEffect(() => {
@@ -46,15 +48,14 @@ export default function App() {
   }, [])
   const go = (p: Panel) => (location.hash = p)
 
-  const chatWith = (model: string) => {
-    setChatRequest((r) => ({ model, n: (r?.n ?? 0) + 1 }))
+  /** Put models into Chat's columns, in order; null leaves a column as it is. */
+  const chatModels = (models: (string | null)[]) => {
+    setChatRequest((r) => ({ models, n: (r?.n ?? 0) + 1 }))
     go('chat')
   }
+  const chatWith = (model: string) => chatModels([null, model])
   /** Two models side by side, e.g. the untouched base next to what training made of it. */
-  const chatPair = (a: string, b: string) => {
-    setChatRequest((r) => ({ a, model: b, n: (r?.n ?? 0) + 1 }))
-    go('chat')
-  }
+  const chatPair = (a: string, b: string) => chatModels([a, b])
   const editModelfile = (model: string) => {
     setModelfileFrom((r) => ({ model, n: (r?.n ?? 0) + 1 }))
     go('modelfile')
@@ -90,6 +91,9 @@ export default function App() {
         </div>
         <div className="panel-slot" hidden={panel !== 'adapters'}>
           <AdaptersPanel onChatPair={chatPair} />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'merge'}>
+          <MergePanel onChatModels={chatModels} />
         </div>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'chat'}>
           <Chat request={chatRequest} />

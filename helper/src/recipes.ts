@@ -13,6 +13,7 @@ import {
   TIER_DEFAULTS,
   createArgs,
   fuseArgs,
+  mergeArgs,
   parseTrainLine,
   registerModelfile,
   runConfigYaml,
@@ -248,13 +249,17 @@ async function writeBaseManifest(base: string, argv: string[]) {
 
 interface AdapterManifest extends Manifest {
   base: string
-  data: string
+  rank: number
+  layers: number
+  method: string
+  /** where it lives: trained adapters and merges are both adapters to fuse */
+  dir: 'adapters' | 'merges'
 }
 
 function fuseStep(adapter: AdapterManifest, out: string, line: string): Step[] {
   return [
     unloadStep,
-    { kind: 'spawn', argv: fuseArgs(adapter.base, adapter.name, out), env: PY_ENV },
+    { kind: 'spawn', argv: fuseArgs(adapter.base, adapter.name, out, adapter.dir), env: PY_ENV },
     {
       kind: 'do',
       display: `write workspace/fused/${out}/manifest.json`,
@@ -264,8 +269,8 @@ function fuseStep(adapter: AdapterManifest, out: string, line: string): Step[] {
           kind: 'fused',
           created: now(),
           license: adapter.license,
-          inputs: [`workspace/adapters/${adapter.name}`, adapter.base],
-          command: [line, ['HF_HOME=workspace/hf', ...fuseArgs(adapter.base, adapter.name, out)].join(' ')],
+          inputs: [`workspace/${adapter.dir}/${adapter.name}`, adapter.base],
+          command: [line, ['HF_HOME=workspace/hf', ...fuseArgs(adapter.base, adapter.name, out, adapter.dir)].join(' ')],
           adapter: adapter.name,
           base: adapter.base,
         }),
@@ -293,8 +298,68 @@ function registerSteps(o: { fused: string; model: string; quantize: Quantize; sy
   ]
 }
 
-async function adapterOrNull(name: string) {
-  return readJson<AdapterManifest>(ws('adapters', name, 'manifest.json'))
+/** A trained adapter, or else a merge of two. */
+async function adapterOrNull(name: string): Promise<AdapterManifest | null> {
+  if (!NAME.test(name)) return null
+  for (const dir of ['adapters', 'merges'] as const) {
+    const m = await readJson<AdapterManifest>(ws(dir, name, 'manifest.json'))
+    if (m) return { ...m, dir }
+  }
+  return null
+}
+
+/* ---------- merge ---------- */
+
+async function merge(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  if (!only(opts, ['a', 'b', 't', 'method'], 'merge')) return false
+  const name = pos[0] ?? ''
+  const t = Number(opts.t ?? 0.5)
+  const method = opts.method ?? 'linear'
+  if (!NAME.test(name) || !opts.a || !opts.b) {
+    print('usage: merge <name> --a <adapter> --b <adapter> [--t 0.5] [--method linear]')
+    return false
+  }
+  if (method !== 'linear') return print('merge: only --method linear so far (SLERP comes later)'), false
+  if (!(t >= 0 && t <= 1)) return print('merge: --t is between 0 (all A) and 1 (all B)'), false
+  if (await exists(ws('merges', name))) return print(`merge: workspace/merges/${name} already exists; choose another name`), false
+  const a = await readJson<AdapterManifest>(ws('adapters', opts.a, 'manifest.json'))
+  const b = await readJson<AdapterManifest>(ws('adapters', opts.b, 'manifest.json'))
+  if (!a || !b) return print(`merge: no adapter ${!a ? opts.a : opts.b} in workspace/adapters`), false
+  // The script checks the tensors themselves; this catches the obvious mismatch before Python starts.
+  const differ = (['base', 'method', 'rank', 'layers'] as const).filter((k) => a[k] !== b[k])
+  if (differ.length) return print(`merge: A and B differ in ${differ.join(', ')}; they need the same base, type, rank and layers`), false
+
+  const argv = mergeArgs(a.name, b.name, t, name)
+  return runRecipe({
+    recipe: 'merge',
+    params: { name, a: a.name, b: b.name, t, method },
+    outputs: [`workspace/merges/${name}`],
+    steps: [
+      { kind: 'spawn', argv },
+      {
+        kind: 'do',
+        display: `write workspace/merges/${name}/manifest.json`,
+        run: () =>
+          writeJson(ws('merges', name, 'manifest.json'), {
+            name,
+            kind: 'merge',
+            created: now(),
+            license: a.license === b.license ? a.license : `${a.license} · ${b.license}`,
+            inputs: [`workspace/adapters/${a.name}`, `workspace/adapters/${b.name}`],
+            command: [line, argv.join(' ')],
+            method,
+            ratio: t,
+            a: a.name,
+            b: b.name,
+            base: a.base,
+            rank: a.rank,
+            layers: a.layers,
+            data: `${(a as Manifest & { data?: string }).data} + ${(b as Manifest & { data?: string }).data}`,
+          }),
+      },
+    ],
+  })
 }
 
 async function fuse(args: string[], line: string) {
@@ -302,7 +367,7 @@ async function fuse(args: string[], line: string) {
   if (!only(opts, ['name'], 'fuse')) return false
   const adapter = await adapterOrNull(pos[0] ?? '')
   if (!adapter) {
-    print('usage: fuse <adapter> [--name <fused name>]   (adapters are in workspace/adapters)')
+    print('usage: fuse <adapter or merge> [--name <fused name>]   (from workspace/adapters or workspace/merges)')
     return false
   }
   const out = opts.name ?? adapter.name
@@ -338,7 +403,7 @@ async function exportRecipe(args: string[], line: string) {
   if (!only(opts, ['name', 'quantize', 'system'], 'export')) return false
   const adapter = await adapterOrNull(pos[0] ?? '')
   if (!adapter) {
-    print('usage: export <adapter> [--name <ollama model>] [--quantize int8|int4|none] [--system "<text>"]')
+    print('usage: export <adapter or merge> [--name <ollama model>] [--quantize int8|int4|none] [--system "<text>"]')
     return false
   }
   const quantize = (opts.quantize ?? 'int8') as Quantize
@@ -368,6 +433,8 @@ export async function recipeCommand(cmd: string, args: string[], line: string): 
       return register(args)
     case 'export':
       return exportRecipe(args, line)
+    case 'merge':
+      return merge(args, line)
   }
   return false
 }

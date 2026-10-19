@@ -41,7 +41,8 @@ data append <name> '<row json>' [--source <model>]
 train <adapter> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank 8] [--layers 8] [--lr 1e-4] [--iters 200] [--batch 4] [--max-seq 1024]
 fuse <adapter> [--name <fused>]
 register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
-export <adapter> [--name <model>] [--quantize int8|int4|none]      fuse + register in one go
+export <adapter|merge> [--name <model>] [--quantize int8|int4|none]   fuse + register in one go
+merge <name> --a <adapter> --b <adapter> [--t 0.5] [--method linear]
 ls | cat | head | tail | wc <path>        inside workspace/ only
 status   help   clear                     ctrl-c stops what is running
 ```
@@ -56,7 +57,7 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
 - [x] **2. Models + Modelfile.** Two inventories (runs on: Ollama; trains on: Hugging Face) and a curated library. Pulls show progress in the card and the terminal. The licenses shown are the ones each model actually carries. The Modelfile editor marks which lines are weights, and `ollama create` turns the text into a model you can chat with.
 - [x] **3. Data.** Datasets are train/valid pairs of chat-format JSONL in `workspace/data/<name>/`. Dolly imports with the license read from Hugging Face at import time. A dataset can be validated, split (seeded) and token-counted (an estimate). A model writes candidate rows that you edit, keep or reject, and each kept row is a `data append`. The manifest records every source with its license, row count and the commands that touched it.
 - [x] **4. Train → export → chat.** The Train panel shows the exact `mlx_lm.lora` command, runs it (stopping Ollama's loaded models first to free memory) and plots loss live. Every run keeps `config.yaml`, `command.txt`, `log.txt`, `loss.jsonl` and `manifest.json` in `workspace/runs/<time>-<name>/`. Export folds the adapter into its base (`mlx_lm.fuse`) and imports the result into Ollama, where it chats next to the untouched base. On an M1 Pro (32GB), 200 iterations of LoRA on SmolLM2-360M over 305 rows took 141 seconds; export took under 10.
-- [ ] 5. Merge
+- [x] **5. Merge.** The Merge panel blends two adapters trained on the same base with the same type, rank and layers: out = (1 − t)·A + t·B, tensor by tensor, by `python/variable_machine/merge_adapters.py`. The script checks the configs and every tensor's shape before writing `workspace/merges/<name>/`. A merge exports like any adapter. Chat holds up to four columns, so A, B and the merge (and the untouched base) answer side by side.
 - [ ] 6. Prefer (optional)
 - [ ] 7. Doctor, examples, zip/unzip
 
@@ -70,6 +71,7 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
   - Ollama only quantizes safetensors imports, and only to `int4`, `int8`, `nvfp4`, `mxfp4` or `mxfp8`.
 
   So `register` imports the fused safetensors folder directly (`FROM ../fused/<name>`). It uses `int8` by default, because Ollama's own smollm2 is f16 and that keeps before/after comparisons fair. The chain is data → run → adapter → fused → Ollama model.
+- **What a linear merge averages.** LoRA stores each weight change as a product, `lora_b @ lora_a`. Averaging the two factors separately is not the same as averaging the two weight changes, because the product picks up cross terms. It behaves sensibly here because mlx-lm starts every run from the same seeded initialisation, the way averaged "model soups" do.
 - **Imported models get their chat template from the Modelfile.** `register` writes SmolLM2's ChatML template and stop tokens into it.
 
 ## How it stays honest
