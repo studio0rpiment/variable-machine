@@ -8,7 +8,7 @@ interface Props {
   children: ReactElement<{ 'aria-describedby'?: string }>
 }
 
-type Side = 'below' | 'above'
+type Side = 'below' | 'above' | 'right' | 'left'
 type Edge = 'start' | 'end'
 interface Placement {
   side: Side
@@ -17,19 +17,87 @@ interface Placement {
 }
 
 /**
- * Where the flag goes, decided when it opens: below the element, or above it
- * when the element is low on the screen (the terminal is down there); hanging
- * from its left edge, or from its right edge when it sits in the right half.
+ * A module is a group of controls that belong together: the Train column with
+ * type, rank, layers and learning rate; a card; a step. A flag should not
+ * cover its own module's other controls, so it attaches to its control at the
+ * edge nearest the module's border and hangs out past that border. Anything
+ * can be marked a module with data-module; these are the groups the app has.
  */
-function place(r: DOMRect): Placement {
-  const side: Side = r.bottom < window.innerHeight * 0.55 ? 'below' : 'above'
-  const edge: Edge = r.left + r.width / 2 < window.innerWidth / 2 ? 'start' : 'end'
+const MODULE = [
+  '[data-module]',
+  '.train-form__col',
+  '.merge-form > *',
+  '.mf-form__row',
+  '.mf-field',
+  '.mf-check',
+  '.mf-make__run',
+  '.manifest',
+  '.mf-chosen',
+  '.mf-part',
+  '.data-way',
+  '.split',
+  '.prefs__rule',
+  '.shell__nav',
+].join(', ')
+
+const FLAG_W = 24 * 16 // .flag max-width, 24rem
+const MIN_W = 14 * 16 // narrowest a flag beside its element may be
+const FLAG_H = 13 * 16 // a typical flag's height; long ones are clamped to the screen
+const TOP = 72 // below the app's top bar
+
+/**
+ * Where the flag goes, decided when it opens: on the side of the element that
+ * is nearest the border of its module and has room on the screen, so most of
+ * the flag lies outside the module. Without a module, below the element (or
+ * above it when it is low on the screen), as before.
+ */
+function place(el: Element): { at: Placement; module: Element | null } {
+  const r = el.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const w = Math.min(FLAG_W, vw - 16)
+  const module = el.parentElement?.closest(MODULE) ?? null
+  const m = module?.getBoundingClientRect() ?? r
+  const room: Record<Side, boolean> = {
+    below: vh - r.bottom >= FLAG_H * 0.8,
+    above: r.top - TOP >= FLAG_H * 0.8,
+    // Beside it, a flag may be narrower than usual (down to MIN_W) rather than fall back over the module.
+    right: vw - r.right >= MIN_W + 8,
+    left: r.left >= MIN_W + 8,
+  }
+  // Nearest border first; ties go below, then above, right, left.
+  const order: Side[] = ['below', 'above', 'right', 'left']
+  const gap: Record<Side, number> = { below: m.bottom - r.bottom, above: r.top - m.top, right: m.right - r.right, left: r.left - m.left }
+  const side = [...order].sort((a, b) => gap[a] - gap[b] || order.indexOf(a) - order.indexOf(b)).find((s) => room[s]) ?? (r.bottom < vh * 0.55 ? 'below' : 'above')
+
+  if (side === 'right' || side === 'left') {
+    // Beside the element, its tail level with the element's middle.
+    const top = Math.max(TOP, Math.min(r.top + r.height / 2 - 28, vh - FLAG_H - 8))
+    const tailY = Math.max(10, Math.min(r.top + r.height / 2 - top - 5, FLAG_H - 24))
+    return {
+      module,
+      at: {
+        side,
+        edge: 'start',
+        style: {
+          top,
+          ...(side === 'right' ? { left: r.right } : { right: vw - r.left }),
+          maxWidth: Math.min(w, (side === 'right' ? vw - r.right : r.left) - 8),
+          ['--tail-y' as string]: `${tailY}px`,
+        },
+      },
+    }
+  }
+  const edge: Edge = r.left + w <= vw - 8 || r.left + r.width / 2 < vw / 2 ? 'start' : 'end'
   return {
-    side,
-    edge,
-    style: {
-      ...(side === 'below' ? { top: r.bottom } : { bottom: window.innerHeight - r.top }),
-      ...(edge === 'start' ? { left: Math.max(8, r.left - 8) } : { right: Math.max(8, window.innerWidth - r.right - 8) }),
+    module,
+    at: {
+      side,
+      edge,
+      style: {
+        ...(side === 'below' ? { top: r.bottom } : { bottom: vh - r.top }),
+        ...(edge === 'start' ? { left: Math.max(8, r.left - 8) } : { right: Math.max(8, vw - r.right - 8) }),
+      },
     },
   }
 }
@@ -57,11 +125,15 @@ export function Explained({ id, children }: Props) {
   const [dismissed, setDismissed] = useState(false)
   const e = EXPLAIN[id]
 
+  const module = useRef<Element | null>(null)
   const open = () => {
     const el = wrap.current?.firstElementChild
     if (!el || dismissed) return
     const r = el.getBoundingClientRect()
-    if (r.width && r.height) setAt(place(r)) // nothing to point at if it isn't laid out (a hidden panel)
+    if (!r.width || !r.height) return // nothing to point at if it isn't laid out (a hidden panel)
+    const p = place(el)
+    module.current = p.module
+    setAt(p.at)
   }
   const close = () => setAt(null)
   const within = (n: EventTarget | null, ref: { current: HTMLElement | null }) => n instanceof Node && !!ref.current?.contains(n)
@@ -69,6 +141,13 @@ export function Explained({ id, children }: Props) {
   // While open, close it on anything that would leave it pointing at the wrong place or at nothing:
   // a scroll or resize; a panel change (the element may be hidden with the pointer still over where
   // it was, so no pointerleave ever comes); or the pointer arriving somewhere else entirely.
+  // While a flag is open, its module shows its border: the group this control belongs to.
+  useEffect(() => {
+    const m = at ? module.current : null
+    m?.classList.add('is-explained')
+    return () => m?.classList.remove('is-explained')
+  }, [at])
+
   useEffect(() => {
     if (!at) return
     const elsewhere = (ev: PointerEvent) => {

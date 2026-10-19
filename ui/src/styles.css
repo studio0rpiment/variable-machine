@@ -432,7 +432,7 @@ a.text-button { text-decoration: none; }
 .flag--start .flag__tail { left: 1.4rem; }
 .flag--end .flag__tail { right: 1.4rem; }
 @keyframes flag-in {
-  from { opacity: 0; translate: 0 var(--flag-from, -0.25rem); }
+  from { opacity: 0; translate: var(--flag-dx, 0) var(--flag-from, -0.25rem); }
   to { opacity: 1; translate: 0 0; }
 }
 .flag--above { --flag-from: 0.25rem; }
@@ -671,3 +671,12 @@ a.text-button { text-decoration: none; }
 .od-preview__row { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
 .od-preview__row--out { color: var(--muted); }
 .data-table-src { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+
+/* Flags beside their element: hanging out of the module to the right or the left, the tail level with the element. */
+.flag--right { padding-left: 0.75rem; --flag-dx: -0.25rem; --flag-from: 0; }
+.flag--left { padding-right: 0.75rem; --flag-dx: 0.25rem; --flag-from: 0; }
+.flag--right .flag__tail { left: 0.42rem; top: var(--tail-y, 1rem); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.flag--left .flag__tail { right: 0.42rem; left: auto; top: var(--tail-y, 1rem); border-right: 1px solid var(--line); border-top: 1px solid var(--line); }
+.flag--right .flag__body, .flag--left .flag__body { max-height: calc(100vh - 6rem); overflow: auto; }
+/* The module a flag belongs to shows its border while the flag is open. */
+.is-explained { outline: 1px dashed var(--muted); outline-offset: 0.5rem; }
