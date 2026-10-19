@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listDir } from '../lib/workspace'
+import { readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { DATA_SOURCES, OASST1, SMOLTALK } from '@shared/library'
 import Manifest, { Badge } from './Manifest'
@@ -12,7 +12,7 @@ const ABOUT: Record<Source, { title: string; license: string; about: string }> =
   dolly: { title: DATA_SOURCES.dolly.repo, license: DATA_SOURCES.dolly.license, about: DATA_SOURCES.dolly.about },
   oasst1: { title: OASST1.repo, license: OASST1.license, about: OASST1.about },
   smoltalk: { title: SMOLTALK.repo, license: SMOLTALK.license, about: SMOLTALK.about },
-  example: { title: 'workspace/examples', license: 'CC0', about: 'small datasets written for this app, public domain' },
+  example: { title: 'workspace/examples', license: 'see each', about: 'small datasets that come with the app; each carries its own license' },
 }
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
@@ -26,13 +26,14 @@ export default function ImportCard({ onRun, busy }: { onRun: (line: string, name
   const [category, setCategory] = useState('')
   const [subset, setSubset] = useState(SMOLTALK.subsets[0])
   const [examples, setExamples] = useState<string[]>([])
+  const [exampleInfo, setExampleInfo] = useState<Record<string, { license: string; about?: string }>>({})
   const [example, setExample] = useState('')
 
   useEffect(() => {
-    void listDir('examples/data').then((e) => {
-      const names = e.filter((x) => x.dir).map((x) => x.name)
-      setExamples(names)
-      setExample((cur) => cur || names[0] || '')
+    void readManifests<{ name: string; license: string; about?: string }>('examples/data').then((ms) => {
+      setExamples(ms.map((m) => m.name).sort())
+      setExampleInfo(Object.fromEntries(ms.map((m) => [m.name, m])))
+      setExample((cur) => cur || ms[0]?.name || '')
     })
   }, [])
   useEffect(() => {
@@ -44,7 +45,9 @@ export default function ImportCard({ onRun, busy }: { onRun: (line: string, name
     source === 'example'
       ? joinWords(['data', 'import', 'example', example, name])
       : joinWords(['data', 'import', source, name, '--limit', String(limit), ...(source === 'dolly' && category ? ['--category', category] : []), ...(source === 'smoltalk' ? ['--subset', subset] : [])])
-  const a = ABOUT[source]
+  // An example says what it is and carries its own license; the other sources are described here.
+  const ex = source === 'example' ? exampleInfo[example] : undefined
+  const a = ex ? { ...ABOUT.example, license: ex.license, about: ex.about ?? ABOUT.example.about } : ABOUT[source]
 
   return (
     <Manifest name={a.title} badges={<Badge>{a.license}</Badge>} lines={[a.about, source === 'example' ? '' : 'the license is read from Hugging Face when it runs']}>

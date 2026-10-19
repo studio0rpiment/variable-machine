@@ -19,6 +19,9 @@ export interface DataSource {
   /** true when the license was read from the source itself at the time, not from our list */
   licenseChecked: boolean
   url?: string
+  /** for a table: its page on the portal, and what it is, so the table can be fetched again */
+  page?: string
+  about?: string
   rows: number
 }
 

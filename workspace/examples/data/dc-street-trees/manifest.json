@@ -1,0 +1,32 @@
+{
+  "name": "dc-street-trees",
+  "kind": "dataset",
+  "created": "2026-10-19T00:00:00.000Z",
+  "license": "CC BY 4.0 (District of Columbia, via opendata.dc.gov)",
+  "inputs": [
+    "https://opendata.dc.gov/api/download/v1/items/f6c3c04113944f23a7993f2e603abaf2/csv?layers=0"
+  ],
+  "command": [
+    "data raw csv \"https://opendata.dc.gov/api/download/v1/items/f6c3c04113944f23a7993f2e603abaf2/csv?layers=0\" urban-forestry-street-trees --license \"CC BY 4.0\" --about \"Urban Forestry Street Trees: Urban Forestry Division managed trees and tree locations.\" --page https://opendata.dc.gov/datasets/f6c3c04113944f23a7993f2e603abaf2",
+    "data template raw/urban-forestry-street-trees dc-street-trees --question \"What kind of tree stands at {VICINITY}?\" --answer \"{CMMN_NM} ({SCI_NM}), in {CONDITION} condition.\" --skip 0 --limit 300"
+  ],
+  "format": "chat",
+  "counts": {
+    "train": 300,
+    "valid": 0
+  },
+  "split": null,
+  "sources": [
+    {
+      "id": "raw/urban-forestry-street-trees",
+      "kind": "import",
+      "license": "CC BY 4.0",
+      "licenseChecked": true,
+      "rows": 300,
+      "url": "https://opendata.dc.gov/api/download/v1/items/f6c3c04113944f23a7993f2e603abaf2/csv?layers=0",
+      "page": "https://opendata.dc.gov/datasets/f6c3c04113944f23a7993f2e603abaf2",
+      "about": "Urban Forestry Street Trees: Urban Forestry Division managed trees and tree locations."
+    }
+  ],
+  "about": "300 questions and answers made from Washington DC's street-tree inventory: which tree stands at an address, its common and scientific name, and its condition. Made with a template from a table on DC Open Data, so every answer is a fact from the table. Not split yet: that is step 2."
+}

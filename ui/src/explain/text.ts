@@ -153,6 +153,10 @@ export const EXPLAIN = {
     title: 'Make questions and answers',
     text: 'Fills your question and answer from each row of the table and saves them as a dataset, ready to check, split and train on. Rows with an empty blank (or a 0, if you said so) are left out, and so are repeated questions.',
   },
+  'data.getTable': {
+    title: 'Download the table',
+    text: 'Fetches the whole table these rows were made from, straight from the portal that publishes it, with its license. Then you can write your own questions from it: other columns, other wording, more rows.',
+  },
   'data.hf': {
     title: 'Bring it in from Hugging Face',
     text: 'Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns.',

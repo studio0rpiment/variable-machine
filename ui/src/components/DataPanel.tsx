@@ -48,6 +48,14 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
   const [about, setAbout] = useState('')
   /** a table just brought in from an open-data portal, for the template step */
   const [newTable, setNewTable] = useState('')
+  /** tables already in workspace/raw, so a dataset made from one can offer to fetch it when it isn't here */
+  const [tables, setTables] = useState<string[]>([])
+  const loadTables = useCallback(() => void readManifests<{ name: string }>('raw').then((r) => setTables(r.map((x) => x.name))), [])
+  useEffect(loadTables, [loadTables])
+  useHelperEvent(
+    'workspace.changed',
+    useCallback((e) => e.path.startsWith('raw/') && e.path.endsWith('manifest.json') && loadTables(), [loadTables]),
+  )
 
   const loadSets = useCallback(() => void readManifests<DatasetManifest>('data').then((m) => setSets(m.sort((a, b) => b.created.localeCompare(a.created)))), [])
   const loadFiles = useCallback(async (name: string) => {
@@ -296,6 +304,33 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                         ? current.sources.map((s) => `${s.id} (${s.kind}, ${s.rows} rows${s.licenseChecked ? '' : ', license as listed'})`).join(' · ')
                         : 'nothing yet'}
                     </dd>
+                    {current.sources
+                      .filter((src) => src.id.startsWith('raw/') && src.url)
+                      .map((src) => {
+                        const table = src.id.slice(4)
+                        const here = tables.includes(table)
+                        const get = joinWords(['data', 'raw', 'csv', src.url!, table, '--license', src.license.replace(/ \(as stated at import\)$/, ''), ...(src.about ? ['--about', src.about] : []), ...(src.page ? ['--page', src.page] : [])])
+                        return (
+                          <Fragment key={src.id}>
+                            <dt>the table</dt>
+                            <dd className="data-table-src">
+                              <span>
+                                {here ? `${table} is here, in workspace/raw: make more rows from it under "make a new one".` : `${table} isn't on this computer yet.`}{' '}
+                                {src.page && (
+                                  <a href={src.page} target="_blank" rel="noopener noreferrer" className="text-link">
+                                    its page
+                                  </a>
+                                )}
+                              </span>
+                              {!here && (
+                                <Explained id="data.getTable">
+                                  <CommandPreview command={get} onRun={() => void run('table', get)} running={busy === 'table'} label="download the table" />
+                                </Explained>
+                              )}
+                            </dd>
+                          </Fragment>
+                        )
+                      })}
                     <dt>license</dt>
                     <dd>{current.license}</dd>
                     {current.tokens && (

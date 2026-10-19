@@ -670,3 +670,4 @@ a.text-button { text-decoration: none; }
 .od-preview { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.6rem 0.8rem; border: 1px dotted var(--muted); }
 .od-preview__row { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
 .od-preview__row--out { color: var(--muted); }
+.data-table-src { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }

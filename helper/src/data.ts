@@ -555,7 +555,7 @@ async function template(rel: string, name: string, opts: Record<string, string>,
     print('usage: data template raw/<table> <dataset> --question "…{column}…" --answer "…{column}…" [--skip 0] [--limit 300] [--seed 0]')
     return false
   }
-  const raw = await readJson<{ license: string; licenseChecked?: boolean; inputs?: string[] }>(path.join(WORKSPACE, rel, 'manifest.json'))
+  const raw = await readJson<{ license: string; licenseChecked?: boolean; inputs?: string[]; page?: string; about?: string }>(path.join(WORKSPACE, rel, 'manifest.json'))
   const text = await fs.readFile(path.join(WORKSPACE, rel, 'source.csv'), 'utf8').catch(() => null)
   if (!raw || text === null) {
     print(`${rel} isn't a table: bring one in with data raw csv first`)
@@ -604,7 +604,18 @@ async function template(rel: string, name: string, opts: Record<string, string>,
   m.counts.train += made.length
   const prev = m.sources.find((x) => x.id === rel)
   if (prev) prev.rows += made.length
-  else m.sources.push({ id: rel, kind: 'import', license: raw.license, licenseChecked: !!raw.licenseChecked, rows: made.length, ...(raw.inputs?.[0] && { url: raw.inputs[0] }) })
+  else
+    m.sources.push({
+      id: rel,
+      kind: 'import',
+      license: raw.license.replace(/ \(as stated at import\)$/, ''),
+      licenseChecked: !!raw.licenseChecked,
+      rows: made.length,
+      // where the table came from, so a copy of this dataset can fetch the table again with one click
+      ...(raw.inputs?.[0] && { url: raw.inputs[0] }),
+      ...(raw.page && { page: raw.page }),
+      ...(raw.about && { about: raw.about }),
+    })
   if (!m.inputs.includes(`workspace/${rel}`)) m.inputs.push(`workspace/${rel}`)
   if (opts.about) m.about = opts.about
   recordCommand(m, line)
