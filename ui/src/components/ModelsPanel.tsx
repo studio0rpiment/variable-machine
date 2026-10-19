@@ -161,13 +161,13 @@ function KindsOfModels() {
   )
 }
 
-/** The key to the words on the cards, folded away until opened. */
+/** Understanding the model card labels: the key to the words on the cards, folded away until opened. */
 function CardKey() {
   return (
     <details className="fold">
       <summary className="fold__summary">
         <span className="fold__mark" aria-hidden="true" />
-        What the cards say
+        Understanding the model card labels
       </summary>
       <div className="fold__body">
         <dl className="model-key">
