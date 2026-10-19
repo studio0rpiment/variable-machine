@@ -15,10 +15,12 @@ import {
   fuseArgs,
   mergeArgs,
   parseTrainLine,
+  preferArgs,
   registerModelfile,
   runConfigYaml,
   trainArgs,
   type FineTune,
+  type PreferParams,
   type Quantize,
   type TrainParams,
 } from './shared/recipes.ts'
@@ -245,10 +247,128 @@ async function writeBaseManifest(base: string, argv: string[]) {
   })
 }
 
+/* ---------- prefer (DPO) ---------- */
+
+async function prefer(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  if (!only(opts, ['model', 'data', 'beta', 'iters', 'lr', 'rank', 'layers'], 'prefer')) return false
+  const p: PreferParams = {
+    name: pos[0] ?? '',
+    model: opts.model ?? HF_BASES[0].id,
+    data: opts.data ?? '',
+    beta: Number(opts.beta ?? 0.1),
+    iters: Number(opts.iters ?? 100),
+    lr: Number(opts.lr ?? 2e-5),
+    rank: Number(opts.rank ?? 8),
+    layers: Number(opts.layers ?? 8),
+  }
+  if (!NAME.test(p.name) || !p.data) {
+    print('usage: prefer <adapter-name> --data <preference set> [--model <hf id or workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5] [--rank 8] [--layers 8]')
+    return false
+  }
+  if ([p.beta, p.iters, p.lr, p.rank, p.layers].some((n) => !Number.isFinite(n) || n <= 0)) return print('prefer: the numbers must be positive numbers'), false
+  // The model is a Hugging Face id or a fused model in the workspace, nothing else.
+  let hfBase = p.model
+  if (p.model.startsWith('workspace/fused/')) {
+    const fused = await readJson<{ base: string; hfBase?: string }>(ws('fused', p.model.slice('workspace/fused/'.length), 'manifest.json'))
+    if (!fused) return print(`prefer: no fused model at ${p.model}`), false
+    hfBase = fused.hfBase ?? fused.base
+  } else if (!/^[\w.-]+\/[\w.-]+$/.test(p.model)) return print('prefer: --model is a Hugging Face id or workspace/fused/<name>'), false
+  const data = await readJson<DatasetManifest>(ws('data', p.data, 'manifest.json'))
+  if (!data || data.format !== 'preference') return print(`prefer: ${p.data} is not a preference set (data new <name> --format preference)`), false
+  if (data.counts.train < 2 || !data.counts.valid) return print(`prefer: ${p.data} needs at least 2 pairs and some held out; run data split ${p.data}`), false
+  if (await exists(ws('adapters', p.name))) return print(`prefer: workspace/adapters/${p.name} already exists; choose another name`), false
+
+  const stamp = now().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)
+  const runName = `${stamp}-${p.name}`
+  const runDir = ws('runs', runName)
+  const runRel = `workspace/runs/${runName}`
+  const argv = preferArgs(p, runRel)
+  const shown = [...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...argv].join(' ')
+  const started = Date.now()
+  await fs.mkdir(runDir, { recursive: true })
+  const lossFile = path.join(runDir, 'loss.jsonl')
+  await fs.writeFile(lossFile, '')
+  const results = () => readJson<{ heldOut: { n: number; before: number; after: number; rewardAccuracy?: number } }>(path.join(runDir, 'results.json'))
+  const manifest = async (ok: boolean | null) => ({
+    name: runName,
+    kind: 'run',
+    created: new Date(started).toISOString(),
+    license: licenseOf(hfBase, data),
+    inputs: [p.model, `workspace/data/${p.data}`],
+    command: [line, shown],
+    recipe: 'prefer',
+    params: p,
+    adapter: `workspace/adapters/${p.name}`,
+    status: ok === null ? 'running' : ok ? 'finished' : 'failed',
+    seconds: ok === null ? undefined : Math.round((Date.now() - started) / 1000),
+    heldOut: (await results())?.heldOut,
+  })
+
+  const ok = await runRecipe({
+    recipe: 'prefer',
+    params: p,
+    logFile: path.join(runDir, 'log.txt'),
+    outputs: [`workspace/adapters/${p.name}`, runRel],
+    steps: [
+      unloadStep,
+      {
+        kind: 'do',
+        display: `write ${runRel}/command.txt, manifest.json`,
+        run: async () => {
+          await fs.writeFile(path.join(runDir, 'command.txt'), [line, '', shown, ''].join('\n'))
+          await writeJson(path.join(runDir, 'manifest.json'), await manifest(null))
+        },
+      },
+      {
+        kind: 'spawn',
+        argv,
+        env: PY_ENV,
+        onLine: (l, runId) => {
+          const m = parseTrainLine(l)
+          if (!m) return
+          void fs.appendFile(lossFile, JSON.stringify(m) + '\n')
+          broadcast({ type: 'pipeline.metric', runId, ...m })
+        },
+      },
+      {
+        kind: 'do',
+        display: `write workspace/adapters/${p.name}/manifest.json`,
+        run: async () => {
+          await writeJson(ws('adapters', p.name, 'manifest.json'), {
+            name: p.name,
+            kind: 'adapter',
+            created: now(),
+            license: licenseOf(hfBase, data),
+            inputs: [p.model, `workspace/data/${p.data}`, runRel],
+            command: [line],
+            method: 'dpo',
+            base: p.model,
+            hfBase,
+            data: p.data,
+            run: runName,
+            rank: p.rank,
+            layers: p.layers,
+            scale: 20,
+            iters: p.iters,
+            beta: p.beta,
+            heldOut: (await results())?.heldOut,
+          })
+        },
+      },
+    ],
+  })
+  await writeJson(path.join(runDir, 'manifest.json'), await manifest(ok))
+  return ok
+}
+
 /* ---------- fuse / register / export ---------- */
 
 interface AdapterManifest extends Manifest {
+  /** what the adapter sits on: a Hugging Face id, or workspace/fused/<name> for one made on a fused model */
   base: string
+  /** the Hugging Face model at the root of the lineage (sets the chat template on export) */
+  hfBase?: string
   rank: number
   layers: number
   method: string
@@ -273,6 +393,7 @@ function fuseStep(adapter: AdapterManifest, out: string, line: string): Step[] {
           command: [line, ['HF_HOME=workspace/hf', ...fuseArgs(adapter.base, adapter.name, out, adapter.dir)].join(' ')],
           adapter: adapter.name,
           base: adapter.base,
+          hfBase: adapter.hfBase ?? adapter.base,
         }),
     },
   ]
@@ -380,7 +501,7 @@ const QUANT = new Set(['int8', 'int4', 'none'])
 async function register(args: string[]) {
   const { pos, opts } = flags(args)
   if (!only(opts, ['name', 'quantize', 'system'], 'register')) return false
-  const fused = await readJson<Manifest & { adapter: string; base: string }>(ws('fused', pos[0] ?? '', 'manifest.json'))
+  const fused = await readJson<Manifest & { adapter: string; base: string; hfBase?: string }>(ws('fused', pos[0] ?? '', 'manifest.json'))
   if (!fused) {
     print('usage: register <fused> [--name <ollama model>] [--quantize int8|int4|none] [--system "<text>"]')
     return false
@@ -393,7 +514,7 @@ async function register(args: string[]) {
     recipe: 'register',
     params: { fused: fused.name, model, quantize },
     outputs: [`ollama:${model}`],
-    steps: registerSteps({ fused: fused.name, model, quantize, system: opts.system, base: fused.base, adapter: fused.adapter, license: fused.license }),
+    steps: registerSteps({ fused: fused.name, model, quantize, system: opts.system, base: fused.hfBase ?? fused.base, adapter: fused.adapter, license: fused.license }),
   })
 }
 
@@ -418,7 +539,7 @@ async function exportRecipe(args: string[], line: string) {
     outputs: [`workspace/fused/${adapter.name}`, `ollama:${model}`],
     steps: [
       ...fuseStep(adapter, adapter.name, line),
-      ...registerSteps({ fused: adapter.name, model, quantize, system: opts.system, base: adapter.base, adapter: adapter.name, license: adapter.license }),
+      ...registerSteps({ fused: adapter.name, model, quantize, system: opts.system, base: adapter.hfBase ?? adapter.base, adapter: adapter.name, license: adapter.license }),
     ],
   })
 }
@@ -435,6 +556,8 @@ export async function recipeCommand(cmd: string, args: string[], line: string): 
       return exportRecipe(args, line)
     case 'merge':
       return merge(args, line)
+    case 'prefer':
+      return prefer(args, line)
   }
   return false
 }

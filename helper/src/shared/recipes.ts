@@ -140,3 +140,33 @@ export function parseTrainLine(line: string): { iter: number; trainLoss?: number
   if (train) return { iter: Number(train[1]), trainLoss: Number(train[2]), tokensPerSec: Number(train[3]) * (train[4] ? 1000 : 1) }
   return null
 }
+
+export interface PreferParams {
+  name: string
+  /** a Hugging Face id, or workspace/fused/<name> */
+  model: string
+  data: string
+  beta: number
+  iters: number
+  lr: number
+  rank: number
+  layers: number
+}
+
+/** DPO is our own script on mlx-lm (python/variable_machine/dpo.py); see its docstring for why not mlx-tune. */
+export const preferArgs = (p: PreferParams, runDir: string) => [
+  ...UV,
+  'python',
+  'python/variable_machine/dpo.py',
+  '--model', p.model,
+  '--data', `workspace/data/${p.data}`,
+  '--adapter-path', `workspace/adapters/${p.name}`,
+  '--run-dir', runDir,
+  '--beta', String(p.beta),
+  '--iters', String(p.iters),
+  '--learning-rate', String(p.lr),
+  '--rank', String(p.rank),
+  '--layers', String(p.layers),
+]
+
+export const preferLine = (p: PreferParams) => ['prefer', p.name, '--model', p.model, '--data', p.data, '--beta', String(p.beta), '--iters', String(p.iters), '--lr', String(p.lr), '--rank', String(p.rank), '--layers', String(p.layers)]

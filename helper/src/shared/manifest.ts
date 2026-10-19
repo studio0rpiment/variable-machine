@@ -14,7 +14,7 @@ export interface Manifest {
 export interface DataSource {
   /** e.g. databricks/databricks-dolly-15k, or qwen3:4b for generated rows */
   id: string
-  kind: 'import' | 'generated' | 'typed'
+  kind: 'import' | 'generated' | 'typed' | 'chat-log'
   license: string
   /** true when the license was read from the source itself at the time, not from our list */
   licenseChecked: boolean
@@ -24,7 +24,8 @@ export interface DataSource {
 
 export interface DatasetManifest extends Manifest {
   kind: 'dataset'
-  format: 'chat'
+  /** chat: {"messages": […]} rows for SFT. preference: {"prompt", "chosen", "rejected"} rows for DPO. */
+  format: 'chat' | 'preference'
   counts: { train: number; valid: number }
   split: { valid: number; seed: number } | null
   sources: DataSource[]

@@ -37,3 +37,29 @@ export function simpleRow(user: string, assistant: string, system?: string): Cha
     messages: [...(system ? [{ role: 'system' as const, content: system }] : []), { role: 'user', content: user }, { role: 'assistant', content: assistant }],
   }
 }
+
+/** A preference pair (DPO): one prompt, the answer to move toward, the answer to move away from. */
+export interface PrefRow {
+  prompt: string
+  chosen: string
+  rejected: string
+}
+
+export function prefRowProblem(row: unknown): string | null {
+  if (!row || typeof row !== 'object') return 'needs {"prompt", "chosen", "rejected"}'
+  for (const k of ['prompt', 'chosen', 'rejected'] as const) {
+    const v = (row as Record<string, unknown>)[k]
+    if (typeof v !== 'string' || !v.trim()) return `"${k}" is missing or empty`
+  }
+  const r = row as PrefRow
+  if (r.chosen.trim() === r.rejected.trim()) return 'chosen and rejected are the same answer'
+  return null
+}
+
+export function estimatePrefTokens(row: PrefRow): number {
+  // Both sequences are scored: prompt + chosen, prompt + rejected.
+  return Math.ceil((2 * row.prompt.length + row.chosen.length + row.rejected.length) / 3.7) + 16
+}
+
+export type DataFormat = 'chat' | 'preference'
+export const problemFor = (format: DataFormat) => (format === 'preference' ? prefRowProblem : rowProblem)

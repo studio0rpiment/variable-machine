@@ -15,6 +15,8 @@ interface AdapterManifest {
   name: string
   folder: string
   base: string
+  hfBase?: string
+  heldOut?: { n: number; before: number; after: number }
   data: string
   run: string
   method: string
@@ -48,7 +50,7 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
   const running = !!pipe && !pipe.done
 
   const load = useCallback(() => {
-    void readManifests<AdapterManifest>('adapters').then((a) => setAdapters(a.sort((x, y) => y.run.localeCompare(x.run))))
+    void readManifests<AdapterManifest>('adapters').then((a) => setAdapters(a.sort((x, y) => (y.run ?? '').localeCompare(x.run ?? ''))))
     void readManifests<FusedManifest>('fused').then(setFused)
   }, [])
   useEffect(load, [load])
@@ -72,7 +74,7 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
       <h2 className="panel__title label">adapters · workspace/adapters</h2>
       <div className="cards">
         {adapters.map((a) => {
-          const runsAs = HF_BASES.find((b) => b.id === a.base)?.runsAs
+          const runsAs = HF_BASES.find((b) => b.id === (a.hfBase ?? a.base))?.runsAs
           const registered = models.some((m) => sameTag(m.name, a.name))
           const baseInstalled = runsAs && models.some((m) => sameTag(m.name, runsAs))
           const cmd = joinWords(['export', a.name, '--quantize', quantize])
@@ -87,7 +89,8 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
                 </>
               }
               lines={[
-                `on ${a.base.split('/')[1]} · rank ${a.rank} · ${a.layers} layers · ${a.iters} iters`,
+                `on ${a.base.split('/').at(-1)} · rank ${a.rank} · ${a.layers} layers · ${a.iters} iters`,
+                a.heldOut ? `held out: prefers chosen ${Math.round(a.heldOut.before * 100)}% → ${Math.round(a.heldOut.after * 100)}%` : '',
                 `data ${a.data} · run ${a.run}`,
                 a.final?.trainLoss !== undefined ? `final train ${a.final.trainLoss} · val ${a.final.valLoss ?? '–'}` : '',
                 a.license,

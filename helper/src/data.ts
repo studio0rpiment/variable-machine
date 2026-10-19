@@ -6,7 +6,7 @@ import { print } from './hub.ts'
 import { status } from './status.ts'
 import { formatBytes, setRunning, write } from './run.ts'
 import { ollamaPost } from './ollama.ts'
-import { estimateTokens, rowProblem, type ChatRow } from './shared/chatRow.ts'
+import { estimatePrefTokens, estimateTokens, problemFor, type ChatRow, type DataFormat, type PrefRow } from './shared/chatRow.ts'
 import { identifyLicense } from './shared/licenses.ts'
 import type { DataSource, DatasetManifest } from './shared/manifest.ts'
 import { DATA_SOURCES } from './shared/library.ts'
@@ -21,7 +21,7 @@ export const DATASET_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const dir = (name: string) => path.join(WORKSPACE, 'data', name)
 const rel = (p: string) => path.relative(path.dirname(WORKSPACE), p)
 
-const HELP = `data new <name>
+const HELP = `data new <name> [--format chat|preference]
 data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
 data validate <name>
 data split <name> [--valid 0.1] [--seed 0]
@@ -84,7 +84,7 @@ async function readManifest(name: string): Promise<DatasetManifest | null> {
 
 /** A dataset's license follows its sources; share-alike terms carry through to the whole set. */
 function combinedLicense(sources: DataSource[]) {
-  const names = [...new Set(sources.filter((s) => s.kind !== 'generated').map((s) => s.license))]
+  const names = [...new Set(sources.filter((s) => s.kind !== 'generated' && s.kind !== 'chat-log').map((s) => s.license))]
   return names.length ? names.join(' + ') : sources.length ? 'generated (see sources)' : 'none yet'
 }
 
@@ -97,9 +97,9 @@ function recordCommand(m: DatasetManifest, line: string) {
   if (m.command.at(-1) !== line) m.command.push(line)
 }
 
-async function ensureDataset(name: string, line: string): Promise<DatasetManifest> {
+async function ensureDataset(name: string, line: string, format: DataFormat = 'chat'): Promise<DatasetManifest> {
   const existing = await readManifest(name)
-  if (existing) return existing
+  if (existing) return { ...existing, format: existing.format ?? 'chat' }
   await fs.mkdir(dir(name), { recursive: true })
   for (const f of ['train.jsonl', 'valid.jsonl']) await fs.writeFile(path.join(dir(name), f), '', { flag: 'a' })
   const m: DatasetManifest = {
@@ -109,7 +109,7 @@ async function ensureDataset(name: string, line: string): Promise<DatasetManifes
     license: 'none yet',
     inputs: [],
     command: [line],
-    format: 'chat',
+    format,
     counts: { train: 0, valid: 0 },
     split: null,
     sources: [],
@@ -203,6 +203,10 @@ async function importDolly(name: string, opts: Record<string, string>, line: str
     }))
 
     const m = await ensureDataset(name, line)
+    if (m.format === 'preference') {
+      print(`data import: ${name} is a preference set; import into a chat dataset`)
+      return false
+    }
     await fs.appendFile(path.join(dir(name), 'train.jsonl'), toJsonl(converted))
     m.counts.train += converted.length
     const source: DataSource = { id: src.repo, kind: 'import', license, licenseChecked: !!declared, url: src.url, rows: converted.length }
@@ -229,20 +233,21 @@ async function validate(name: string, line: string): Promise<boolean> {
   const m = await readManifest(name)
   if (!m) return missing(name)
   const { train, valid } = await allRows(name)
+  const problem = problemFor(m.format ?? 'chat')
   let ok = true
   for (const [label, part] of [['train', train], ['valid', valid]] as const) {
     const problems = [...part.bad]
     part.rows.forEach((r, i) => {
-      const p = rowProblem(r)
+      const p = problem(r)
       if (p) problems.push({ line: part.lines[i], reason: p })
     })
-    print(`${label}.jsonl  ${part.rows.length + part.bad.length} rows · ${problems.length ? `${problems.length} problems` : 'all valid chat rows'}`)
+    print(`${label}.jsonl  ${part.rows.length + part.bad.length} rows · ${problems.length ? `${problems.length} problems` : `all valid ${m.format === 'preference' ? 'preference pairs' : 'chat rows'}`}`)
     problems.sort((a, b) => a.line - b.line)
     problems.slice(0, 8).forEach((p) => print(`  line ${p.line}: ${p.reason}`))
     if (problems.length > 8) print(`  … and ${problems.length - 8} more`)
     if (problems.length) ok = false
   }
-  if (!valid.rows.length) print(`no valid.jsonl rows yet: mlx-lm needs some. run: data split ${name}`)
+  if (!valid.rows.length) print(`no valid.jsonl rows yet: ${m.format === 'preference' ? 'the held-out check needs some' : 'mlx-lm needs some'}. run: data split ${name}`)
   recordCommand(m, line)
   m.validated = { at: new Date().toISOString(), ok }
   await writeManifest(m)
@@ -280,8 +285,9 @@ async function count(name: string, line: string): Promise<boolean> {
   if (!m) return missing(name)
   const { train, valid } = await allRows(name)
   const limit = status.tier === '16' ? 1024 : 2048
-  const all = [...train.rows, ...valid.rows].filter((r) => !rowProblem(r)) as ChatRow[]
-  const tokens = all.map(estimateTokens)
+  const problem = problemFor(m.format ?? 'chat')
+  const all = [...train.rows, ...valid.rows].filter((r) => !problem(r))
+  const tokens = all.map((r) => (m.format === 'preference' ? estimatePrefTokens(r as PrefRow) : estimateTokens(r as ChatRow)))
   const total = tokens.reduce((a, b) => a + b, 0)
   const max = Math.max(0, ...tokens)
   const over = tokens.filter((t) => t > limit).length
@@ -318,26 +324,28 @@ async function append(name: string, json: string | undefined, opts: Record<strin
     print('data append: the row is not valid JSON')
     return false
   }
-  const problem = rowProblem(row)
+  const m = await ensureDataset(name, line)
+  const problem = problemFor(m.format)(row)
   if (problem) {
-    print(`data append: row ${problem}`)
+    print(`data append: ${m.format === 'preference' ? 'pair' : 'row'} ${problem}`)
     return false
   }
-  const m = await ensureDataset(name, line)
   await fs.appendFile(path.join(dir(name), 'train.jsonl'), JSON.stringify(row) + '\n')
   m.counts.train += 1
   const id = opts.source ?? 'typed'
   let s = m.sources.find((x) => x.id === id)
   if (!s) {
-    const lic = opts.source ? await modelLicense(id) : { license: 'yours', checked: true }
-    s = { id, kind: opts.source ? 'generated' : 'typed', license: lic.license, licenseChecked: lic.checked, rows: 0 }
+    // chat-log pairs are answers models gave in Chat; their licenses are the models' (see workspace/chat).
+    const lic = id === 'chat-log' ? { license: 'model outputs (see workspace/chat)', checked: true } : opts.source ? await modelLicense(id) : { license: 'yours', checked: true }
+    s = { id, kind: id === 'chat-log' ? 'chat-log' : opts.source ? 'generated' : 'typed', license: lic.license, licenseChecked: lic.checked, rows: 0 }
     m.sources.push(s)
+    if (id === 'chat-log' && !m.inputs.includes('workspace/chat')) m.inputs.push('workspace/chat')
   }
   s.rows += 1
   // Every appended row is its own command; the manifest keeps the shape of it, not every row.
   recordCommand(m, `data append ${name} '<row>'${opts.source ? ` --source ${opts.source}` : ''}`)
   await writeManifest(m)
-  print(`  ◂ ${name}/train.jsonl · ${m.counts.train} rows`)
+  print(`  ◂ ${name}/train.jsonl · ${m.counts.train} ${m.format === 'preference' ? 'pairs' : 'rows'}`)
   return true
 }
 
@@ -370,7 +378,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     return false
   }
   for (const k of Object.keys(opts)) {
-    const allowed: Record<string, string[]> = { import: ['limit', 'category', 'seed'], split: ['valid', 'seed'], append: ['source'] }
+    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed'], split: ['valid', 'seed'], append: ['source'] }
     if (!(allowed[sub] ?? []).includes(k)) {
       print(`data ${sub}: unknown option --${k}`)
       return false
@@ -382,8 +390,13 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
         print(`${name} already exists`)
         return false
       }
-      await ensureDataset(name, line)
-      print(`  ◂ workspace/data/${name}/ (train.jsonl, valid.jsonl, manifest.json)`)
+      const format = (opts.format ?? 'chat') as DataFormat
+      if (format !== 'chat' && format !== 'preference') {
+        print('data new: --format is chat or preference')
+        return false
+      }
+      await ensureDataset(name, line, format)
+      print(`  ◂ workspace/data/${name}/ (train.jsonl, valid.jsonl, manifest.json) · ${format}`)
       return true
     }
     case 'import':

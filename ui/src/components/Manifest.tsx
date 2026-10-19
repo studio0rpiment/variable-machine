@@ -21,6 +21,7 @@ interface Props {
 export default function Manifest({ name, lines = [], badges, actions, children, active, onSelect }: Props) {
   const select = onSelect && {
     role: 'button',
+    'aria-label': name,
     tabIndex: 0,
     'aria-pressed': !!active,
     onClick: onSelect,

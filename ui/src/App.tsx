@@ -7,18 +7,20 @@ import DataPanel from './components/DataPanel'
 import TrainPanel from './components/TrainPanel'
 import AdaptersPanel from './components/AdaptersPanel'
 import MergePanel from './components/MergePanel'
+import PreferPanel from './components/PreferPanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
-import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, TrainMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, TrainMark } from './icons'
 
-const PANELS = ['models', 'modelfile', 'data', 'train', 'adapters', 'merge', 'chat'] as const
+const PANELS = ['models', 'modelfile', 'data', 'train', 'prefer', 'adapters', 'merge', 'chat'] as const
 type Panel = (typeof PANELS)[number]
 const MARKS: Record<Panel, ReactNode> = {
   models: <ModelsMark size={0.9} />,
   modelfile: <ModelfileMark size={0.9} />,
   data: <DataMark size={0.9} />,
   train: <TrainMark size={0.9} />,
+  prefer: <PreferMark size={0.9} />,
   adapters: <AdaptersMark size={0.9} />,
   merge: <MergeMark size={0.9} />,
   chat: <ChatMark size={0.9} />,
@@ -88,6 +90,9 @@ export default function App() {
         </div>
         <div className="panel-slot" hidden={panel !== 'train'}>
           <TrainPanel onAdapters={() => go('adapters')} />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'prefer'}>
+          <PreferPanel onAdapters={() => go('adapters')} />
         </div>
         <div className="panel-slot" hidden={panel !== 'adapters'}>
           <AdaptersPanel onChatPair={chatPair} />

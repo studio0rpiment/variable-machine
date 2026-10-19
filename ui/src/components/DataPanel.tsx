@@ -4,12 +4,13 @@ import { runCommand } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { DATA_SOURCES } from '@shared/library'
-import { rowProblem, type ChatRow } from '@shared/chatRow'
+import { prefRowProblem, rowProblem, type ChatRow, type DataFormat, type PrefRow } from '@shared/chatRow'
 import type { DatasetManifest } from '@shared/manifest'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import DataRows from './DataRows'
 import DataGenerator from './DataGenerator'
+import PreferenceBuilder from './PreferenceBuilder'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const dolly = DATA_SOURCES.dolly
@@ -27,6 +28,7 @@ export default function DataPanel() {
   const [limit, setLimit] = useState(300)
   const [category, setCategory] = useState('')
   const [newName, setNewName] = useState('')
+  const [newFormat, setNewFormat] = useState<DataFormat>('chat')
   const [validFrac, setValidFrac] = useState(0.1)
   const [busy, setBusy] = useState('')
 
@@ -80,7 +82,24 @@ export default function DataPanel() {
   )
 
   const importCmd = joinWords(['data', 'import', 'dolly', importName, '--limit', String(limit), ...(category ? ['--category', category] : [])])
-  const newCmd = joinWords(['data', 'new', newName])
+  const newCmd = joinWords(['data', 'new', newName, ...(newFormat === 'preference' ? ['--format', 'preference'] : [])])
+  const isPref = current?.format === 'preference'
+  const pairs = useMemo(
+    () =>
+      isPref
+        ? [files.train, files.valid].flatMap((t) =>
+            t.split('\n').flatMap((l) => {
+              try {
+                const r = JSON.parse(l) as PrefRow
+                return l.trim() && !prefRowProblem(r) ? [r] : []
+              } catch {
+                return []
+              }
+            }),
+          )
+        : [],
+    [files, isPref],
+  )
 
   return (
     <section className="panel" aria-label="data">
@@ -92,10 +111,15 @@ export default function DataPanel() {
               name={s.name}
               active={s.name === selected}
               onSelect={() => setSelected(s.name)}
-              badges={s.split ? <Badge>split</Badge> : <Badge warn>not split</Badge>}
+              badges={
+                <>
+                  {s.format === 'preference' && <Badge>preference</Badge>}
+                  {s.split ? <Badge>split</Badge> : <Badge warn>not split</Badge>}
+                </>
+              }
               lines={[
                 s.license,
-                `${s.counts.train} train · ${s.counts.valid} valid`,
+                `${s.counts.train} train · ${s.counts.valid} ${s.format === 'preference' ? 'held out' : 'valid'}`,
                 s.sources.map((src) => `${src.id} ${src.rows}`).join(' · '),
                 s.tokens ? `about ${s.tokens.total.toLocaleString('en-US')} tokens` : '',
               ]}
@@ -129,11 +153,20 @@ export default function DataPanel() {
           </div>
           <CommandPreview command={importCmd} onRun={() => void run('import', importCmd).then(() => setSelected(importName))} disabled={!NAME.test(importName)} running={busy === 'import'} label="import" />
         </Manifest>
-        <Manifest name="empty dataset" lines={['start from nothing and generate or append rows']}>
-          <label className="field">
-            <span className="label label--muted">name</span>
-            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} spellCheck={false} placeholder="my-set" />
-          </label>
+        <Manifest name="empty dataset" lines={['chat: rows to imitate (train) · preference: chosen/rejected pairs (prefer)']}>
+          <div className="inline-fields">
+            <label className="field">
+              <span className="label label--muted">name</span>
+              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} spellCheck={false} placeholder="my-set" />
+            </label>
+            <div className="choice" role="radiogroup" aria-label="format">
+              {(['chat', 'preference'] as DataFormat[]).map((f) => (
+                <button key={f} type="button" role="radio" aria-checked={f === newFormat} className={`text-button ${f === newFormat ? 'is-active' : ''}`.trim()} onClick={() => setNewFormat(f)}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
           <CommandPreview command={newCmd} onRun={() => void run('new', newCmd).then(() => setSelected(newName))} disabled={!NAME.test(newName)} running={busy === 'new'} label="create" />
         </Manifest>
       </div>
@@ -175,11 +208,20 @@ export default function DataPanel() {
             </div>
           </div>
 
-          <h2 className="panel__title label">generate and curate</h2>
-          <DataGenerator dataset={current.name} examples={examples} />
+          {isPref ? (
+            <>
+              <h2 className="panel__title label">pairs from the chat log</h2>
+              <PreferenceBuilder dataset={current.name} existing={pairs} />
+            </>
+          ) : (
+            <>
+              <h2 className="panel__title label">generate and curate</h2>
+              <DataGenerator dataset={current.name} examples={examples} />
+            </>
+          )}
 
           <h2 className="panel__title label">rows</h2>
-          <DataRows train={files.train} valid={files.valid} />
+          <DataRows train={files.train} valid={files.valid} format={current.format ?? 'chat'} />
         </>
       )}
     </section>

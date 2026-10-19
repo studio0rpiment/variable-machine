@@ -24,7 +24,7 @@ const HELP = `commands
   ollama list | show <model> | pull <model> | rm <model>
   ollama create <name> -f workspace/modelfiles/<name>.Modelfile [-q q4_K_M]
   ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>
-  data new | import dolly | validate | split | count | append <name>   (data help)
+  data new [--format chat|preference] | import dolly | validate | split | count | append <name>   (data help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   status   help   clear
   ctrl-c stops what is running
@@ -34,12 +34,12 @@ const HELP = `commands
   register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
   export <adapter|merge> [--name <model>] [--quantize int8|int4|none]    fuse + register in one go
   merge <name> --a <adapter> --b <adapter> [--t 0.5]    (1 - t)·A + t·B, tensor by tensor
+  prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5]
 
 coming in later milestones
-  prefer                                (6)
   doctor                                (7)`
 
-const LATER: Record<string, number> = { prefer: 6, doctor: 7 }
+const LATER: Record<string, number> = { doctor: 7 }
 
 /** Flags each file command may take. Anything else, and anything that would follow a file (tail -f), is refused. */
 const FILE_FLAGS: Record<string, RegExp> = {
@@ -110,7 +110,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd in FILE_FLAGS) return fileCommand(cmd, args)
   if (cmd === 'ollama') return ollamaCommand(args)
   if (cmd === 'data') return dataCommand(args, line)
-  if (['train', 'fuse', 'register', 'export', 'merge'].includes(cmd)) return recipeCommand(cmd, args, line)
+  if (['train', 'fuse', 'register', 'export', 'merge', 'prefer'].includes(cmd)) return recipeCommand(cmd, args, line)
   if (cmd === 'help') return print(HELP), true
   if (cmd === 'status') return printStatus()
   if (cmd === 'clear') return broadcast({ type: 'terminal.output', text: '\x1b[2J\x1b[3J\x1b[H' }), true

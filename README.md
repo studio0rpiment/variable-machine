@@ -43,6 +43,8 @@ fuse <adapter> [--name <fused>]
 register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
 export <adapter|merge> [--name <model>] [--quantize int8|int4|none]   fuse + register in one go
 merge <name> --a <adapter> --b <adapter> [--t 0.5] [--method linear]
+prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5]
+data new <name> --format preference
 ls | cat | head | tail | wc <path>        inside workspace/ only
 status   help   clear                     ctrl-c stops what is running
 ```
@@ -58,7 +60,15 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
 - [x] **3. Data.** Datasets are train/valid pairs of chat-format JSONL in `workspace/data/<name>/`. Dolly imports with the license read from Hugging Face at import time. A dataset can be validated, split (seeded) and token-counted (an estimate). A model writes candidate rows that you edit, keep or reject, and each kept row is a `data append`. The manifest records every source with its license, row count and the commands that touched it.
 - [x] **4. Train → export → chat.** The Train panel shows the exact `mlx_lm.lora` command, runs it (stopping Ollama's loaded models first to free memory) and plots loss live. Every run keeps `config.yaml`, `command.txt`, `log.txt`, `loss.jsonl` and `manifest.json` in `workspace/runs/<time>-<name>/`. Export folds the adapter into its base (`mlx_lm.fuse`) and imports the result into Ollama, where it chats next to the untouched base. On an M1 Pro (32GB), 200 iterations of LoRA on SmolLM2-360M over 305 rows took 141 seconds; export took under 10.
 - [x] **5. Merge.** The Merge panel blends two adapters trained on the same base with the same type, rank and layers: out = (1 − t)·A + t·B, tensor by tensor, by `python/variable_machine/merge_adapters.py`. The script checks the configs and every tensor's shape before writing `workspace/merges/<name>/`. A merge exports like any adapter. Chat holds up to four columns, so A, B and the merge (and the untouched base) answer side by side.
-- [ ] 6. Prefer (optional)
+- [x] **6. Prefer.** Here is the flow:
+  1. Ask two models the same prompts in Chat.
+  2. In Data, build a preference set from the chat log, pair by pair or with a rule ("prefer model X over model Y").
+  3. Run DPO in Prefer (`python/variable_machine/dpo.py`, written on mlx-lm; see its docstring for why not mlx-tune).
+
+  Tested with 40 prompts, preferring answers from a "be concise" Modelfile variant over the plain SmolLM2-360M:
+  - **Held-out check:** the chosen answer was more likely, per token, in 7 of 10 pairs before DPO and 8 of 10 after.
+  - **In Chat:** answers to the held-out prompts shrank from a median of about 800 characters to about 180, with no system prompt.
+  - **Learning rate:** at 5e-5 some answers collapsed to a few words ("To bake bread"), which is why 2e-5 is the default.
 - [ ] 7. Doctor, examples, zip/unzip
 
 ## Notes from building it
@@ -71,6 +81,7 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
   - Ollama only quantizes safetensors imports, and only to `int4`, `int8`, `nvfp4`, `mxfp4` or `mxfp8`.
 
   So `register` imports the fused safetensors folder directly (`FROM ../fused/<name>`). It uses `int8` by default, because Ollama's own smollm2 is f16 and that keeps before/after comparisons fair. The chain is data → run → adapter → fused → Ollama model.
+- **DPO is our own script, not mlx-tune.** mlx-tune 0.6 has a DPOTrainer, but it's a Python API rather than a command, and it brings about 80 more packages (mlx-vlm, mlx-audio, datasets, pandas, opencv) onto a student's machine. `dpo.py` is about 200 lines: it computes the reference log-probabilities once, before adding LoRA layers, so no second copy of the model is held in memory.
 - **What a linear merge averages.** LoRA stores each weight change as a product, `lora_b @ lora_a`. Averaging the two factors separately is not the same as averaging the two weight changes, because the product picks up cross terms. It behaves sensibly here because mlx-lm starts every run from the same seeded initialisation, the way averaged "model soups" do.
 - **Imported models get their chat template from the Modelfile.** `register` writes SmolLM2's ChatML template and stop tokens into it.
 
