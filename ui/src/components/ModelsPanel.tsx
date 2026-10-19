@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useOllamaModels, useLicense } from '../hooks/useOllamaModels'
+import { useOllamaModels, useLicense, useModelInfo } from '../hooks/useOllamaModels'
+import { useMadeHere } from '../hooks/useMadeHere'
 import { useHelperEvent, useHelperState } from '../hooks/useHelper'
 import { runCommand } from '../lib/helper'
 import { readManifests } from '../lib/workspace'
@@ -40,6 +41,52 @@ function LicenseLine({ model, listed }: { model: OllamaModel; listed?: LibraryMo
   )
 }
 
+/** Ollama's capability words, said plainly. */
+const ABILITY: Record<string, string> = {
+  completion: 'writes text',
+  thinking: 'thinks before answering',
+  tools: 'can call tools',
+  vision: 'sees images',
+  embedding: 'turns text into numbers for search',
+  insert: 'fills in the middle of text',
+}
+
+/** Tokens are word pieces; on average a word is about 1.3 of them. Rounded, because it's a rough guide. */
+const words = (tokens: number) => {
+  const w = tokens * 0.75
+  const step = w >= 100_000 ? 10_000 : 1000
+  return (Math.max(1, Math.round(w / step)) * step).toLocaleString('en-US')
+}
+/** Abilities always read in the same order, "writes text" first; anything unknown goes last. */
+const abilityRank = (a: string) => {
+  const i = Object.keys(ABILITY).indexOf(a)
+  return i < 0 ? 99 : i
+}
+
+function AbilitiesLine({ model }: { model: OllamaModel }) {
+  const info = useModelInfo(model)
+  if (!info) return null
+  const can = [...info.abilities].sort((a, b) => abilityRank(a) - abilityRank(b)).map((a) => ABILITY[a] ?? a)
+  return (
+    <span className="model-abilities">
+      {can.join(' · ')}
+      {info.contextTokens ? ` · holds about ${words(info.contextTokens)} words at once` : ''}
+    </span>
+  )
+}
+
+/** What a model with no library entry and no record here was built for, from what Ollama knows about it. */
+function OutsideNote({ model }: { model: OllamaModel }) {
+  const info = useModelInfo(model)
+  const d = model.details ?? {}
+  // parent_model is only meaningful as a tag; published models sometimes carry their author's blob path
+  const parent = d.parent_model && !d.parent_model.startsWith('/') ? d.parent_model : ''
+  const system = info?.system
+  const told = system ? ` It is told: "${system.length > 110 ? system.slice(0, 107) + '…' : system}"` : ''
+  if (parent) return <>{`A variant of ${parent}, made outside this app.${told}`}</>
+  return <>{`Not in the library and not made here, so there are no notes on it.${told}`}</>
+}
+
 function OpenBadge({ model }: { model: OllamaModel }) {
   const info = useLicense(model)
   if (!info || info.open) return null
@@ -54,6 +101,7 @@ function OpenBadge({ model }: { model: OllamaModel }) {
 export default function ModelsPanel({ onChat, onModelfile }: Props) {
   const { models, error } = useOllamaModels()
   const { status } = useHelperState()
+  const madeHere = useMadeHere()
   const [progress, setProgress] = useState<Record<string, Progress>>({})
   const [hfManifests, setHfManifests] = useState<{ folder: string; name?: string }[]>([])
 
@@ -84,10 +132,22 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
   return (
     <section className="panel" aria-label="models">
       <h2 className="panel__title label">runs on · ollama</h2>
+      <dl className="model-key">
+        <dt>writes text</dt>
+        <dd>Every model here reads text and writes text. None of them can see images or hear sound, and training here works on text only.</dd>
+        <dt>thinks before answering</dt>
+        <dd>It works the problem through in writing before it answers. In Chat, that reasoning shows dimmed above the answer.</dd>
+        <dt>can call tools</dt>
+        <dd>It can ask a program to run something for it, such as a search or a calculator. This app does not offer any tools, so here it just writes text.</dd>
+        <dt>holds about … words</dt>
+        <dd>How much text it can keep in mind at once: the question, any instructions and its own answer, all together.</dd>
+      </dl>
       {error && <p className="label label--muted">{error} — is the Ollama app running?</p>}
       <div className="cards">
         {models.map((m) => {
-          const listed = OLLAMA_LIBRARY.find((l) => sameTag(m.name, l.tag))
+          // Library entry by name, or by being the very same file (same digest) as an installed library model.
+          const alias = models.find((x) => x.digest === m.digest && OLLAMA_LIBRARY.some((l) => sameTag(x.name, l.tag)))
+          const listed = OLLAMA_LIBRARY.find((l) => sameTag(m.name, l.tag) || (alias && sameTag(alias.name, l.tag)))
           const d = m.details ?? {}
           return (
             <Manifest
@@ -99,11 +159,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
                   <OpenBadge model={m} />
                 </>
               }
-              lines={[
-                [d.parameter_size, d.quantization_level, d.family, mb(m.size)].filter(Boolean).join(' · '),
-                // parent_model is only meaningful as a tag; published models sometimes carry their author's blob path
-                d.parent_model && !d.parent_model.startsWith('/') ? `made from ${d.parent_model}` : listed?.role,
-              ]}
+              lines={[]}
               actions={
                 <>
                   <Explained id="models.chat">
@@ -129,6 +185,14 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
                 </>
               }
             >
+              {/* What it was built for: from the library, from this workspace's records, or what Ollama says it came from. */}
+              <p className="model-about">
+                {listed?.builtFor ?? madeHere(m.name) ?? <OutsideNote model={m} />}
+                {alias && !sameTag(alias.name, m.name) ? ` This is the same file as ${alias.name}, under a second name.` : ''}
+              </p>
+              {listed && <span className="label label--muted">{listed.maker}</span>}
+              <AbilitiesLine model={m} />
+              <span className="label label--muted">{[d.parameter_size, d.quantization_level, d.family, mb(m.size)].filter(Boolean).join(' · ')}</span>
               <LicenseLine model={m} listed={listed} />
             </Manifest>
           )
@@ -147,7 +211,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
               name={l.tag}
               active={!!p}
               badges={!l.open && <Badge warn>not open-license</Badge>}
-              lines={[`${l.license} (listed)`, l.role, heavy ? 'instructor machine: heavy on 16GB' : '']}
+              lines={[l.maker, `${l.license} (listed)`, heavy ? 'instructor machine: heavy on 16GB' : '']}
               actions={
                 p ? (
                   <span className="pull-progress">
@@ -164,7 +228,9 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
                   </Explained>
                 )
               }
-            />
+            >
+              <p className="model-about">{l.builtFor}</p>
+            </Manifest>
           )
         })}
         {library.length === 0 && <p className="label label--muted">everything in the library is pulled</p>}
@@ -180,12 +246,13 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
               name={b.id.split('/')[1]}
               badges={<Badge>trains on</Badge>}
               lines={[
-                `${b.id.split('/')[0]} · ${b.license} · ${b.architecture} architecture`,
-                `about ${b.loraGB}GB during LoRA`,
-                local ? 'in workspace/hf' : 'downloads on first train',
+                `${b.maker} · ${b.license} · ${b.architecture} architecture`,
+                `about ${b.loraGB}GB during LoRA · ${local ? 'in workspace/hf' : 'downloads on first train'}`,
                 `runs as ${b.runsAs}`,
               ]}
-            />
+            >
+              <p className="model-about">{b.builtFor}</p>
+            </Manifest>
           )
         })}
         {hfManifests

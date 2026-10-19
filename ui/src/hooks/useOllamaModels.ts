@@ -48,19 +48,36 @@ export function useOllamaModels() {
   return { ...s, reload: reloadModels }
 }
 
-/** License per model, read from `ollama show` once per digest. */
-const licenseCache = new Map<string, Promise<LicenseInfo>>()
-export function useLicense(model: OllamaModel | undefined) {
-  const [info, setInfo] = useState<LicenseInfo | null>(null)
+export interface ModelInfo {
+  license: LicenseInfo
+  /** Ollama's capability words: completion, thinking, tools, vision, embedding, insert */
+  abilities: string[]
+  /** how many tokens it can hold at once (its context length), when Ollama says */
+  contextTokens?: number
+  /** the standing instruction it carries (its Modelfile SYSTEM), if any */
+  system?: string
+}
+
+/** What `ollama show` says about a model, read once per digest and shared by every card. */
+const infoCache = new Map<string, Promise<ModelInfo>>()
+export function useModelInfo(model: OllamaModel | undefined) {
+  const [info, setInfo] = useState<ModelInfo | null>(null)
   const load = useCallback(() => {
     if (!model) return
-    let p = licenseCache.get(model.digest)
+    let p = infoCache.get(model.digest)
     if (!p) {
-      p = showModel(model.name).then((s) => identifyLicense(s.license))
-      licenseCache.set(model.digest, p)
+      p = showModel(model.name).then((s) => {
+        const ctx = Object.entries(s.model_info ?? {}).find(([k]) => k.endsWith('.context_length'))?.[1]
+        return { license: identifyLicense(s.license), abilities: s.capabilities ?? ['completion'], contextTokens: typeof ctx === 'number' ? ctx : undefined, system: s.system?.trim() || undefined }
+      })
+      infoCache.set(model.digest, p)
     }
-    p.then(setInfo, () => setInfo({ name: 'license unreadable', open: false }))
+    p.then(setInfo, () => setInfo({ license: { name: 'license unreadable', open: false }, abilities: [] }))
   }, [model])
   useEffect(load, [load])
   return info
+}
+
+export function useLicense(model: OllamaModel | undefined) {
+  return useModelInfo(model)?.license ?? null
 }

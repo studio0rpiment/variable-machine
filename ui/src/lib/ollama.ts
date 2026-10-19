@@ -15,6 +15,10 @@ export interface ShowResult {
   system?: string
   template?: string
   details?: OllamaModel['details']
+  /** what the model can do, as Ollama reports it: completion, thinking, tools, vision, embedding, insert */
+  capabilities?: string[]
+  /** architecture facts, e.g. "llama.context_length": 8192 */
+  model_info?: Record<string, unknown>
 }
 
 /** /api/show, quietly (a read the GUI does on its own; actions the person takes go through runCommand). */
