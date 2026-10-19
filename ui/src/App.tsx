@@ -4,17 +4,21 @@ import Chat from './components/Chat'
 import ModelsPanel from './components/ModelsPanel'
 import ModelfilePanel from './components/ModelfilePanel'
 import DataPanel from './components/DataPanel'
+import TrainPanel from './components/TrainPanel'
+import AdaptersPanel from './components/AdaptersPanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
-import { ChatMark, DataMark, ModelfileMark, ModelsMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, ModelfileMark, ModelsMark, TrainMark } from './icons'
 
-const PANELS = ['models', 'modelfile', 'data', 'chat'] as const
+const PANELS = ['models', 'modelfile', 'data', 'train', 'adapters', 'chat'] as const
 type Panel = (typeof PANELS)[number]
 const MARKS: Record<Panel, ReactNode> = {
   models: <ModelsMark size={0.9} />,
   modelfile: <ModelfileMark size={0.9} />,
   data: <DataMark size={0.9} />,
+  train: <TrainMark size={0.9} />,
+  adapters: <AdaptersMark size={0.9} />,
   chat: <ChatMark size={0.9} />,
 }
 
@@ -32,7 +36,7 @@ function panelFromHash(): Panel {
 export default function App() {
   const { theme, toggle } = useTheme()
   const [panel, setPanel] = useState<Panel>(panelFromHash)
-  const [chatRequest, setChatRequest] = useState<{ model: string; n: number }>()
+  const [chatRequest, setChatRequest] = useState<{ model: string; a?: string; n: number }>()
   const [modelfileFrom, setModelfileFrom] = useState<{ model: string; n: number }>()
 
   useEffect(() => {
@@ -44,6 +48,11 @@ export default function App() {
 
   const chatWith = (model: string) => {
     setChatRequest((r) => ({ model, n: (r?.n ?? 0) + 1 }))
+    go('chat')
+  }
+  /** Two models side by side, e.g. the untouched base next to what training made of it. */
+  const chatPair = (a: string, b: string) => {
+    setChatRequest((r) => ({ a, model: b, n: (r?.n ?? 0) + 1 }))
     go('chat')
   }
   const editModelfile = (model: string) => {
@@ -75,6 +84,12 @@ export default function App() {
         </div>
         <div className="panel-slot" hidden={panel !== 'data'}>
           <DataPanel />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'train'}>
+          <TrainPanel onAdapters={() => go('adapters')} />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'adapters'}>
+          <AdaptersPanel onChatPair={chatPair} />
         </div>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'chat'}>
           <Chat request={chatRequest} />

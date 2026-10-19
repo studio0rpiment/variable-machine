@@ -18,7 +18,7 @@ The floor is a 16GB Apple Silicon Mac on macOS 14+. Bigger machines just go fast
 ## Layout
 
 ```
-helper/     Node + TypeScript. One process on 127.0.0.1:4817: serves ui/dist, proxies /ollama/* to Ollama,
+helper/     Node + TypeScript (shared/ holds types and pure functions the UI imports too). One process on 127.0.0.1:4817: serves ui/dist, proxies /ollama/* to Ollama,
             carries the /ws event stream, runs the terminal, watches workspace/.
 ui/         React + Vite + TypeScript. Panels over workspace folders; xterm.js terminal always docked.
 workspace/  The state: plain folders and JSON manifests (see workspace/README.md). No database.
@@ -38,6 +38,10 @@ data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
 data validate | count <name>
 data split <name> [--valid 0.1] [--seed 0]
 data append <name> '<row json>' [--source <model>]
+train <adapter> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank 8] [--layers 8] [--lr 1e-4] [--iters 200] [--batch 4] [--max-seq 1024]
+fuse <adapter> [--name <fused>]
+register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
+export <adapter> [--name <model>] [--quantize int8|int4|none]      fuse + register in one go
 ls | cat | head | tail | wc <path>        inside workspace/ only
 status   help   clear                     ctrl-c stops what is running
 ```
@@ -51,7 +55,7 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
 - [x] **1. Helper, UI shell, terminal, Ollama proxy, Chat.** Two models answer one prompt side by side. Each call is echoed as `ollama run-once …` and appended to `workspace/chat/<date>.jsonl`.
 - [x] **2. Models + Modelfile.** Two inventories (runs on: Ollama; trains on: Hugging Face) and a curated library. Pulls show progress in the card and the terminal. The licenses shown are the ones each model actually carries. The Modelfile editor marks which lines are weights, and `ollama create` turns the text into a model you can chat with.
 - [x] **3. Data.** Datasets are train/valid pairs of chat-format JSONL in `workspace/data/<name>/`. Dolly imports with the license read from Hugging Face at import time. A dataset can be validated, split (seeded) and token-counted (an estimate). A model writes candidate rows that you edit, keep or reject, and each kept row is a `data append`. The manifest records every source with its license, row count and the commands that touched it.
-- [ ] 4. Train → fuse/export → register
+- [x] **4. Train → export → chat.** The Train panel shows the exact `mlx_lm.lora` command, runs it (stopping Ollama's loaded models first to free memory) and plots loss live. Every run keeps `config.yaml`, `command.txt`, `log.txt`, `loss.jsonl` and `manifest.json` in `workspace/runs/<time>-<name>/`. Export folds the adapter into its base (`mlx_lm.fuse`) and imports the result into Ollama, where it chats next to the untouched base. On an M1 Pro (32GB), 200 iterations of LoRA on SmolLM2-360M over 305 rows took 141 seconds; export took under 10.
 - [ ] 5. Merge
 - [ ] 6. Prefer (optional)
 - [ ] 7. Doctor, examples, zip/unzip
@@ -61,6 +65,12 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
 - **qwen2.5:3b is not open-license.** It carries the Qwen Research License (non-commercial), so qwen3:4b (Apache 2.0) is the default chat model.
 - **`think: false` doesn't stop qwen3:4b reasoning.** It writes the reasoning into the answer instead. The Data generator asks for structured output (a JSON schema with exactly N rows), which keeps the reasoning out and the rows clean.
 - **A pull doesn't stop when the app stops listening.** Ollama finishes the download on its own.
+- **No GGUF step.** The plan's route (mlx-lm `--export-gguf`, then `ollama create -q q4_K_M`) doesn't work with Ollama 0.40.6, for two reasons:
+  - The GGUF mlx-lm writes fails to load: "invalid gguf type for tokenizer.ggml.token_type".
+  - Ollama only quantizes safetensors imports, and only to `int4`, `int8`, `nvfp4`, `mxfp4` or `mxfp8`.
+
+  So `register` imports the fused safetensors folder directly (`FROM ../fused/<name>`). It uses `int8` by default, because Ollama's own smollm2 is f16 and that keeps before/after comparisons fair. The chain is data → run → adapter → fused → Ollama model.
+- **Imported models get their chat template from the Modelfile.** `register` writes SmolLM2's ChatML template and stop tokens into it.
 
 ## How it stays honest
 

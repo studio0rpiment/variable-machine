@@ -1,0 +1,205 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useHelperEvent, useHelperState } from '../hooks/useHelper'
+import { usePipeline } from '../hooks/usePipeline'
+import { runCommand, sendEvent } from '../lib/helper'
+import { readFile, readManifests } from '../lib/workspace'
+import { joinWords } from '@shared/quote'
+import { HF_BASES } from '@shared/library'
+import { PY_ENV, TIER_DEFAULTS, trainArgs, trainLine, type FineTune, type TrainParams } from '@shared/recipes'
+import type { DatasetManifest } from '@shared/manifest'
+import CommandPreview from './CommandPreview'
+import LossChart, { type LossPoint } from './LossChart'
+import PipelineSteps from './PipelineSteps'
+import Manifest, { Badge } from './Manifest'
+
+const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
+
+interface RunManifest {
+  name: string
+  folder: string
+  status: string
+  seconds?: number
+  params: TrainParams
+  final?: { trainLoss?: number; valLoss?: number }
+  license: string
+}
+
+/** A row of text choices; the chosen one is underlined (KP Minimal: no boxed controls). */
+function Choice<T extends string | number>({ label, value, options, onChange, format = String }: { label: string; value: T; options: T[]; onChange: (v: T) => void; format?: (v: T) => string }) {
+  return (
+    <div className="choice" role="radiogroup" aria-label={label}>
+      <span className="label label--muted">{label}</span>
+      {options.map((o) => (
+        <button key={String(o)} type="button" role="radio" aria-checked={o === value} className={`text-button ${o === value ? 'is-active' : ''}`.trim()} onClick={() => onChange(o)}>
+          {format(o)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** A rem-sized slider over a list of allowed values. */
+function Steps<T extends number>({ label, value, options, onChange, format = String }: { label: string; value: T; options: T[]; onChange: (v: T) => void; format?: (v: T) => string }) {
+  const i = Math.max(0, options.indexOf(value))
+  return (
+    <label className="slider">
+      <span className="label label--muted">
+        {label} <span className="label">{format(value)}</span>
+      </span>
+      <input type="range" min={0} max={options.length - 1} step={1} value={i} onChange={(e) => onChange(options[Number(e.target.value)])} />
+    </label>
+  )
+}
+
+/**
+ * Train (plan §3.2): pick a base and a dataset, set the knobs, see the exact
+ * command, run it, watch loss as mlx-lm reports it. The run's folder keeps
+ * config, command, log, loss and manifest.
+ */
+export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
+  const { status } = useHelperState()
+  const tier = status?.tier ?? '16'
+  const defaults = TIER_DEFAULTS[tier]
+  const [sets, setSets] = useState<DatasetManifest[]>([])
+  const [runs, setRuns] = useState<RunManifest[]>([])
+  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number } | null>(null)
+  const [p, setP] = useState<TrainParams>({ name: '', data: '', ...TIER_DEFAULTS['16'] })
+  const [touchedName, setTouchedName] = useState(false)
+  const pipe = usePipeline(['train'])
+  const running = !!pipe && !pipe.done
+
+  // Tier defaults arrive with the first status event.
+  useEffect(() => setP((x) => ({ ...x, ...defaults })), [defaults])
+
+  const loadSets = useCallback(() => void readManifests<DatasetManifest>('data').then(setSets), [])
+  const loadRuns = useCallback(() => void readManifests<RunManifest>('runs').then((r) => setRuns(r.sort((a, b) => b.folder.localeCompare(a.folder)))), [])
+  useEffect(loadSets, [loadSets])
+  useEffect(loadRuns, [loadRuns])
+  useHelperEvent(
+    'workspace.changed',
+    useCallback(
+      (e) => {
+        if (e.path.startsWith('data/') && e.path.endsWith('manifest.json')) loadSets()
+        if (e.path.startsWith('runs/') && e.path.endsWith('manifest.json')) loadRuns()
+      },
+      [loadSets, loadRuns],
+    ),
+  )
+
+  const ready = sets.filter((s) => s.counts.valid > 0)
+  useEffect(() => {
+    if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
+  }, [ready, p.data])
+  const base = HF_BASES.find((b) => b.id === p.base)
+  useEffect(() => {
+    if (!touchedName && p.data && base) setP((x) => ({ ...x, name: `${p.data}-${base.params.toLowerCase()}` }))
+  }, [p.data, base, touchedName])
+
+  const showRun = async (r: RunManifest) => {
+    const text = (await readFile(`runs/${r.folder}/loss.jsonl`)) ?? ''
+    const points = text
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as LossPoint)
+    setShown({ run: r.folder, points, iters: r.params.iters })
+  }
+
+  // the run in progress has already written its manifest; it doesn't count as taking its own name
+  const taken = runs.some((r) => r.params?.name === p.name) && !(running && (pipe?.params as TrainParams | undefined)?.name === p.name)
+  const valid = NAME.test(p.name) && !!p.data && !taken
+  const line = joinWords(trainLine(p))
+  const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...trainArgs(p, 'workspace/runs/<time>-' + p.name)])
+  const set = <K extends keyof TrainParams>(k: K) => (v: TrainParams[K]) => setP((x) => ({ ...x, [k]: v }))
+  const heavy = tier === '16' && p.base.includes('1.7B')
+
+  return (
+    <section className="panel" aria-label="train">
+      <div className="train-form">
+        <div className="train-form__col">
+          <label className="field">
+            <span className="label label--muted">base · trains on</span>
+            <select value={p.base} onChange={(e) => set('base')(e.target.value)}>
+              {HF_BASES.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.id.split('/')[1]}
+                </option>
+              ))}
+            </select>
+          </label>
+          {base && (
+            <span className="label label--muted">
+              {base.license} · {base.architecture} · about {base.loraGB}GB during LoRA{heavy ? ' · on 16GB use batch 1' : ''}
+            </span>
+          )}
+          <label className="field">
+            <span className="label label--muted">data</span>
+            <select value={p.data} onChange={(e) => set('data')(e.target.value)}>
+              {ready.length === 0 && <option value="">no split datasets yet (Data panel)</option>}
+              {ready.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.name} · {s.counts.train}/{s.counts.valid}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="label label--muted">adapter name</span>
+            <input type="text" value={p.name} onChange={(e) => (setTouchedName(true), set('name')(e.target.value.toLowerCase()))} spellCheck={false} />
+          </label>
+          {taken && <span className="label label--muted">an adapter with that name exists</span>}
+        </div>
+        <div className="train-form__col">
+          <Choice label="type" value={p.type} options={['lora', 'dora', 'full'] as FineTune[]} onChange={set('type')} />
+          <Steps label="rank" value={p.rank} options={[4, 8, 16, 32, 64]} onChange={set('rank')} />
+          <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32]} onChange={set('layers')} />
+          <Steps label="learning rate" value={p.lr} options={[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
+        </div>
+        <div className="train-form__col">
+          <Steps label="iterations" value={p.iters} options={[50, 100, 200, 300, 500, 1000]} onChange={set('iters')} />
+          <Choice label="batch" value={p.batch} options={[1, 2, 4, 8]} onChange={set('batch')} />
+          <Choice label="max seq" value={p.maxSeq} options={[512, 1024, 2048]} onChange={set('maxSeq')} />
+          <Choice label="eval every" value={p.evalEvery} options={[25, 50, 100]} onChange={set('evalEvery')} />
+        </div>
+      </div>
+
+      <div className="train-run">
+        <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="train" />
+        {running && pipe && (
+          <button type="button" className="text-button" onClick={() => sendEvent({ type: 'pipeline.stop', runId: pipe.runId })}>
+            stop
+          </button>
+        )}
+        {pipe?.done && pipe.ok && (
+          <button type="button" className="text-button" onClick={onAdapters}>
+            the adapter is ready: export it
+          </button>
+        )}
+      </div>
+      <details className="real-command">
+        <summary className="label label--muted">which runs, after the Ollama models are stopped to free memory</summary>
+        <code>{real}</code>
+      </details>
+
+      {pipe && <PipelineSteps p={pipe} />}
+      {pipe ? <LossChart points={pipe.points} iters={(pipe.params as TrainParams).iters} live={!pipe.done} /> : shown && <LossChart points={shown.points} iters={shown.iters} />}
+
+      <h2 className="panel__title label">runs · workspace/runs</h2>
+      <div className="cards">
+        {runs.map((r) => (
+          <Manifest
+            key={r.folder}
+            name={r.folder}
+            active={shown?.run === r.folder}
+            onSelect={() => void showRun(r)}
+            badges={<Badge warn={r.status !== 'finished'}>{r.status}</Badge>}
+            lines={[
+              `${r.params?.base?.split('/')[1]} · ${r.params?.data} · ${r.params?.type} r${r.params?.rank} · ${r.params?.iters} iters`,
+              r.final?.trainLoss !== undefined ? `train ${r.final.trainLoss} · val ${r.final.valLoss ?? '–'}${r.seconds ? ` · ${Math.floor(r.seconds / 60)}m ${r.seconds % 60}s` : ''}` : '',
+            ]}
+          />
+        ))}
+        {runs.length === 0 && <p className="label label--muted">no runs yet</p>}
+      </div>
+    </section>
+  )
+}

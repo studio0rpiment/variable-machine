@@ -38,7 +38,7 @@ let nextId = 1
  */
 interface Props {
   /** set from elsewhere ("chat with …") to put a model in column b */
-  request?: { model: string; n: number }
+  request?: { model: string; a?: string; n: number }
 }
 
 export default function Chat({ request }: Props) {
@@ -54,7 +54,7 @@ export default function Chat({ request }: Props) {
   }, [models])
 
   useEffect(() => {
-    if (request) setChosen((c) => ({ ...c, b: request.model }))
+    if (request) setChosen((c) => ({ a: request.a ?? c.a, b: request.model }))
   }, [request])
 
   const patch = (side: Side, id: number, fn: (x: Exchange) => Exchange) =>

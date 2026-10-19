@@ -7,6 +7,7 @@ import { splitWords } from './shared/quote.ts'
 import { refuse, scopePath, spawnStreamed } from './run.ts'
 import { ollamaCommand } from './ollamaCommands.ts'
 import { dataCommand } from './data.ts'
+import { recipeCommand } from './recipes.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -28,13 +29,17 @@ const HELP = `commands
   status   help   clear
   ctrl-c stops what is running
 
+  train <adapter> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank] [--layers] [--lr] [--iters] [--batch] [--max-seq]
+  fuse <adapter> [--name]
+  register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
+  export <adapter> [--name <model>] [--quantize int8|int4|none]    fuse + register in one go
+
 coming in later milestones
-  train  fuse  export  register         (4)
   merge                                 (5)
   prefer                                (6)
   doctor                                (7)`
 
-const LATER: Record<string, number> = { train: 4, fuse: 4, export: 4, register: 4, merge: 5, prefer: 6, doctor: 7 }
+const LATER: Record<string, number> = { merge: 5, prefer: 6, doctor: 7 }
 
 /** Flags each file command may take. Anything else, and anything that would follow a file (tail -f), is refused. */
 const FILE_FLAGS: Record<string, RegExp> = {
@@ -105,6 +110,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd in FILE_FLAGS) return fileCommand(cmd, args)
   if (cmd === 'ollama') return ollamaCommand(args)
   if (cmd === 'data') return dataCommand(args, line)
+  if (['train', 'fuse', 'register', 'export'].includes(cmd)) return recipeCommand(cmd, args, line)
   if (cmd === 'help') return print(HELP), true
   if (cmd === 'status') return printStatus()
   if (cmd === 'clear') return broadcast({ type: 'terminal.output', text: '\x1b[2J\x1b[3J\x1b[H' }), true

@@ -31,14 +31,18 @@ export interface HfBase {
   id: string
   license: string
   architecture: string
+  /** chat template to write into a registered model's Modelfile */
+  template: 'chatml'
+  params: string
   /** Rough memory during LoRA (plan §11). */
   loraGB: number
+  /** the Ollama model of the same weights, untouched: the before in a before/after */
   runsAs: string
 }
 
 export const HF_BASES: HfBase[] = [
-  { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', architecture: 'llama', loraGB: 2, runsAs: 'smollm2:360m' },
-  { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', architecture: 'llama', loraGB: 8, runsAs: 'smollm2:1.7b' },
+  { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', architecture: 'llama', template: 'chatml', params: '360M', loraGB: 2, runsAs: 'smollm2:360m' },
+  { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', architecture: 'llama', template: 'chatml', params: '1.7B', loraGB: 8, runsAs: 'smollm2:1.7b' },
 ]
 
 export interface DataSourceInfo {

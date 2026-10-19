@@ -10,6 +10,7 @@ import { serveStatic } from './static.ts'
 import { watchWorkspace } from './watcher.ts'
 import { handleCommand, handleLine, saveModelfile, stopRunning } from './terminal.ts'
 import { serveWorkspaceApi } from './workspace.ts'
+import { stopPipeline } from './pipeline.ts'
 import { ollamaPost } from './ollama.ts'
 import type { ClientEvent } from './shared/events.ts'
 
@@ -81,9 +82,12 @@ wss.on('connection', (ws) => {
       case 'ollama.unload':
         void ollamaPost('/api/generate', { model: event.model, keep_alive: 0 }).catch(() => {})
         break
-      case 'pipeline.run':
       case 'pipeline.stop':
-        send(ws, { type: 'terminal.output', text: 'pipelines arrive in milestone 4\r\n' })
+        stopPipeline(event.runId)
+        break
+      case 'pipeline.run':
+        // GUI recipes are sent as `command` lines (train …, export …), so typed and clicked runs are the same thing.
+        send(ws, { type: 'terminal.output', text: 'send recipes as commands, e.g. train <name> --data <dataset>\r\n' })
         break
     }
   })

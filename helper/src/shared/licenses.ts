@@ -12,7 +12,7 @@ export interface LicenseInfo {
 }
 
 const RULES: { test: RegExp; info: LicenseInfo }[] = [
-  { test: /Apache License[\s\S]{0,80}Version 2\.0/i, info: { name: 'Apache 2.0', open: true } },
+  { test: /Apache License[\s\S]{0,80}Version 2\.0|\bApache[- ]2\.0\b/i, info: { name: 'Apache 2.0', open: true } },
   { test: /^\s*MIT License/i, info: { name: 'MIT', open: true } },
   { test: /Qwen RESEARCH LICENSE/i, info: { name: 'Qwen Research', open: false, note: 'non-commercial' } },
   { test: /Tongyi Qianwen LICENSE|Qwen LICENSE AGREEMENT/i, info: { name: 'Qwen License', open: false, note: 'custom terms' } },
