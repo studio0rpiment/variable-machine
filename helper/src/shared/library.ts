@@ -40,3 +40,25 @@ export const HF_BASES: HfBase[] = [
   { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', architecture: 'llama', loraGB: 2, runsAs: 'smollm2:360m' },
   { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', architecture: 'llama', loraGB: 8, runsAs: 'smollm2:1.7b' },
 ]
+
+export interface DataSourceInfo {
+  repo: string
+  file: string
+  url: string
+  /** expected license; the import reads the current one from Hugging Face */
+  license: string
+  about: string
+  categories?: string[]
+}
+
+/** Datasets the Data panel can import (plan §8). More importers join this list. */
+export const DATA_SOURCES: Record<string, DataSourceInfo> = {
+  dolly: {
+    repo: 'databricks/databricks-dolly-15k',
+    file: 'databricks-dolly-15k.jsonl',
+    url: 'https://huggingface.co/datasets/databricks/databricks-dolly-15k/resolve/main/databricks-dolly-15k.jsonl',
+    license: 'CC BY-SA 3.0',
+    about: '15k instruction/response pairs written by Databricks employees',
+    categories: ['open_qa', 'general_qa', 'classification', 'closed_qa', 'brainstorming', 'information_extraction', 'summarization', 'creative_writing'],
+  },
+}

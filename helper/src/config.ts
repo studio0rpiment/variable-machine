@@ -12,5 +12,5 @@ export const HOST = '127.0.0.1'
 export const PORT = Number(process.env.VARIABLE_MACHINE_PORT ?? 4817)
 export const OLLAMA_URL = new URL(process.env.OLLAMA_HOST_URL ?? 'http://127.0.0.1:11434')
 
-/** The folders §4 of the plan lays out; created on startup so the watcher and `ls` have something to show. */
-export const WORKSPACE_DIRS = ['hf', 'data', 'runs', 'adapters', 'fused', 'gguf', 'merges', 'chat', 'modelfiles']
+/** The folders §4 of the plan lays out (plus raw/, where downloaded sources are kept before conversion); created on startup so the watcher and `ls` have something to show. */
+export const WORKSPACE_DIRS = ['hf', 'raw', 'data', 'runs', 'adapters', 'fused', 'gguf', 'merges', 'chat', 'modelfiles']

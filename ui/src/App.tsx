@@ -3,16 +3,18 @@ import { useTheme } from './hooks/useTheme'
 import Chat from './components/Chat'
 import ModelsPanel from './components/ModelsPanel'
 import ModelfilePanel from './components/ModelfilePanel'
+import DataPanel from './components/DataPanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
-import { ChatMark, ModelfileMark, ModelsMark } from './icons'
+import { ChatMark, DataMark, ModelfileMark, ModelsMark } from './icons'
 
-const PANELS = ['models', 'modelfile', 'chat'] as const
+const PANELS = ['models', 'modelfile', 'data', 'chat'] as const
 type Panel = (typeof PANELS)[number]
 const MARKS: Record<Panel, ReactNode> = {
   models: <ModelsMark size={0.9} />,
   modelfile: <ModelfileMark size={0.9} />,
+  data: <DataMark size={0.9} />,
   chat: <ChatMark size={0.9} />,
 }
 
@@ -70,6 +72,9 @@ export default function App() {
         </div>
         <div className="panel-slot" hidden={panel !== 'modelfile'}>
           <ModelfilePanel startFrom={modelfileFrom} onChat={chatWith} />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'data'}>
+          <DataPanel />
         </div>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'chat'}>
           <Chat request={chatRequest} />

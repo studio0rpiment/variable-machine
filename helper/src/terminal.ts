@@ -6,6 +6,7 @@ import { status } from './status.ts'
 import { splitWords } from './shared/quote.ts'
 import { refuse, scopePath, spawnStreamed } from './run.ts'
 import { ollamaCommand } from './ollamaCommands.ts'
+import { dataCommand } from './data.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -21,19 +22,19 @@ export { stopRunning } from './run.ts'
 const HELP = `commands
   ollama list | show <model> | pull <model> | rm <model>
   ollama create <name> -f workspace/modelfiles/<name>.Modelfile [-q q4_K_M]
-  ollama run-once <model> [--system "<text>"] <prompt…>   one prompt, one answer
+  ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>
+  data new | import dolly | validate | split | count | append <name>   (data help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   status   help   clear
   ctrl-c stops what is running
 
 coming in later milestones
-  data validate|split|count <name>      (3)
   train  fuse  export  register         (4)
   merge                                 (5)
   prefer                                (6)
   doctor                                (7)`
 
-const LATER: Record<string, number> = { data: 3, train: 4, fuse: 4, export: 4, register: 4, merge: 5, prefer: 6, doctor: 7 }
+const LATER: Record<string, number> = { train: 4, fuse: 4, export: 4, register: 4, merge: 5, prefer: 6, doctor: 7 }
 
 /** Flags each file command may take. Anything else, and anything that would follow a file (tail -f), is refused. */
 const FILE_FLAGS: Record<string, RegExp> = {
@@ -103,6 +104,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   const [cmd, ...args] = words
   if (cmd in FILE_FLAGS) return fileCommand(cmd, args)
   if (cmd === 'ollama') return ollamaCommand(args)
+  if (cmd === 'data') return dataCommand(args, line)
   if (cmd === 'help') return print(HELP), true
   if (cmd === 'status') return printStatus()
   if (cmd === 'clear') return broadcast({ type: 'terminal.output', text: '\x1b[2J\x1b[3J\x1b[H' }), true

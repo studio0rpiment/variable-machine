@@ -8,6 +8,8 @@ interface Props {
   actions?: ReactNode
   children?: ReactNode
   active?: boolean
+  /** makes the whole card selectable (click, Enter or Space) */
+  onSelect?: () => void
 }
 
 /**
@@ -16,9 +18,18 @@ interface Props {
  * Used for Ollama models and HF bases now; datasets, adapters and fused
  * models later.
  */
-export default function Manifest({ name, lines = [], badges, actions, children, active }: Props) {
+export default function Manifest({ name, lines = [], badges, actions, children, active, onSelect }: Props) {
+  const select = onSelect && {
+    role: 'button',
+    tabIndex: 0,
+    'aria-pressed': !!active,
+    onClick: onSelect,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) (e.preventDefault(), onSelect())
+    },
+  }
   return (
-    <article className={`manifest ${active ? 'is-active' : ''}`.trim()}>
+    <article className={`manifest ${active ? 'is-active' : ''} ${onSelect ? 'is-selectable' : ''}`.replace(/\s+/g, ' ').trim()} {...select}>
       <header className="manifest__head">
         <h3 className="manifest__name">{name}</h3>
         {badges && <span className="manifest__badges">{badges}</span>}

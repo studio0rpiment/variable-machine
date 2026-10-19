@@ -32,7 +32,12 @@ It isn't a shell and it isn't a pty. The helper splits each line into words, che
 ```
 ollama list | show <model> | pull <model> | rm <model>
 ollama create <name> -f workspace/modelfiles/<name>.Modelfile [-q q4_K_M]
-ollama run-once <model> [--system "<text>"] <prompt…>
+ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>
+data new <name>
+data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
+data validate | count <name>
+data split <name> [--valid 0.1] [--seed 0]
+data append <name> '<row json>' [--source <model>]
 ls | cat | head | tail | wc <path>        inside workspace/ only
 status   help   clear                     ctrl-c stops what is running
 ```
@@ -45,11 +50,17 @@ Lines typed while a command runs wait their turn. Commands the GUI runs are echo
 
 - [x] **1. Helper, UI shell, terminal, Ollama proxy, Chat.** Two models answer one prompt side by side. Each call is echoed as `ollama run-once …` and appended to `workspace/chat/<date>.jsonl`.
 - [x] **2. Models + Modelfile.** Two inventories (runs on: Ollama; trains on: Hugging Face) and a curated library. Pulls show progress in the card and the terminal. The licenses shown are the ones each model actually carries. The Modelfile editor marks which lines are weights, and `ollama create` turns the text into a model you can chat with.
-- [ ] 3. Data
+- [x] **3. Data.** Datasets are train/valid pairs of chat-format JSONL in `workspace/data/<name>/`. Dolly imports with the license read from Hugging Face at import time. A dataset can be validated, split (seeded) and token-counted (an estimate). A model writes candidate rows that you edit, keep or reject, and each kept row is a `data append`. The manifest records every source with its license, row count and the commands that touched it.
 - [ ] 4. Train → fuse/export → register
 - [ ] 5. Merge
 - [ ] 6. Prefer (optional)
 - [ ] 7. Doctor, examples, zip/unzip
+
+## Notes from building it
+
+- **qwen2.5:3b is not open-license.** It carries the Qwen Research License (non-commercial), so qwen3:4b (Apache 2.0) is the default chat model.
+- **`think: false` doesn't stop qwen3:4b reasoning.** It writes the reasoning into the answer instead. The Data generator asks for structured output (a JSON schema with exactly N rows), which keeps the reasoning out and the rows clean.
+- **A pull doesn't stop when the app stops listening.** Ollama finishes the download on its own.
 
 ## How it stays honest
 

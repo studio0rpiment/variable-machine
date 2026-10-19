@@ -158,14 +158,26 @@ async function create(name: string, file: string, quantize?: string): Promise<bo
 async function runOnce(args: string[]): Promise<boolean> {
   const [model, ...rest] = args
   let system: string | undefined
+  let think: boolean | undefined
+  let format: unknown
   const words: string[] = []
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--system') system = rest[++i]
-    else words.push(rest[i])
+    else if (rest[i] === '--no-think') think = false
+    else if (rest[i] === '--format') {
+      // "json", or a JSON schema the answer must match (Ollama structured outputs)
+      const f = rest[++i] ?? ''
+      try {
+        format = f === 'json' ? 'json' : JSON.parse(f)
+      } catch {
+        print('ollama run-once: --format takes json or a JSON schema')
+        return false
+      }
+    } else words.push(rest[i])
   }
   const prompt = words.join(' ')
   if (!model || !prompt) {
-    print('usage: ollama run-once <model> [--system "<text>"] <prompt…>')
+    print('usage: ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>')
     return false
   }
 
@@ -177,7 +189,7 @@ async function runOnce(args: string[]): Promise<boolean> {
   let last: ChatChunk | undefined
   let wasThinking = false
   try {
-    const res = await ollamaPost('/api/chat', { model, messages, stream: true }, abort.signal)
+    const res = await ollamaPost('/api/chat', { model, messages, stream: true, ...(think === false ? { think } : {}), ...(format ? { format } : {}) }, abort.signal)
     if (!res.ok || !res.body) {
       print(`ollama: ${await errorOf(res)}`)
       return false

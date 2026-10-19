@@ -12,13 +12,15 @@ interface ChatRequest {
   model: string
   messages: ChatMessage[]
   options?: Record<string, unknown>
+  think?: boolean
+  format?: unknown
 }
 
 /** The CLI form of a one-prompt chat call, as the terminal would accept it back. */
 export function runOnceLine(req: ChatRequest): string {
   const system = req.messages.find((m) => m.role === 'system')?.content
   const prompt = req.messages.filter((m) => m.role === 'user').at(-1)?.content ?? ''
-  return joinWords(['ollama', 'run-once', req.model, ...(system ? ['--system', system] : []), prompt])
+  return joinWords(['ollama', 'run-once', req.model, ...(system ? ['--system', system] : []), ...(req.think === false ? ['--no-think'] : []), ...(req.format ? ['--format', typeof req.format === 'string' ? req.format : JSON.stringify(req.format)] : []), prompt])
 }
 
 function readBody(req: http.IncomingMessage): Promise<Buffer> {
@@ -89,6 +91,7 @@ export async function proxyOllama(req: http.IncomingMessage, res: http.ServerRes
       // not JSON; let Ollama answer with its own error
     }
   }
+  // Only the Chat panel's exchanges go in the chat log; the Data panel's generation calls (source: data) are shown but not logged.
   const log = req.headers['x-variable-machine-source'] === 'chat'
 
   const headers = { ...req.headers }
