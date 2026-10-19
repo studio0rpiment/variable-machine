@@ -12,6 +12,7 @@ import LossChart, { type LossPoint } from './LossChart'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
+import { Explained } from '../explain/Explained'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
@@ -46,7 +47,7 @@ export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
   useEffect(() => setP((x) => ({ ...x, ...defaults })), [defaults])
 
   const loadSets = useCallback(() => void readManifests<DatasetManifest>('data').then(setSets), [])
-  const loadRuns = useCallback(() => void readManifests<RunManifest>('runs').then((r) => setRuns(r.sort((a, b) => b.folder.localeCompare(a.folder)))), [])
+  const loadRuns = useCallback(() => void readManifests<RunManifest & { recipe?: string }>('runs').then((r) => setRuns(r.filter((x) => x.recipe !== 'prefer').sort((a, b) => b.folder.localeCompare(a.folder)))), [])
   useEffect(loadSets, [loadSets])
   useEffect(loadRuns, [loadRuns])
   useHelperEvent(
@@ -60,7 +61,8 @@ export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
     ),
   )
 
-  const ready = sets.filter((s) => s.counts.valid > 0)
+  // Chat datasets with some rows set aside; preference sets belong to the Prefer panel.
+  const ready = sets.filter((s) => s.format !== 'preference' && s.counts.valid > 0)
   useEffect(() => {
     if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
   }, [ready, p.data])
@@ -92,13 +94,15 @@ export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
         <div className="train-form__col">
           <label className="field">
             <span className="label label--muted">base · trains on</span>
-            <select value={p.base} onChange={(e) => set('base')(e.target.value)}>
-              {HF_BASES.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.id.split('/')[1]}
-                </option>
-              ))}
-            </select>
+            <Explained id="train.base">
+              <select value={p.base} onChange={(e) => set('base')(e.target.value)}>
+                {HF_BASES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.id.split('/')[1]}
+                  </option>
+                ))}
+              </select>
+            </Explained>
           </label>
           {base && (
             <span className="label label--muted">
@@ -107,14 +111,16 @@ export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
           )}
           <label className="field">
             <span className="label label--muted">data</span>
-            <select value={p.data} onChange={(e) => set('data')(e.target.value)}>
-              {ready.length === 0 && <option value="">no split datasets yet (Data panel)</option>}
-              {ready.map((s) => (
-                <option key={s.name} value={s.name}>
-                  {s.name} · {s.counts.train}/{s.counts.valid}
-                </option>
-              ))}
-            </select>
+            <Explained id="train.data">
+              <select value={p.data} onChange={(e) => set('data')(e.target.value)}>
+                {ready.length === 0 && <option value="">no split datasets yet (Data panel)</option>}
+                {ready.map((s) => (
+                  <option key={s.name} value={s.name}>
+                    {s.name} · {s.counts.train}/{s.counts.valid}
+                  </option>
+                ))}
+              </select>
+            </Explained>
           </label>
           <label className="field">
             <span className="label label--muted">adapter name</span>
@@ -123,25 +129,45 @@ export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
           {taken && <span className="label label--muted">an adapter with that name exists</span>}
         </div>
         <div className="train-form__col">
-          <Choice label="type" value={p.type} options={['lora', 'dora', 'full'] as FineTune[]} onChange={set('type')} />
-          <Steps label="rank" value={p.rank} options={[4, 8, 16, 32, 64]} onChange={set('rank')} />
-          <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32]} onChange={set('layers')} />
-          <Steps label="learning rate" value={p.lr} options={[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
+          <Explained id="train.type">
+            <Choice label="type" value={p.type} options={['lora', 'dora', 'full'] as FineTune[]} onChange={set('type')} />
+          </Explained>
+          <Explained id="train.rank">
+            <Steps label="rank" value={p.rank} options={[4, 8, 16, 32, 64]} onChange={set('rank')} />
+          </Explained>
+          <Explained id="train.layers">
+            <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32]} onChange={set('layers')} />
+          </Explained>
+          <Explained id="train.lr">
+            <Steps label="learning rate" value={p.lr} options={[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
+          </Explained>
         </div>
         <div className="train-form__col">
-          <Steps label="iterations" value={p.iters} options={[50, 100, 200, 300, 500, 1000]} onChange={set('iters')} />
-          <Choice label="batch" value={p.batch} options={[1, 2, 4, 8]} onChange={set('batch')} />
-          <Choice label="max seq" value={p.maxSeq} options={[512, 1024, 2048]} onChange={set('maxSeq')} />
-          <Choice label="eval every" value={p.evalEvery} options={[25, 50, 100]} onChange={set('evalEvery')} />
+          <Explained id="train.iters">
+            <Steps label="iterations" value={p.iters} options={[50, 100, 200, 300, 500, 1000]} onChange={set('iters')} />
+          </Explained>
+          <Explained id="train.batch">
+            <Choice label="batch" value={p.batch} options={[1, 2, 4, 8]} onChange={set('batch')} />
+          </Explained>
+          <Explained id="train.maxSeq">
+            <Choice label="max seq" value={p.maxSeq} options={[512, 1024, 2048]} onChange={set('maxSeq')} />
+          </Explained>
+          <Explained id="train.evalEvery">
+            <Choice label="eval every" value={p.evalEvery} options={[25, 50, 100]} onChange={set('evalEvery')} />
+          </Explained>
         </div>
       </div>
 
       <div className="train-run">
-        <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="train" />
+        <Explained id="train.run">
+          <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="train" />
+        </Explained>
         {running && pipe && (
-          <button type="button" className="text-button" onClick={() => sendEvent({ type: 'pipeline.stop', runId: pipe.runId })}>
-            stop
-          </button>
+          <Explained id="train.stop">
+            <button type="button" className="text-button" onClick={() => sendEvent({ type: 'pipeline.stop', runId: pipe.runId })}>
+              stop
+            </button>
+          </Explained>
         )}
         {pipe?.done && pipe.ok && (
           <button type="button" className="text-button" onClick={onAdapters}>

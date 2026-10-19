@@ -10,6 +10,7 @@ import { mergeArgs, mergeLine } from '@shared/recipes'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import PipelineSteps from './PipelineSteps'
+import { Explained } from '../explain/Explained'
 
 interface AdapterManifest {
   name: string
@@ -80,20 +81,24 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
       <div className="merge-form">
         <label className="field">
           <span className="label label--muted">a · weight {(1 - t).toFixed(2)}</span>
-          <select value={a} onChange={(e) => setA(e.target.value)}>
-            {adapters.map((x) => (
-              <option key={x.name} value={x.name}>
-                {x.name}
-              </option>
-            ))}
-          </select>
+          <Explained id="merge.a">
+            <select value={a} onChange={(e) => setA(e.target.value)}>
+              {adapters.map((x) => (
+                <option key={x.name} value={x.name}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </Explained>
           {A && <span className="label label--muted">{A.data} · {A.base.split('/')[1]} · r{A.rank} · {A.layers} layers</span>}
         </label>
         <label className="slider merge-form__ratio">
           <span className="label label--muted">
             t <span className="label">{t.toFixed(2)}</span>
           </span>
-          <input type="range" min={0} max={1} step={0.05} value={t} onChange={(e) => setT(Number(e.target.value))} aria-label="ratio: 0 is all A, 1 is all B" />
+          <Explained id="merge.t">
+            <input type="range" min={0} max={1} step={0.05} value={t} onChange={(e) => setT(Number(e.target.value))} aria-label="ratio: 0 is all A, 1 is all B" />
+          </Explained>
           <span className="merge-form__ends label label--muted">
             <span>all a</span>
             <span>all b</span>
@@ -101,14 +106,16 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
         </label>
         <label className="field">
           <span className="label label--muted">b · weight {t.toFixed(2)}</span>
-          <select value={b} onChange={(e) => setB(e.target.value)} disabled={!partners.length}>
-            {partners.length === 0 && <option value="">no adapter with the same base, type, rank and layers</option>}
-            {partners.map((x) => (
-              <option key={x.name} value={x.name}>
-                {x.name}
-              </option>
-            ))}
-          </select>
+          <Explained id="merge.b">
+            <select value={b} onChange={(e) => setB(e.target.value)} disabled={!partners.length}>
+              {partners.length === 0 && <option value="">no adapter with the same base, type, rank and layers</option>}
+              {partners.map((x) => (
+                <option key={x.name} value={x.name}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </Explained>
           {b && <span className="label label--muted">{adapters.find((x) => x.name === b)?.data}</span>}
         </label>
       </div>
@@ -124,7 +131,9 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
         </div>
       </div>
       {taken && <span className="label label--muted">that name is taken</span>}
-      <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid || running} running={running && pipe?.recipe === 'merge'} label="merge" />
+      <Explained id="merge.run">
+        <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid || running} running={running && pipe?.recipe === 'merge'} label="merge" />
+      </Explained>
       <details className="real-command">
         <summary className="label label--muted">which runs</summary>
         <code>{joinWords(mergeArgs(a, b, t, name))}</code>
@@ -152,11 +161,17 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
               lines={[`${(1 - m.ratio).toFixed(2)} × ${m.a} + ${m.ratio.toFixed(2)} × ${m.b}`, `on ${m.base.split('/')[1]} · r${m.rank} · ${m.layers} layers`, m.license]}
               actions={
                 <>
-                  {!registered && <CommandPreview command={cmd} onRun={() => void runCommand(cmd)} disabled={running} label="export" />}
+                  {!registered && (
+                    <Explained id="adapters.export">
+                      <CommandPreview command={cmd} onRun={() => void runCommand(cmd)} disabled={running} label="export" />
+                    </Explained>
+                  )}
                   {registered && (
-                    <button type="button" className="text-button" onClick={() => onChatModels(trio)} disabled={!allRun} title={allRun ? '' : 'export A and B too (Adapters panel)'}>
-                      chat: {m.a} · {m.b} · {m.name}
-                    </button>
+                    <Explained id="merge.chat">
+                      <button type="button" className="text-button" onClick={() => onChatModels(trio)} disabled={!allRun} title={allRun ? '' : 'export A and B too (Adapters panel)'}>
+                        chat: {m.a} · {m.b} · {m.name}
+                      </button>
+                    </Explained>
                   )}
                   {registered && runsAs && (
                     <button type="button" className="text-button" onClick={() => onChatModels([runsAs, ...trio])}>

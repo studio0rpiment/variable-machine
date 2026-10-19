@@ -43,7 +43,7 @@ The first training run downloads its base model into `workspace/hf`: about 700MB
 - **Chat.** Two to four models side by side, one prompt, every answer streaming. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data panel can mine it for preference pairs.
 - **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
-**The explanation layer.** Hover over a panel's name, or tab to it, and a flag explains in plain language what that screen is for. Esc puts it away. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit; flags on other parts of the screen will join them there.
+**The explanation layer.** Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
 
 ## Layout
 

@@ -53,8 +53,8 @@ button {
   height: 2rem;
   color: var(--muted);
 }
-.icon-button:hover:not(:disabled) { color: var(--line); }
-.icon-button:disabled { opacity: 0.25; cursor: default; }
+.icon-button:hover:not(:disabled):not([aria-disabled="true"]) { color: var(--line); }
+.icon-button:disabled, .icon-button[aria-disabled="true"] { opacity: 0.25; cursor: default; }
 
 .text-button {
   font-size: 0.75rem;
@@ -161,8 +161,8 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
 }
 .command-preview code { font: inherit; overflow-wrap: anywhere; }
 .command-preview code::before { content: '▸ '; }
-.command-preview:hover:not(:disabled) { color: var(--line); }
-.command-preview:disabled { cursor: default; opacity: 0.45; }
+.command-preview:hover:not([aria-disabled="true"]) { color: var(--line); }
+.command-preview[aria-disabled="true"] { cursor: default; opacity: 0.45; }
 .command-preview.is-running { opacity: 1; color: var(--line); }
 .command-preview.is-running .hi { visibility: hidden; }
 
@@ -376,38 +376,27 @@ a.text-button { text-decoration: none; }
 .material__text { margin: 0; padding: 0.75rem 0.9rem; border-left: 1px solid var(--muted); color: var(--muted); white-space: pre-wrap; line-height: 1.55; max-height: 10rem; overflow-y: auto; }
 
 /* ---- explanation layer (explain/Explained.tsx) ----
-   A flag: a skewed outline bubble with a tail pointing up at the element it
-   explains. Hidden until hover or keyboard focus; the delay is CSS, so it is
-   an entrance, not a timer that drives state. */
-.explained { position: relative; display: inline-flex; }
+   A flag: a slanted outline bubble with a tail pointing at the element it
+   explains. It lives in a layer above the page (position: fixed, portalled to
+   <body>) so scrolling panels can't clip it. The fade-in delay is a CSS
+   animation: an entrance, not a timer that drives state. */
+.explained { display: contents; }
 .flag {
-  position: absolute;
-  top: calc(100% + 0.35rem);
-  left: -0.5rem;
-  z-index: 40;
+  position: fixed;
+  z-index: 1000;
   width: max-content;
-  max-width: min(24rem, calc(100vw - 2rem));
-  padding-top: 0.45rem; /* room for the tail */
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-0.25rem);
-  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
-  text-transform: none;
-  letter-spacing: normal;
+  max-width: min(24rem, calc(100vw - 1rem));
+  font-family: var(--font);
   font-size: 0.78rem;
   line-height: 1.55;
   color: var(--line);
+  text-transform: none;
+  letter-spacing: normal;
   white-space: normal;
+  animation: flag-in 0.18s ease-out 0.35s both;
 }
-.flag--below-end { left: auto; right: -0.5rem; }
-.explained:hover > .flag,
-.explained:focus-within > .flag {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition: opacity 0.18s ease 0.35s, transform 0.18s ease 0.35s, visibility 0s linear 0.35s;
-}
-.explained.is-dismissed > .flag { opacity: 0; visibility: hidden; transition: none; }
+.flag--below { padding-top: 0.75rem; }   /* room for the tail, above the bubble */
+.flag--above { padding-bottom: 0.75rem; } /* room for the tail, below the bubble */
 .flag__body {
   display: flex;
   flex-direction: column;
@@ -417,23 +406,27 @@ a.text-button { text-decoration: none; }
   background: var(--bg); /* the page's own colour, so the text reads over whatever is beneath */
   transform: skewX(-6deg);
 }
-.flag__body > * { transform: skewX(6deg); } /* text stands upright inside the slanted bubble */
+.flag__body > * { transform: skewX(6deg); } /* the words stand upright inside the slanted bubble */
 .flag__title { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .flag__text { text-wrap: pretty; }
-/* The tail: a square turned 45°, outlined on two sides, sitting over the bubble's top edge. */
+/* The tail: a square turned 45°, outlined on the two sides that point at the element. */
 .flag__tail {
   position: absolute;
-  top: 0.12rem;
-  left: 1.4rem;
   z-index: 1;
   width: 0.65rem;
   height: 0.65rem;
   background: var(--bg);
-  border-left: 1px solid var(--line);
-  border-top: 1px solid var(--line);
   transform: rotate(45deg);
 }
-.flag--below-end .flag__tail { left: auto; right: 1.4rem; }
+.flag--below .flag__tail { top: 0.42rem; border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
+.flag--above .flag__tail { bottom: 0.42rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.flag--start .flag__tail { left: 1.4rem; }
+.flag--end .flag__tail { right: 1.4rem; }
+@keyframes flag-in {
+  from { opacity: 0; translate: 0 var(--flag-from, -0.25rem); }
+  to { opacity: 1; translate: 0 0; }
+}
+.flag--above { --flag-from: 0.25rem; }
 @media (prefers-reduced-motion: reduce) {
-  .flag, .explained:hover > .flag, .explained:focus-within > .flag { transform: none; transition-property: opacity, visibility; }
+  .flag { animation: flag-in 0.01s linear 0.35s both; --flag-from: 0; }
 }

@@ -12,6 +12,7 @@ import LossChart, { type LossPoint } from './LossChart'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
+import { Explained } from '../explain/Explained'
 
 interface RunManifest {
   name: string
@@ -79,29 +80,33 @@ export default function PreferPanel({ onAdapters }: { onAdapters: () => void }) 
         <div className="train-form__col">
           <label className="field">
             <span className="label label--muted">start from · base or fused model</span>
-            <select value={p.model} onChange={(e) => set('model')(e.target.value)}>
-              {HF_BASES.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.id.split('/')[1]}
-                </option>
-              ))}
-              {fused.map((f) => (
-                <option key={f.name} value={`workspace/fused/${f.name}`}>
-                  fused: {f.name}
-                </option>
-              ))}
-            </select>
+            <Explained id="prefer.model">
+              <select value={p.model} onChange={(e) => set('model')(e.target.value)}>
+                {HF_BASES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.id.split('/')[1]}
+                  </option>
+                ))}
+                {fused.map((f) => (
+                  <option key={f.name} value={`workspace/fused/${f.name}`}>
+                    fused: {f.name}
+                  </option>
+                ))}
+              </select>
+            </Explained>
           </label>
           <label className="field">
             <span className="label label--muted">preference set</span>
-            <select value={p.data} onChange={(e) => set('data')(e.target.value)}>
-              {ready.length === 0 && <option value="">none yet: build one in Data from the chat log, then split it</option>}
-              {ready.map((s) => (
-                <option key={s.name} value={s.name}>
-                  {s.name} · {s.counts.train} pairs / {s.counts.valid} held out
-                </option>
-              ))}
-            </select>
+            <Explained id="prefer.data">
+              <select value={p.data} onChange={(e) => set('data')(e.target.value)}>
+                {ready.length === 0 && <option value="">none yet: build one in Data from the chat log, then split it</option>}
+                {ready.map((s) => (
+                  <option key={s.name} value={s.name}>
+                    {s.name} · {s.counts.train} pairs / {s.counts.valid} held out
+                  </option>
+                ))}
+              </select>
+            </Explained>
           </label>
           <label className="field">
             <span className="label label--muted">adapter name</span>
@@ -110,13 +115,23 @@ export default function PreferPanel({ onAdapters }: { onAdapters: () => void }) 
           {taken && <span className="label label--muted">a run with that adapter name exists</span>}
         </div>
         <div className="train-form__col">
-          <Steps label="beta" value={p.beta} options={[0.05, 0.1, 0.2, 0.5]} onChange={set('beta')} />
-          <Steps label="iterations" value={p.iters} options={[50, 100, 150, 200, 300]} onChange={set('iters')} />
-          <Steps label="learning rate" value={p.lr} options={[5e-6, 1e-5, 2e-5, 5e-5]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
+          <Explained id="prefer.beta">
+            <Steps label="beta" value={p.beta} options={[0.05, 0.1, 0.2, 0.5]} onChange={set('beta')} />
+          </Explained>
+          <Explained id="prefer.iters">
+            <Steps label="iterations" value={p.iters} options={[50, 100, 150, 200, 300]} onChange={set('iters')} />
+          </Explained>
+          <Explained id="prefer.lr">
+            <Steps label="learning rate" value={p.lr} options={[5e-6, 1e-5, 2e-5, 5e-5]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
+          </Explained>
         </div>
         <div className="train-form__col">
-          <Choice label="rank" value={p.rank} options={[4, 8, 16]} onChange={set('rank')} />
-          <Choice label="layers" value={p.layers} options={[4, 8, 16]} onChange={set('layers')} />
+          <Explained id="train.rank">
+            <Choice label="rank" value={p.rank} options={[4, 8, 16]} onChange={set('rank')} />
+          </Explained>
+          <Explained id="train.layers">
+            <Choice label="layers" value={p.layers} options={[4, 8, 16]} onChange={set('layers')} />
+          </Explained>
           <p className="label label--muted prefer-note">
             beta is how far from where it started the model may move: small beta, bigger change.
           </p>
@@ -124,11 +139,15 @@ export default function PreferPanel({ onAdapters }: { onAdapters: () => void }) 
       </div>
 
       <div className="train-run">
-        <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="prefer" />
+        <Explained id="prefer.run">
+          <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="prefer" />
+        </Explained>
         {running && pipe && (
-          <button type="button" className="text-button" onClick={() => sendEvent({ type: 'pipeline.stop', runId: pipe.runId })}>
-            stop
-          </button>
+          <Explained id="train.stop">
+            <button type="button" className="text-button" onClick={() => sendEvent({ type: 'pipeline.stop', runId: pipe.runId })}>
+              stop
+            </button>
+          </Explained>
         )}
         {pipe?.done && pipe.ok && (
           <button type="button" className="text-button" onClick={onAdapters}>

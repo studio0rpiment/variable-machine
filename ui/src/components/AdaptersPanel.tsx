@@ -10,6 +10,7 @@ import type { Quantize } from '@shared/recipes'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import PipelineSteps from './PipelineSteps'
+import { Explained } from '../explain/Explained'
 
 interface AdapterManifest {
   name: string
@@ -61,14 +62,16 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
 
   return (
     <section className="panel" aria-label="adapters">
-      <div className="choice" role="radiogroup" aria-label="quantize on import">
-        <span className="label label--muted">ollama imports it as</span>
-        {(['int8', 'int4', 'none'] as Quantize[]).map((q) => (
-          <button key={q} type="button" role="radio" aria-checked={q === quantize} className={`text-button ${q === quantize ? 'is-active' : ''}`.trim()} onClick={() => setQuantize(q)}>
-            {q === 'none' ? 'fp16 (no quantizing)' : q}
-          </button>
-        ))}
-      </div>
+      <Explained id="adapters.quantize">
+        <div className="choice" role="radiogroup" aria-label="quantize on import">
+          <span className="label label--muted">ollama imports it as</span>
+          {(['int8', 'int4', 'none'] as Quantize[]).map((q) => (
+            <button key={q} type="button" role="radio" aria-checked={q === quantize} className={`text-button ${q === quantize ? 'is-active' : ''}`.trim()} onClick={() => setQuantize(q)}>
+              {q === 'none' ? 'fp16 (no quantizing)' : q}
+            </button>
+          ))}
+        </div>
+      </Explained>
       {pipe && <PipelineSteps p={pipe} />}
 
       <h2 className="panel__title label">adapters · workspace/adapters</h2>
@@ -97,11 +100,15 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
               ]}
               actions={
                 <>
-                  <CommandPreview command={cmd} onRun={() => void runCommand(cmd)} running={running && (pipe?.params as { adapter?: string })?.adapter === a.name} disabled={running} label="export" />
+                  <Explained id="adapters.export">
+                    <CommandPreview command={cmd} onRun={() => void runCommand(cmd)} running={running && (pipe?.params as { adapter?: string })?.adapter === a.name} disabled={running} label="export" />
+                  </Explained>
                   {registered && (
-                    <button type="button" className="text-button" onClick={() => onChatPair(baseInstalled ? runsAs! : a.name, a.name)}>
-                      {baseInstalled ? `chat: ${runsAs} vs ${a.name}` : `chat with ${a.name}`}
-                    </button>
+                    <Explained id="adapters.chat">
+                      <button type="button" className="text-button" onClick={() => onChatPair(baseInstalled ? runsAs! : a.name, a.name)}>
+                        {baseInstalled ? `chat: ${runsAs} vs ${a.name}` : `chat with ${a.name}`}
+                      </button>
+                    </Explained>
                   )}
                 </>
               }
@@ -122,7 +129,11 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
                   key={f.name}
                   name={f.name}
                   lines={[`adapter ${f.adapter} folded into ${f.base.split('/')[1]}`, 'full model, Hugging Face format']}
-                  actions={<CommandPreview command={cmd} onRun={() => void runCommand(cmd)} disabled={running} label="register" />}
+                  actions={
+                    <Explained id="adapters.register">
+                      <CommandPreview command={cmd} onRun={() => void runCommand(cmd)} disabled={running} label="register" />
+                    </Explained>
+                  }
                 />
               )
             })}

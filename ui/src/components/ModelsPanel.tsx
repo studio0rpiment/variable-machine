@@ -9,6 +9,7 @@ import type { OllamaModel } from '../lib/ollama'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import ConfirmButton from './ConfirmButton'
+import { Explained } from '../explain/Explained'
 
 interface Progress {
   status: string
@@ -105,20 +106,26 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
               ]}
               actions={
                 <>
-                  <button type="button" className="text-button" onClick={() => onChat(m.name)}>
-                    chat
-                  </button>
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() => {
-                      void runCommand(joinWords(['ollama', 'show', m.name, '--modelfile']))
-                      onModelfile(m.name)
-                    }}
-                  >
-                    modelfile
-                  </button>
-                  <ConfirmButton label="rm" confirmLabel={`ollama rm ${m.name}?`} onConfirm={() => void runCommand(joinWords(['ollama', 'rm', m.name]))} />
+                  <Explained id="models.chat">
+                    <button type="button" className="text-button" onClick={() => onChat(m.name)}>
+                      chat
+                    </button>
+                  </Explained>
+                  <Explained id="models.modelfile">
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        void runCommand(joinWords(['ollama', 'show', m.name, '--modelfile']))
+                        onModelfile(m.name)
+                      }}
+                    >
+                      modelfile
+                    </button>
+                  </Explained>
+                  <Explained id="models.rm">
+                    <ConfirmButton label="rm" confirmLabel={`ollama rm ${m.name}?`} onConfirm={() => void runCommand(joinWords(['ollama', 'rm', m.name]))} />
+                  </Explained>
                 </>
               }
             >
@@ -152,7 +159,9 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
                     <span className="pull-progress__rule" style={{ width: `${pct ?? 0}%` }} />
                   </span>
                 ) : (
-                  <CommandPreview command={`ollama pull ${l.tag}`} onRun={() => pull(l.tag)} label="pull" />
+                  <Explained id="models.pull">
+                    <CommandPreview command={`ollama pull ${l.tag}`} onRun={() => pull(l.tag)} label="pull" />
+                  </Explained>
                 )
               }
             />

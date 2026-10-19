@@ -4,6 +4,7 @@ import { runCommand } from '../lib/helper'
 import { listDir, readManifests, type Entry } from '../lib/workspace'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
+import { Explained } from '../explain/Explained'
 
 const KINDS = ['data', 'adapters', 'merges', 'runs', 'fused'] as const
 type Kind = (typeof KINDS)[number]
@@ -58,9 +59,11 @@ export default function SharePanel() {
     <section className="panel" aria-label="share">
       <h2 className="panel__title label">zips · workspace/shared</h2>
       <div className="share-upload">
-        <button type="button" className="text-button" onClick={() => file.current?.click()}>
-          add a zip someone sent you
-        </button>
+        <Explained id="share.upload">
+          <button type="button" className="text-button" onClick={() => file.current?.click()}>
+            add a zip someone sent you
+          </button>
+        </Explained>
         <input ref={file} type="file" accept=".zip,application/zip" hidden onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
         {note && <span className="label label--muted">{note}</span>}
       </div>
@@ -72,10 +75,14 @@ export default function SharePanel() {
             lines={[mb(z.size), new Date(z.modified).toLocaleString()]}
             actions={
               <>
-                <a className="text-button" href={`/api/workspace/file?path=${encodeURIComponent(`shared/${z.name}`)}&download=1`} download>
-                  download
-                </a>
-                <CommandPreview command={`unzip ${z.name}`} onRun={() => void run(`unzip ${z.name}`, `unzip ${z.name}`)} running={busy === `unzip ${z.name}`} label="unzip" />
+                <Explained id="share.download">
+                  <a className="text-button" href={`/api/workspace/file?path=${encodeURIComponent(`shared/${z.name}`)}&download=1`} download>
+                    download
+                  </a>
+                </Explained>
+                <Explained id="share.unzip">
+                  <CommandPreview command={`unzip ${z.name}`} onRun={() => void run(`unzip ${z.name}`, `unzip ${z.name}`)} running={busy === `unzip ${z.name}`} label="unzip" />
+                </Explained>
               </>
             }
           />
@@ -93,7 +100,11 @@ export default function SharePanel() {
               name={a.name}
               badges={<Badge>{a.kind}</Badge>}
               lines={[a.license ?? '', a.kind === 'fused' ? 'a whole model: large; the adapter rebuilds it' : '']}
-              actions={<CommandPreview command={cmd} onRun={() => void run(cmd, cmd)} running={busy === cmd} label="zip" />}
+              actions={
+                <Explained id="share.zip">
+                  <CommandPreview command={cmd} onRun={() => void run(cmd, cmd)} running={busy === cmd} label="zip" />
+                </Explained>
+              }
             />
           )
         })}

@@ -7,6 +7,7 @@ import { simpleRow, type ChatRow } from '@shared/chatRow'
 import ModelSelect from './ModelSelect'
 import CommandPreview from './CommandPreview'
 import { Keep, Reject } from '../icons'
+import { Explained } from '../explain/Explained'
 
 interface Props {
   dataset: string
@@ -251,7 +252,9 @@ export default function DataGenerator({ dataset, examples }: Props) {
         <pre>{system}</pre>
       </details>
       <div className="generator__run">
-        <CommandPreview command={preview} onRun={() => void generate()} running={running} label="generate" />
+        <Explained id="data.generate">
+          <CommandPreview command={preview} onRun={() => void generate()} running={running} label="generate" />
+        </Explained>
         {running && (
           <button type="button" className="text-button" onClick={() => abort.current?.abort()}>
             stop
@@ -280,12 +283,16 @@ export default function DataGenerator({ dataset, examples }: Props) {
                 <span className="label">kept · in {dataset}/train.jsonl</span>
               ) : (
                 <>
-                  <button type="button" className="icon-text" onClick={() => void keep(c)} disabled={c.state !== 'open'} title={`data append ${dataset} '<row>' --source ${model}${raw ? ` --from raw/${raw}` : ''}`}>
-                    <Keep size={1} /> keep
-                  </button>
-                  <button type="button" className="icon-text" onClick={() => patch(c.id, { state: 'rejected' })} disabled={c.state !== 'open'}>
-                    <Reject size={1} /> reject
-                  </button>
+                  <Explained id="data.keep">
+                    <button type="button" className="icon-text" onClick={() => void keep(c)} disabled={c.state !== 'open'}>
+                      <Keep size={1} /> keep
+                    </button>
+                  </Explained>
+                  <Explained id="data.reject">
+                    <button type="button" className="icon-text" onClick={() => patch(c.id, { state: 'rejected' })} disabled={c.state !== 'open'}>
+                      <Reject size={1} /> reject
+                    </button>
+                  </Explained>
                 </>
               )}
             </div>

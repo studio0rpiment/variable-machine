@@ -6,18 +6,19 @@ interface Props {
   confirmLabel?: string
   onConfirm: () => void
   className?: string
+  'aria-describedby'?: string
 }
 
 /**
  * Two-step destructive action, inline: click once to arm ("really? yes / no"),
  * again to fire. No modal. Arms reset on "no" or after firing.
  */
-export default function ConfirmButton({ label, confirmLabel = 'really?', onConfirm, className = '' }: Props) {
+export default function ConfirmButton({ label, confirmLabel = 'really?', onConfirm, className = '', 'aria-describedby': describedBy }: Props) {
   const [armed, setArmed] = useState(false)
 
   if (!armed) {
     return (
-      <button type="button" className={`text-button text-button--danger ${className}`.trim()} onClick={() => setArmed(true)}>
+      <button type="button" className={`text-button text-button--danger ${className}`.trim()} onClick={() => setArmed(true)} aria-describedby={describedBy}>
         {label}
       </button>
     )

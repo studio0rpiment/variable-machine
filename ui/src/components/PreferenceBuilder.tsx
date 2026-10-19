@@ -6,6 +6,7 @@ import { joinWords } from '@shared/quote'
 import type { PrefRow } from '@shared/chatRow'
 import CommandPreview from './CommandPreview'
 import { Keep, Reject } from '../icons'
+import { Explained } from '../explain/Explained'
 
 interface LogEntry {
   timestamp: string
@@ -133,13 +134,15 @@ export default function PreferenceBuilder({ dataset, existing }: Props) {
             <option key={m}>{m}</option>
           ))}
         </select>
-        <CommandPreview
-          command={`data append ${dataset} '<pair>' --source chat-log   × ${rulePairs.length}`}
-          onRun={() => void applyRule()}
-          disabled={!rulePairs.length}
-          running={busy === 'rule'}
-          label="append pairs"
-        />
+        <Explained id="data.rule">
+          <CommandPreview
+            command={`data append ${dataset} '<pair>' --source chat-log   × ${rulePairs.length}`}
+            onRun={() => void applyRule()}
+            disabled={!rulePairs.length}
+            running={busy === 'rule'}
+            label="append pairs"
+          />
+        </Explained>
       </div>
 
       <ol className="prefs__groups">
@@ -156,12 +159,16 @@ export default function PreferenceBuilder({ dataset, existing }: Props) {
                       <span className="label label--muted">{a.model}{role ? ` · ${role}` : ''}</span>
                       <p>{a.answer}</p>
                       <div className="candidate__actions">
-                        <button type="button" className="icon-text" onClick={() => setPick((x) => ({ ...x, [g.prompt]: { ...p, chosen: a.model, rejected: p.rejected === a.model ? undefined : p.rejected } }))}>
-                          <Keep size={1} /> chosen
-                        </button>
-                        <button type="button" className="icon-text" onClick={() => setPick((x) => ({ ...x, [g.prompt]: { ...p, rejected: a.model, chosen: p.chosen === a.model ? undefined : p.chosen } }))}>
-                          <Reject size={1} /> rejected
-                        </button>
+                        <Explained id="data.chosen">
+                          <button type="button" className="icon-text" onClick={() => setPick((x) => ({ ...x, [g.prompt]: { ...p, chosen: a.model, rejected: p.rejected === a.model ? undefined : p.rejected } }))}>
+                            <Keep size={1} /> chosen
+                          </button>
+                        </Explained>
+                        <Explained id="data.rejected">
+                          <button type="button" className="icon-text" onClick={() => setPick((x) => ({ ...x, [g.prompt]: { ...p, rejected: a.model, chosen: p.chosen === a.model ? undefined : p.chosen } }))}>
+                            <Reject size={1} /> rejected
+                          </button>
+                        </Explained>
                       </div>
                     </div>
                   )

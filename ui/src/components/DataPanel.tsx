@@ -12,6 +12,7 @@ import DataGenerator from './DataGenerator'
 import ImportCard from './ImportCard'
 import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
+import { Explained } from '../explain/Explained'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
@@ -141,7 +142,9 @@ export default function DataPanel() {
               ))}
             </div>
           </div>
-          <CommandPreview command={newCmd} onRun={() => void run('new', newCmd).then(() => setSelected(newName))} disabled={!NAME.test(newName)} running={busy === 'new'} label="create" />
+          <Explained id="data.new">
+            <CommandPreview command={newCmd} onRun={() => void run('new', newCmd).then(() => setSelected(newName))} disabled={!NAME.test(newName)} running={busy === 'new'} label="create" />
+          </Explained>
         </Manifest>
       </div>
 
@@ -165,19 +168,27 @@ export default function DataPanel() {
               )}
             </ul>
             <div className="data-actions">
-              <CommandPreview command={`data validate ${current.name}`} onRun={() => void run('validate', `data validate ${current.name}`)} running={busy === 'validate'} label="validate" />
-              <CommandPreview command={`data count ${current.name}`} onRun={() => void run('count', `data count ${current.name}`)} running={busy === 'count'} label="count" />
+              <Explained id="data.validate">
+                <CommandPreview command={`data validate ${current.name}`} onRun={() => void run('validate', `data validate ${current.name}`)} running={busy === 'validate'} label="validate" />
+              </Explained>
+              <Explained id="data.count">
+                <CommandPreview command={`data count ${current.name}`} onRun={() => void run('count', `data count ${current.name}`)} running={busy === 'count'} label="count" />
+              </Explained>
               <div className="split">
                 <label className="split__slider">
                   <span className="label label--muted">valid {Math.round(validFrac * 100)}%</span>
-                  <input type="range" min={0.05} max={0.3} step={0.05} value={validFrac} onChange={(e) => setValidFrac(Number(e.target.value))} />
+                  <Explained id="data.split">
+                    <input type="range" min={0.05} max={0.3} step={0.05} value={validFrac} onChange={(e) => setValidFrac(Number(e.target.value))} />
+                  </Explained>
                 </label>
-                <CommandPreview
-                  command={`data split ${current.name} --valid ${validFrac.toFixed(2)}`}
-                  onRun={() => void run('split', `data split ${current.name} --valid ${validFrac.toFixed(2)}`)}
-                  running={busy === 'split'}
-                  label="split"
-                />
+                <Explained id="data.split">
+                  <CommandPreview
+                    command={`data split ${current.name} --valid ${validFrac.toFixed(2)}`}
+                    onRun={() => void run('split', `data split ${current.name} --valid ${validFrac.toFixed(2)}`)}
+                    running={busy === 'split'}
+                    label="split"
+                  />
+                </Explained>
               </div>
             </div>
           </div>

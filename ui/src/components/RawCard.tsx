@@ -3,6 +3,7 @@ import { joinWords } from '@shared/quote'
 import { RAW_SOURCES } from '@shared/library'
 import Manifest from './Manifest'
 import CommandPreview from './CommandPreview'
+import { Explained } from '../explain/Explained'
 
 type Kind = keyof typeof RAW_SOURCES
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
@@ -45,7 +46,9 @@ export default function RawCard({ onRun, busy }: { onRun: (line: string) => void
           <input type="text" value={license} onChange={(e) => setLicense(e.target.value)} placeholder="e.g. CC BY 4.0" />
         </label>
       )}
-      <CommandPreview command={line} onRun={() => onRun(line)} disabled={!ok} running={busy} label="fetch" />
+      <Explained id="data.raw">
+        <CommandPreview command={line} onRun={() => onRun(line)} disabled={!ok} running={busy} label="fetch" />
+      </Explained>
     </Manifest>
   )
 }

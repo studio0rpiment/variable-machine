@@ -4,6 +4,7 @@ import { joinWords } from '@shared/quote'
 import { DATA_SOURCES, OASST1, SMOLTALK } from '@shared/library'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
+import { Explained } from '../explain/Explained'
 
 type Source = 'dolly' | 'oasst1' | 'smoltalk' | 'example'
 
@@ -98,7 +99,9 @@ export default function ImportCard({ onRun, busy }: { onRun: (line: string, name
           </label>
         )}
       </div>
-      <CommandPreview command={line} onRun={() => onRun(line, name)} disabled={!NAME.test(name) || (source === 'example' && !example)} running={busy} label="import" />
+      <Explained id="data.import">
+        <CommandPreview command={line} onRun={() => onRun(line, name)} disabled={!NAME.test(name) || (source === 'example' && !example)} running={busy} label="import" />
+      </Explained>
     </Manifest>
   )
 }

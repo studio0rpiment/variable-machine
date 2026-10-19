@@ -8,6 +8,7 @@ import { joinWords } from '@shared/quote'
 import ModelfileEditor from './ModelfileEditor'
 import CommandPreview from './CommandPreview'
 import ModelSelect from './ModelSelect'
+import { Explained } from '../explain/Explained'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
@@ -94,7 +95,9 @@ export default function ModelfilePanel({ startFrom, onChat }: Props) {
   return (
     <section className="panel" aria-label="modelfile">
       <div className="modelfile-head">
-        <ModelSelect label="start from" models={models} value={base} onChange={(v) => void begin(v)} onOpen={reload} />
+        <Explained id="modelfile.startFrom">
+          <ModelSelect label="start from" models={models} value={base} onChange={(v) => void begin(v)} onOpen={reload} />
+        </Explained>
         <label className="field">
           <span className="label label--muted">name</span>
           <input type="text" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} spellCheck={false} />
@@ -110,11 +113,15 @@ export default function ModelfilePanel({ startFrom, onChat }: Props) {
       </p>
 
       <div className="modelfile__run">
-        <CommandPreview command={command} onRun={() => void create()} disabled={!valid || !text.trim()} running={state === 'creating'} label="create" />
+        <Explained id="modelfile.create">
+          <CommandPreview command={command} onRun={() => void create()} disabled={!valid || !text.trim()} running={state === 'creating'} label="create" />
+        </Explained>
         {state === 'created' && (
-          <button type="button" className="text-button" onClick={() => onChat(createdName)}>
-            chat with {createdName}
-          </button>
+          <Explained id="modelfile.chat">
+            <button type="button" className="text-button" onClick={() => onChat(createdName)}>
+              chat with {createdName}
+            </button>
+          </Explained>
         )}
         {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
       </div>

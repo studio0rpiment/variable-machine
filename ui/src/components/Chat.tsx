@@ -4,6 +4,7 @@ import { useOllamaModels } from '../hooks/useOllamaModels'
 import { ChatMark, Run, Stop } from '../icons'
 import ModelSelect from './ModelSelect'
 import { OLLAMA_LIBRARY } from '@shared/library'
+import { Explained } from '../explain/Explained'
 
 interface Exchange {
   id: number
@@ -120,16 +121,20 @@ export default function Chat({ request }: Props) {
         <span className="label">chat</span>
         {error && <span className="label label--muted">· {error}</span>}
         {n < MAX_COLUMNS && (
-          <button type="button" className="text-button" onClick={() => setColumns((cs) => [...cs, { key: nextId++, model: cs.at(-1)?.model ?? '', log: [] }])}>
-            + column
-          </button>
+          <Explained id="chat.addColumn">
+            <button type="button" className="text-button" onClick={() => setColumns((cs) => [...cs, { key: nextId++, model: cs.at(-1)?.model ?? '', log: [] }])}>
+              + column
+            </button>
+          </Explained>
         )}
       </header>
       <div className="chat__columns" style={{ ['--cols' as string]: n }}>
         {columns.map((c, i) => (
           <div className="chat__column" key={c.key}>
             <div className="chat__column-head">
-              <ModelSelect label={LETTERS[i]} models={models} value={c.model} onChange={(v) => patchCol(c.key, (x) => ({ ...x, model: v }))} onOpen={reload} />
+              <Explained id="chat.model">
+                <ModelSelect label={LETTERS[i]} models={models} value={c.model} onChange={(v) => patchCol(c.key, (x) => ({ ...x, model: v }))} onOpen={reload} />
+              </Explained>
               {n > 2 && (
                 <button type="button" className="text-button" onClick={() => setColumns((cs) => cs.filter((x) => x.key !== c.key))} aria-label={`remove column ${LETTERS[i]}`}>
                   remove
@@ -176,9 +181,12 @@ export default function Chat({ request }: Props) {
             <Stop />
           </button>
         ) : (
-          <button type="button" className="icon-button" onClick={send} disabled={!prompt.trim()} title="send to every column" aria-label="send">
-            <Run />
-          </button>
+          <Explained id="chat.send">
+            {/* aria-disabled, not disabled, so the explanation flag still opens on hover (see CommandPreview) */}
+            <button type="button" className="icon-button" onClick={send} aria-disabled={!prompt.trim() || undefined} aria-label="send">
+              <Run />
+            </button>
+          </Explained>
         )}
       </div>
     </section>
