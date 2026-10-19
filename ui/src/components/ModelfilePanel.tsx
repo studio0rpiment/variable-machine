@@ -74,7 +74,7 @@ function moving(change: () => void) {
 }
 
 /** One side of the comparison. */
-function AnswerColumn({ label, model, a }: { label: string; model: string; a: Answer }) {
+function AnswerColumn({ label, model, a, placeholder }: { label: string; model: string; a: Answer; placeholder?: string }) {
   return (
     <div className="mf-answer">
       <span className="label label--muted">{label}</span>
@@ -85,7 +85,11 @@ function AnswerColumn({ label, model, a }: { label: string; model: string; a: An
           <p>{a.thinking}</p>
         </details>
       )}
-      <p className={`mf-answer__text ${a.state === 'streaming' ? 'is-streaming' : ''}`.trim()}>{a.text || (a.state === 'idle' ? '' : '…')}</p>
+      {a.state === 'idle' && !a.text && placeholder ? (
+        <p className="mf-answer__text mf-answer__text--waiting">{placeholder}</p>
+      ) : (
+        <p className={`mf-answer__text ${a.state === 'streaming' ? 'is-streaming' : ''}`.trim()}>{a.text || '…'}</p>
+      )}
       {a.meta && <span className="label label--muted">{a.meta}</span>}
     </div>
   )
@@ -181,7 +185,8 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
   const topRef = useRef<HTMLDivElement>(null)
   const chosenKey = chosen === null ? '' : chosen === 'own' ? 'own' : chosen.id
   useLayoutEffect(() => {
-    topRef.current?.scrollIntoView({ block: 'nearest' })
+    // Once chosen, the intro has done its job: the chosen card goes to the top so the answers below it are in view.
+    topRef.current?.scrollIntoView({ block: chosen ? 'start' : 'nearest' })
   }, [chosenKey])
 
   /** The student's own variants: Modelfiles this tab wrote (not the ones Export writes for trained models). */
@@ -330,15 +335,46 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
               <span className="mf-chosen__blurb">{chosen === 'own' ? OWN.blurb : chosen.blurb}</span>
               {chosen !== 'own' && chosen.followsWell && <span className="mf-preset__follows label label--muted">follows well: {chosen.followsWell}</span>}
             </div>
-            <ol className="mf-steps">
-              <li>read what {chosen === 'own' ? 'your words add' : 'this preset adds'} to the model below, and change anything you like</li>
-              <li>press make variant: your words and the model become a new model of their own</li>
-              <li>the original and your variant answer the same question, side by side</li>
-            </ol>
+
+            <section className="mf-part" aria-label="try it">
+              <h2 className="panel__title label mf-lead-plain">try it: press the line below, then compare the two answers</h2>
+              <div className="mf-make mf-make--one">
+                <label className="field mf-make__sample">
+                  <span className="label label--muted">a question to ask both</span>
+                  <input type="text" value={sample} onChange={(e) => setSample(e.target.value)} placeholder="e.g. How do bees make honey?" />
+                </label>
+              </div>
+                           <div className="mf-make__run">
+                <Explained id="modelfile.create">
+                  <CommandPreview command={command} onRun={() => void make()} disabled={!valid} running={state === 'making'} label="make variant and ask both" />
+                </Explained>
+                {made && (
+                  <Explained id="modelfile.try">
+                    <button type="button" className="text-button" onClick={() => sample.trim() && !asking && ask(sample.trim(), made)} aria-disabled={!sample.trim() || asking || undefined}>
+                      ask both again
+                    </button>
+                  </Explained>
+                )}
+                {made && onChatPair && (
+                  <Explained id="modelfile.chat">
+                    <button type="button" className="text-button" onClick={() => onChatPair(made.base, made.name)}>
+                      keep talking in Chat
+                    </button>
+                  </Explained>
+                )}
+                {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
+              </div>
+              {/* Always here, so it's clear where the answers will appear. */}
+              <div className="mf-compare">
+                <AnswerColumn label="the original" model={made?.base ?? form.base} a={answers.original} placeholder={`${form.base || 'the model'} as it is. Its answer appears here.`} />
+                <AnswerColumn label="your variant" model={made?.name ?? name} a={answers.variant} placeholder={`${form.base || 'the model'} with ${chosen === 'own' ? 'your words' : 'this preset'} added. Its answer appears here.`} />
+              </div>
+
+            </section>
 
             <section className="mf-part" ref={formRef} aria-label="what it adds">
               <h2 className="panel__title label mf-lead-plain">
-                {chosen === 'own' ? 'what you add' : 'what this preset adds'} to {form.base || 'the model'}
+                {chosen === 'own' ? 'what you add' : 'what this preset adds'} to {form.base || 'the model'}: change anything
               </h2>
               <div className="mf-form">
                 <div className="mf-form__row">
@@ -401,52 +437,17 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                     </label>
                   </div>
                 </div>
-              </div>
-
-            </section>
-
-            <section className="mf-part" aria-label="try it">
-              <h2 className="panel__title label mf-lead-plain">try it: make the variant, then ask both</h2>
-              <div className="mf-make">
-                <Explained id="modelfile.name">
-                  <label className="field mf-make__name">
-                    <span className="label label--muted">name of the variant</span>
-                    <input type="text" value={name} onChange={(e) => (setNameTouched(true), setName(e.target.value.toLowerCase()))} spellCheck={false} />
-                  </label>
-                </Explained>
-                <label className="field mf-make__sample">
-                  <span className="label label--muted">a question to ask both</span>
-                  <input type="text" value={sample} onChange={(e) => setSample(e.target.value)} placeholder="e.g. How do bees make honey?" />
-                </label>
-              </div>
-              {name === bare(form.base) && <p className="label label--muted">a variant needs a name of its own</p>}
-              <div className="mf-make__run">
-                <Explained id="modelfile.create">
-                  <CommandPreview command={command} onRun={() => void make()} disabled={!valid} running={state === 'making'} label="make variant" />
-                </Explained>
-                {made && (
-                  <Explained id="modelfile.try">
-                    <button type="button" className="text-button" onClick={() => sample.trim() && !asking && ask(sample.trim(), made)} aria-disabled={!sample.trim() || asking || undefined}>
-                      ask both again
-                    </button>
+                <div className="mf-make mf-make--one">
+                  <Explained id="modelfile.name">
+                    <label className="field mf-make__name">
+                      <span className="label label--muted">name of the variant</span>
+                      <input type="text" value={name} onChange={(e) => (setNameTouched(true), setName(e.target.value.toLowerCase()))} spellCheck={false} />
+                    </label>
                   </Explained>
-                )}
-                {made && onChatPair && (
-                  <Explained id="modelfile.chat">
-                    <button type="button" className="text-button" onClick={() => onChatPair(made.base, made.name)}>
-                      keep talking in Chat
-                    </button>
-                  </Explained>
-                )}
-                {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
-              </div>
-              {made && (
-                <div className="mf-compare">
-                  <AnswerColumn label="the original" model={made.base} a={answers.original} />
-                  <AnswerColumn label="your variant" model={made.name} a={answers.variant} />
                 </div>
-              )}
-
+                {name === bare(form.base) && <p className="label label--muted">a variant needs a name of its own</p>}
+              </div>
+              <p className="mf-next">Changed something? Press make variant and ask both again, above.</p>
             </section>
           </div>
 

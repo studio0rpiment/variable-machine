@@ -589,3 +589,7 @@ a.text-button { text-decoration: none; }
 .shell__top { view-transition-name: vm-top; background: var(--bg); }
 .dock { view-transition-name: vm-dock; background: var(--bg); }
 ::view-transition-group(vm-top), ::view-transition-group(vm-dock) { z-index: 1; animation: none; }
+.mf-next--strong { margin: 0; color: var(--line); max-width: 52rem; }
+.mf-make--one { grid-template-columns: minmax(0, 32rem); }
+.mf-answer { min-height: 8rem; }
+.mf-answer__text--waiting { color: var(--muted); }
