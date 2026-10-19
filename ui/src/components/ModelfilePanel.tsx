@@ -69,9 +69,19 @@ const glide = (id: string): CSSProperties => ({ viewTransitionName: `preset-${id
 
 /** Change the layout with the cards gliding to their new places, where the browser can and the student hasn't asked for less motion. */
 function moving(change: () => void) {
-  const d = document as Document & { startViewTransition?: (cb: () => void) => unknown }
-  if (d.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) d.startViewTransition(() => flushSync(change))
-  else change()
+  type Transition = { ready: Promise<void>; finished: Promise<void>; updateCallbackDone: Promise<void> }
+  const d = document as Document & { startViewTransition?: (cb: () => void) => Transition }
+  if (!d.startViewTransition || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return change()
+  // The browser can skip or abort a transition (a page still settling, a background tab); the change must happen anyway.
+  let ran = false
+  const t = d.startViewTransition(() => {
+    ran = true
+    flushSync(change)
+  })
+  const ensure = () => !ran && ((ran = true), change())
+  t.ready.catch(ensure)
+  t.updateCallbackDone.catch(ensure)
+  t.finished.catch(ensure)
 }
 
 /** One side of the comparison. */
@@ -128,6 +138,8 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
   const [made, setMade] = useState<{ name: string; base: string } | null>(null)
   const [answers, setAnswers] = useState<{ original: Answer; variant: Answer }>({ original: EMPTY, variant: EMPTY })
   const [yours, setYours] = useState<{ name: string; from: string; system?: string }[]>([])
+  /** variants made here and not kept yet: the helper removes them when Variable Machine stops */
+  const [unsaved, setUnsaved] = useState<Set<string>>(new Set())
   const aborts = useRef<AbortController[]>([])
   const asked = useRef(0)
   const formRef = useRef<HTMLElement>(null)
@@ -209,7 +221,16 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
       out.push({ name: f.name.replace(/\.Modelfile$/, ''), from: p.from, system: p.system })
     }
     setYours(out)
+    try {
+      setUnsaved(new Set(JSON.parse((await readFile('modelfiles/unsaved.json')) ?? '[]') as string[]))
+    } catch {
+      setUnsaved(new Set())
+    }
   }, [])
+  const keepVariant = (n: string) => {
+    sendEvent({ type: 'modelfile.keep', name: n })
+    setUnsaved((u) => new Set([...u].filter((x) => x !== n)))
+  }
   useEffect(() => void loadYours(), [loadYours])
   useHelperEvent(
     'workspace.changed',
@@ -389,6 +410,17 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                   <CommandPreview command={command} onRun={() => void make()} disabled={!valid} running={state === 'making'} label="make variant" />
                 </Explained>
                 {made && state === 'made' && <span className="label label--muted">made: {made.name}</span>}
+                {made && unsaved.has(made.name) && (
+                  <span className="mf-temp">
+                    <span className="label label--muted">temporary: removed when Variable Machine stops</span>
+                    <Explained id="modelfile.keep">
+                      <button type="button" className="text-button" onClick={() => keepVariant(made.name)}>
+                        keep it
+                      </button>
+                    </Explained>
+                  </span>
+                )}
+                {made && state === 'made' && !unsaved.has(made.name) && <span className="label label--muted">kept</span>}
                 {made && state === 'idle' && <span className="label label--muted">changed since you made it: make it again to try the change</span>}
                 {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
               </div>
@@ -426,6 +458,16 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                 <AnswerColumn label="the original" model={made?.base ?? form.base} a={answers.original} placeholder={`${form.base || 'the model'} as it is. Its answer appears here.`} />
                 <AnswerColumn label="your variant" model={made?.name ?? name} a={answers.variant} placeholder={`${form.base || 'the model'} with ${chosen === 'own' ? 'your words' : 'this preset'} added. Its answer appears here.`} />
               </div>
+            </section>
+
+            <section className="mf-part mf-diy" aria-label="do it yourself">
+              <h2 className="panel__title label mf-lead-plain">do it yourself</h2>
+              <p className="mf-next">
+                Below you change what goes into the variant: the SYSTEM instructions, the temperature, and the MESSAGE example to imitate, as well as the model it starts from and the variant's name. Then make the variant again (step 1) and ask both again.
+              </p>
+              <p className="mf-next">
+                All of it is one text file and one command: "See the Modelfile this makes", at the bottom, shows the file. You can also write one in a text editor, save it in workspace/modelfiles, and type <code>ollama create &lt;name&gt; -f workspace/modelfiles/&lt;name&gt;.Modelfile</code> in the terminal, then <code>ollama run-once &lt;name&gt; "a question"</code> to try it.
+              </p>
             </section>
 
             <section className="mf-part" ref={formRef} aria-label="what it adds">
@@ -524,12 +566,6 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
         </div>
       )}
 
-      <section className="mf-part mf-diy" aria-label="do it yourself">
-        <h2 className="panel__title label mf-lead-plain">do it yourself</h2>
-        <p className="mf-next">
-          Everything above is one text file and one command. Open the Modelfile below, copy it into a text editor, change it, and save it in the workspace/modelfiles folder. Then type <code>ollama create &lt;name&gt; -f workspace/modelfiles/&lt;name&gt;.Modelfile</code> in the terminal below, and <code>ollama run-once &lt;name&gt; "a question"</code> to try it.
-        </p>
-      </section>
       <div className="folds">
         <details className="fold">
           <summary className="fold__summary">
@@ -569,13 +605,22 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
               <Manifest
                 key={y.name}
                 name={y.name}
-                lines={[`from ${y.from}`]}
+                lines={[`from ${y.from}`, ...(unsaved.has(y.name) ? ['temporary: removed when Variable Machine stops'] : [])]}
                 actions={
-                  <Explained id="modelfile.open">
-                    <button type="button" className="text-button" onClick={() => void open(y.name)}>
-                      open
-                    </button>
-                  </Explained>
+                  <>
+                    <Explained id="modelfile.open">
+                      <button type="button" className="text-button" onClick={() => void open(y.name)}>
+                        open
+                      </button>
+                    </Explained>
+                    {unsaved.has(y.name) && (
+                      <Explained id="modelfile.keep">
+                        <button type="button" className="text-button" onClick={() => keepVariant(y.name)}>
+                          keep it
+                        </button>
+                      </Explained>
+                    )}
+                  </>
                 }
               >
                 {y.system && <p className="model-about">{y.system.length > 140 ? y.system.slice(0, 137) + '…' : y.system}</p>}

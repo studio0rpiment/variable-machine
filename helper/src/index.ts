@@ -13,6 +13,7 @@ import { serveWorkspaceApi } from './workspace.ts'
 import { stopPipeline } from './pipeline.ts'
 import { ollamaPost } from './ollama.ts'
 import type { ClientEvent } from './shared/events.ts'
+import { keep, sweep } from './temporary.ts'
 
 for (const dir of WORKSPACE_DIRS) fs.mkdirSync(path.join(WORKSPACE, dir), { recursive: true })
 
@@ -76,6 +77,9 @@ wss.on('connection', (ws) => {
       case 'modelfile.save':
         saveModelfile(event.name, event.text)
         break
+      case 'modelfile.keep':
+        void keep(event.name)
+        break
       case 'terminal.stop':
         stopRunning()
         break
@@ -115,6 +119,20 @@ setInterval(() => {
 
 watchWorkspace()
 void probe()
+
+// Temporary variants: removed when Variable Machine stops, and at start for any a hard stop left behind.
+const tidy = (names: string[]) => names.length && console.log(`removed temporary variants: ${names.join(', ')}`)
+void sweep().then(tidy, () => {})
+let stopping = false
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+  process.on(signal, () => {
+    if (stopping) return process.exit(0) // a second Ctrl-C doesn't wait
+    stopping = true
+    void sweep()
+      .then(tidy, () => {})
+      .finally(() => process.exit(0))
+  })
+}
 
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code !== 'EADDRINUSE') throw err

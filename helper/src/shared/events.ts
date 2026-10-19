@@ -35,6 +35,8 @@ export type ClientEvent =
   | { type: 'command'; id: string; line: string }
   /** Write workspace/modelfiles/<name>.Modelfile (queued with commands, so a following create sees it). */
   | { type: 'modelfile.save'; name: string; text: string }
+  /** Keep a variant made on the Modelfile tab; otherwise it's removed when Variable Machine stops. */
+  | { type: 'modelfile.keep'; name: string }
   | { type: 'terminal.stop' }
   | { type: 'pipeline.run'; recipe: string; params: unknown }
   | { type: 'pipeline.stop'; runId: string }

@@ -96,6 +96,10 @@ export const EXPLAIN = {
     title: 'Open',
     text: 'Loads this variant back into the form, so you can change its words and make it again.',
   },
+  'modelfile.keep': {
+    title: 'Keep it',
+    text: 'Variants you make here are temporary: when Variable Machine stops, they are removed so a class of experiments doesn\'t pile up on the computer. Keep the ones you want to come back to; they stay in Ollama and in workspace/modelfiles until you remove them yourself.',
+  },
   /* ---- Data ---- */
   'data.import': {
     title: 'Import',

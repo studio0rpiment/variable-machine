@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
+import { markIfNew } from './temporary.ts'
 import { status } from './status.ts'
 import { splitWords } from './shared/quote.ts'
 import { refuse, scopePath, spawnStreamed } from './run.ts'
@@ -152,6 +153,7 @@ export const MODELFILE_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 export function saveModelfile(name: string, text: string) {
   if (!MODELFILE_NAME.test(name)) return print(`modelfile name must be lowercase letters, digits, . _ - : ${name}`)
   void enqueue(async () => {
+    await markIfNew(name) // made on the Modelfile tab: temporary until kept
     const file = path.join(WORKSPACE, 'modelfiles', `${name}.Modelfile`)
     await fs.mkdir(path.dirname(file), { recursive: true })
     await fs.writeFile(file, text.endsWith('\n') ? text : text + '\n')

@@ -620,3 +620,5 @@ a.text-button { text-decoration: none; }
 .shell__top .icon-button, .shell__top .text-button { color: var(--muted); background: none; }
 .shell__top .icon-button:hover, .shell__top .text-button:hover { color: var(--line); background: none; }
 .mf-diy { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); max-width: 60rem; }
+.mf-temp { display: inline-flex; align-items: baseline; gap: 0.25rem 0.75rem; flex-wrap: wrap; }
+.command-preview.is-done:not(:hover) { opacity: 0.7; }
