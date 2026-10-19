@@ -38,7 +38,12 @@ The tabs run left to right in the order you'd use them, in groups. **Start** lay
    - **llama3.2:3b:** free to download but not open-license.
 
    The rest of the curated library sits below under "pull to use", then the trains-on bases. Each card says in a plain sentence what the model was built for and who made it, what it can do, how much text it holds, and its license as read from Ollama. Anything made from a model is listed inside that model's card as a folded list of **variations**: a Modelfile variant, a trained, preference-tuned or blended model, or the same file under a second name. Two folded sections, "Understanding the model card labels" and "What kinds of models are there?", explain the words on the cards and **what kinds of models there are**, by what goes in and out, where computer vision fits, and by job, with computer vision as the way into hybrid models. Their text is in `ui/src/explain/kinds.ts`. The four starters are the `featured` entries in `helper/src/shared/library.ts`.
-3. **Modelfile.** Change a model without training. Start from any model, edit the instructions it carries, and create a variant. A column beside the text marks which lines are weights (FROM, ADAPTER) and which only travel with them (SYSTEM, PARAMETER, TEMPLATE…).
+3. **Modelfile.** Change how a model behaves with words only: no training, the same weights. It's a form, not a file editor:
+   - **instructions:** the SYSTEM line;
+   - **how adventurous:** PARAMETER temperature, plus a switch to let it pick from any word (top_k 0, top_p 1), without which high temperatures look tame;
+   - **an optional example to imitate:** a pair of MESSAGE lines.
+
+   Each field explains itself in plain language, and a note says that small models follow instructions loosely and bigger ones closely. Twelve presets (one sentence, haiku, only questions, museum label, say "I don't know", always French, careful / surprising / falling apart…) fill the form. Each says which starters follow it well, from the run recorded in `docs/presets-check.md`. "Make variant" saves the Modelfile and runs `ollama create`; then the original and the variant answer one question side by side on the same screen. Folded below: what each Modelfile line means, and the file the form makes, with weights marked. The student's own variants are listed to reopen and change.
 4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. You can:
    - import Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples, with each license read from Hugging Face at import;
    - fetch raw material (a Project Gutenberg book, or a CSV or TXT with its stated license) and have a model write rows from a passage;

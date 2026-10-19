@@ -3,7 +3,8 @@ import { parseModelfile, WEIGHTS, type Line } from '@shared/modelfile'
 
 interface Props {
   value: string
-  onChange: (text: string) => void
+  /** omit for a read-only view (the Modelfile tab shows what its form makes) */
+  onChange?: (text: string) => void
 }
 
 const NOTES: Record<string, string> = {
@@ -52,7 +53,8 @@ export default function ModelfileEditor({ value, onChange }: Props) {
           rows={rows}
           wrap="off"
           spellCheck={false}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange?.(e.target.value)}
+          readOnly={!onChange}
           aria-label="Modelfile"
         />
       </div>

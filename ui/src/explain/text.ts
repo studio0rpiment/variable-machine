@@ -16,7 +16,7 @@ export const EXPLAIN = {
   },
   'panel.modelfile': {
     title: 'Modelfile',
-    text: 'Every model comes with a short recipe card, the Modelfile, that says which numbers to load and how to use them. Only the FROM line points at the model itself: its weights, the numbers that hold what it learned. The other lines change how it behaves without changing what it knows. SYSTEM is a standing instruction it reads before every conversation, and temperature is how adventurous its word choices are. Edit the card, save it under a new name, and you have a variant to compare with the original in Chat.',
+    text: 'Change how a model behaves using only words: standing instructions, how adventurous it is, and an example to imitate. No training, and the weights stay exactly the same. Pick a preset or write your own, make the variant, and see its answer next to the original right on this screen. Behind it is a short file, the Modelfile, which you can open to see what each line does.',
   },
   'panel.data': {
     title: 'Data',
@@ -70,15 +70,31 @@ export const EXPLAIN = {
   /* ---- Modelfile ---- */
   'modelfile.startFrom': {
     title: 'Start from',
-    text: 'The model your variant is based on. Its weights stay exactly as they are: you are only changing the instructions that travel with them.',
+    text: 'The model your variant is based on. Its weights stay exactly as they are; you are only adding words. Bigger models follow instructions more closely than small ones.',
+  },
+  'modelfile.preset': {
+    title: 'Preset',
+    text: 'A ready-made set of instructions, temperature and example that changes answers in an obvious way. Pick one to fill in the form, then change anything you like.',
+  },
+  'modelfile.name': {
+    title: 'Name',
+    text: 'What the variant will be called. It appears in the Models tab, inside the card of the model it was made from.',
   },
   'modelfile.create': {
     title: 'Make the variant',
-    text: 'Saves the text as a file and asks Ollama to make a new model from it, under the name above. It takes seconds, because no weights are copied or changed: the new model uses the same numbers with new instructions.',
+    text: 'Saves your words as a Modelfile and asks Ollama to make a new model from it. It takes a second, because no weights are copied or changed: the new model uses the same numbers with your words added.',
+  },
+  'modelfile.try': {
+    title: 'Ask both',
+    text: 'Sends the same question to the original and to your variant, and shows both answers side by side, so you can see what your words changed.',
   },
   'modelfile.chat': {
-    title: 'Try it',
-    text: 'Opens Chat with the variant you just made, so you can ask it something and compare it with the original.',
+    title: 'Keep talking',
+    text: 'Opens Chat with the original and your variant side by side, for longer comparisons.',
+  },
+  'modelfile.open': {
+    title: 'Open',
+    text: 'Loads this variant back into the form, so you can change its words and make it again.',
   },
   /* ---- Data ---- */
   'data.import': {

@@ -108,7 +108,7 @@ export default function App() {
           <ModelsPanel onChat={chatWith} onModelfile={editModelfile} />
         </div>
         <div className="panel-slot" hidden={panel !== 'modelfile'}>
-          <ModelfilePanel startFrom={modelfileFrom} onChat={chatWith} />
+          <ModelfilePanel startFrom={modelfileFrom} onChatPair={chatPair} />
         </div>
         <div className="panel-slot" hidden={panel !== 'data'}>
           <DataPanel />
