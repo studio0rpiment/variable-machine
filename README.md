@@ -31,7 +31,13 @@ The first training run downloads its base model into `workspace/hf`: about 700MB
 The tabs run left to right in the order you'd use them, in groups. **Start** lays out the same path as a map, with each step explained.
 
 1. **Start.** The map: the order of the tabs, and the three ways to change a model, each in plain words.
-2. **Models.** There are two inventories: what runs (Ollama models) and what trains (Hugging Face bases). Each card says, in a plain sentence, what the model was built for and who made it. Models made here say how: trained on which data, preference-tuned, blended, or given new instructions. Variants made elsewhere quote their instructions. The card also says what the model can do (all of them write text; some think before answering or can call tools; none see images) and how much text it holds at once. It shows the license the model actually carries, read from Ollama, and flags any that aren't open-license. The curated library pulls with progress in the card and in the terminal.
+2. **Models.** The page opens with **four starters**, chosen to be as different from each other as possible:
+   - **smollm2:360m:** tiny, and the one you change.
+   - **qwen3:4b:** thinks before answering, works in many languages, writes training data here.
+   - **olmo2:7b:** fully open, with its training data published.
+   - **llama3.2:3b:** free to download but not open-license.
+
+   The rest of the curated library sits below under "pull to use", then the trains-on bases. Each card says in a plain sentence what the model was built for and who made it, what it can do, how much text it holds, and its license as read from Ollama. Anything made from a model is listed inside that model's card as a folded list of **variations**: a Modelfile variant, a trained, preference-tuned or blended model, or the same file under a second name. Two folded sections explain the words on the cards and **what kinds of models there are**, by what goes in and out, where computer vision fits, and by job, with computer vision as the way into hybrid models. Their text is in `ui/src/explain/kinds.ts`. The four starters are the `featured` entries in `helper/src/shared/library.ts`.
 3. **Modelfile.** Change a model without training. Start from any model, edit the instructions it carries, and create a variant. A column beside the text marks which lines are weights (FROM, ADAPTER) and which only travel with them (SYSTEM, PARAMETER, TEMPLATE…).
 4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. You can:
    - import Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples, with each license read from Hugging Face at import;

@@ -18,16 +18,18 @@ export interface LibraryModel {
   trainsAs?: string
   /** Shown on the 16GB tier. */
   heavy?: boolean
+  /** one of the four starters on the Models tab, chosen to differ as much as possible; the rest sit in the library */
+  featured?: string
 }
 
 export const OLLAMA_LIBRARY: LibraryModel[] = [
   {
-    tag: 'qwen3:4b', license: 'Apache 2.0', open: true, role: 'generator for synthetic data', maker: 'Alibaba (Qwen team), 2025',
-    builtFor: 'A general assistant that works in many languages. It can work through a problem step by step before it answers. Here it also writes new training examples.',
+    tag: 'smollm2:360m', featured: 'tiny, and the one you change: the Train tab starts from it', license: 'Apache 2.0', open: true, role: 'same family as the default training base', trainsAs: 'HuggingFaceTB/SmolLM2-360M-Instruct', maker: 'Hugging Face, 2024',
+    builtFor: 'A very small assistant, made to run on phones and laptops. It is quick to change, and it makes plenty of mistakes. It is the same model the Train tab starts from, so comparing before and after is fair.',
   },
   {
-    tag: 'smollm2:360m', license: 'Apache 2.0', open: true, role: 'same family as the default training base', trainsAs: 'HuggingFaceTB/SmolLM2-360M-Instruct', maker: 'Hugging Face, 2024',
-    builtFor: 'A very small assistant, made to run on phones and laptops. It is quick to change, and it makes plenty of mistakes. It is the same model the Train tab starts from, so comparing before and after is fair.',
+    tag: 'qwen3:4b', featured: 'thinks before it answers, works in many languages, and writes training examples here', license: 'Apache 2.0', open: true, role: 'generator for synthetic data', maker: 'Alibaba (Qwen team), 2025',
+    builtFor: 'A general assistant that works in many languages. It can work through a problem step by step before it answers. Here it also writes new training examples.',
   },
   {
     tag: 'smollm2:1.7b', license: 'Apache 2.0', open: true, role: 'same family as the larger training base', trainsAs: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', maker: 'Hugging Face, 2024',
@@ -42,7 +44,7 @@ export const OLLAMA_LIBRARY: LibraryModel[] = [
     builtFor: 'A general assistant that works in many languages. Its license allows research only, not commercial use, unlike its 1.5b and 7b siblings.',
   },
   {
-    tag: 'olmo2:7b', license: 'Apache 2.0', open: true, role: 'fully open, training data included (Dolma, Tulu 3)', heavy: true, maker: 'Allen Institute for AI, 2024',
+    tag: 'olmo2:7b', featured: 'fully open: its training data and recipe are published too', license: 'Apache 2.0', open: true, role: 'fully open, training data included (Dolma, Tulu 3)', heavy: true, maker: 'Allen Institute for AI, 2024',
     builtFor: 'Made for research into how language models are built. Everything is published: the training data, the code and the recipe. It is bigger and slower, and it holds less text at once.',
   },
   {
@@ -50,7 +52,7 @@ export const OLLAMA_LIBRARY: LibraryModel[] = [
     builtFor: 'Built to reason through problems at length before answering. It is a smaller model taught to copy the reasoning of DeepSeek\'s much larger R1 model, which is called distillation.',
   },
   {
-    tag: 'llama3.2:3b', license: 'Llama Community', open: false, role: 'the contrast case; never a training base', maker: 'Meta, 2024',
+    tag: 'llama3.2:3b', featured: 'free to download but not open-license: the contrast', license: 'Llama Community', open: false, role: 'the contrast case; never a training base', maker: 'Meta, 2024',
     builtFor: 'A small assistant for phones and laptops. Its license comes with Meta\'s own conditions, so it is here as the example of a model that is free to download but not open-license.',
   },
 ]
