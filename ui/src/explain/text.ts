@@ -113,6 +113,38 @@ export const EXPLAIN = {
     title: 'Start an empty dataset',
     text: 'Makes a new, empty dataset to fill yourself. "chat" holds questions with the answers you want. "preference" holds pairs of answers where you say which one is better, for the Prefer screen.',
   },
+  'data.choose': {
+    title: 'Choose a dataset',
+    text: 'Each card is one set of examples. "To imitate" sets teach a model to answer like their answers, on the Train tab; "chosen vs rejected" sets teach it to prefer one kind of answer, on the Prefer tab. Choose one to see what is in it and get it ready, or make a new one to bring in one you found.',
+  },
+  'data.contents': {
+    title: 'What is in it',
+    text: 'What the dataset is, one example row, how many rows it has and how many are set aside for testing, where the rows came from and the license they carry. The license passes on to anything you train with it.',
+  },
+  'data.ready': {
+    title: 'Get it ready',
+    text: 'Three checks before training, each a command you can see in the terminal. Check finds rows a model can\'t learn from. Count measures how long the rows are. Split sets some rows aside as the test. Training needs a split dataset; the other two are worth doing once.',
+  },
+  'data.use': {
+    title: 'Use it',
+    text: 'Takes you to another tab: Train for a dataset to imitate, Prefer for a chosen vs rejected one. That tab opens with this dataset already picked, ready to train. Come back to Data with the 3 · data tab at the top.',
+  },
+  'data.useButton': {
+    title: 'Opens another tab',
+    text: 'This leaves the Data tab and opens Train (or Prefer) with this dataset chosen. Nothing starts until you press the train line there.',
+  },
+  'data.more': {
+    title: 'Add rows',
+    text: 'More rows for this dataset. A model writes new ones in the style of the rows you already have (or from a book you brought in), and you keep the good ones. For a chosen vs rejected set, the pairs come from questions you asked two models in Chat.',
+  },
+  'data.rows': {
+    title: 'The rows',
+    text: 'Every row in the dataset, as training will read it: the question and the answer it should learn. "valid" shows the rows set aside for testing. Problems lists rows a model can\'t learn from.',
+  },
+  'data.all': {
+    title: 'All datasets',
+    text: 'Back to every dataset as cards, where you can choose another or make a new one.',
+  },
   'data.hf': {
     title: 'Bring it in from Hugging Face',
     text: 'Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns.',

@@ -651,3 +651,5 @@ a.text-button { text-decoration: none; }
 .mf-compare--three { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: none; }
 .mf-answer--data { border-style: dotted; }
 @media (max-width: 64rem) { .mf-compare--three { grid-template-columns: 1fr; } }
+.mf-flagged { width: fit-content; cursor: help; }
+.mf-flagged:focus-visible { outline: 1px solid var(--line); outline-offset: 3px; }

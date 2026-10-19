@@ -159,7 +159,9 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
 
       {!selected ? (
         <>
-          <h2 className="panel__title label mf-lead-plain">1 · choose a dataset, or make a new one</h2>
+          <Explained id="data.choose">
+            <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>1 · choose a dataset, or make a new one</h2>
+          </Explained>
           <p className="mf-next">Then you'll see what's in it, get it ready, and use it to train a model. To find others, on Hugging Face or anywhere, choose "make a new one": it shows where to look and how to bring them in.</p>
           <div className="mf-presets">
             {sets.map(card)}
@@ -246,7 +248,9 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 </div>
 
                 <section className="mf-part" aria-label="what's in it">
-                  <h2 className="panel__title label mf-lead-plain">what's in it</h2>
+                  <Explained id="data.contents">
+                    <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>what's in it</h2>
+                  </Explained>
                   <dl className="mf-goes">
                     <dt>what it is</dt>
                     <dd>{describeDataset(current)}</dd>
@@ -294,7 +298,9 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 </section>
 
                 <section className="mf-part" aria-label="get it ready">
-                  <h2 className="panel__title label mf-lead-plain">2 · get it ready: check it, count it, split it</h2>
+                  <Explained id="data.ready">
+                    <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>2 · get it ready: check it, count it, split it</h2>
+                  </Explained>
                   <div className="data-ready">
                     <p className="mf-next">{READY.check}</p>
                     <Explained id="data.validate">
@@ -325,13 +331,19 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 </section>
 
                 <section className="mf-part" aria-label="use it">
-                  <h2 className="panel__title label mf-lead-plain">3 · use it</h2>
+                  <Explained id="data.use">
+                    <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>3 · use it</h2>
+                  </Explained>
                   {current.split && current.counts.train >= 2 ? (
                     <div className="mf-make__run">
-                      <button type="button" className="text-button" onClick={() => onUse?.(current.name, isPref ? 'prefer' : 'train')}>
-                        {isPref ? 'tune a model with it on Prefer →' : 'train a model on it →'}
-                      </button>
-                      <span className="label label--muted">opens {kindOf(current).use} with {current.name} chosen</span>
+                      <Explained id="data.useButton">
+                        <button type="button" className="text-button" onClick={() => onUse?.(current.name, isPref ? 'prefer' : 'train')}>
+                          {isPref ? 'open the Prefer tab with it →' : 'open the Train tab with it →'}
+                        </button>
+                      </Explained>
+                      <span className="label label--muted">
+                        {kindOf(current).use} opens with {current.name} chosen; nothing starts until you press train there
+                      </span>
                     </div>
                   ) : (
                     <p className="mf-next">{current.counts.train < 2 ? 'It needs a few more rows first: add some below.' : 'Split it first (step 2): training needs some rows set aside to test with.'}</p>
@@ -340,18 +352,24 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
 
                 {isPref ? (
                   <section className="mf-part" aria-label="add pairs">
-                    <h2 className="panel__title label mf-lead-plain">add pairs from the chat log</h2>
+                    <Explained id="data.more">
+                      <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>add pairs from the chat log</h2>
+                    </Explained>
                     <PreferenceBuilder dataset={current.name} existing={pairs} />
                   </section>
                 ) : (
                   <section className="mf-part" aria-label="write more rows">
-                    <h2 className="panel__title label mf-lead-plain">write more rows: a model writes, you keep the good ones</h2>
+                    <Explained id="data.more">
+                      <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>write more rows: a model writes, you keep the good ones</h2>
+                    </Explained>
                     <DataGenerator dataset={current.name} examples={examples} />
                   </section>
                 )}
 
                 <section className="mf-part" aria-label="rows">
-                  <h2 className="panel__title label mf-lead-plain">the rows</h2>
+                  <Explained id="data.rows">
+                    <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>the rows</h2>
+                  </Explained>
                   <DataRows train={files.train} valid={files.valid} format={current.format ?? 'chat'} />
                 </section>
               </>
@@ -359,9 +377,11 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
           </div>
 
           <nav className="mf-rail" aria-label="other datasets">
-            <button type="button" className="text-button mf-rail__all" onClick={() => choose('')}>
-              all datasets
-            </button>
+            <Explained id="data.all">
+              <button type="button" className="text-button mf-rail__all" onClick={() => choose('')}>
+                all datasets
+              </button>
+            </Explained>
             {sets.filter((s) => s.name !== selected).map((s) => railItem(s.name, kindOf(s).group, s.name))}
             {selected !== NEW && railItem(NEW, 'a new dataset', 'make a new one')}
           </nav>
