@@ -593,3 +593,9 @@ a.text-button { text-decoration: none; }
 .mf-make--one { grid-template-columns: minmax(0, 32rem); }
 .mf-answer { min-height: 8rem; }
 .mf-answer__text--waiting { color: var(--muted); }
+/* What goes into the variant, read back before making it. */
+.mf-goes { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.35rem 1.25rem; margin: 0; padding: 0.75rem 1rem; border: 1px dashed var(--muted); max-width: 52rem; }
+.mf-goes dt { color: var(--muted); }
+.mf-goes dd { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.mf-inline { padding: 0; margin: 0; text-decoration: underline; text-underline-offset: 0.2em; }
+.mf-make__run .mf-make__sample { flex: 1 1 18rem; max-width: 32rem; }

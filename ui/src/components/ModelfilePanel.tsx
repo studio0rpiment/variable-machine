@@ -359,25 +359,54 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
               {chosen !== 'own' && chosen.followsWell && <span className="mf-preset__follows label label--muted">follows well: {chosen.followsWell}</span>}
             </div>
 
-            <section className="mf-part" aria-label="try it">
-              <h2 className="panel__title label mf-lead-plain">try it: press the line below, then compare the two answers</h2>
-              <div className="mf-make mf-make--one">
+            <section className="mf-part" aria-label="make the variant">
+              <h2 className="panel__title label mf-lead-plain">1 · make the variant: {chosen === 'own' ? 'your words go' : 'the preset goes'} into it</h2>
+              <dl className="mf-goes">
+                <dt>model</dt>
+                <dd>{form.base || 'choose one below'}</dd>
+                <dt>instructions</dt>
+                <dd>{form.system.trim() ? `“${form.system.trim()}”` : 'none yet'}</dd>
+                <dt>temperature</dt>
+                <dd>
+                  {form.temperature.toFixed(1)}
+                  {form.openChoice ? ', open choice' : ''}
+                </dd>
+                {(form.exampleUser.trim() || form.exampleAssistant.trim()) && (
+                  <>
+                    <dt>example</dt>
+                    <dd>“{form.exampleUser.trim()}” → “{form.exampleAssistant.trim()}”</dd>
+                  </>
+                )}
+              </dl>
+              <p className="mf-next">
+                These become the variant's Modelfile. They are what you'd otherwise type before every question, kept with the model so it never needs repeating.{' '}
+                <button type="button" className="text-button mf-inline" onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                  change them
+                </button>
+              </p>
+              <div className="mf-make__run">
+                <Explained id="modelfile.create">
+                  <CommandPreview command={command} onRun={() => void make()} disabled={!valid} running={state === 'making'} label="make variant" />
+                </Explained>
+                {made && state === 'made' && <span className="label label--muted">made: {made.name}</span>}
+                {made && state === 'idle' && <span className="label label--muted">changed since you made it: make it again to try the change</span>}
+                {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
+              </div>
+              {name === bare(form.base) && <p className="label label--muted">a variant needs a name of its own</p>}
+            </section>
+
+            <section className="mf-part" aria-label="ask both">
+              <h2 className="panel__title label mf-lead-plain">2 · ask the original and your variant the same question</h2>
+              <div className="mf-make__run">
                 <label className="field mf-make__sample">
                   <span className="label label--muted">a question to ask both</span>
                   <input type="text" value={sample} onChange={(e) => setSample(e.target.value)} placeholder="e.g. How do bees make honey?" />
                 </label>
-              </div>
-                           <div className="mf-make__run">
-                <Explained id="modelfile.create">
-                  <CommandPreview command={command} onRun={() => void make()} disabled={!valid} running={state === 'making'} label="make variant and ask both" />
+                <Explained id="modelfile.try">
+                  <button type="button" className="text-button" onClick={() => made && sample.trim() && !asking && ask(sample.trim(), made)} aria-disabled={!made || !sample.trim() || asking || undefined}>
+                    ask both
+                  </button>
                 </Explained>
-                {made && (
-                  <Explained id="modelfile.try">
-                    <button type="button" className="text-button" onClick={() => sample.trim() && !asking && ask(sample.trim(), made)} aria-disabled={!sample.trim() || asking || undefined}>
-                      ask both again
-                    </button>
-                  </Explained>
-                )}
                 {made && onChatPair && (
                   <Explained id="modelfile.chat">
                     <button type="button" className="text-button" onClick={() => onChatPair(made.base, made.name)}>
@@ -385,8 +414,8 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                     </button>
                   </Explained>
                 )}
-                {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
               </div>
+              {!made && <p className="mf-next">Make the variant first; then both answer. Making it asks this question straight away.</p>}
               {thinks && (
                 <p className="mf-next">
                   {form.base} thinks before it answers, which takes a while. Each question gets <code>{NO_THINK}</code> added, which asks it to keep the thinking short; a model without thinking, such as llama3.2:3b, answers at once.
@@ -397,12 +426,11 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                 <AnswerColumn label="the original" model={made?.base ?? form.base} a={answers.original} placeholder={`${form.base || 'the model'} as it is. Its answer appears here.`} />
                 <AnswerColumn label="your variant" model={made?.name ?? name} a={answers.variant} placeholder={`${form.base || 'the model'} with ${chosen === 'own' ? 'your words' : 'this preset'} added. Its answer appears here.`} />
               </div>
-
             </section>
 
             <section className="mf-part" ref={formRef} aria-label="what it adds">
               <h2 className="panel__title label mf-lead-plain">
-                {chosen === 'own' ? 'what you add' : 'what this preset adds'} to {form.base || 'the model'}: change anything
+                change {chosen === 'own' ? 'your words' : 'what the preset adds'}, then make the variant again
               </h2>
               <div className="mf-form">
                 <div className="mf-form__row">
@@ -473,9 +501,8 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                     </label>
                   </Explained>
                 </div>
-                {name === bare(form.base) && <p className="label label--muted">a variant needs a name of its own</p>}
               </div>
-              <p className="mf-next">Changed something? Press make variant and ask both again, above.</p>
+              <p className="mf-next">Changed something? Make the variant again (step 1, above), and both answer again.</p>
             </section>
           </div>
 
