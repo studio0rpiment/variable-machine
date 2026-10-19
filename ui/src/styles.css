@@ -619,3 +619,4 @@ a.text-button { text-decoration: none; }
 /* The top bar is navigation, not an action: it stays cream. */
 .shell__top .icon-button, .shell__top .text-button { color: var(--muted); background: none; }
 .shell__top .icon-button:hover, .shell__top .text-button:hover { color: var(--line); background: none; }
+.mf-diy { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); max-width: 60rem; }

@@ -430,7 +430,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
 
             <section className="mf-part" ref={formRef} aria-label="what it adds">
               <h2 className="panel__title label mf-lead-plain">
-                change {chosen === 'own' ? 'your words' : 'what the preset adds'}, then make the variant again
+                3 · when you change {chosen === 'own' ? 'your words' : 'what the preset adds'}, make the variant again
               </h2>
               <div className="mf-form">
                 <div className="mf-form__row">
@@ -524,6 +524,12 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
         </div>
       )}
 
+      <section className="mf-part mf-diy" aria-label="do it yourself">
+        <h2 className="panel__title label mf-lead-plain">do it yourself</h2>
+        <p className="mf-next">
+          Everything above is one text file and one command. Open the Modelfile below, copy it into a text editor, change it, and save it in the workspace/modelfiles folder. Then type <code>ollama create &lt;name&gt; -f workspace/modelfiles/&lt;name&gt;.Modelfile</code> in the terminal below, and <code>ollama run-once &lt;name&gt; "a question"</code> to try it.
+        </p>
+      </section>
       <div className="folds">
         <details className="fold">
           <summary className="fold__summary">
