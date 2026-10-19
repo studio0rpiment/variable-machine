@@ -3,6 +3,7 @@ import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { markIfNew } from './temporary.ts'
+import { trashCommand } from './trash.ts'
 import { status } from './status.ts'
 import { splitWords } from './shared/quote.ts'
 import { refuse, scopePath, spawnStreamed } from './run.ts'
@@ -31,6 +32,7 @@ const HELP = `commands
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused>/<name>     share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
+  trash <data|runs|adapters|merges|fused>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -114,6 +116,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'data') return dataCommand(args, line)
   if (['train', 'fuse', 'register', 'export', 'merge', 'prefer'].includes(cmd)) return recipeCommand(cmd, args, line)
   if (cmd === 'zip') return zipCommand(args)
+  if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)
   if (cmd === 'help') return print(HELP), true
   if (cmd === 'status') return printStatus()

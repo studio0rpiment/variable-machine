@@ -240,6 +240,14 @@ export const EXPLAIN = {
     title: 'How Ollama stores it',
     text: 'int8 keeps the model close to the original at about half the size. int4 is smaller again but a little rougher. fp16 keeps it exactly as it is, at full size.',
   },
+  'adapters.try': {
+    title: 'Ask',
+    text: 'Asks the original model and the trained one the same question, one after the other, and shows their answers next to the answer the dataset gives. The trained model should sound more like the data.',
+  },
+  'adapters.remove': {
+    title: 'Remove',
+    text: 'Moves this adapter to the Trash and removes the model exported from it from Ollama, to free the disk and start again. The run and its chart stay on the Train tab. You can put the adapter back from the Trash.',
+  },
   'adapters.export': {
     title: 'Make it chattable',
     text: 'Folds the adapter into its model, then gives the result to Ollama as a new model you can chat with. It takes a few seconds.',

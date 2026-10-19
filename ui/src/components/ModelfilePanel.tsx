@@ -12,6 +12,7 @@ import { PRESETS, type Preset } from '../explain/presets'
 import { FIELDS, LINE_KINDS, MODELFILE_INTRO, SIZE_NOTE } from '../explain/modelfileLines'
 import { Explained } from '../explain/Explained'
 import ModelfileEditor from './ModelfileEditor'
+import AnswerColumn, { EMPTY, type Answer } from './AnswerColumn'
 import CommandPreview from './CommandPreview'
 import ModelSelect from './ModelSelect'
 import Manifest from './Manifest'
@@ -52,43 +53,11 @@ function buildModelfile(f: Form, inherited: string[]) {
   ].join('\n')
 }
 
-interface Answer {
-  text: string
-  thinking: string
-  /** waiting: queued behind the other model (Ollama runs one at a time on a 16GB Mac) */
-  state: 'idle' | 'waiting' | 'streaming' | 'done' | 'error'
-  meta?: string
-}
-const EMPTY: Answer = { text: '', thinking: '', state: 'idle' }
 
 /** "Write your own": the card that sits with the presets and starts from blank words. */
 const OWN = { id: 'own', group: 'your own', title: 'write your own', blurb: 'Start from blank: your own instructions, how adventurous, and an example to imitate.' }
 
 const glide = (id: string) => glideAs('preset', id)
-
-/** One side of the comparison. */
-function AnswerColumn({ label, model, a, placeholder }: { label: string; model: string; a: Answer; placeholder?: string }) {
-  return (
-    <div className="mf-answer">
-      <span className="label label--muted">{label}</span>
-      <span className="mf-answer__model">{model}</span>
-      {a.thinking && (
-        <details className="exchange__thinking" open={a.state === 'streaming' && !a.text}>
-          <summary className="label">thinking</summary>
-          <p>{a.thinking}</p>
-        </details>
-      )}
-      {a.state === 'waiting' ? (
-        <p className="mf-answer__text mf-answer__text--waiting">Waiting its turn: this Mac runs one model at a time, so this answer starts as soon as the one beside it finishes.</p>
-      ) : a.state === 'idle' && !a.text && placeholder ? (
-        <p className="mf-answer__text mf-answer__text--waiting">{placeholder}</p>
-      ) : (
-        <p className={`mf-answer__text ${a.state === 'streaming' ? 'is-streaming' : ''}`.trim()}>{a.text || '…'}</p>
-      )}
-      {a.meta && <span className="label label--muted">{a.meta}</span>}
-    </div>
-  )
-}
 
 interface Props {
   /** set from elsewhere (Models → modelfile) to start from that model, or open that variant */

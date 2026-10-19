@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useHelperEvent } from '../hooks/useHelper'
 import { usePipeline } from '../hooks/usePipeline'
 import { runCommand, sendEvent } from '../lib/helper'
@@ -10,6 +10,7 @@ import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
 import LossNotes from './LossNotes'
+import ConfirmButton from './ConfirmButton'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
@@ -34,8 +35,8 @@ const pct = (x: number) => `${Math.round(x * 100)}%`
  * DPO loss as it falls, and the held-out check: how often the model finds the
  * chosen answer more likely than the rejected one, before and after.
  */
-/** useData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function PreferPanel({ onAdapters, useData }: { onAdapters: () => void; useData?: { data: string; n: number } }) {
+/** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
+export default function PreferPanel({ onAdapters, withData }: { onAdapters: () => void; withData?: { data: string; n: number } }) {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
@@ -44,6 +45,22 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['prefer'])
   const running = !!pipe && !pipe.done
+  // Names already used by a run or an adapter: a fresh run gets the next free one (name, name-2, name-3…).
+  const [adapterNames, setAdapterNames] = useState<string[]>([])
+  useEffect(() => void readManifests<{ name: string }>('adapters').then((a) => setAdapterNames(a.map((x) => x.name))), [runs])
+  const free = useCallback(
+    (want: string) => {
+      const used = new Set([...runs.map((r) => r.params?.name), ...adapterNames])
+      let n = want
+      for (let k = 2; used.has(n); k++) n = `${want}-${k}`
+      return n
+    },
+    [runs, adapterNames],
+  )
+  // "Start over" puts a finished run away (it stays in the runs below), clearing the way for another dataset.
+  const [putAway, setPutAway] = useState('')
+  const current = pipe && pipe.runId !== putAway ? pipe : null
+  const top = useRef<HTMLElement>(null)
 
   const load = useCallback(() => {
     void readManifests<DatasetManifest>('data').then((d) => setSets(d.filter((x) => x.format === 'preference')))
@@ -61,11 +78,11 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
     if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
   }, [ready, p.data])
   useEffect(() => {
-    if (useData) setP((x) => ({ ...x, data: useData.data }))
-  }, [useData])
+    if (withData) setP((x) => ({ ...x, data: withData.data }))
+  }, [withData])
   useEffect(() => {
-    if (!touchedName && p.data) setP((x) => ({ ...x, name: `${p.data}-dpo` }))
-  }, [p.data, touchedName])
+    if (!touchedName && p.data && !running) setP((x) => ({ ...x, name: free(`${p.data}-dpo`) }))
+  }, [p.data, touchedName, free, running])
 
   const showRun = async (r: RunManifest) => {
     const text = (await readFile(`runs/${r.folder}/loss.jsonl`)) ?? ''
@@ -80,7 +97,7 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
   const latest = runs[0]
 
   return (
-    <section className="panel" aria-label="prefer">
+    <section className="panel" aria-label="prefer" ref={top}>
       <div className="train-form">
         <div className="train-form__col">
           <label className="field">
@@ -154,9 +171,23 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
             </button>
           </Explained>
         )}
-        {pipe?.done && pipe.ok && (
+        {current?.done && current.ok && (
           <button type="button" className="text-button" onClick={onAdapters}>
             the adapter is ready: export it
+          </button>
+        )}
+        {current?.done && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setPutAway(current.runId)
+              setShown(null)
+              setTouchedName(false)
+              top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          >
+            start over with another dataset
           </button>
         )}
       </div>
@@ -165,11 +196,11 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
         <code>{real}</code>
       </details>
 
-      {pipe && <PipelineSteps p={pipe} />}
-      {pipe ? (
+      {current && <PipelineSteps p={current} />}
+      {current ? (
         <>
-          <LossChart points={pipe.points} iters={(pipe.params as PreferParams).iters} live={!pipe.done} />
-          <LossNotes points={pipe.points} live={!pipe.done} kind="prefer" />
+          <LossChart points={current.points} iters={(current.params as PreferParams).iters} live={!current.done} />
+          <LossNotes points={current.points} live={!current.done} kind="prefer" />
         </>
       ) : (
         shown && (
@@ -205,6 +236,12 @@ export default function PreferPanel({ onAdapters, useData }: { onAdapters: () =>
             name={r.folder}
             active={shown?.run === r.folder}
             onSelect={() => void showRun(r)}
+            actions={
+              // the card itself opens the chart; removing shouldn't
+              <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                <ConfirmButton label="remove" confirmLabel="to the Trash?" onConfirm={() => void (shown?.run === r.folder && setShown(null), runCommand(joinWords(['trash', `runs/${r.folder}`])))} />
+              </span>
+            }
             badges={<Badge warn={r.status !== 'finished'}>{r.status}</Badge>}
             lines={[
               `${r.params.model.split('/').at(-1)} · ${r.params.data} · beta ${r.params.beta} · ${r.params.iters} iters`,

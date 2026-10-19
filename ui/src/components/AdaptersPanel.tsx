@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useHelperEvent } from '../hooks/useHelper'
 import { usePipeline } from '../hooks/usePipeline'
 import { useOllamaModels } from '../hooks/useOllamaModels'
@@ -11,6 +11,8 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import PipelineSteps from './PipelineSteps'
 import { Explained } from '../explain/Explained'
+import ConfirmButton from './ConfirmButton'
+import TryTrained from './TryTrained'
 
 interface AdapterManifest {
   name: string
@@ -59,6 +61,21 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
   const { models } = useOllamaModels()
   const pipe = usePipeline(['export', 'fuse', 'register'])
   const running = !!pipe && !pipe.done
+  /** the exported model being tried, with what to compare it to */
+  const [trying, setTrying] = useState<{ model: string; original?: string; data: string } | null>(null)
+  const tryRef = useRef<HTMLDivElement>(null)
+  const tryIt = (t: { model: string; original?: string; data: string }) => {
+    setTrying(t)
+    requestAnimationFrame(() => {
+      tryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+  /** Start over: the adapter (or blend) to the Trash, and its exported model out of Ollama. */
+  const remove = async (kind: 'adapters' | 'merges', name: string, registered: boolean) => {
+    if (trying?.model === name) setTrying(null)
+    await runCommand(joinWords(['trash', `${kind}/${name}`]))
+    if (registered) await runCommand(joinWords(['ollama', 'rm', name]))
+  }
 
   const load = useCallback(() => {
     void readManifests<AdapterManifest>('adapters').then((a) => setAdapters(a.sort((x, y) => (y.run ?? '').localeCompare(x.run ?? ''))))
@@ -84,6 +101,8 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
         </div>
       </Explained>
       {pipe && <PipelineSteps p={pipe} />}
+      <div ref={tryRef} className="mf-top" />
+      {trying && <TryTrained key={trying.model} model={trying.model} original={trying.original} data={trying.data} onClose={() => setTrying(null)} />}
 
       <h2 className="panel__title label">adapters · from training (imitate) and preference tuning (prefer)</h2>
       <div className="cards">
@@ -115,12 +134,20 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
                     <CommandPreview command={cmd} onRun={() => void runCommand(cmd)} running={running && (pipe?.params as { adapter?: string })?.adapter === a.name} disabled={running} label="export" />
                   </Explained>
                   {registered && (
+                    <button type="button" className="text-button" onClick={() => tryIt({ model: a.name, original: baseInstalled ? runsAs : undefined, data: a.data })}>
+                      try it
+                    </button>
+                  )}
+                  {registered && (
                     <Explained id="adapters.chat">
                       <button type="button" className="text-button" onClick={() => onChatPair(baseInstalled ? runsAs! : a.name, a.name)}>
                         {baseInstalled ? `chat: ${runsAs} vs ${a.name}` : `chat with ${a.name}`}
                       </button>
                     </Explained>
                   )}
+                  <Explained id="adapters.remove">
+                    <ConfirmButton label="remove" confirmLabel={registered ? 'to the Trash, and out of Ollama?' : 'to the Trash?'} onConfirm={() => void remove('adapters', a.name, registered)} />
+                  </Explained>
                 </>
               }
             />
@@ -162,6 +189,9 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
                           </button>
                         </Explained>
                       )}
+                      <Explained id="adapters.remove">
+                        <ConfirmButton label="remove" confirmLabel={registered ? 'to the Trash, and out of Ollama?' : 'to the Trash?'} onConfirm={() => void remove('merges', m.name, registered)} />
+                      </Explained>
                     </>
                   }
                 />

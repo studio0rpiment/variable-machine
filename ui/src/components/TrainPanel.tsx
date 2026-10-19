@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useHelperEvent, useHelperState } from '../hooks/useHelper'
 import { usePipeline } from '../hooks/usePipeline'
 import { runCommand, sendEvent } from '../lib/helper'
@@ -10,6 +10,7 @@ import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
 import LossNotes from './LossNotes'
+import ConfirmButton from './ConfirmButton'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
@@ -32,8 +33,8 @@ interface RunManifest {
  * command, run it, watch loss as mlx-lm reports it. The run's folder keeps
  * config, command, log, loss and manifest.
  */
-/** useData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => void; useData?: { data: string; n: number } }) {
+/** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
+export default function TrainPanel({ onAdapters, withData }: { onAdapters: () => void; withData?: { data: string; n: number } }) {
   const { status } = useHelperState()
   const tier = status?.tier ?? '16'
   const defaults = TIER_DEFAULTS[tier]
@@ -44,6 +45,22 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['train'])
   const running = !!pipe && !pipe.done
+  // Names already used by a run or an adapter: a fresh run gets the next free one (name, name-2, name-3…).
+  const [adapterNames, setAdapterNames] = useState<string[]>([])
+  useEffect(() => void readManifests<{ name: string }>('adapters').then((a) => setAdapterNames(a.map((x) => x.name))), [runs])
+  const free = useCallback(
+    (want: string) => {
+      const used = new Set([...runs.map((r) => r.params?.name), ...adapterNames])
+      let n = want
+      for (let k = 2; used.has(n); k++) n = `${want}-${k}`
+      return n
+    },
+    [runs, adapterNames],
+  )
+  // "Start over" puts a finished run away (it stays in the runs below), clearing the way for another dataset.
+  const [putAway, setPutAway] = useState('')
+  const current = pipe && pipe.runId !== putAway ? pipe : null
+  const top = useRef<HTMLElement>(null)
 
   // Tier defaults arrive with the first status event.
   useEffect(() => setP((x) => ({ ...x, ...defaults })), [defaults])
@@ -69,12 +86,12 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
     if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
   }, [ready, p.data])
   useEffect(() => {
-    if (useData) setP((x) => ({ ...x, data: useData.data }))
-  }, [useData])
+    if (withData) setP((x) => ({ ...x, data: withData.data }))
+  }, [withData])
   const base = HF_BASES.find((b) => b.id === p.base)
   useEffect(() => {
-    if (!touchedName && p.data && base) setP((x) => ({ ...x, name: `${p.data}-${base.params.toLowerCase()}` }))
-  }, [p.data, base, touchedName])
+    if (!touchedName && p.data && base && !running) setP((x) => ({ ...x, name: free(`${p.data}-${base.params.toLowerCase()}`) }))
+  }, [p.data, base, touchedName, free, running])
 
   const showRun = async (r: RunManifest) => {
     const text = (await readFile(`runs/${r.folder}/loss.jsonl`)) ?? ''
@@ -94,7 +111,7 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
   const heavy = tier === '16' && p.base.includes('1.7B')
 
   return (
-    <section className="panel" aria-label="train">
+    <section className="panel" aria-label="train" ref={top}>
       <div className="train-form">
         <div className="train-form__col">
           <label className="field">
@@ -174,9 +191,23 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
             </button>
           </Explained>
         )}
-        {pipe?.done && pipe.ok && (
+        {current?.done && current.ok && (
           <button type="button" className="text-button" onClick={onAdapters}>
             the adapter is ready: export it
+          </button>
+        )}
+        {current?.done && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setPutAway(current.runId)
+              setShown(null)
+              setTouchedName(false)
+              top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          >
+            start over with another dataset
           </button>
         )}
       </div>
@@ -185,11 +216,11 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
         <code>{real}</code>
       </details>
 
-      {pipe && <PipelineSteps p={pipe} />}
-      {pipe ? (
+      {current && <PipelineSteps p={current} />}
+      {current ? (
         <>
-          <LossChart points={pipe.points} iters={(pipe.params as TrainParams).iters} live={!pipe.done} />
-          <LossNotes points={pipe.points} live={!pipe.done} kind="train" />
+          <LossChart points={current.points} iters={(current.params as TrainParams).iters} live={!current.done} />
+          <LossNotes points={current.points} live={!current.done} kind="train" />
         </>
       ) : (
         shown && (
@@ -208,6 +239,12 @@ export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => 
             name={r.folder}
             active={shown?.run === r.folder}
             onSelect={() => void showRun(r)}
+            actions={
+              // the card itself opens the chart; removing shouldn't
+              <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                <ConfirmButton label="remove" confirmLabel="to the Trash?" onConfirm={() => void (shown?.run === r.folder && setShown(null), runCommand(joinWords(['trash', `runs/${r.folder}`])))} />
+              </span>
+            }
             badges={<Badge warn={r.status !== 'finished'}>{r.status}</Badge>}
             lines={[
               `${r.params?.base?.split('/')[1]} · ${r.params?.data} · ${r.params?.type} r${r.params?.rank} · ${r.params?.iters} iters`,
