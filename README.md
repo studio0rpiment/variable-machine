@@ -1,4 +1,4 @@
-# retension
+# Variable Machine
 
 A localhost instrument for changing small language models on an Apple Silicon Mac: swap models, swap weights, author training data, train, merge, prefer. Every GUI action composes a real command and echoes it into the terminal docked at the bottom of the page before it runs. The terminal and the GUI are two views of one event stream.
 
@@ -9,11 +9,11 @@ The floor is a 16GB Apple Silicon Mac on macOS 14+. Bigger machines just go fast
 1. Install [Ollama](https://ollama.com) and open it.
 2. Install `uv`: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 3. Install Node 22 or newer (directly, or with `fnm` / `nvm`; `.nvmrc` says 22).
-4. `git clone … && cd retension && npm install && uv sync --project python`
+4. `git clone … && cd variable-machine && npm install && uv sync --project python`
 5. `ollama pull qwen3:4b` (the default chat model and the data generator) and `ollama pull smollm2:360m` (the same family as the default training base)
 6. `npm run dev` opens http://localhost:4817
 
-`npm run dev` rebuilds the UI on save (reload the page to see it) and restarts the helper on save. Set `RETENSION_PORT` to use another port, or `RETENSION_OPEN=0` to stop it opening a browser.
+`npm run dev` rebuilds the UI on save (reload the page to see it) and restarts the helper on save. Set `VARIABLE_MACHINE_PORT` to use another port, or `VARIABLE_MACHINE_OPEN=0` to stop it opening a browser.
 
 ## Layout
 

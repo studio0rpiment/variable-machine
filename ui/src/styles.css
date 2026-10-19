@@ -1,5 +1,5 @@
 /* KP Minimal. Tokens, labels, controls and inputs are copied from the Student
-   Work Viewer (~/__DEV/__website-display/src/styles.css); retension's own
+   Work Viewer (~/__DEV/__website-display/src/styles.css); Variable Machine's own
    layout follows below. --bg and --line are set from themes.ts at runtime;
    these are the dark defaults so the first paint is already correct. */
 :root {

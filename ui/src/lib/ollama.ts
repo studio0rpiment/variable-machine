@@ -48,7 +48,7 @@ export interface ChatDelta {
 export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal) {
   const res = await fetch('/ollama/api/chat', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-retension-source': 'chat' },
+    headers: { 'content-type': 'application/json', 'x-variable-machine-source': 'chat' },
     body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], stream: true }),
     signal,
   })

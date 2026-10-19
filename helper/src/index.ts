@@ -90,7 +90,7 @@ wss.on('connection', (ws) => {
 })
 
 /**
- * The one timer in retension. Everything else is event-driven, but a half-open
+ * The one timer in Variable Machine. Everything else is event-driven, but a half-open
  * socket (laptop slept, network dropped) produces no event at all, so the only
  * way to notice it is to ask: every 15s each client is pinged, and one that
  * didn't answer the previous ping is closed. The `heartbeat` event lets the
@@ -114,15 +114,15 @@ void probe()
 
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code !== 'EADDRINUSE') throw err
-  console.error(`\nport ${PORT} is taken: retension (or something else) is already running there.`)
-  console.error(`open http://localhost:${PORT}, stop the other copy, or run with RETENSION_PORT=<another port>.\n`)
+  console.error(`\nport ${PORT} is taken: Variable Machine (or something else) is already running there.`)
+  console.error(`open http://localhost:${PORT}, stop the other copy, or run with VARIABLE_MACHINE_PORT=<another port>.\n`)
   process.exit(1)
 })
 
 server.listen(PORT, HOST, () => {
   const url = `http://localhost:${PORT}`
-  console.log(`retension → ${url}`)
-  if (process.env.RETENSION_OPEN === '1') {
+  console.log(`Variable Machine → ${url}`)
+  if (process.env.VARIABLE_MACHINE_OPEN === '1') {
     import('node:child_process').then(({ spawn }) => spawn('open', [url], { stdio: 'ignore', detached: true }).unref())
   }
 })

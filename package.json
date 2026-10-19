@@ -1,5 +1,5 @@
 {
-  "name": "retension",
+  "name": "variable-machine",
   "private": true,
   "type": "module",
   "description": "A localhost instrument for changing small language models on a Mac.",

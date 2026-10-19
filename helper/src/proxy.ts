@@ -73,7 +73,7 @@ async function finishChat(chat: ChatRequest, raw: string, log: boolean, stopped:
  *
  * Responses are piped, so /api/chat, /api/pull and /api/create stream through.
  * /api/chat is also echoed as `ollama run-once …`, and when the Chat panel sends
- * `x-retension-source: chat` the exchange is appended to workspace/chat/<date>.jsonl.
+ * `x-variable-machine-source: chat` the exchange is appended to workspace/chat/<date>.jsonl.
  */
 export async function proxyOllama(req: http.IncomingMessage, res: http.ServerResponse) {
   const upstreamPath = (req.url ?? '/').slice(PREFIX.length) || '/'
@@ -89,12 +89,12 @@ export async function proxyOllama(req: http.IncomingMessage, res: http.ServerRes
       // not JSON; let Ollama answer with its own error
     }
   }
-  const log = req.headers['x-retension-source'] === 'chat'
+  const log = req.headers['x-variable-machine-source'] === 'chat'
 
   const headers = { ...req.headers }
   delete headers.origin
   delete headers.referer
-  delete headers['x-retension-source']
+  delete headers['x-variable-machine-source']
   headers.host = OLLAMA_URL.host
   if (body) headers['content-length'] = String(body.length)
 

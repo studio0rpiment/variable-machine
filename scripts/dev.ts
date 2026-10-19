@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
  * `npm run dev`: rebuild the UI on every save and restart the helper on every
  * helper save. Both are file-watch driven. Reload the page to see UI changes.
  */
-const env = { ...process.env, RETENSION_OPEN: process.env.RETENSION_OPEN ?? '1' }
+const env = { ...process.env, VARIABLE_MACHINE_OPEN: process.env.VARIABLE_MACHINE_OPEN ?? '1' }
 const run = (args: string[]) => spawn('npm', args, { stdio: 'inherit', env })
 
 const first = run(['run', 'build', '-w', 'ui'])

@@ -1,7 +1,7 @@
 [project]
-name = "retension"
+name = "variable-machine"
 version = "0.1.0"
-description = "The training environment for retension. Invoked only by the helper, as subprocesses."
+description = "The training environment for Variable Machine. Invoked only by the helper, as subprocesses."
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = ["mlx-lm>=0.32.2"]

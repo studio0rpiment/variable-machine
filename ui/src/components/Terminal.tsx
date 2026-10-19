@@ -52,7 +52,7 @@ export default function Terminal({ theme }: { theme: Theme }) {
     t.loadAddon(fit)
     t.open(el)
     t.write('\x1b[?25l') // no cursor: input happens in the line below
-    t.writeln('\x1b[2mretension · type help\x1b[22m')
+    t.writeln('\x1b[2mvariable machine · type help\x1b[22m')
     term.current = t
     const ro = new ResizeObserver(() => fit.fit())
     ro.observe(el)

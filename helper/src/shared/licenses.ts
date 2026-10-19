@@ -2,7 +2,7 @@
  * Name a license from its text, as `ollama show` returns it. Shared by the
  * helper and the UI (no imports, so both can load it).
  *
- * `open` means usable under retension's rule (plan §1): open license with
+ * `open` means usable under Variable Machine's rule (plan §1): open license with
  * commercial use allowed. Unknown text is not assumed open.
  */
 export interface LicenseInfo {

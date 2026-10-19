@@ -52,7 +52,7 @@ export default function App() {
   return (
     <div className="shell">
       <header className="shell__top">
-        <span className="label label--name">retension</span>
+        <span className="label label--name">Variable Machine</span>
         <nav className="shell__nav" aria-label="panels">
           {PANELS.map((p) => (
             <a key={p} href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>

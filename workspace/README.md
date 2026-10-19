@@ -1,6 +1,6 @@
 # workspace
 
-The state of retension. No database: every model, dataset, run and adapter is a plain folder here with a `manifest.json`, and the app renders from these files. Share an artifact by zipping its folder.
+The state of Variable Machine. No database: every model, dataset, run and adapter is a plain folder here with a `manifest.json`, and the app renders from these files. Share an artifact by zipping its folder.
 
 ```
 hf/<base-id>/                 Hugging Face snapshot + manifest.json (trains on)
