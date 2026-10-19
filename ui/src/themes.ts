@@ -11,11 +11,13 @@ export interface Theme {
   mode: ThemeMode
   bg: string
   line: string
+  /** the colour of things you click: terminal green */
+  act: string
 }
 
 export const themes = {
-  dark: { name: 'dark', mode: 'dark', bg: '#111613', line: '#FFF7E6' },
-  light: { name: 'light', mode: 'light', bg: '#FFF7E6', line: '#111613' },
+  dark: { name: 'dark', mode: 'dark', bg: '#111613', line: '#FFF7E6', act: '#5CF25C' },
+  light: { name: 'light', mode: 'light', bg: '#FFF7E6', line: '#111613', act: '#16752A' },
 } satisfies Record<string, Theme>
 
 export type ThemeName = keyof typeof themes
@@ -28,5 +30,6 @@ export function applyTheme(t: Theme) {
   root.dataset.theme = t.name
   root.style.setProperty('--bg', t.bg)
   root.style.setProperty('--line', t.line)
+  root.style.setProperty('--act', t.act)
   root.style.colorScheme = t.mode
 }

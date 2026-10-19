@@ -5,6 +5,8 @@
 :root {
   --bg: #111613;
   --line: #FFF7E6;
+  --act: #5CF25C; /* things you click: terminal green; set per theme in themes.ts */
+  --act-wash: color-mix(in srgb, var(--act) 12%, transparent);
   --muted: color-mix(in srgb, var(--line) 55%, var(--bg));
   --overlay: color-mix(in srgb, var(--bg) 92%, transparent);
   --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -599,3 +601,18 @@ a.text-button { text-decoration: none; }
 .mf-goes dd { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
 .mf-inline { padding: 0; margin: 0; text-decoration: underline; text-underline-offset: 0.2em; }
 .mf-make__run .mf-make__sample { flex: 1 1 18rem; max-width: 32rem; }
+
+/* ---- things you click wear --act (terminal green); things you read stay in --line/--muted ---- */
+.text-button, .icon-button, .icon-text, .command-preview, .mf-rail__item, .mf-inline { color: var(--act); }
+.text-button:hover:not(:disabled):not([aria-disabled="true"]),
+.icon-button:hover:not(:disabled):not([aria-disabled="true"]),
+.icon-text:hover:not(:disabled),
+.command-preview:hover:not([aria-disabled="true"]),
+.mf-rail__item:hover, .mf-rail__item:focus-visible { color: var(--act); background: var(--act-wash); }
+.command-preview.is-running { color: var(--act); }
+.text-button[aria-disabled="true"], .command-preview[aria-disabled="true"] { color: var(--muted); }
+.text-button.is-active { color: var(--act); border-bottom-color: var(--act); }
+.mf-rail__item:hover, .mf-rail__item:focus-visible { border-color: var(--act); }
+.mf-preset .mf-preset__title { color: var(--act); }
+.mf-preset:hover, .mf-preset:focus-visible { border-color: var(--act); background: var(--act-wash); }
+[aria-label="ask both"] > .mf-make__run { align-items: flex-end; }
