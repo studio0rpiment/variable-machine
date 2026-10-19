@@ -16,6 +16,9 @@
 html { font-size: 100%; } /* keep 1rem = browser default so rem math is predictable */
 /* The shell scrolls its panels itself; the page never scrolls (focus could otherwise push the header off-screen). */
 html, body { height: 100%; overflow: hidden; }
+/* clip, not just hidden: hidden still lets focus or scrollIntoView scroll the page sideways (a hidden
+   explanation flag hanging past the edge was enough to shift everything). clip can't be scrolled at all. */
+@supports (overflow: clip) { html, body { overflow: clip; } }
 body {
   margin: 0;
   background: var(--bg);
@@ -371,3 +374,66 @@ a.text-button { text-decoration: none; }
 .material { display: flex; flex-direction: column; gap: 0.6rem; max-width: 60rem; }
 .material__nav { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
 .material__text { margin: 0; padding: 0.75rem 0.9rem; border-left: 1px solid var(--muted); color: var(--muted); white-space: pre-wrap; line-height: 1.55; max-height: 10rem; overflow-y: auto; }
+
+/* ---- explanation layer (explain/Explained.tsx) ----
+   A flag: a skewed outline bubble with a tail pointing up at the element it
+   explains. Hidden until hover or keyboard focus; the delay is CSS, so it is
+   an entrance, not a timer that drives state. */
+.explained { position: relative; display: inline-flex; }
+.flag {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: -0.5rem;
+  z-index: 40;
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 2rem));
+  padding-top: 0.45rem; /* room for the tail */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.25rem);
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--line);
+  white-space: normal;
+}
+.flag--below-end { left: auto; right: -0.5rem; }
+.explained:hover > .flag,
+.explained:focus-within > .flag {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.18s ease 0.35s, transform 0.18s ease 0.35s, visibility 0s linear 0.35s;
+}
+.explained.is-dismissed > .flag { opacity: 0; visibility: hidden; transition: none; }
+.flag__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1.1rem 0.9rem;
+  border: 1px solid var(--line);
+  background: var(--bg); /* the page's own colour, so the text reads over whatever is beneath */
+  transform: skewX(-6deg);
+}
+.flag__body > * { transform: skewX(6deg); } /* text stands upright inside the slanted bubble */
+.flag__title { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.flag__text { text-wrap: pretty; }
+/* The tail: a square turned 45°, outlined on two sides, sitting over the bubble's top edge. */
+.flag__tail {
+  position: absolute;
+  top: 0.12rem;
+  left: 1.4rem;
+  z-index: 1;
+  width: 0.65rem;
+  height: 0.65rem;
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+.flag--below-end .flag__tail { left: auto; right: 1.4rem; }
+@media (prefers-reduced-motion: reduce) {
+  .flag, .explained:hover > .flag, .explained:focus-within > .flag { transform: none; transition-property: opacity, visibility; }
+}

@@ -12,6 +12,8 @@ import SharePanel from './components/SharePanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
+import { Explained } from './explain/Explained'
+import type { ExplainId } from './explain/text'
 import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, TrainMark } from './icons'
 
 const PANELS = ['models', 'modelfile', 'data', 'train', 'prefer', 'adapters', 'merge', 'chat', 'share'] as const
@@ -71,10 +73,12 @@ export default function App() {
         <span className="label label--name">Variable Machine</span>
         <nav className="shell__nav" aria-label="panels">
           {PANELS.map((p) => (
-            <a key={p} href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>
-              {MARKS[p]}
-              {p}
-            </a>
+            <Explained key={p} id={`panel.${p}` as ExplainId}>
+              <a href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>
+                {MARKS[p]}
+                {p}
+              </a>
+            </Explained>
           ))}
         </nav>
         <StatusLine />
