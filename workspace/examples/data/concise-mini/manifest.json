@@ -1,0 +1,29 @@
+{
+  "name": "concise-mini",
+  "kind": "dataset",
+  "created": "2026-10-19T00:00:00.000Z",
+  "license": "CC0-1.0",
+  "inputs": [],
+  "command": [
+    "written for Variable Machine"
+  ],
+  "format": "preference",
+  "counts": {
+    "train": 9,
+    "valid": 3
+  },
+  "split": {
+    "valid": 0.25,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "examples/concise-mini",
+      "kind": "typed",
+      "license": "CC0-1.0",
+      "licenseChecked": true,
+      "rows": 12
+    }
+  ],
+  "about": "12 preference pairs: a plain one-sentence answer chosen over a padded, chatty one. A starting point; the Data panel builds bigger sets from your own chat logs."
+}

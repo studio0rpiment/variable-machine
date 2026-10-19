@@ -8,12 +8,13 @@ import TrainPanel from './components/TrainPanel'
 import AdaptersPanel from './components/AdaptersPanel'
 import MergePanel from './components/MergePanel'
 import PreferPanel from './components/PreferPanel'
+import SharePanel from './components/SharePanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
-import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, TrainMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, TrainMark } from './icons'
 
-const PANELS = ['models', 'modelfile', 'data', 'train', 'prefer', 'adapters', 'merge', 'chat'] as const
+const PANELS = ['models', 'modelfile', 'data', 'train', 'prefer', 'adapters', 'merge', 'chat', 'share'] as const
 type Panel = (typeof PANELS)[number]
 const MARKS: Record<Panel, ReactNode> = {
   models: <ModelsMark size={0.9} />,
@@ -21,6 +22,7 @@ const MARKS: Record<Panel, ReactNode> = {
   data: <DataMark size={0.9} />,
   train: <TrainMark size={0.9} />,
   prefer: <PreferMark size={0.9} />,
+  share: <ShareMark size={0.9} />,
   adapters: <AdaptersMark size={0.9} />,
   merge: <MergeMark size={0.9} />,
   chat: <ChatMark size={0.9} />,
@@ -102,6 +104,9 @@ export default function App() {
         </div>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'chat'}>
           <Chat request={chatRequest} />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'share'}>
+          <SharePanel />
         </div>
       </main>
       <Terminal theme={theme} />

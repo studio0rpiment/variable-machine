@@ -55,7 +55,7 @@ export interface DataSourceInfo {
   categories?: string[]
 }
 
-/** Datasets the Data panel can import (plan §8). More importers join this list. */
+/** Datasets the Data panel can import (plan §8). Licenses are re-read from Hugging Face at import. */
 export const DATA_SOURCES: Record<string, DataSourceInfo> = {
   dolly: {
     repo: 'databricks/databricks-dolly-15k',
@@ -65,4 +65,26 @@ export const DATA_SOURCES: Record<string, DataSourceInfo> = {
     about: '15k instruction/response pairs written by Databricks employees',
     categories: ['open_qa', 'general_qa', 'classification', 'closed_qa', 'brainstorming', 'information_extraction', 'summarization', 'creative_writing'],
   },
+}
+
+/** oasst1: human-written conversation trees, flattened to single turns (first prompt + best-ranked reply). */
+export const OASST1 = { repo: 'OpenAssistant/oasst1', license: 'Apache 2.0', about: 'human-written conversations from the OpenAssistant project; flattened to single turns (first prompt, top-ranked reply)' }
+
+/**
+ * SmolTalk's dataset card declares no license in its metadata; its License
+ * section says only the subsets new in SmolTalk are Apache 2.0, while the rest
+ * keep their source datasets' licenses. So only these are offered (checked 2026-10-19).
+ */
+export const SMOLTALK = {
+  repo: 'HuggingFaceTB/smoltalk',
+  license: 'Apache 2.0',
+  subsets: ['smol-magpie-ultra', 'smol-constraints', 'smol-rewrite', 'smol-summarize'],
+  about: 'synthetic conversations made for SmolLM2; only the subsets the card licenses as Apache 2.0',
+}
+
+/** Raw material for cross-domain sets: chunks a generator can be asked to write examples from. */
+export const RAW_SOURCES = {
+  gutenberg: { about: 'a public-domain book from Project Gutenberg, by its number (e.g. 1342 for Pride and Prejudice)', license: 'public domain in the USA (Project Gutenberg; check the laws of your country)' },
+  csv: { about: 'a CSV from a URL, e.g. DDOT traffic counts from Open Data DC; give the license the source states' },
+  txt: { about: 'a plain-text file from a URL; give the license the source states' },
 }

@@ -3,17 +3,17 @@ import { useHelperEvent } from '../hooks/useHelper'
 import { runCommand } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
-import { DATA_SOURCES } from '@shared/library'
 import { prefRowProblem, rowProblem, type ChatRow, type DataFormat, type PrefRow } from '@shared/chatRow'
 import type { DatasetManifest } from '@shared/manifest'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import DataRows from './DataRows'
 import DataGenerator from './DataGenerator'
+import ImportCard from './ImportCard'
+import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
-const dolly = DATA_SOURCES.dolly
 
 /**
  * Data (plan §3.2): datasets in workspace/data, each a train/valid pair of
@@ -24,9 +24,6 @@ export default function DataPanel() {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [selected, setSelected] = useState('')
   const [files, setFiles] = useState({ train: '', valid: '' })
-  const [importName, setImportName] = useState('dolly-300')
-  const [limit, setLimit] = useState(300)
-  const [category, setCategory] = useState('')
   const [newName, setNewName] = useState('')
   const [newFormat, setNewFormat] = useState<DataFormat>('chat')
   const [validFrac, setValidFrac] = useState(0.1)
@@ -81,7 +78,6 @@ export default function DataPanel() {
     [files.train],
   )
 
-  const importCmd = joinWords(['data', 'import', 'dolly', importName, '--limit', String(limit), ...(category ? ['--category', category] : [])])
   const newCmd = joinWords(['data', 'new', newName, ...(newFormat === 'preference' ? ['--format', 'preference'] : [])])
   const isPref = current?.format === 'preference'
   const pairs = useMemo(
@@ -129,30 +125,8 @@ export default function DataPanel() {
       </div>
 
       <div className="data-sources">
-        <Manifest name={dolly.repo} badges={<Badge>{dolly.license}</Badge>} lines={[dolly.about, 'human-written · downloaded once into workspace/raw']}>
-          <div className="inline-fields">
-            <label className="field">
-              <span className="label label--muted">as</span>
-              <input type="text" value={importName} onChange={(e) => setImportName(e.target.value.toLowerCase())} spellCheck={false} />
-            </label>
-            <label className="field field--narrow">
-              <span className="label label--muted">rows</span>
-              <input type="text" inputMode="numeric" value={limit} onChange={(e) => setLimit(Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1))} />
-            </label>
-            <label className="field">
-              <span className="label label--muted">category</span>
-              <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="">all</option>
-                {dolly.categories?.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <CommandPreview command={importCmd} onRun={() => void run('import', importCmd).then(() => setSelected(importName))} disabled={!NAME.test(importName)} running={busy === 'import'} label="import" />
-        </Manifest>
+        <ImportCard busy={busy === 'import'} onRun={(line, name) => void run('import', line).then(() => setSelected(name))} />
+        <RawCard busy={busy === 'raw'} onRun={(line) => void run('raw', line)} />
         <Manifest name="empty dataset" lines={['chat: rows to imitate (train) · preference: chosen/rejected pairs (prefer)']}>
           <div className="inline-fields">
             <label className="field">

@@ -11,7 +11,8 @@ import { broadcast } from './hub.ts'
 export function watchWorkspace() {
   const watcher = watch(WORKSPACE, {
     ignoreInitial: true,
-    ignored: (p) => /\/hf\/[^/]+\/(?!manifest\.json$)/.test(p) || path.basename(p) === '.DS_Store',
+    // .incoming is unzip's scratch space and .part a download in progress: neither is state yet.
+    ignored: (p) => /\/hf\/[^/]+\/(?!manifest\.json$)/.test(p) || path.basename(p) === '.DS_Store' || p.includes('/shared/.incoming') || p.endsWith('.part'),
     awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 100 },
   })
   for (const kind of ['add', 'change', 'unlink', 'addDir', 'unlinkDir'] as const) {

@@ -6,10 +6,11 @@ import { print } from './hub.ts'
 import { status } from './status.ts'
 import { formatBytes, setRunning, write } from './run.ts'
 import { ollamaPost } from './ollama.ts'
-import { estimatePrefTokens, estimateTokens, problemFor, type ChatRow, type DataFormat, type PrefRow } from './shared/chatRow.ts'
+import { estimatePrefTokens, estimateTokens, problemFor, rowProblem, type ChatRow, type DataFormat, type PrefRow } from './shared/chatRow.ts'
 import { identifyLicense } from './shared/licenses.ts'
 import type { DataSource, DatasetManifest } from './shared/manifest.ts'
-import { DATA_SOURCES } from './shared/library.ts'
+import { DATA_SOURCES, OASST1, SMOLTALK } from './shared/library.ts'
+import { rawCommand } from './rawsources.ts'
 
 /**
  * `data …` (plan §7). A dataset is workspace/data/<name>/ with train.jsonl,
@@ -23,10 +24,15 @@ const rel = (p: string) => path.relative(path.dirname(WORKSPACE), p)
 
 const HELP = `data new <name> [--format chat|preference]
 data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
+data import oasst1 <name> [--limit 300]
+data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rewrite|smol-summarize [--limit 300] [--seed 0]
+data import example <example> <name>   (workspace/examples/data)
+data raw gutenberg <book number> <name>
+data raw csv|txt <url> <name> --license "<what the source states>"
 data validate <name>
 data split <name> [--valid 0.1] [--seed 0]
 data count <name>
-data append <name> '<row json>' [--source <model or label>]`
+data append <name> '<row json>' [--source <model or label>] [--from raw/<name>]`
 
 /** Small seeded PRNG (mulberry32), so a split or a sample can be made again exactly. */
 function rng(seed: number) {
@@ -167,6 +173,146 @@ async function hfLicense(repo: string): Promise<string | null> {
     const d = (await res.json()) as { cardData?: { license?: string | string[] } }
     const l = d.cardData?.license
     return Array.isArray(l) ? l.join(', ') : (l ?? null)
+  } catch {
+    return null
+  }
+}
+
+/** Rows from Hugging Face's dataset viewer API: JSON, 100 at a time, no parquet reader needed. */
+async function hfRows(repo: string, config: string, offset: number, length: number, abort: AbortController) {
+  const url = `https://datasets-server.huggingface.co/rows?dataset=${encodeURIComponent(repo)}&config=${encodeURIComponent(config)}&split=train&offset=${offset}&length=${length}`
+  const res = await fetch(url, { signal: abort.signal })
+  if (!res.ok) throw new Error(`datasets-server ${res.status} for ${repo}/${config}`)
+  return (await res.json()) as { rows: { row: Record<string, unknown> }[]; num_rows_total: number }
+}
+
+async function addImported(name: string, line: string, rows: ChatRow[], source: DataSource) {
+  const m = await ensureDataset(name, line)
+  if (m.format === 'preference') {
+    print(`data import: ${name} is a preference set; import into a chat dataset`)
+    return false
+  }
+  await fs.appendFile(path.join(dir(name), 'train.jsonl'), toJsonl(rows))
+  m.counts.train += rows.length
+  const prev = m.sources.find((x) => x.id === source.id)
+  if (prev) prev.rows += source.rows
+  else m.sources.push(source)
+  if (source.url && !m.inputs.includes(source.url)) m.inputs.push(source.url)
+  recordCommand(m, line)
+  await writeManifest(m)
+  print(`  ◂ ${rows.length} rows → workspace/data/${name}/train.jsonl · ${source.license}`)
+  return true
+}
+
+/** oasst1, flattened (plan §8): each conversation's first prompt and its top-ranked reply. */
+async function importOasst1(name: string, opts: Record<string, string>, line: string): Promise<boolean> {
+  const limit = Number(opts.limit ?? 300)
+  const lang = opts.lang ?? 'en'
+  const abort = new AbortController()
+  setRunning({ abort })
+  try {
+    const declared = await hfLicense(OASST1.repo)
+    const license = declared === 'apache-2.0' ? 'Apache 2.0' : (declared ?? OASST1.license)
+    print(declared ? `license on Hugging Face: ${declared}` : `couldn't read the license; recording the listed one (${OASST1.license})`)
+    const roots = new Map<string, string>()
+    const rows: ChatRow[] = []
+    for (let offset = 0; rows.length < limit && offset < 20_000; offset += 100) {
+      const page = await hfRows(OASST1.repo, 'default', offset, 100, abort)
+      for (const { row } of page.rows) {
+        const r = row as { message_id: string; parent_id: string | null; role: string; text: string; lang: string; rank: number | null; deleted?: boolean }
+        if (r.deleted || r.lang !== lang) continue
+        if (r.role === 'prompter' && !r.parent_id) roots.set(r.message_id, r.text)
+        else if (r.role === 'assistant' && r.rank === 0 && r.parent_id && roots.has(r.parent_id)) {
+          rows.push({ messages: [{ role: 'user', content: roots.get(r.parent_id)!.trim() }, { role: 'assistant', content: r.text.trim() }] })
+          roots.delete(r.parent_id)
+        }
+      }
+      write(`\r\x1b[2Kread ${offset + page.rows.length} messages · ${rows.length} pairs`)
+      if (page.rows.length < 100) break
+    }
+    write('\n')
+    return addImported(name, line, rows.slice(0, limit), { id: OASST1.repo, kind: 'import', license, licenseChecked: !!declared, url: `https://huggingface.co/datasets/${OASST1.repo}`, rows: Math.min(rows.length, limit) })
+  } catch (err) {
+    write('\n')
+    print(abort.signal.aborted ? '  ◂ stopped' : `data import oasst1: ${(err as Error).message}`)
+    return false
+  } finally {
+    setRunning(null)
+  }
+}
+
+/** SmolTalk, only the subsets its card licenses as Apache 2.0 (see library.ts). */
+async function importSmoltalk(name: string, opts: Record<string, string>, line: string): Promise<boolean> {
+  const subset = opts.subset ?? ''
+  if (!SMOLTALK.subsets.includes(subset)) {
+    print(`data import smoltalk: --subset is one of ${SMOLTALK.subsets.join(', ')} (the ones the dataset card licenses as Apache 2.0)`)
+    return false
+  }
+  const limit = Number(opts.limit ?? 300)
+  const seed = Number(opts.seed ?? 0)
+  const abort = new AbortController()
+  setRunning({ abort })
+  try {
+    // The license lives in the card's text, not its metadata: read it now, as the import's record.
+    const card = await fetch(`https://huggingface.co/datasets/${SMOLTALK.repo}/raw/main/README.md`).then((r) => (r.ok ? r.text() : ''), () => '')
+    const section = card.split(/^## License/m)[1]?.split(/^## /m)[0] ?? ''
+    // The card names the four new subsets in one sentence (spelling "Smol-contraints" as it does).
+    const checked = /Apache 2\.0/.test(section) && /Smol-Magpie-Ultra.*Smol-cons?traints.*Smol-rewrite.*Smol-summarize/is.test(section)
+    print(checked ? `license: the card's License section names this subset as Apache 2.0` : `couldn't confirm the license from the card; recording ${SMOLTALK.license} as listed`)
+    const first = await hfRows(SMOLTALK.repo, subset, 0, 1, abort)
+    const total = first.num_rows_total
+    const start = Math.floor(rng(seed)() * Math.max(1, total - limit))
+    const rows: ChatRow[] = []
+    for (let offset = start; rows.length < limit && offset < total; offset += 100) {
+      const page = await hfRows(SMOLTALK.repo, subset, offset, Math.min(100, limit - rows.length), abort)
+      for (const { row } of page.rows) {
+        const msgs = (row.messages as { role: string; content: string }[]) ?? []
+        const r = { messages: msgs.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })) }
+        if (!rowProblem(r)) rows.push(r)
+      }
+      write(`\r\x1b[2Kread ${rows.length} of ${limit}`)
+    }
+    write('\n')
+    return addImported(name, line, rows, { id: `${SMOLTALK.repo}/${subset}`, kind: 'import', license: SMOLTALK.license, licenseChecked: checked, url: `https://huggingface.co/datasets/${SMOLTALK.repo}`, rows: rows.length })
+  } catch (err) {
+    write('\n')
+    print(abort.signal.aborted ? '  ◂ stopped' : `data import smoltalk: ${(err as Error).message}`)
+    return false
+  } finally {
+    setRunning(null)
+  }
+}
+
+/** Copy a dataset from workspace/examples (tracked in git, CC0) into workspace/data. */
+async function importExample(example: string, name: string, line: string): Promise<boolean> {
+  const from = path.join(WORKSPACE, 'examples', 'data', example)
+  const src = await readJson<DatasetManifest>(path.join(from, 'manifest.json'))
+  if (!src || !DATASET_NAME.test(example)) {
+    const have = await fs.readdir(path.join(WORKSPACE, 'examples', 'data')).catch(() => [])
+    print(`data import example: no example ${example}. examples: ${have.join(', ') || 'none'}`)
+    return false
+  }
+  if (await readManifest(name)) {
+    print(`${name} already exists`)
+    return false
+  }
+  await fs.mkdir(dir(name), { recursive: true })
+  for (const f of ['train.jsonl', 'valid.jsonl']) await fs.copyFile(path.join(from, f), path.join(dir(name), f))
+  const m: DatasetManifest = {
+    ...src,
+    name,
+    created: new Date().toISOString(),
+    inputs: [`workspace/examples/data/${example}`],
+    command: [line],
+  }
+  await writeManifest(m)
+  print(`  ◂ ${m.counts.train} + ${m.counts.valid} ${m.format === 'preference' ? 'pairs' : 'rows'} → workspace/data/${name} · ${m.license}`)
+  return true
+}
+
+async function readJson<T>(file: string): Promise<T | null> {
+  try {
+    return JSON.parse(await fs.readFile(file, 'utf8')) as T
   } catch {
     return null
   }
@@ -342,8 +488,17 @@ async function append(name: string, json: string | undefined, opts: Record<strin
     if (id === 'chat-log' && !m.inputs.includes('workspace/chat')) m.inputs.push('workspace/chat')
   }
   s.rows += 1
+  // A row written from a raw passage carries that source along: its license and where it came from.
+  if (opts.from) {
+    const raw = await readJson<{ license: string; licenseChecked?: boolean }>(path.join(WORKSPACE, opts.from, 'manifest.json'))
+    if (raw && /^raw\/[a-z0-9._-]+$/.test(opts.from)) {
+      if (!m.inputs.includes(`workspace/${opts.from}`)) m.inputs.push(`workspace/${opts.from}`)
+      if (!m.sources.some((x) => x.id === opts.from)) m.sources.push({ id: opts.from, kind: 'import', license: raw.license, licenseChecked: !!raw.licenseChecked, rows: 0 })
+      m.sources.find((x) => x.id === opts.from)!.rows += 1
+    }
+  }
   // Every appended row is its own command; the manifest keeps the shape of it, not every row.
-  recordCommand(m, `data append ${name} '<row>'${opts.source ? ` --source ${opts.source}` : ''}`)
+  recordCommand(m, `data append ${name} '<row>'${opts.source ? ` --source ${opts.source}` : ''}${opts.from ? ` --from ${opts.from}` : ''}`)
   await writeManifest(m)
   print(`  ◂ ${name}/train.jsonl · ${m.counts.train} ${m.format === 'preference' ? 'pairs' : 'rows'}`)
   return true
@@ -368,8 +523,9 @@ function flags(words: string[]): { pos: string[]; opts: Record<string, string> }
 export async function dataCommand(args: string[], line: string): Promise<boolean> {
   const [sub, ...rest] = args
   const { pos, opts } = flags(rest)
-  const name = sub === 'import' ? pos[1] : pos[0]
-  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append'].includes(sub)) {
+  if (sub === 'raw') return rawCommand(pos, opts, line)
+  const name = sub === 'import' ? (pos[0] === 'example' ? pos[2] : pos[1]) : pos[0]
+  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw'].includes(sub)) {
     print(HELP)
     return !sub || sub === 'help'
   }
@@ -378,7 +534,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     return false
   }
   for (const k of Object.keys(opts)) {
-    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed'], split: ['valid', 'seed'], append: ['source'] }
+    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang'], split: ['valid', 'seed'], append: ['source', 'from'] }
     if (!(allowed[sub] ?? []).includes(k)) {
       print(`data ${sub}: unknown option --${k}`)
       return false
@@ -400,8 +556,11 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
       return true
     }
     case 'import':
+      if (pos[0] === 'example') return importExample(pos[1] ?? '', name, line)
+      if (pos[0] === 'oasst1') return importOasst1(name, opts, line)
+      if (pos[0] === 'smoltalk') return importSmoltalk(name, opts, line)
       if (pos[0] !== 'dolly') {
-        print(`data import: sources so far: dolly (databricks/databricks-dolly-15k)`)
+        print(`data import: sources are dolly, oasst1, smoltalk and example <name>`)
         return false
       }
       return importDolly(name, opts, line)

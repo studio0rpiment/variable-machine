@@ -1,0 +1,29 @@
+{
+  "name": "curious-guide",
+  "kind": "dataset",
+  "created": "2026-10-19T00:00:00.000Z",
+  "license": "CC0-1.0",
+  "inputs": [],
+  "command": [
+    "written for Variable Machine"
+  ],
+  "format": "chat",
+  "counts": {
+    "train": 20,
+    "valid": 4
+  },
+  "split": {
+    "valid": 0.17,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "examples/curious-guide",
+      "kind": "typed",
+      "license": "CC0-1.0",
+      "licenseChecked": true,
+      "rows": 24
+    }
+  ],
+  "about": "24 questions about art and design, answered in a museum guide's voice: three short sentences, the last a question back. Small enough to train in a minute; the style is easy to hear afterwards."
+}

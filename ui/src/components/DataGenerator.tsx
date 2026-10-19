@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOllamaModels } from '../hooks/useOllamaModels'
 import { runCommand } from '../lib/helper'
+import { readFile, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { simpleRow, type ChatRow } from '@shared/chatRow'
 import ModelSelect from './ModelSelect'
@@ -21,8 +22,9 @@ interface Candidate {
 }
 
 const DEFAULT_TASK = 'Write new examples in the same style as the ones above, on different topics.'
+const MATERIAL_TASK = 'Write questions a curious reader might ask about the material, each with a clear answer drawn from it.'
 
-function systemPrompt(n: number, examples: ChatRow[]) {
+function systemPrompt(n: number, examples: ChatRow[], material?: string) {
   const excerpt = (t: string) => (t.length > 300 ? t.slice(0, 300) + '…' : t).replace(/\s+/g, ' ')
   const shown = examples
     .map((r) => `User: ${excerpt(r.messages.find((m) => m.role === 'user')?.content ?? '')}\nAssistant: ${excerpt(r.messages.at(-1)?.content ?? '')}`)
@@ -33,6 +35,7 @@ function systemPrompt(n: number, examples: ChatRow[]) {
     'Each user turn is a question or request a person might write; each assistant turn is a good, complete reply to it.',
     'Do not copy the examples, and do not leave placeholders.',
     ...(shown ? ['', 'The dataset already has rows like these (excerpts):', '', shown] : []),
+    ...(material ? ['', 'Write the examples from this material. Answers must be true to it:', '', material] : []),
   ].join('\n')
 }
 
@@ -106,8 +109,25 @@ export default function DataGenerator({ dataset, examples }: Props) {
   const [note, setNote] = useState('')
   const abort = useRef<AbortController | null>(null)
 
+  // Raw material (workspace/raw): an optional passage the rows are written from.
+  const [raws, setRaws] = useState<{ folder: string; license: string; chunks: number }[]>([])
+  const [raw, setRaw] = useState('')
+  const [passages, setPassages] = useState<string[]>([])
+  const [passage, setPassage] = useState(0)
+  useEffect(() => void readManifests<{ license: string; chunks: number }>('raw').then(setRaws), [])
+  useEffect(() => {
+    if (!raw) return setPassages([])
+    void readFile(`raw/${raw}/chunks.jsonl`).then((t) => {
+      const ps = (t ?? '').split('\n').filter(Boolean).map((l) => (JSON.parse(l) as { text: string }).text)
+      setPassages(ps)
+      setPassage(Math.min(ps.length - 1, 1))
+    })
+    setTask((cur) => (cur === DEFAULT_TASK ? MATERIAL_TASK : cur))
+  }, [raw])
+  const material = raw ? passages[passage] : undefined
+
   const seeds = useMemo(() => sample(examples, 3), [examples])
-  const system = systemPrompt(count, seeds)
+  const system = systemPrompt(count, raw ? seeds.slice(0, 1) : seeds, material)
   const schema = rowsSchema(count)
   const short = (s: string) => (s.length > 48 ? s.slice(0, 45) + '…' : s)
   const preview = joinWords(['ollama', 'run-once', model, '--system', short(system), '--no-think', '--format', short(JSON.stringify(schema)), short(task)])
@@ -172,7 +192,7 @@ export default function DataGenerator({ dataset, examples }: Props) {
   const keep = async (c: Candidate) => {
     patch(c.id, { state: 'keeping' })
     const row = simpleRow(c.user.trim(), c.assistant.trim())
-    const ok = await runCommand(joinWords(['data', 'append', dataset, JSON.stringify(row), '--source', model]))
+    const ok = await runCommand(joinWords(['data', 'append', dataset, JSON.stringify(row), '--source', model, ...(raw ? ['--from', `raw/${raw}`] : [])]))
     patch(c.id, { state: ok ? 'kept' : 'open' })
   }
 
@@ -188,6 +208,40 @@ export default function DataGenerator({ dataset, examples }: Props) {
           <input type="text" inputMode="numeric" value={count} onChange={(e) => setCount(Math.max(1, Math.min(30, Number(e.target.value.replace(/\D/g, '')) || 1)))} />
         </label>
       </div>
+      {raws.length > 0 && (
+        <div className="material">
+          <label className="field">
+            <span className="label label--muted">write from raw material (optional)</span>
+            <select value={raw} onChange={(e) => setRaw(e.target.value)}>
+              <option value="">no material: style only</option>
+              {raws.map((r) => (
+                <option key={r.folder} value={r.folder}>
+                  {r.folder} · {r.chunks} passages
+                </option>
+              ))}
+            </select>
+          </label>
+          {raw && passages.length > 0 && (
+            <>
+              <div className="material__nav">
+                <span className="label label--muted">
+                  passage {passage + 1} of {passages.length} · {raws.find((r) => r.folder === raw)?.license}
+                </span>
+                <button type="button" className="text-button" disabled={passage === 0} onClick={() => setPassage(passage - 1)}>
+                  prev
+                </button>
+                <button type="button" className="text-button" disabled={passage >= passages.length - 1} onClick={() => setPassage(passage + 1)}>
+                  next
+                </button>
+                <button type="button" className="text-button" onClick={() => setPassage(Math.floor(Math.random() * passages.length))}>
+                  any
+                </button>
+              </div>
+              <p className="material__text">{material}</p>
+            </>
+          )}
+        </div>
+      )}
       <label className="field">
         <span className="label label--muted">task</span>
         <textarea rows={2} value={task} onChange={(e) => setTask(e.target.value)} />
@@ -226,7 +280,7 @@ export default function DataGenerator({ dataset, examples }: Props) {
                 <span className="label">kept · in {dataset}/train.jsonl</span>
               ) : (
                 <>
-                  <button type="button" className="icon-text" onClick={() => void keep(c)} disabled={c.state !== 'open'} title={`data append ${dataset} '<row>' --source ${model}`}>
+                  <button type="button" className="icon-text" onClick={() => void keep(c)} disabled={c.state !== 'open'} title={`data append ${dataset} '<row>' --source ${model}${raw ? ` --from raw/${raw}` : ''}`}>
                     <Keep size={1} /> keep
                   </button>
                   <button type="button" className="icon-text" onClick={() => patch(c.id, { state: 'rejected' })} disabled={c.state !== 'open'}>
