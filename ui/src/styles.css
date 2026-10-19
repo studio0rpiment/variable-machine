@@ -633,3 +633,6 @@ a.text-button { text-decoration: none; }
 /* the step number on the path's tabs */
 .nav-step { font-size: 0.65rem; color: var(--muted); margin-right: 0.1rem; }
 .nav-link.is-active .nav-step { color: var(--line); }
+.data-guide { max-width: 52rem; border-top: 1px solid var(--line); }
+.data-describe { align-items: flex-end; max-width: 52rem; }
+.data-describe .field { flex: 1 1 20rem; }

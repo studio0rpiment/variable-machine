@@ -113,6 +113,18 @@ export const EXPLAIN = {
     title: 'Start an empty dataset',
     text: 'Makes a new, empty dataset to fill yourself. "chat" holds questions with the answers you want. "preference" holds pairs of answers where you say which one is better, for the Prefer screen.',
   },
+  'data.hf': {
+    title: 'Bring it in from Hugging Face',
+    text: 'Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns.',
+  },
+  'data.upload': {
+    title: 'Choose a file',
+    text: 'Copies a .csv, .jsonl or .json file from this computer into workspace/uploads. Nothing leaves the computer. Then "make it a dataset" reads its columns into rows.',
+  },
+  'data.describe': {
+    title: 'Describe it',
+    text: 'Your own words about what this dataset is and what a model would learn from it. It shows on the dataset\'s card and travels with it when you share it.',
+  },
   'data.validate': {
     title: 'Check for mistakes',
     text: 'Checks that every example is in the shape training needs: a question and an answer, with nothing empty. If something is wrong, it says which line.',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useHelperEvent } from '../hooks/useHelper'
 import { runCommand } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
@@ -13,13 +13,16 @@ import ImportCard from './ImportCard'
 import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
 import { Explained } from '../explain/Explained'
-import { DATA_INTRO, KINDS, MAKE, READY } from '../explain/data'
+import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, READY } from '../explain/data'
+import { HfCard, UploadCard } from './DataBringIn'
+import { describeDataset } from '@shared/datasetAbout'
 import { glide as glideAs, moving } from '../lib/moving'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const glide = (id: string) => glideAs('dataset', id)
 const NEW = 'new' // the "make a new one" card; dataset names are checked against NAME, and "new" is kept for this
 
+const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t)
 const kindOf = (s: DatasetManifest) => KINDS[s.format === 'preference' ? 'preference' : 'chat']
 
 /**
@@ -40,6 +43,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
   const [newFormat, setNewFormat] = useState<DataFormat>('chat')
   const [validFrac, setValidFrac] = useState(0.1)
   const [busy, setBusy] = useState('')
+  const [about, setAbout] = useState('')
 
   const loadSets = useCallback(() => void readManifests<DatasetManifest>('data').then((m) => setSets(m.sort((a, b) => b.created.localeCompare(a.created)))), [])
   const loadFiles = useCallback(async (name: string) => {
@@ -119,10 +123,11 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
         {kindOf(s).group} · for {kindOf(s).use}
       </span>
       <span className="mf-preset__title">{s.name}</span>
-      <span className="mf-preset__blurb">
-        {s.counts.train + s.counts.valid} rows{s.split ? '' : ', not split yet'}
+      <span className="mf-preset__blurb">{clip(describeDataset(s), 150)}</span>
+      <span className="mf-preset__follows label label--muted">
+        {s.counts.train + s.counts.valid} {s.format === 'preference' ? 'pairs' : 'rows'}
+        {s.split ? '' : ', not split yet'} · {s.license}
       </span>
-      <span className="mf-preset__follows label label--muted">{s.license}</span>
     </button>
   )
   const newCard = (
@@ -139,6 +144,11 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
   )
   const created = (name: string) => () => choose(name)
 
+  /** One row to show what the dataset is like. */
+  const sample = isPref
+    ? pairs[0] && { q: pairs[0].prompt, a: pairs[0].chosen, worse: pairs[0].rejected }
+    : examples[0] && { q: examples[0].messages.find((m) => m.role === 'user')?.content ?? '', a: examples[0].messages.find((m) => m.role === 'assistant')?.content ?? '', worse: '' }
+
   return (
     <section className="panel mf" aria-label="data">
       <header className="mf__intro">
@@ -150,7 +160,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
       {!selected ? (
         <>
           <h2 className="panel__title label mf-lead-plain">1 · choose a dataset, or make a new one</h2>
-          <p className="mf-next">Then you'll see what's in it, get it ready, and use it to train a model.</p>
+          <p className="mf-next">Then you'll see what's in it, get it ready, and use it to train a model. To find others, on Hugging Face or anywhere, choose "make a new one": it shows where to look and how to bring them in.</p>
           <div className="mf-presets">
             {sets.map(card)}
             {newCard}
@@ -164,7 +174,33 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 <div className="mf-chosen" style={glide(NEW)}>
                   <span className="mf-preset__group label label--muted">a new dataset</span>
                   <span className="mf-chosen__title">make a new one</span>
-                  <span className="mf-chosen__blurb">Three ways to start. Once it exists it opens here, ready to check, split and use.</span>
+                  <span className="mf-chosen__blurb">Bring in one you found, start from a collection or a book, or start empty. Once it exists it opens here, ready to check, split and use.</span>
+                </div>
+                <details className="fold data-guide">
+                  <summary className="fold__summary">
+                    <span className="fold__mark" aria-hidden="true" />
+                    How to find a dataset, and what to check first
+                  </summary>
+                  <div className="fold__body">
+                    <dl className="model-key">
+                      {FIND_GUIDE.map((g) => (
+                        <Fragment key={g.title}>
+                          <dt>{g.title}</dt>
+                          <dd>{g.text}</dd>
+                        </Fragment>
+                      ))}
+                    </dl>
+                  </div>
+                </details>
+                <div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{BRING.hf.title}</h2>
+                  <p className="mf-next">{BRING.hf.when}</p>
+                  <HfCard busy={busy === 'hf'} onRun={(line, name) => void run('hf', line).then(created(name))} />
+                </div>
+                <div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{BRING.file.title}</h2>
+                  <p className="mf-next">{BRING.file.when}</p>
+                  <UploadCard busy={busy === 'file'} onRun={(line, name) => void run('file', line).then(created(name))} />
                 </div>
                 <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{MAKE.import.title}</h2>
@@ -212,6 +248,17 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 <section className="mf-part" aria-label="what's in it">
                   <h2 className="panel__title label mf-lead-plain">what's in it</h2>
                   <dl className="mf-goes">
+                    <dt>what it is</dt>
+                    <dd>{describeDataset(current)}</dd>
+                    {sample && (
+                      <>
+                        <dt>for example</dt>
+                        <dd>
+                          “{clip(sample.q, 160)}” → “{clip(sample.a, 200)}”
+                          {sample.worse && <span className="label label--muted"> rather than “{clip(sample.worse, 120)}”</span>}
+                        </dd>
+                      </>
+                    )}
                     <dt>rows</dt>
                     <dd>
                       {current.counts.train} to {isPref ? 'learn from' : 'train on'}
@@ -235,6 +282,15 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       </>
                     )}
                   </dl>
+                  <div className="mf-make__run data-describe">
+                    <label className="field">
+                      <span className="label label--muted">describe it in your own words</span>
+                      <input type="text" value={about} onChange={(e) => setAbout(e.target.value)} placeholder="what it is, and what a model would learn from it" />
+                    </label>
+                    <Explained id="data.describe">
+                      <CommandPreview command={joinWords(['data', 'describe', current.name, about.trim() || '<a sentence>'])} onRun={() => void run('describe', joinWords(['data', 'describe', current.name, about.trim()])).then(() => setAbout(''))} disabled={!about.trim()} running={busy === 'describe'} label="describe" />
+                    </Explained>
+                  </div>
                 </section>
 
                 <section className="mf-part" aria-label="get it ready">

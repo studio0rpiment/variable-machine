@@ -11,7 +11,8 @@ import { WORKSPACE } from './config.ts'
  *   GET /api/workspace/file?path=modelfiles/x  → the file
  *   GET /api/workspace/manifests?dir=hf        → every <dir>/*\/manifest.json, parsed
  *   GET /api/workspace/file?path=shared/x.zip&download=1 → the same, as a download
- *   POST /api/workspace/upload?name=x.zip     → a zip into workspace/shared (and nothing else)
+ *   POST /api/workspace/upload?name=x.zip     → a zip into workspace/shared
+ *   POST /api/workspace/upload?name=x.csv      → a .csv, .jsonl or .json into workspace/uploads (for data import file)
  * Every other write is a command, so it shows in the terminal; an upload is
  * announced there too, and unpacking it is the `unzip` command.
  */
@@ -26,12 +27,14 @@ function json(res: http.ServerResponse, code: number, body: unknown) {
 }
 
 async function upload(req: http.IncomingMessage, res: http.ServerResponse, name: string | null) {
-  if (req.method !== 'POST' || !name || !/^[\w.-]+\.zip$/.test(name)) return json(res, 400, { error: 'POST a .zip with ?name=<file>.zip' })
-  const dest = path.join(WORKSPACE, 'shared', name)
+  // A zip is something shared (unzip puts it back); a table or JSON file is data to bring in.
+  const kind = name && /^[\w.-]+\.zip$/.test(name) ? 'shared' : name && /^[\w.-]+\.(csv|jsonl|json)$/.test(name) ? 'uploads' : null
+  if (req.method !== 'POST' || !name || !kind) return json(res, 400, { error: 'POST a .zip, .csv, .jsonl or .json with ?name=<file>' })
+  const dest = path.join(WORKSPACE, kind, name)
   await fs.mkdir(path.dirname(dest), { recursive: true })
   try {
     await fs.access(dest)
-    return json(res, 409, { error: `workspace/shared/${name} exists` })
+    return json(res, 409, { error: `workspace/${kind}/${name} exists` })
   } catch {
     // free
   }
@@ -43,8 +46,8 @@ async function upload(req: http.IncomingMessage, res: http.ServerResponse, name:
     req.on('error', reject)
   })
   await fs.rename(dest + '.part', dest)
-  print(`▸ received workspace/shared/${name} (uploaded from the browser)`)
-  json(res, 200, { path: `shared/${name}` })
+  print(`▸ received workspace/${kind}/${name} (uploaded from the browser)`)
+  json(res, 200, { path: `${kind}/${name}` })
 }
 
 export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.ServerResponse) {

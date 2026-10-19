@@ -11,6 +11,8 @@ import { identifyLicense } from './shared/licenses.ts'
 import type { DataSource, DatasetManifest } from './shared/manifest.ts'
 import { DATA_SOURCES, OASST1, SMOLTALK } from './shared/library.ts'
 import { rawCommand } from './rawsources.ts'
+import { detectShape, parseCsv, SHAPES_HELP } from './shared/rowShapes.ts'
+import { describeDataset } from './shared/datasetAbout.ts'
 
 /**
  * `data …` (plan §7). A dataset is workspace/data/<name>/ with train.jsonl,
@@ -27,6 +29,9 @@ data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
 data import oasst1 <name> [--limit 300]
 data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rewrite|smol-summarize [--limit 300] [--seed 0]
 data import example <example> <name>   (workspace/examples/data)
+data import hf <owner/name> <name> [--config <c>] [--split train] [--limit 300]   (any dataset on huggingface.co/datasets)
+data import file uploads/<file> <name> --license "<terms>"   (a .csv, .jsonl or .json uploaded on the Data tab)
+data describe <name> <a sentence about it>
 data raw gutenberg <book number> <name>
 data raw csv|txt <url> <name> --license "<what the source states>"
 data validate <name>
@@ -178,9 +183,31 @@ async function hfLicense(repo: string): Promise<string | null> {
   }
 }
 
+/**
+ * The opening of a dataset card, as a description: its first real sentences
+ * (headings like "Dataset Card for X" and "Dataset Summary" skipped).
+ */
+async function hfAbout(repo: string): Promise<string | null> {
+  try {
+    const d = (await (await fetch(`https://huggingface.co/api/datasets/${repo}`)).json()) as { description?: string }
+    const lines = (d.description ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 60 || /[.!?]$/.test(l))
+    const text = lines.join(' ').replace(/\s+/g, ' ').trim()
+    if (!text) return null
+    // Sentences end at . ! ? followed by a space (not the dots inside a web address); keep whole ones, in order.
+    let out = ''
+    for (const x of text.split(/(?<=[.!?])\s+/)) {
+      if ((out + ' ' + x).length > 280) break
+      out = `${out} ${x}`.trim()
+    }
+    return `From its card on Hugging Face: ${(out || text.slice(0, 277) + '…').trim()}`
+  } catch {
+    return null
+  }
+}
+
 /** Rows from Hugging Face's dataset viewer API: JSON, 100 at a time, no parquet reader needed. */
-async function hfRows(repo: string, config: string, offset: number, length: number, abort: AbortController) {
-  const url = `https://datasets-server.huggingface.co/rows?dataset=${encodeURIComponent(repo)}&config=${encodeURIComponent(config)}&split=train&offset=${offset}&length=${length}`
+async function hfRows(repo: string, config: string, offset: number, length: number, abort: AbortController, split = 'train') {
+  const url = `https://datasets-server.huggingface.co/rows?dataset=${encodeURIComponent(repo)}&config=${encodeURIComponent(config)}&split=${encodeURIComponent(split)}&offset=${offset}&length=${length}`
   const res = await fetch(url, { signal: abort.signal })
   if (!res.ok) throw new Error(`datasets-server ${res.status} for ${repo}/${config}`)
   return (await res.json()) as { rows: { row: Record<string, unknown> }[]; num_rows_total: number }
@@ -373,6 +400,147 @@ async function importDolly(name: string, opts: Record<string, string>, line: str
   }
 }
 
+/* ---------- any dataset: from Hugging Face by name, or a file brought in ---------- */
+
+/**
+ * Turn rows of any known shape (see shared/rowShapes.ts) into a dataset. The
+ * shape is worked out from the first row and printed, so the student sees how
+ * their columns were read; rows that don't fit are counted and left out.
+ */
+async function addConverted(name: string, line: string, found: Record<string, unknown>[], source: DataSource, about: string | undefined): Promise<boolean> {
+  if (!found.length) {
+    print('no rows found')
+    return false
+  }
+  const shape = detectShape(found[0])
+  if (!shape) {
+    print(`couldn't tell which columns are the question and the answer. columns: ${Object.keys(found[0]).join(', ')}`)
+    for (const h of SHAPES_HELP) print(`  ${h}`)
+    print('rename the columns in the file to one of these and bring it in again')
+    return false
+  }
+  print(`reading ${shape.reads} (${shape.format})`)
+  const rows = found.flatMap((r) => {
+    const c = shape.convert(r)
+    return c ? [c] : []
+  })
+  if (found.length - rows.length) print(`  ${found.length - rows.length} ${found.length - rows.length === 1 ? "row" : "rows"} left out: empty or not in that shape`)
+  if (!rows.length) return false
+  const existing = await readManifest(name)
+  if (existing && (existing.format ?? 'chat') !== shape.format) {
+    print(`${name} is a ${existing.format ?? 'chat'} dataset and these rows are ${shape.format}; bring them into a new dataset`)
+    return false
+  }
+  const m = existing ?? (await ensureDataset(name, line, shape.format))
+  await fs.appendFile(path.join(dir(name), 'train.jsonl'), toJsonl(rows))
+  m.counts.train += rows.length
+  source.rows = rows.length
+  m.sources.push(source)
+  if (source.url && !m.inputs.includes(source.url)) m.inputs.push(source.url)
+  if (about) m.about = about
+  recordCommand(m, line)
+  await writeManifest(m)
+  print(`  ◂ ${rows.length} ${shape.format === 'preference' ? 'pairs' : 'rows'} → workspace/data/${name}/train.jsonl · ${source.license}`)
+  return true
+}
+
+/** `data import hf <owner/name> <dataset>`: any dataset on Hugging Face with a viewer, read through its rows API. */
+async function importHf(repo: string, name: string, opts: Record<string, string>, line: string): Promise<boolean> {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo ?? '')) {
+    print('usage: data import hf <owner/name> <dataset> [--config <c>] [--split train] [--limit 300]   (the name as shown on huggingface.co/datasets)')
+    return false
+  }
+  const limit = Math.min(Number(opts.limit ?? 300), 5000)
+  const abort = new AbortController()
+  setRunning({ abort })
+  try {
+    let config = opts.config
+    let split = opts.split
+    if (!config || !split) {
+      // Ask the viewer which configs and splits exist; take the first, preferring "train".
+      const res = await fetch(`https://datasets-server.huggingface.co/splits?dataset=${encodeURIComponent(repo)}`, { signal: abort.signal })
+      if (!res.ok) {
+        print(`Hugging Face has no viewer for ${repo} (${res.status}). Check the name, or download its file and bring it in with upload.`)
+        return false
+      }
+      const { splits } = (await res.json()) as { splits: { config: string; split: string }[] }
+      const pick = splits.find((x) => (!config || x.config === config) && (split ? x.split === split : x.split === 'train')) ?? splits.find((x) => !config || x.config === config)
+      if (!pick) {
+        print(`no ${config ? `config ${config}` : 'splits'} in ${repo}. configs: ${[...new Set(splits.map((x) => x.config))].join(', ')}`)
+        return false
+      }
+      config = pick.config
+      split = pick.split
+      print(`reading ${repo} · config ${config} · split ${split}`)
+    }
+    const declared = await hfLicense(repo)
+    print(declared ? `license on Hugging Face: ${declared}` : 'no license on the dataset card: check it before you share anything made from it')
+    const found: Record<string, unknown>[] = []
+    for (let offset = 0; found.length < limit; offset += 100) {
+      const page = await hfRows(repo, config, offset, Math.min(100, limit - found.length), abort, split)
+      found.push(...page.rows.map((r) => r.row))
+      write(`\r\x1b[2Kread ${found.length} of ${Math.min(limit, page.num_rows_total)}`)
+      if (offset + 100 >= page.num_rows_total) break
+    }
+    write('\n')
+    const source: DataSource = { id: repo, kind: 'import', license: declared ?? 'not stated (check the dataset card)', licenseChecked: !!declared, url: `https://huggingface.co/datasets/${repo}`, rows: 0 }
+    return addConverted(name, line, found, source, opts.about ?? (await hfAbout(repo)) ?? undefined)
+  } catch (err) {
+    write('\n')
+    print(abort.signal.aborted ? '  ◂ stopped' : `data import hf: ${(err as Error).message}`)
+    return false
+  } finally {
+    setRunning(null)
+  }
+}
+
+/** `data import file uploads/<file> <dataset> --license "<terms>"`: a .csv, .jsonl or .json brought in from the browser. */
+async function importFile(rel: string, name: string, opts: Record<string, string>, line: string): Promise<boolean> {
+  if (!/^uploads\/[\w.-]+\.(csv|jsonl|json)$/.test(rel ?? '')) {
+    print('usage: data import file uploads/<file>.csv|.jsonl|.json <dataset> --license "<the terms it came with>"')
+    return false
+  }
+  if (!opts.license?.trim()) {
+    print('data import file: say what license the data came with, e.g. --license "CC BY 4.0", or --license "mine" for your own writing')
+    return false
+  }
+  const text = await fs.readFile(path.join(WORKSPACE, rel), 'utf8').catch(() => null)
+  if (text === null) {
+    print(`no file workspace/${rel}`)
+    return false
+  }
+  let found: Record<string, unknown>[] = []
+  try {
+    if (rel.endsWith('.csv')) found = parseCsv(text)
+    else if (rel.endsWith('.jsonl')) found = text.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
+    else {
+      const v = JSON.parse(text)
+      found = Array.isArray(v) ? v : Array.isArray(v?.data) ? v.data : Array.isArray(v?.rows) ? v.rows : []
+    }
+  } catch (err) {
+    print(`data import file: couldn't read ${rel}: ${(err as Error).message}`)
+    return false
+  }
+  const source: DataSource = { id: rel, kind: 'import', license: opts.license.trim(), licenseChecked: false, rows: 0 }
+  return addConverted(name, line, found.filter((r) => r && typeof r === 'object'), source, opts.about)
+}
+
+/** `data describe <dataset> <text…>`: say in your own words what the dataset is. */
+async function describe(name: string, words: string[], line: string): Promise<boolean> {
+  const m = await readManifest(name)
+  if (!m) return missing(name)
+  const about = words.join(' ').trim()
+  if (!about) {
+    print(`${name}: ${describeDataset(m)}`)
+    return true
+  }
+  m.about = about
+  recordCommand(m, line)
+  await writeManifest(m)
+  print(`  ◂ ${name}: ${about}`)
+  return true
+}
+
 /* ---------- validate / split / count / append ---------- */
 
 async function validate(name: string, line: string): Promise<boolean> {
@@ -524,8 +692,8 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
   const [sub, ...rest] = args
   const { pos, opts } = flags(rest)
   if (sub === 'raw') return rawCommand(pos, opts, line)
-  const name = sub === 'import' ? (pos[0] === 'example' ? pos[2] : pos[1]) : pos[0]
-  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw'].includes(sub)) {
+  const name = sub === 'import' ? (['example', 'hf', 'file'].includes(pos[0]) ? pos[2] : pos[1]) : pos[0]
+  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe'].includes(sub)) {
     print(HELP)
     return !sub || sub === 'help'
   }
@@ -534,7 +702,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     return false
   }
   for (const k of Object.keys(opts)) {
-    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang'], split: ['valid', 'seed'], append: ['source', 'from'] }
+    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from'] }
     if (!(allowed[sub] ?? []).includes(k)) {
       print(`data ${sub}: unknown option --${k}`)
       return false
@@ -559,8 +727,10 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
       if (pos[0] === 'example') return importExample(pos[1] ?? '', name, line)
       if (pos[0] === 'oasst1') return importOasst1(name, opts, line)
       if (pos[0] === 'smoltalk') return importSmoltalk(name, opts, line)
+      if (pos[0] === 'hf') return importHf(pos[1], name, opts, line)
+      if (pos[0] === 'file') return importFile(pos[1], name, opts, line)
       if (pos[0] !== 'dolly') {
-        print(`data import: sources are dolly, oasst1, smoltalk and example <name>`)
+        print(`data import: sources are dolly, oasst1, smoltalk, example <name>, hf <owner/name>, and file uploads/<file>`)
         return false
       }
       return importDolly(name, opts, line)
@@ -572,6 +742,8 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
       return count(name, line)
     case 'append':
       return append(name, pos[1], opts, line)
+    case 'describe':
+      return describe(name, pos.slice(1), line)
   }
   return false
 }

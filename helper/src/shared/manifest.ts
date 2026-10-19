@@ -30,4 +30,6 @@ export interface DatasetManifest extends Manifest {
   split: { valid: number; seed: number } | null
   sources: DataSource[]
   tokens?: { total: number; max: number; overLimit: number; limit: number; estimate: true }
+  /** a plain description, written at import or with `data describe`; see shared/datasetAbout.ts */
+  about?: string
 }
