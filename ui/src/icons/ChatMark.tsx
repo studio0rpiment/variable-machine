@@ -1,6 +1,6 @@
 import { Icon, type GlyphProps } from './Icon'
 
-/** Panel marker: Chat (two models, one listener). */
+/** Panel marker: Chat (two ends of a conversation, standing up). */
 export function ChatMark(props: GlyphProps) {
-  return <Icon name="ear" direction="base" {...props} />
+  return <Icon name="dumbbell" {...props} />
 }

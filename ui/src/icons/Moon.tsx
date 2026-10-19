@@ -1,6 +1,6 @@
 import { Icon, type GlyphProps } from './Icon'
 
-/** Theme toggle while dark: the c-spiral reads as a crescent. */
+/** Theme toggle while dark: a round solid moon. */
 export function Moon(props: GlyphProps) {
-  return <Icon name="c-spiral" direction="base" {...props} />
+  return <Icon name="blob" direction="r90" {...props} />
 }

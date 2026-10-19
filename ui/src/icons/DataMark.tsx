@@ -1,6 +1,6 @@
 import { Icon, type GlyphProps } from './Icon'
 
-/** Panel marker: Data (rows of examples). */
+/** Panel marker: Data (many points: the examples). */
 export function DataMark(props: GlyphProps) {
-  return <Icon name="hatch-fine" {...props} />
+  return <Icon name="star-scribble" direction="r45" {...props} />
 }

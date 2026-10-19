@@ -21,6 +21,13 @@ export interface IconProps {
  * the line colour (or --muted from a parent at rest).
  * Defaults to the fill variant: at rem sizes the line variant is a hairline
  * outline of the ink, while fill is the ink stroke itself.
+ *
+ * The app uses only the set's seven solid shapes (blob, bolt, dumbbell,
+ * star-scribble, triangle-a, triangle-b, triangle-y), with rotations telling
+ * repeats apart. Each glyph file in this folder says which shape and turn it
+ * uses, so swapping one is a one-line change. Filled, the three triangles
+ * all read as plain solid triangles, so in the tab row they differ by
+ * direction: start ▲, modelfile ▼, train ▶, adapters ◀.
  */
 export function Icon({ name, variant = 'fill', direction = 'base', size = 1.25, label, className, style }: IconProps) {
   const id = `hi-${name}-${variant}${direction === 'base' ? '' : `-${direction}`}`

@@ -1,6 +1,6 @@
 import { Icon, type GlyphProps } from './Icon'
 
-/** Panel marker: Share (things scattered outward). */
+/** Panel marker: Share (a bolt turned outward: send it on). */
 export function ShareMark(props: GlyphProps) {
-  return <Icon name="scatter" {...props} />
+  return <Icon name="bolt" direction="r90" {...props} />
 }
