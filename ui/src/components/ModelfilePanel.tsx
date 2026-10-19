@@ -1,5 +1,5 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { flushSync } from 'react-dom'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { glide as glideAs, moving } from '../lib/moving'
 import { useOllamaModels } from '../hooks/useOllamaModels'
 import { useHelperEvent } from '../hooks/useHelper'
 import { runCommand, sendEvent } from '../lib/helper'
@@ -64,25 +64,7 @@ const EMPTY: Answer = { text: '', thinking: '', state: 'idle' }
 /** "Write your own": the card that sits with the presets and starts from blank words. */
 const OWN = { id: 'own', group: 'your own', title: 'write your own', blurb: 'Start from blank: your own instructions, how adventurous, and an example to imitate.' }
 
-/** Each card keeps one name as it moves between the grid, the left and the rail, so the browser can glide it there. */
-const glide = (id: string): CSSProperties => ({ viewTransitionName: `preset-${id}` })
-
-/** Change the layout with the cards gliding to their new places, where the browser can and the student hasn't asked for less motion. */
-function moving(change: () => void) {
-  type Transition = { ready: Promise<void>; finished: Promise<void>; updateCallbackDone: Promise<void> }
-  const d = document as Document & { startViewTransition?: (cb: () => void) => Transition }
-  if (!d.startViewTransition || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return change()
-  // The browser can skip or abort a transition (a page still settling, a background tab); the change must happen anyway.
-  let ran = false
-  const t = d.startViewTransition(() => {
-    ran = true
-    flushSync(change)
-  })
-  const ensure = () => !ran && ((ran = true), change())
-  t.ready.catch(ensure)
-  t.updateCallbackDone.catch(ensure)
-  t.finished.catch(ensure)
-}
+const glide = (id: string) => glideAs('preset', id)
 
 /** One side of the comparison. */
 function AnswerColumn({ label, model, a, placeholder }: { label: string; model: string; a: Answer; placeholder?: string }) {

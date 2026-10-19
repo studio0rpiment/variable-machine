@@ -31,7 +31,8 @@ interface RunManifest {
  * command, run it, watch loss as mlx-lm reports it. The run's folder keeps
  * config, command, log, loss and manifest.
  */
-export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
+/** useData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
+export default function TrainPanel({ onAdapters, useData }: { onAdapters: () => void; useData?: { data: string; n: number } }) {
   const { status } = useHelperState()
   const tier = status?.tier ?? '16'
   const defaults = TIER_DEFAULTS[tier]
@@ -66,6 +67,9 @@ export default function TrainPanel({ onAdapters }: { onAdapters: () => void }) {
   useEffect(() => {
     if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
   }, [ready, p.data])
+  useEffect(() => {
+    if (useData) setP((x) => ({ ...x, data: useData.data }))
+  }, [useData])
   const base = HF_BASES.find((b) => b.id === p.base)
   useEffect(() => {
     if (!touchedName && p.data && base) setP((x) => ({ ...x, name: `${p.data}-${base.params.toLowerCase()}` }))

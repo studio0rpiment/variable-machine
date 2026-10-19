@@ -33,7 +33,8 @@ const pct = (x: number) => `${Math.round(x * 100)}%`
  * DPO loss as it falls, and the held-out check: how often the model finds the
  * chosen answer more likely than the rejected one, before and after.
  */
-export default function PreferPanel({ onAdapters }: { onAdapters: () => void }) {
+/** useData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
+export default function PreferPanel({ onAdapters, useData }: { onAdapters: () => void; useData?: { data: string; n: number } }) {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
@@ -58,6 +59,9 @@ export default function PreferPanel({ onAdapters }: { onAdapters: () => void }) 
   useEffect(() => {
     if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
   }, [ready, p.data])
+  useEffect(() => {
+    if (useData) setP((x) => ({ ...x, data: useData.data }))
+  }, [useData])
   useEffect(() => {
     if (!touchedName && p.data) setP((x) => ({ ...x, name: `${p.data}-dpo` }))
   }, [p.data, touchedName])

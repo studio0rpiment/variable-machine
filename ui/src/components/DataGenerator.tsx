@@ -101,7 +101,7 @@ let nextId = 1
  * edited, then kept (a `data append` command) or rejected (nothing written).
  */
 export default function DataGenerator({ dataset, examples }: Props) {
-  const { models } = useOllamaModels()
+  const { models, reload } = useOllamaModels()
   const [model, setModel] = useState('qwen3:4b')
   const [count, setCount] = useState(10)
   const [task, setTask] = useState(DEFAULT_TASK)
@@ -203,7 +203,7 @@ export default function DataGenerator({ dataset, examples }: Props) {
   return (
     <div className="generator">
       <div className="generator__head">
-        <ModelSelect label="writer" models={models} value={model} onChange={setModel} onOpen={() => {}} />
+        <ModelSelect label="writer" models={models} value={model} onChange={setModel} onOpen={reload} />
         <label className="field field--narrow">
           <span className="label label--muted">rows</span>
           <input type="text" inputMode="numeric" value={count} onChange={(e) => setCount(Math.max(1, Math.min(30, Number(e.target.value.replace(/\D/g, '')) || 1)))} />

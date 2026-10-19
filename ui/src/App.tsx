@@ -38,6 +38,13 @@ const MARKS: Record<Panel, ReactNode> = {
   chat: <ChatMark size={0.9} />,
 }
 
+/**
+ * The path through the tabs, numbered: look at models, change one with words, gather
+ * examples, then one of the three ways (they share a number: pick one), then what they
+ * made. Start, Chat and Share are used at any point, so they have none.
+ */
+const STEP: Partial<Record<Panel, number>> = { models: 1, modelfile: 2, data: 3, train: 4, prefer: 4, merge: 4, adapters: 5 }
+
 /** The panel lives in the hash so a reload stays put (it's navigation, not saved state). */
 function panelFromHash(): Panel {
   const h = location.hash.slice(1)
@@ -70,6 +77,13 @@ export default function App() {
   const chatWith = (model: string) => chatModels([null, model])
   /** Two models side by side, e.g. the untouched base next to what training made of it. */
   const chatPair = (a: string, b: string) => chatModels([a, b])
+  const [trainData, setTrainData] = useState<{ data: string; n: number }>()
+  const [preferData, setPreferData] = useState<{ data: string; n: number }>()
+  /** Data → "use it": open Train or Prefer with that dataset chosen. */
+  const sendDataset = (data: string, way: 'train' | 'prefer') => {
+    ;(way === 'train' ? setTrainData : setPreferData)((r) => ({ data, n: (r?.n ?? 0) + 1 }))
+    go(way)
+  }
   const editModelfile = (model: string) => {
     setModelfileFrom((r) => ({ model, n: (r?.n ?? 0) + 1 }))
     go('modelfile')
@@ -89,6 +103,7 @@ export default function App() {
               {group.map((p) => (
                 <Explained key={p} id={`panel.${p}` as ExplainId}>
                   <a href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>
+                    {STEP[p] && <span className="nav-step">{STEP[p]}</span>}
                     {MARKS[p]}
                     {p}
                   </a>
@@ -111,13 +126,13 @@ export default function App() {
           <ModelfilePanel startFrom={modelfileFrom} onChatPair={chatPair} />
         </div>
         <div className="panel-slot" hidden={panel !== 'data'}>
-          <DataPanel />
+          <DataPanel onUse={sendDataset} />
         </div>
         <div className="panel-slot" hidden={panel !== 'train'}>
-          <TrainPanel onAdapters={() => go('adapters')} />
+          <TrainPanel onAdapters={() => go('adapters')} useData={trainData} />
         </div>
         <div className="panel-slot" hidden={panel !== 'prefer'}>
-          <PreferPanel onAdapters={() => go('adapters')} />
+          <PreferPanel onAdapters={() => go('adapters')} useData={preferData} />
         </div>
         <div className="panel-slot" hidden={panel !== 'adapters'}>
           <AdaptersPanel onChatPair={chatPair} />
