@@ -122,6 +122,8 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
   const [nameTouched, setNameTouched] = useState(false)
   const [sample, setSample] = useState('')
   const [inherited, setInherited] = useState<string[]>([])
+  /** the model reasons before answering (qwen3:4b does, and can't be switched off) */
+  const [thinks, setThinks] = useState(false)
   const [state, setState] = useState<'idle' | 'making' | 'made' | 'failed'>('idle')
   const [made, setMade] = useState<{ name: string; base: string } | null>(null)
   const [answers, setAnswers] = useState<{ original: Answer; variant: Answer }>({ original: EMPTY, variant: EMPTY })
@@ -146,15 +148,17 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
   useEffect(() => {
     if (!form.base) return
     void showModel(form.base).then(
-      (s) =>
+      (s) => (
+        setThinks(!!s.capabilities?.includes('thinking')),
         setInherited(
           (s.parameters ?? '')
             .split('\n')
             .map((l) => l.trim().split(/\s+/))
             .filter(([k]) => k === 'stop')
             .map(([k, ...v]) => `PARAMETER ${k} ${v.join(' ')}`),
-        ),
-      () => setInherited([]),
+        )
+      ),
+      () => (setInherited([]), setThinks(false)),
     )
   }, [form.base])
 
@@ -257,9 +261,13 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
 
   /** A short context window: plenty for one question, and a model needs 3GB instead of 7.6GB, so switching between the two is quick. */
   const ASK_OPTIONS = { num_ctx: 4096 }
+  const NO_THINK = '/no_think'
 
   // On a 16GB Mac Ollama keeps one model in memory at a time, so the two answer in turn: the original, then the variant.
-  const ask = (question: string, pair: { name: string; base: string }) => {
+  const ask = (typed: string, pair: { name: string; base: string }) => {
+    // A thinking model reasons for a minute before a two-line answer. qwen3's own /no_think tag
+    // doesn't stop the edition Ollama ships, but it keeps the reasoning about three times shorter.
+    const question = thinks ? `${typed} ${NO_THINK}` : typed
     aborts.current.forEach((a) => a.abort())
     aborts.current = []
     const turn = ++asked.current
@@ -379,6 +387,11 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                 )}
                 {state === 'failed' && <span className="label label--muted">didn't work; the terminal says why</span>}
               </div>
+              {thinks && (
+                <p className="mf-next">
+                  {form.base} thinks before it answers, which takes a while. Each question gets <code>{NO_THINK}</code> added, which asks it to keep the thinking short; a model without thinking, such as llama3.2:3b, answers at once.
+                </p>
+              )}
               {/* Always here, so it's clear where the answers will appear. */}
               <div className="mf-compare">
                 <AnswerColumn label="the original" model={made?.base ?? form.base} a={answers.original} placeholder={`${form.base || 'the model'} as it is. Its answer appears here.`} />
