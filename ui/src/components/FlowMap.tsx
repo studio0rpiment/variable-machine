@@ -274,16 +274,20 @@ export default function FlowMap() {
             onBlur={() => setHot(null)}
             aria-label={`${n.id}: ${n.caption}`}
           >
-            {n.dest && (
+            {n.dest ? (
               <>
-                {/* the destination: a second, solid outline around it, and a label over it */}
+                {/* the destination: an outer outline (dashed like the others until you point at it), and inside it
+                    two windows side by side, as Chat puts two models side by side */}
                 <rect x={n.x - 6} y={n.y - 6} width={W + 12} height={H + 12} className="flow__dest" />
                 <text x={n.x - 6} y={n.y - 14} className="flow__dest-label">
                   use it here
                 </text>
+                <rect x={n.x} y={n.y} width={W / 2 - 3} height={H} className="flow__box" />
+                <rect x={n.x + W / 2 + 3} y={n.y} width={W / 2 - 3} height={H} className="flow__box" />
               </>
+            ) : (
+              <rect x={n.x} y={n.y} width={W} height={H} className="flow__box" />
             )}
-            <rect x={n.x} y={n.y} width={W} height={H} className={`flow__box ${n.dest ? 'flow__box--dest' : ''}`.trim()} />
             {/* ports: where wires plug in and out */}
             {/* the destination's wires plug into its outer outline */}
             <rect x={n.x - (n.dest ? 6 : 0) - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
@@ -293,9 +297,17 @@ export default function FlowMap() {
                 {n.n}
               </text>
             )}
-            <text x={n.x + (n.n ? 28 : 14)} y={n.y + H / 2 + 5} className="flow__name">
-              {n.id}
-            </text>
+            {n.dest ? (
+              [0, 1].map((k) => (
+                <text key={k} x={n.x + (W / 2 + 3) * k + (W / 2 - 3) / 2} y={n.y + H / 2 + 5} textAnchor="middle" className="flow__name">
+                  {n.id}
+                </text>
+              ))
+            ) : (
+              <text x={n.x + (n.n ? 28 : 14)} y={n.y + H / 2 + 5} className="flow__name">
+                {n.id}
+              </text>
+            )}
             <text x={n.x} y={n.y + H + 18} className="flow__caption">
               {n.caption}
             </text>

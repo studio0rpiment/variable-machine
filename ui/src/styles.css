@@ -731,6 +731,6 @@ a.text-button { text-decoration: none; }
 @keyframes echo-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @media (prefers-reduced-motion: reduce) { .flow__echo-line { animation: none; } }
 /* Chat, where everything you make is used: solid, doubled, labelled */
-.flow__box--dest { stroke-dasharray: none; }
-.flow__dest { fill: none; stroke: var(--act); stroke-width: 1.25; }
+.flow__dest { fill: none; stroke: var(--act); stroke-width: 1.25; stroke-dasharray: 4 3; }
+.flow__node:hover .flow__dest, .flow__node:focus-visible .flow__dest, .flow__node.is-hot .flow__dest { stroke-dasharray: none; }
 .flow__dest-label { fill: var(--act); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
