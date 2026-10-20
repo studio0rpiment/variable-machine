@@ -85,6 +85,11 @@ export async function unzipCommand(args: string[]): Promise<boolean> {
   const ok = await spawnStreamed('ditto', ['-x', '-k', `workspace/shared/${file}`, path.relative(path.dirname(WORKSPACE), incoming)])
   if (!ok) return false
   try {
+    // A link inside an artifact could point anywhere on this computer: the app would read it, or append to it.
+    if (await hasLink(path.join(incoming, root))) {
+      print('unzip: refused. The zip holds a link to somewhere else on the computer; an artifact holds plain files')
+      return false
+    }
     const manifest = JSON.parse(await fs.readFile(path.join(incoming, root, 'manifest.json'), 'utf8')) as { kind?: string; name?: string; license?: string }
     const home = HOME_OF[manifest.kind ?? '']
     if (!home) {
@@ -105,4 +110,13 @@ export async function unzipCommand(args: string[]): Promise<boolean> {
   } finally {
     await fs.rm(incoming, { recursive: true, force: true })
   }
+}
+
+/** True if anything under dir is a symbolic link. */
+async function hasLink(dir: string): Promise<boolean> {
+  for (const e of await fs.readdir(dir, { withFileTypes: true })) {
+    if (e.isSymbolicLink()) return true
+    if (e.isDirectory() && (await hasLink(path.join(dir, e.name)))) return true
+  }
+  return false
 }

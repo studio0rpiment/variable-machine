@@ -30,8 +30,18 @@ function isAllowedOrigin(origin: string | undefined) {
   return origin === undefined || ORIGINS.has(origin)
 }
 
+/**
+ * DNS rebinding: a web page can point its own domain at 127.0.0.1 and then
+ * read from here with plain GETs, which carry no Origin. Its requests still
+ * name its own domain in Host, so only our own names are let in.
+ */
+const HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`, `[::1]:${PORT}`])
+function isAllowedHost(host: string | undefined) {
+  return !!host && HOSTS.has(host.toLowerCase())
+}
+
 const server = http.createServer((req, res) => {
-  if (!isAllowedOrigin(req.headers.origin)) {
+  if (!isAllowedHost(req.headers.host) || !isAllowedOrigin(req.headers.origin)) {
     res.writeHead(403).end()
     return
   }
@@ -52,7 +62,7 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ noServer: true })
 server.on('upgrade', (req, socket, head) => {
-  if (new URL(req.url ?? '/', 'http://x').pathname !== '/ws' || !isAllowedOrigin(req.headers.origin)) {
+  if (new URL(req.url ?? '/', 'http://x').pathname !== '/ws' || !isAllowedHost(req.headers.host) || !isAllowedOrigin(req.headers.origin)) {
     socket.destroy()
     return
   }

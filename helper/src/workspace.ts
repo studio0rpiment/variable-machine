@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { createReadStream, createWriteStream } from 'node:fs'
+import { createReadStream, createWriteStream, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { print } from './hub.ts'
 import type http from 'node:http'
@@ -18,13 +18,25 @@ import { WORKSPACE } from './config.ts'
  */
 function inside(rel: string): string | null {
   const p = path.resolve(WORKSPACE, rel)
-  const r = path.relative(WORKSPACE, p)
-  return r.startsWith('..') || path.isAbsolute(r) ? null : p
+  const within = (x: string, root: string) => {
+    const r = path.relative(root, x)
+    return !(r.startsWith('..') || path.isAbsolute(r))
+  }
+  if (!within(p, WORKSPACE)) return null
+  // and where it really leads: a link inside the workspace mustn't reach outside it
+  try {
+    return within(realpathSync(p), realpathSync(WORKSPACE)) ? p : null
+  } catch {
+    return p // doesn't exist (yet): nothing to follow
+  }
 }
 
 function json(res: http.ServerResponse, code: number, body: unknown) {
   res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(body))
 }
+
+/** A shared zip or a data file; bigger than this isn't a class's material, and would fill the disk. */
+const MAX_UPLOAD = 200 * 1024 * 1024
 
 async function upload(req: http.IncomingMessage, res: http.ServerResponse, name: string | null) {
   // A zip is something shared (unzip puts it back); a table or JSON file is data to bring in.
@@ -38,13 +50,29 @@ async function upload(req: http.IncomingMessage, res: http.ServerResponse, name:
   } catch {
     // free
   }
-  await new Promise<void>((resolve, reject) => {
+  if (Number(req.headers['content-length'] ?? 0) > MAX_UPLOAD) return json(res, 413, { error: `larger than ${MAX_UPLOAD / 1024 / 1024}MB` })
+  const ok = await new Promise<boolean>((resolve, reject) => {
     const out = createWriteStream(dest + '.part')
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      // no content-length, or a wrong one: stop at the limit all the same
+      if (size > MAX_UPLOAD) {
+        req.unpipe(out)
+        out.destroy()
+        req.destroy()
+        resolve(false)
+      }
+    })
     req.pipe(out)
-    out.on('finish', resolve)
+    out.on('finish', () => resolve(true))
     out.on('error', reject)
     req.on('error', reject)
   })
+  if (!ok) {
+    await fs.rm(dest + '.part', { force: true })
+    return
+  }
   await fs.rename(dest + '.part', dest)
   print(`▸ received workspace/${kind}/${name} (uploaded from the browser)`)
   json(res, 200, { path: `${kind}/${name}` })

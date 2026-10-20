@@ -152,7 +152,8 @@ Not verified: the 16GB timings. There was no 16GB machine to test on, and a base
   - timeouts on network checks in `doctor`, so a request that never answers can't hang it.
 
   When the socket drops, the page reconnects on focus, on coming back online, or on a click. Nothing polls.
-- **Localhost only.** The helper binds to 127.0.0.1 and refuses HTTP requests and WebSocket upgrades from any other origin. Its terminal runs commands, so no other site may talk to it.
+- **Localhost only.** The helper binds to 127.0.0.1 and refuses HTTP requests and WebSocket upgrades from any other origin, and any request whose Host isn't localhost or 127.0.0.1 on its port (so a page can't reach it by pointing its own domain at this computer: DNS rebinding). Its terminal runs commands, so no other site may talk to it.
+- **Files stay in the workspace.** Every path the page reads is checked to lie inside workspace/, after following links. Unzip refuses zips with absolute paths, `..`, more than one top folder, or links. Uploads stop at 200MB. Commands run without a shell, from an allowlist.
 
 ## Where it differs from the plan, and why
 
