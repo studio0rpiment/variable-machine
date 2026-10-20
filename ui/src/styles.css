@@ -418,17 +418,12 @@ a.text-button { text-decoration: none; }
 .flag__body > * { transform: skewX(6deg); } /* the words stand upright inside the slanted bubble */
 .flag__title { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .flag__text { text-wrap: pretty; }
-/* The tail: a square turned 45°, outlined on the two sides that point at the element. */
-.flag__tail {
-  position: absolute;
-  z-index: 1;
-  width: 0.65rem;
-  height: 0.65rem;
-  background: var(--bg);
-  transform: rotate(45deg);
-}
-.flag--below .flag__tail { top: 0.42rem; border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
-.flag--above .flag__tail { bottom: 0.42rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+/* The tail: a low triangle (see TAIL in Explained.tsx), filled with the page colour and outlined like the flag. */
+.flag__tail { position: absolute; z-index: 1; overflow: visible; fill: var(--bg); stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.flag--below .flag__tail, .flag--above .flag__tail { width: 1.125rem; height: 0.5rem; }
+.flag--right .flag__tail, .flag--left .flag__tail { width: 0.5rem; height: 1.125rem; }
+.flag--below .flag__tail { top: calc(0.75rem - 0.5rem + 1px); }
+.flag--above .flag__tail { bottom: calc(0.75rem - 0.5rem + 1px); }
 .flag--start .flag__tail { left: 1.4rem; }
 .flag--end .flag__tail { right: 1.4rem; }
 @keyframes flag-in {
@@ -675,8 +670,15 @@ a.text-button { text-decoration: none; }
 /* Flags beside their element: hanging out of the module to the right or the left, the tail level with the element. */
 .flag--right { padding-left: 0.75rem; --flag-dx: -0.25rem; --flag-from: 0; }
 .flag--left { padding-right: 0.75rem; --flag-dx: 0.25rem; --flag-from: 0; }
-.flag--right .flag__tail { left: 0.42rem; top: var(--tail-y, 1rem); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.flag--left .flag__tail { right: 0.42rem; left: auto; top: var(--tail-y, 1rem); border-right: 1px solid var(--line); border-top: 1px solid var(--line); }
+.flag--right .flag__tail { left: calc(0.75rem - 0.5rem + 1px); top: var(--tail-y, 1rem); }
+.flag--left .flag__tail { right: calc(0.75rem - 0.5rem + 1px); left: auto; top: var(--tail-y, 1rem); }
+/* the bubble leans (skewX); pivot it at the tail so its side edge meets the tail where the tail is */
+.flag--right .flag__body, .flag--left .flag__body { transform-origin: center calc(var(--tail-y, 1rem) + 0.56rem); }
 .flag--right .flag__body, .flag--left .flag__body { max-height: calc(100vh - 6rem); overflow: auto; }
 /* The module a flag belongs to shows its border while the flag is open. */
 .is-explained { outline: 1px dashed var(--muted); outline-offset: 0.5rem; }
+
+/* Train and Prefer columns: a choice spreads across the column like the sliders, its name above */
+.train-form__col .choice > .label { flex-basis: 100%; margin: 0 0 0.15rem; }
+.train-form__col .choice > button { flex: 1 1 0; text-align: center; }
+.train-form__col .slider input[type="range"] { max-width: none; }

@@ -40,6 +40,19 @@ const MODULE = [
   '.shell__nav',
 ].join(', ')
 
+/**
+ * The tail: a plain triangle, low and wide, its point set off-centre so it
+ * looks as if the flag is being pulled toward its element a little. Drawn on
+ * the two sides that leave the flag; the open side overlaps the flag's border
+ * and covers it, so tail and flag read as one outline.
+ */
+const TAIL: Record<Side, { box: string; d: string }> = {
+  below: { box: '0 0 18 8', d: 'M0 8.5 L6 0 L18 8.5' },
+  above: { box: '0 0 18 8', d: 'M0 -0.5 L6 8 L18 -0.5' },
+  right: { box: '0 0 8 18', d: 'M8.5 0 L0 6 L8.5 18' },
+  left: { box: '0 0 8 18', d: 'M-0.5 0 L8 6 L-0.5 18' },
+}
+
 const FLAG_W = 24 * 16 // .flag max-width, 24rem
 const MIN_W = 14 * 16 // narrowest a flag beside its element may be
 const FLAG_H = 13 * 16 // a typical flag's height; long ones are clamped to the screen
@@ -202,7 +215,9 @@ export function Explained({ id, children }: Props) {
             aria-hidden="true"
             onPointerLeave={(ev) => !within(ev.relatedTarget, wrap) && close()}
           >
-            <span className="flag__tail" />
+            <svg className="flag__tail" viewBox={TAIL[at.side].box} aria-hidden="true">
+              <path d={TAIL[at.side].d} />
+            </svg>
             <span className="flag__body">
               <span className="flag__title">{e.title}</span>
               <span className="flag__text">{e.text}</span>
