@@ -6,6 +6,12 @@ interface Props {
   id: ExplainId
   /** the one element being explained; it gets aria-describedby, so a screen reader reads the explanation too */
   children: ReactElement<{ 'aria-describedby'?: string }>
+  /**
+   * The element is inside an SVG (a node on the Start map): the wrapper is a
+   * <g> instead of a <span>, and it is the module itself, so the flag hangs
+   * off the node rather than covering it.
+   */
+  svg?: boolean
 }
 
 type Side = 'below' | 'above' | 'right' | 'left'
@@ -130,9 +136,9 @@ function place(el: Element): { at: Placement; module: Element | null } {
  * The wrapper is display: contents, so wrapping a control never changes its
  * layout; the element measured is the wrapper's first child.
  */
-export function Explained({ id, children }: Props) {
+export function Explained({ id, children, svg }: Props) {
   const tipId = useId()
-  const wrap = useRef<HTMLSpanElement>(null)
+  const wrap = useRef<HTMLSpanElement & SVGGElement>(null)
   const flag = useRef<HTMLSpanElement>(null)
   const [at, setAt] = useState<Placement | null>(null)
   const [dismissed, setDismissed] = useState(false)
@@ -149,7 +155,7 @@ export function Explained({ id, children }: Props) {
     setAt(p.at)
   }
   const close = () => setAt(null)
-  const within = (n: EventTarget | null, ref: { current: HTMLElement | null }) => n instanceof Node && !!ref.current?.contains(n)
+  const within = (n: EventTarget | null, ref: { current: Element | null }) => n instanceof Node && !!ref.current?.contains(n)
 
   // While open, close it on anything that would leave it pointing at the wrong place or at nothing:
   // a scroll or resize; a panel change (the element may be hidden with the pointer still over where
@@ -167,45 +173,52 @@ export function Explained({ id, children }: Props) {
       if (!within(ev.target, wrap) && !within(ev.target, flag)) close()
     }
     window.addEventListener('scroll', close, true)
+    // a press or a wheel can move what it points at (dragging or zooming the Start map), so it goes too
+    window.addEventListener('pointerdown', close, true)
+    window.addEventListener('wheel', close, { capture: true, passive: true })
     window.addEventListener('resize', close)
     window.addEventListener('hashchange', close)
     document.addEventListener('pointerover', elsewhere)
     return () => {
       window.removeEventListener('scroll', close, true)
+      window.removeEventListener('pointerdown', close, true)
+      window.removeEventListener('wheel', close, { capture: true })
       window.removeEventListener('resize', close)
       window.removeEventListener('hashchange', close)
       document.removeEventListener('pointerover', elsewhere)
     }
   }, [at])
 
-  return (
-    <span
-      ref={wrap}
-      className="explained"
-      onPointerEnter={open}
-      onPointerLeave={(ev) => {
-        if (within(ev.relatedTarget, flag)) return
-        if (!wrap.current?.contains(document.activeElement)) close()
-        setDismissed(false)
-      }}
-      onFocus={open}
-      onBlur={(ev) => {
-        if (within(ev.relatedTarget, wrap)) return
+  const handlers = {
+    onPointerEnter: open,
+    onPointerLeave: (ev: React.PointerEvent) => {
+      if (within(ev.relatedTarget, flag)) return
+      if (!wrap.current?.contains(document.activeElement)) close()
+      setDismissed(false)
+    },
+    onFocus: open,
+    onBlur: (ev: React.FocusEvent) => {
+      if (within(ev.relatedTarget, wrap)) return
+      close()
+      setDismissed(false)
+    },
+    onKeyDown: (ev: React.KeyboardEvent) => {
+      if (ev.key === 'Escape' && at) {
         close()
-        setDismissed(false)
-      }}
-      onKeyDown={(ev) => {
-        if (ev.key === 'Escape' && at) {
-          close()
-          setDismissed(true)
-        }
-      }}
-    >
+        setDismissed(true)
+      }
+    },
+  }
+  // What a screen reader reads; the visible flag repeats it for the eye. (Inside an SVG a <span> can't sit, so it goes to the body.)
+  const described = (
+    <span id={tipId} hidden>
+      {e.title}. {e.text}
+    </span>
+  )
+  const inner = (
+    <>
       {cloneElement(children, { 'aria-describedby': tipId })}
-      {/* What a screen reader reads; the visible flag below repeats it for the eye. */}
-      <span id={tipId} hidden>
-        {e.title}. {e.text}
-      </span>
+      {svg ? createPortal(described, document.body) : described}
       {at &&
         createPortal(
           <span
@@ -225,6 +238,15 @@ export function Explained({ id, children }: Props) {
           </span>,
           document.body,
         )}
+    </>
+  )
+  return svg ? (
+    <g ref={wrap} data-module="" {...handlers}>
+      {inner}
+    </g>
+  ) : (
+    <span ref={wrap} className="explained" {...handlers}>
+      {inner}
     </span>
   )
 }

@@ -734,3 +734,5 @@ a.text-button { text-decoration: none; }
 .flow__dest { fill: none; stroke: var(--act); stroke-width: 1.25; stroke-dasharray: 4 3; }
 .flow__node:hover .flow__dest, .flow__node:focus-visible .flow__dest, .flow__node.is-hot .flow__dest { stroke-dasharray: none; }
 .flow__dest-label { fill: var(--act); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+/* a map node whose flag is open: drawn solid, as its outline (an SVG can't take a CSS outline) */
+.flow__svg .is-explained .flow__box, .flow__svg .is-explained .flow__dest { stroke-dasharray: none; }

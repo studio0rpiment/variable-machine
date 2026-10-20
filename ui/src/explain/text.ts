@@ -32,7 +32,7 @@ export const EXPLAIN = {
   },
   'panel.train': {
     title: 'Train · imitate',
-    text: 'The first of the three ways to change a model. Training shows the model your examples over and over and nudges its numbers so its answers come out more like them. It does not rewrite the whole model: it learns a small add-on, called an adapter, that sits on top. The solid line on the chart is how far off the model still is on your examples, and it should fall. The dashed line is the examples you set aside. If it starts rising while the solid line keeps falling, the model is memorising your examples rather than learning from them.',
+    text: 'The first of the three ways to change a model. Training shows the model your examples over and over and nudges its numbers so its answers come out more like them. It leaves the model itself as it was and learns a small set of changes, called an adapter, kept apart from it. The solid line on the chart is how far off the model still is on your examples, and it should fall. The dashed line is the examples you set aside. If it starts rising while the solid line keeps falling, the model is memorising your examples rather than learning from them.',
   },
   'panel.prefer': {
     title: 'Prefer',
@@ -40,7 +40,7 @@ export const EXPLAIN = {
   },
   'panel.adapters': {
     title: 'Adapters',
-    text: 'An adapter is what each of the three ways leaves behind: a small file of changes that only works on top of the model it started from. Here you fold an adapter into its model and hand the result to Ollama, so it becomes a model you can chat with next to the original and hear what changed. Adapters are small, which also makes them the easiest thing to share.',
+    text: 'An adapter is what each of the three ways leaves behind: a small file of changes that only works on top of the model it started from. The original model stays as it was; original plus adapter is your trained model. Here export joins the two into one model and hands it to Ollama, so you can chat with it next to the original and hear what changed. Adapters are small, which also makes them the easiest thing to share.',
   },
   'panel.merge': {
     title: 'Merge · blend',

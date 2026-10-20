@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useHelperEvent } from '../hooks/useHelper'
+import { Explained } from '../explain/Explained'
+import type { ExplainId } from '../explain/text'
 
 /**
  * The Start map: every tab as a node, wires for what flows between them, laid
@@ -264,8 +266,9 @@ export default function FlowMap() {
         ))}
 
         {NODES.map((n) => (
+          // the same flag as the tab's name in the top bar; each node is its own module, so the flag hangs off it
+          <Explained key={n.id} id={`panel.${n.id}` as ExplainId} svg>
           <a
-            key={n.id}
             href={`#${n.id}`}
             className={`flow__node ${hot === n.id ? 'is-hot' : ''}`.trim()}
             onPointerEnter={() => setHot(n.id)}
@@ -312,6 +315,7 @@ export default function FlowMap() {
               {n.caption}
             </text>
           </a>
+          </Explained>
         ))}
       </svg>
       <div className="flow__tools" role="group" aria-label="view">
