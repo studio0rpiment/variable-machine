@@ -11,6 +11,17 @@ export default function AboutPanel() {
       <header className="mf__intro">
         <h1 className="start__title">{ABOUT_INTRO.title}</h1>
         <p className="start__text">{ABOUT_INTRO.text}</p>
+        <p className="start__text">
+          For a class:{' '}
+          <a className="text-link" href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/exercise.md" target="_blank" rel="noopener noreferrer">
+            the five-stage exercise
+          </a>{' '}
+          uses all of this to make a model of your own, with a{' '}
+          <a className="text-link" href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/model-card-template.md" target="_blank" rel="noopener noreferrer">
+            model card
+          </a>{' '}
+          to hand in.
+        </p>
       </header>
       <ol className="about__tabs">
         {ABOUT_TABS.map((t) => (

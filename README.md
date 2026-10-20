@@ -41,6 +41,8 @@ It starts Ollama if it isn't running and opens http://localhost:4817 in your bro
 3. **Modelfile:** choose a preset, press make variant, and ask both the original and your variant the same question.
 4. **Data → Train:** choose a dataset, split it, open Train with it, and train. When it finishes, the next step exports your model and opens **Chat** with it.
 
+**The class exercise:** [docs/exercise.md](docs/exercise.md) takes students through five stages: a concept and five probe questions, then words (Modelfile), examples (Train) and taste (Prefer), then combinations (Merge, and words on top of training). They hand in a model of their own with a [model card](docs/model-card-template.md), their work as zips, and a one-minute demo.
+
 **If something isn't right:** `npm run doctor` checks Ollama, uv, Python and memory and says what to fix. Hover over any tab name or control for a flag that explains it.
 
 **Disk:** smollm2:360m is 725MB and qwen3:4b 2.5GB in Ollama. The first training run downloads its base model into `workspace/hf` (about 700MB for SmolLM2-360M, 3.4GB for the 1.7B). Exporting a trained model keeps a full-size copy in `workspace/fused` until you remove it.
