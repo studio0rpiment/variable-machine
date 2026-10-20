@@ -2,6 +2,7 @@ import path from 'node:path'
 import { watch } from 'chokidar'
 import { WORKSPACE } from './config.ts'
 import { broadcast } from './hub.ts'
+import { isConflicted, tidyConflict } from './conflicts.ts'
 
 /**
  * The workspace is the state (plan §3). chokidar turns file changes into
@@ -16,7 +17,18 @@ export function watchWorkspace() {
     awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 100 },
   })
   for (const kind of ['add', 'change', 'unlink', 'addDir', 'unlinkDir'] as const) {
-    watcher.on(kind, (p: string) => broadcast({ type: 'workspace.changed', path: path.relative(WORKSPACE, p), kind }))
+    watcher.on(kind, (p: string) => {
+      // A sync service's "[conflicted]" copy isn't state: tidy it (see conflicts.ts) instead of announcing it.
+      if (kind === 'add' && isConflicted(p)) return void tidyConflict(p)
+      broadcast({ type: 'workspace.changed', path: path.relative(WORKSPACE, p), kind })
+    })
   }
   return watcher
+}
+
+/** The built page too: a rebuild rewrites index.html, which is when a sync service renames it. */
+export function watchBuild(dir: string) {
+  return watch(dir, { ignoreInitial: true, depth: 1, awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 100 } }).on('add', (p: string) => {
+    if (isConflicted(p)) void tidyConflict(p)
+  })
 }

@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type http from 'node:http'
 import { UI_DIST } from './config.ts'
+import { restoreSync } from './conflicts.ts'
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -23,6 +24,8 @@ export function serveStatic(req: http.IncomingMessage, res: http.ServerResponse)
     return
   }
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(UI_DIST, 'index.html')
+  // A sync service may have renamed the page to "index [conflicted].html" during a rebuild: put it back.
+  if (!fs.existsSync(file) && file.endsWith('index.html')) restoreSync(UI_DIST, 'index.html')
   if (!fs.existsSync(file)) {
     res.writeHead(503, { 'content-type': 'text/plain' }).end('ui not built yet: npm run build')
     return

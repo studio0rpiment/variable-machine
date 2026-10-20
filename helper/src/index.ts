@@ -2,12 +2,13 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { WebSocketServer, type WebSocket } from 'ws'
-import { HOST, PORT, WORKSPACE, WORKSPACE_DIRS } from './config.ts'
+import { HOST, PORT, UI_DIST, WORKSPACE, WORKSPACE_DIRS } from './config.ts'
 import { addClient, broadcast, send } from './hub.ts'
 import { probe, status } from './status.ts'
 import { proxyOllama } from './proxy.ts'
 import { serveStatic } from './static.ts'
-import { watchWorkspace } from './watcher.ts'
+import { watchBuild, watchWorkspace } from './watcher.ts'
+import { sweepConflicts } from './conflicts.ts'
 import { handleCommand, handleLine, saveModelfile, stopRunning } from './terminal.ts'
 import { serveWorkspaceApi } from './workspace.ts'
 import { serveOpenData } from './opendata.ts'
@@ -123,6 +124,9 @@ setInterval(() => {
 }, HEARTBEAT_MS)
 
 watchWorkspace()
+watchBuild(UI_DIST)
+// Any "[conflicted]" files a sync service left while the helper was off.
+void sweepConflicts(WORKSPACE).then(() => sweepConflicts(UI_DIST))
 void probe()
 
 // Temporary variants: removed when Variable Machine stops, and at start for any a hard stop left behind.
