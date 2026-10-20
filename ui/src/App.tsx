@@ -10,23 +10,25 @@ import MergePanel from './components/MergePanel'
 import PreferPanel from './components/PreferPanel'
 import SharePanel from './components/SharePanel'
 import StartPanel from './components/StartPanel'
+import AboutPanel from './components/AboutPanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import StatusLine from './components/StatusLine'
 import { Explained } from './explain/Explained'
 import type { ExplainId } from './explain/text'
-import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark, AboutMark } from './icons'
 
 /**
  * The tabs, in the order you'd use them, grouped: the map; what to start from;
  * what to show it; the three ways to change it (imitate, prefer, blend); then
  * making it a model, comparing, sharing. The Start panel tells the same story.
  */
-const GROUPS = [['start'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share']] as const
+const GROUPS = [['start', 'about'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share']] as const
 const PANELS = GROUPS.flat()
 type Panel = (typeof GROUPS)[number][number]
 const MARKS: Record<Panel, ReactNode> = {
   start: <StartMark size={0.9} />,
+  about: <AboutMark size={0.9} />,
   models: <ModelsMark size={0.9} />,
   modelfile: <ModelfileMark size={0.9} />,
   data: <DataMark size={0.9} />,
@@ -118,6 +120,9 @@ export default function App() {
       <main className="shell__main">
         <div className="panel-slot" hidden={panel !== 'start'}>
           <StartPanel />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'about'}>
+          <AboutPanel />
         </div>
         <div className="panel-slot" hidden={panel !== 'models'}>
           <ModelsPanel onChat={chatWith} onModelfile={editModelfile} />

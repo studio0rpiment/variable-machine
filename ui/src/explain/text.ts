@@ -24,7 +24,11 @@ export const EXPLAIN = {
   },
   'panel.start': {
     title: 'Start',
-    text: 'The map of the whole app: the order the tabs run in, and the three ways to change a model (imitate, prefer and blend), each explained in plain words. Start here if you are new.',
+    text: 'A map of the whole app. Each box is a tab and each line is what one passes to the next: a model, your words, examples, an adapter. Click a box to open that tab. Start here if you are new.',
+  },
+  'panel.about': {
+    title: 'About the process',
+    text: 'The long form of the map, in words: every tab with what it does, what it takes, what it gives and where that leads. Not a step on the path; a place to read.',
   },
   'panel.train': {
     title: 'Train · imitate',
