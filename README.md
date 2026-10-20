@@ -2,6 +2,8 @@
 
 A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.
 
+![The Start page: every tab as a box, with lines for what each passes to the next, from Models and Data through the three ways to change the numbers to Adapters, Chat and Share](docs/images/start-map.png)
+
 ## Start here
 
 **You need:** a Mac with Apple Silicon (M1 or later) and 16GB of memory or more, macOS 14 or later, and about 10GB of free disk.
