@@ -12,7 +12,11 @@ interface Props {
    * off the node rather than covering it.
    */
   svg?: boolean
-  /** a different element to treat as the module (a selector), e.g. the box around a group of nodes */
+  /**
+   * A different element to treat as the module (a selector). The Start map
+   * gives its whole canvas, so a node's flag goes out toward the map's nearest
+   * edge, beside the node; such a flag may also cover the top bar.
+   */
   module?: string
 }
 
@@ -73,7 +77,25 @@ const TOP = 72 // below the app's top bar
  * the flag lies outside the module. Without a module, below the element (or
  * above it when it is low on the screen), as before.
  */
-function place(el: Element, given?: Element | null): { at: Placement; module: Element | null } {
+/**
+ * How wide a flag must be to fit in a given height, for a text of n
+ * characters (an estimate from the flag's monospace size), or null if even
+ * the widest flag won't fit. Lets a flag above the Start map go wide and
+ * short instead of falling back over the map.
+ */
+function widthToFit(chars: number, height: number, maxW: number): number | null {
+  const CHAR = 7.6 // px per character at the flag's 0.78rem monospace
+  const LINE = 19.4 // px per line (line-height 1.55)
+  const CHROME = 72 // title, padding and tail
+  const lines = Math.floor((height - CHROME) / LINE)
+  if (lines < 1) return null
+  const w = Math.ceil((chars * CHAR) / lines) + 40
+  return w <= maxW ? Math.max(w, FLAG_W) : null
+}
+
+function place(el: Element, given?: Element | null, chars = 300): { at: Placement; module: Element | null } {
+  // a flag sent out of a given module may cover the top bar; others stay below it
+  const top = given ? 8 : TOP
   const r = el.getBoundingClientRect()
   const vw = window.innerWidth
   const vh = window.innerHeight
@@ -82,7 +104,8 @@ function place(el: Element, given?: Element | null): { at: Placement; module: El
   const m = module?.getBoundingClientRect() ?? r
   const room: Record<Side, boolean> = {
     below: vh - r.bottom >= FLAG_H * 0.8,
-    above: r.top - TOP >= FLAG_H * 0.8,
+    // sent out of the map, a flag above may widen to fit the room there
+    above: given ? widthToFit(chars, r.top - top, vw - 16) !== null : r.top - top >= FLAG_H * 0.8,
     // Beside it, a flag may be narrower than usual (down to MIN_W) rather than fall back over the module.
     right: vw - r.right >= MIN_W + 8,
     left: r.left >= MIN_W + 8,
@@ -94,15 +117,15 @@ function place(el: Element, given?: Element | null): { at: Placement; module: El
 
   if (side === 'right' || side === 'left') {
     // Beside the element, its tail level with the element's middle.
-    const top = Math.max(TOP, Math.min(r.top + r.height / 2 - 28, vh - FLAG_H - 8))
-    const tailY = Math.max(10, Math.min(r.top + r.height / 2 - top - 5, FLAG_H - 24))
+    const y = Math.max(top, Math.min(r.top + r.height / 2 - 28, vh - FLAG_H - 8))
+    const tailY = Math.max(10, Math.min(r.top + r.height / 2 - y - 5, FLAG_H - 24))
     return {
       module,
       at: {
         side,
         edge: 'start',
         style: {
-          top,
+          top: y,
           ...(side === 'right' ? { left: r.right } : { right: vw - r.left }),
           maxWidth: Math.min(w, (side === 'right' ? vw - r.right : r.left) - 8),
           ['--tail-y' as string]: `${tailY}px`,
@@ -110,7 +133,12 @@ function place(el: Element, given?: Element | null): { at: Placement; module: El
       },
     }
   }
-  const edge: Edge = r.left + w <= vw - 8 || r.left + r.width / 2 < vw / 2 ? 'start' : 'end'
+  const wide = given && side === 'above' ? widthToFit(chars, r.top - top, vw - 16) : null
+  const fw = wide ?? w
+  const edge: Edge = r.left + fw <= vw - 8 || r.left + r.width / 2 < vw / 2 ? 'start' : 'end'
+  const left = Math.max(8, Math.min(r.left - 8, vw - fw - 8))
+  // a flag pushed left to stay on screen keeps its tail over the element
+  const tailX = Math.max(12, Math.min(r.left + Math.min(r.width / 2, 24) - left - 9, fw - 30))
   return {
     module,
     at: {
@@ -118,7 +146,8 @@ function place(el: Element, given?: Element | null): { at: Placement; module: El
       edge,
       style: {
         ...(side === 'below' ? { top: r.bottom } : { bottom: vh - r.top }),
-        ...(edge === 'start' ? { left: Math.max(8, r.left - 8) } : { right: Math.max(8, vw - r.right - 8) }),
+        ...(edge === 'start' ? { left, ['--tail-x' as string]: `${tailX}px` } : { right: Math.max(8, vw - r.right - 8) }),
+        ...(wide && { maxWidth: wide, width: wide }),
       },
     },
   }
@@ -153,7 +182,7 @@ export function Explained({ id, children, svg, module: moduleSel }: Props) {
     if (!el || dismissed) return
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height) return // nothing to point at if it isn't laid out (a hidden panel)
-    const p = place(el, moduleSel ? document.querySelector(moduleSel) : undefined)
+    const p = place(el, moduleSel ? document.querySelector(moduleSel) : undefined, e.title.length + e.text.length)
     module.current = p.module
     setAt(p.at)
   }
@@ -165,7 +194,7 @@ export function Explained({ id, children, svg, module: moduleSel }: Props) {
   // it was, so no pointerleave ever comes); or the pointer arriving somewhere else entirely.
   // While a flag is open, its module shows its border: the group this control belongs to.
   useEffect(() => {
-    const m = at ? module.current : null
+    const m = at && !moduleSel ? module.current : null
     m?.classList.add('is-explained')
     return () => m?.classList.remove('is-explained')
   }, [at])
