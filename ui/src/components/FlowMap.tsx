@@ -68,9 +68,9 @@ interface Wire {
 }
 
 const WIRES: Wire[] = [
-  { from: 'models', to: 'chat', label: 'talk to it as it is', points: route([210, 160], [910, 160]), at: [640, 152] },
+  { from: 'models', to: 'chat', label: 'talk to it as it is', points: route([210, 160], [904, 160]), at: [640, 152] },
   { from: 'models', to: 'modelfile', label: 'a model', points: route([210, 160], [330, 72]), at: [232, 104], anchor: 'start' },
-  { from: 'modelfile', to: 'chat', label: 'a variant: the model plus your words', points: route([480, 72], [910, 172]), at: [560, 64], anchor: 'start' },
+  { from: 'modelfile', to: 'chat', label: 'a variant: the model plus your words', points: route([480, 72], [904, 172]), at: [560, 64], anchor: 'start' },
   { from: 'models', to: 'train', label: 'a model to start from', points: route([210, 162], [330, 250]), at: [222, 214], anchor: 'start' },
   { from: 'data', to: 'train', label: 'rows to imitate', points: route([210, 438], [360, 302]), at: [216, 398], anchor: 'start' },
   { from: 'data', to: 'prefer', label: 'chosen vs rejected', points: route([210, 446], [360, 402]), at: [216, 470], anchor: 'start' },
@@ -78,13 +78,13 @@ const WIRES: Wire[] = [
   { from: 'prefer', to: 'adapters', label: 'an adapter', points: route([510, 398], [650, 358]), at: [560, 412], anchor: 'start' },
   { from: 'adapters', to: 'merge', label: 'two adapters', points: [[700, 374], [700, 440], [656, 484], [510, 484]], at: [604, 476], anchor: 'middle' },
   { from: 'merge', to: 'adapters', label: 'a blend', points: [[510, 504], [710, 504], [750, 464], [750, 374]], at: [604, 520], anchor: 'middle' },
-  { from: 'adapters', to: 'chat', label: 'export: a model of your own', points: [[725, 330], [725, 270], [815, 184], [910, 184]], at: [733, 296], anchor: 'start' },
+  { from: 'adapters', to: 'chat', label: 'export: a model of your own', points: [[725, 330], [725, 270], [809, 184], [904, 184]], at: [733, 296], anchor: 'start' },
   { from: 'adapters', to: 'share', label: 'zip', points: [[800, 352], [840, 352], [840, 448], [880, 488], [910, 488]], at: [848, 400], anchor: 'start' },
   {
     from: 'chat',
     to: 'data',
     label: 'your chat log: two answers become a pair for Prefer',
-    points: [[1060, 172], [1090, 172], [1090, 590], [160, 590], [135, 565], [135, 464]],
+    points: [[1066, 172], [1090, 172], [1090, 590], [160, 590], [135, 565], [135, 464]],
     at: [600, 582],
     anchor: 'middle',
   },
@@ -285,8 +285,9 @@ export default function FlowMap() {
             )}
             <rect x={n.x} y={n.y} width={W} height={H} className={`flow__box ${n.dest ? 'flow__box--dest' : ''}`.trim()} />
             {/* ports: where wires plug in and out */}
-            <rect x={n.x - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
-            <rect x={n.x + W - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
+            {/* the destination's wires plug into its outer outline */}
+            <rect x={n.x - (n.dest ? 6 : 0) - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
+            <rect x={n.x + W + (n.dest ? 6 : 0) - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
             {n.n && (
               <text x={n.x + 12} y={n.y + H / 2 + 5} className="flow__num">
                 {n.n}
