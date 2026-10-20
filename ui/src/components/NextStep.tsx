@@ -16,6 +16,8 @@ interface Props {
   /** what it was trained on: a Hugging Face id (or a fused model's path, for Prefer) */
   base: string
   onChatPair: (a: string, b: string) => void
+  /** Chat with one model, when the original isn't there to compare */
+  onChat: (model: string) => void
   /** to the Adapters tab, for "try it" on the set-aside questions */
   onAdapters: () => void
 }
@@ -24,7 +26,7 @@ interface Props {
  * After a run: export → import into Ollama → Chat, as one press, with what
  * each step does. If it was exported already, straight to Chat.
  */
-export default function NextStep({ adapter, base, onChatPair, onAdapters }: Props) {
+export default function NextStep({ adapter, base, onChatPair, onChat, onAdapters }: Props) {
   const { models } = useOllamaModels()
   const pipe = usePipeline(['export', 'fuse', 'register'])
   const mine = pipe && (pipe.params as { adapter?: string })?.adapter === adapter ? pipe : null
@@ -32,7 +34,7 @@ export default function NextStep({ adapter, base, onChatPair, onAdapters }: Prop
   const exported = models.some((m) => sameTag(m.name, adapter))
   const original = HF_BASES.find((b) => b.id === base)?.runsAs
   const originalHere = !!original && models.some((m) => sameTag(m.name, original))
-  const chat = () => (originalHere ? onChatPair(original!, adapter) : onChatPair(adapter, adapter))
+  const chat = () => (originalHere ? onChatPair(original!, adapter) : onChat(adapter))
   const line = joinWords(['export', adapter, '--quantize', 'int8'])
 
   return (

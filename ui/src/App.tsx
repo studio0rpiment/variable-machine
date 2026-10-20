@@ -129,10 +129,10 @@ export default function App() {
           <DataPanel onUse={sendDataset} />
         </div>
         <div className="panel-slot" hidden={panel !== 'train'}>
-          <TrainPanel onAdapters={() => go('adapters')} onChatPair={chatPair} withData={trainData} />
+          <TrainPanel onAdapters={() => go('adapters')} onChatPair={chatPair} onChat={chatWith} withData={trainData} />
         </div>
         <div className="panel-slot" hidden={panel !== 'prefer'}>
-          <PreferPanel onAdapters={() => go('adapters')} onChatPair={chatPair} withData={preferData} />
+          <PreferPanel onAdapters={() => go('adapters')} onChatPair={chatPair} onChat={chatWith} withData={preferData} />
         </div>
         <div className="panel-slot" hidden={panel !== 'adapters'}>
           <AdaptersPanel onChatPair={chatPair} />

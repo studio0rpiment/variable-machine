@@ -38,7 +38,7 @@ const pct = (x: number) => `${Math.round(x * 100)}%`
  * chosen answer more likely than the rejected one, before and after.
  */
 /** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function PreferPanel({ onAdapters, onChatPair, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; withData?: { data: string; n: number } }) {
+export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number } }) {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
@@ -199,14 +199,14 @@ export default function PreferPanel({ onAdapters, onChatPair, withData }: { onAd
         <>
           <LossChart points={current.points} iters={(current.params as PreferParams).iters} live={!current.done} />
           <LossNotes points={current.points} live={!current.done} kind="prefer" />
-          {current.done && current.ok && <NextStep adapter={(current.params as PreferParams).name} base={(current.params as PreferParams).model} onChatPair={onChatPair} onAdapters={onAdapters} />}
+          {current.done && current.ok && <NextStep adapter={(current.params as PreferParams).name} base={(current.params as PreferParams).model} onChatPair={onChatPair} onChat={onChat} onAdapters={onAdapters} />}
         </>
       ) : (
         shown && (
           <>
             <LossChart points={shown.points} iters={shown.iters} />
             <LossNotes points={shown.points} kind="prefer" />
-            {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onAdapters={onAdapters} />}
+            {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onChat={onChat} onAdapters={onAdapters} />}
           </>
         )
       )}

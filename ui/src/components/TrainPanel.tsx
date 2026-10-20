@@ -36,7 +36,7 @@ interface RunManifest {
  * config, command, log, loss and manifest.
  */
 /** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function TrainPanel({ onAdapters, onChatPair, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; withData?: { data: string; n: number } }) {
+export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number } }) {
   const { status } = useHelperState()
   const tier = status?.tier ?? '16'
   const defaults = TIER_DEFAULTS[tier]
@@ -219,14 +219,14 @@ export default function TrainPanel({ onAdapters, onChatPair, withData }: { onAda
         <>
           <LossChart points={current.points} iters={(current.params as TrainParams).iters} live={!current.done} />
           <LossNotes points={current.points} live={!current.done} kind="train" />
-          {current.done && current.ok && <NextStep adapter={(current.params as TrainParams).name} base={(current.params as TrainParams).base} onChatPair={onChatPair} onAdapters={onAdapters} />}
+          {current.done && current.ok && <NextStep adapter={(current.params as TrainParams).name} base={(current.params as TrainParams).base} onChatPair={onChatPair} onChat={onChat} onAdapters={onAdapters} />}
         </>
       ) : (
         shown && (
           <>
             <LossChart points={shown.points} iters={shown.iters} />
             <LossNotes points={shown.points} kind="train" />
-            {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onAdapters={onAdapters} />}
+            {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onChat={onChat} onAdapters={onAdapters} />}
           </>
         )
       )}
