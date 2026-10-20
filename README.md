@@ -1,36 +1,57 @@
 # Variable Machine
 
-A localhost instrument for changing small language models on an Apple Silicon Mac. You can:
+A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.
 
-- swap models and weights;
-- write and collect training data;
-- train with LoRA;
-- merge two adapters;
-- tune a model toward the answers you prefer (DPO);
-- share what you made.
+## Start here
 
-Every action in the page composes a real command and echoes it into the terminal docked at the bottom before it runs. The terminal and the page are two views of one event stream, so nothing happens that you can't see as a command, a file or a log line.
+**You need:** a Mac with Apple Silicon (M1 or later) and 16GB of memory or more, macOS 14 or later, and about 10GB of free disk.
 
-The floor is a 16GB Apple Silicon Mac on macOS 14 or later. Bigger machines just go faster.
+**1. Install three things** (once):
 
-## Install
+- **Ollama**, which runs the models: download it from [ollama.com](https://ollama.com) and install it. You don't need to open it.
+- **Node 22 or newer**, which runs the app: download the LTS installer from [nodejs.org](https://nodejs.org).
+- **uv**, which runs training: open Terminal and paste
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
 
-1. Install [Ollama](https://ollama.com). `npm run dev` opens it if it isn't already running.
-2. Install `uv`: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-3. Install Node 22 or newer (directly, or with `fnm` / `nvm`; `.nvmrc` says 22).
-4. `git clone https://github.com/studio0rpiment/variable-machine && cd variable-machine && npm install && uv sync --project python`
-5. `ollama pull qwen3:4b` and `ollama pull smollm2:360m` (the Models panel can pull them too)
-6. `npm run doctor` checks all of the above; `npm run dev` opens http://localhost:4817
+**2. Get Variable Machine** (once):
 
-The first training run downloads its base model into `workspace/hf`: about 700MB for SmolLM2-360M, 3.4GB for the 1.7B. The base kit is about 8GB on disk.
+- Download the zip from the [latest release](https://github.com/studio0rpiment/variable-machine/releases) and unzip it, or clone it:
+  ```bash
+  git clone https://github.com/studio0rpiment/variable-machine
+  ```
+- In Terminal, go into the folder (type `cd `, then drag the folder onto the Terminal window and press Return) and install what it uses:
+  ```bash
+  npm install && uv sync --project python
+  ```
 
-`npm run dev` rebuilds the page on save (reload to see it) and restarts the helper on save. `VARIABLE_MACHINE_PORT` picks another port and `VARIABLE_MACHINE_OPEN=0` stops it opening a browser.
+**3. Start it** (every time):
+
+```bash
+npm run dev
+```
+
+It starts Ollama if it isn't running and opens http://localhost:4817 in your browser. To stop it, press ctrl-C in that Terminal window. Variants you made on the Modelfile tab and didn't keep are cleared away when it stops.
+
+**4. Your first ten minutes:**
+
+1. **Start** shows a map of every tab and what flows between them. Click a box to open it; **about** has the same in words.
+2. **Models:** press `ollama pull smollm2:360m` on its card (about 700MB). With no models yet, the four starters and a library to pull from are listed here.
+3. **Modelfile:** choose a preset, press make variant, and ask both the original and your variant the same question.
+4. **Data → Train:** choose a dataset, split it, open Train with it, and train. When it finishes, the next step exports your model and opens **Chat** with it.
+
+**If something isn't right:** `npm run doctor` checks Ollama, uv, Python and memory and says what to fix. Hover over any tab name or control for a flag that explains it.
+
+**Disk:** smollm2:360m is 725MB and qwen3:4b 2.5GB in Ollama. The first training run downloads its base model into `workspace/hf` (about 700MB for SmolLM2-360M, 3.4GB for the 1.7B). Exporting a trained model keeps a full-size copy in `workspace/fused` until you remove it.
+
+**For developers:** `npm run dev` rebuilds the page on save (reload to see it) and restarts the helper on save. `VARIABLE_MACHINE_PORT` picks another port and `VARIABLE_MACHINE_OPEN=0` stops it opening a browser.
 
 ## The tabs, in the order you'd use them
 
-The tabs run left to right in the order you'd use them, in groups. **Start** lays out the same path as a map, with each step explained.
+The tabs run left to right in the order you'd use them, in groups; the ones on the path carry a step number (the three ways share 4).
 
-1. **Start.** The map: the order of the tabs, and the three ways to change a model, each in plain words.
+1. **Start** and **about.** Start is a map: every tab as a node, with wires labelled with what one passes to the next (a model, a variant, rows to imitate, an adapter, a blend, the chat log back to Data). Click a node to open its tab; point at one to light its wires and see the commands it runs in the green echo, which otherwise shows the terminal live. Drag to move, pinch or ⌘ + scroll to zoom, *fit* to see it all. Chat is marked as where everything is used. **about** says the same in words: every tab with what it does, takes, gives and leads to.
 2. **Models.** The page opens with **four starters**, chosen to be as different from each other as possible:
    - **smollm2:360m:** tiny, and the one you change.
    - **qwen3:4b:** thinks before answering, works in many languages, writes training data here.
@@ -43,22 +64,24 @@ The tabs run left to right in the order you'd use them, in groups. **Start** lay
    - **how adventurous:** PARAMETER temperature, plus a switch to let it pick from any word (top_k 0, top_p 1), without which high temperatures look tame;
    - **an optional example to imitate:** a pair of MESSAGE lines.
 
-   Each field explains itself in plain language, and a note says that small models follow instructions loosely and bigger ones closely. Twelve presets (one sentence, haiku, only questions, museum label, say "I don't know", always French, careful / surprising / falling apart…) fill the form. Each says which starters follow it well, from the run recorded in `docs/presets-check.md`. "Make variant" saves the Modelfile and runs `ollama create`; then the original and the variant answer one question side by side on the same screen. Folded below: what each Modelfile line means, and the file the form makes, with weights marked. The student's own variants are listed to reopen and change.
-4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. You can:
-   - import Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples, with each license read from Hugging Face at import;
-   - fetch raw material (a Project Gutenberg book, or a CSV or TXT with its stated license) and have a model write rows from a passage;
-   - validate, split and count rows;
-   - curate generated rows by keeping, editing or rejecting each one;
-   - build preference sets from the chat log.
+   Each field explains itself in plain language, and a note says that small models follow instructions loosely and bigger ones closely. Choosing a preset moves it to the left with the others in a column on the right; step 1 makes the variant (and lists what goes into it), step 2 asks the original and the variant the same question. Variants are temporary until you press *keep it*: unkept ones are removed when the app stops. Twelve presets (one sentence, haiku, only questions, museum label, say "I don't know", always French, careful / surprising / falling apart…) fill the form. Each says which starters follow it well, from the run recorded in `docs/presets-check.md`. "Make variant" saves the Modelfile and runs `ollama create`; then the original and the variant answer one question side by side on the same screen. Folded below: what each Modelfile line means, and the file the form makes, with weights marked. The student's own variants are listed to reopen and change.
+4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. Every dataset has a plain description and an example row. Choose one to see what's in it, get it ready (check, count, split) and open Train or Prefer with it. Make a new one by:
+   - bringing in any dataset from Hugging Face by its name, or your own .csv / .jsonl / .json file (the columns are read, the license recorded);
+   - searching public data (DC Open Data, data.gov) for a table and turning its rows into questions and answers with a template, such as "What kind of tree stands at {VICINITY}?";
+   - importing Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples (including DC street trees);
+   - fetching raw material (a Project Gutenberg book, or a CSV or TXT) and having a model write rows from it, keeping, editing or rejecting each;
+   - building preference sets from the chat log.
+
+   A guide on the tab says where to look, what makes a good dataset, and what the licenses mean.
 5. **The three ways to change the numbers** (plan §2), outlined together in the tab row. Each leaves an adapter:
-   - **Train: imitate.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live.
+   - **Train: imitate.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live. Under the chart, the run is read in plain words (learning, memorising, flat) with what loss, train and valid mean. When it finishes, the next step exports it into Ollama and opens Chat.
    - **Prefer: prefer.** DPO on a base or a fused model, from a preference set. It shows the loss and a held-out before/after check.
    - **Merge: blend.** Blend two compatible adapters: out = (1 − t)·A + t·B.
-6. **Adapters.** Everything the three ways made: trained adapters, preference adapters and blends. Export folds one into its base and imports the result into Ollama, ready to chat with next to the untouched base.
+6. **Adapters.** Everything the three ways made: trained adapters, preference adapters and blends. Training leaves the original model untouched and learns an adapter; export joins the two into one model and imports it into Ollama. *Try it* asks the original and the trained model questions from the rows set aside at the split, next to the answer in the data. *Remove* moves an adapter to the Trash.
 7. **Chat.** Two to four models side by side, one prompt, every answer streaming. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
 8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
-**The explanation layer.** Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
+**The explanation layer.** Things you can click are green. Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. A flag hangs outside the group of controls its control belongs to, and outlines that group while it's open. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
 
 ## Layout
 
