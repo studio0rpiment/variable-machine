@@ -10,6 +10,8 @@ import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
 import LossNotes from './LossNotes'
+import NextStep from './NextStep'
+import { NEXT } from '../explain/next'
 import ConfirmButton from './ConfirmButton'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
@@ -36,11 +38,11 @@ const pct = (x: number) => `${Math.round(x * 100)}%`
  * chosen answer more likely than the rejected one, before and after.
  */
 /** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function PreferPanel({ onAdapters, withData }: { onAdapters: () => void; withData?: { data: string; n: number } }) {
+export default function PreferPanel({ onAdapters, onChatPair, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; withData?: { data: string; n: number } }) {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
-  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number } | null>(null)
+  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean } | null>(null)
   const [p, setP] = useState<PreferParams>({ name: '', model: HF_BASES[0].id, data: '', beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8 })
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['prefer'])
@@ -86,7 +88,7 @@ export default function PreferPanel({ onAdapters, withData }: { onAdapters: () =
 
   const showRun = async (r: RunManifest) => {
     const text = (await readFile(`runs/${r.folder}/loss.jsonl`)) ?? ''
-    setShown({ run: r.folder, iters: r.params.iters, points: text.split('\n').filter(Boolean).map((l) => JSON.parse(l) as LossPoint) })
+    setShown({ run: r.folder, iters: r.params.iters, points: text.split('\n').filter(Boolean).map((l) => JSON.parse(l) as LossPoint), adapter: r.params.name, base: r.params.model, finished: r.status === 'finished' })
   }
 
   const set = <K extends keyof PreferParams>(k: K) => (v: PreferParams[K]) => setP((x) => ({ ...x, [k]: v }))
@@ -171,11 +173,6 @@ export default function PreferPanel({ onAdapters, withData }: { onAdapters: () =
             </button>
           </Explained>
         )}
-        {current?.done && current.ok && (
-          <button type="button" className="text-button" onClick={onAdapters}>
-            the adapter is ready: export it
-          </button>
-        )}
         {current?.done && (
           <button
             type="button"
@@ -191,6 +188,7 @@ export default function PreferPanel({ onAdapters, withData }: { onAdapters: () =
           </button>
         )}
       </div>
+      <p className="mf-next">{NEXT.beforeTrain}</p>
       <details className="real-command">
         <summary className="label label--muted">which runs, after the Ollama models are stopped to free memory</summary>
         <code>{real}</code>
@@ -201,12 +199,14 @@ export default function PreferPanel({ onAdapters, withData }: { onAdapters: () =
         <>
           <LossChart points={current.points} iters={(current.params as PreferParams).iters} live={!current.done} />
           <LossNotes points={current.points} live={!current.done} kind="prefer" />
+          {current.done && current.ok && <NextStep adapter={(current.params as PreferParams).name} base={(current.params as PreferParams).model} onChatPair={onChatPair} onAdapters={onAdapters} />}
         </>
       ) : (
         shown && (
           <>
             <LossChart points={shown.points} iters={shown.iters} />
             <LossNotes points={shown.points} kind="prefer" />
+            {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onAdapters={onAdapters} />}
           </>
         )
       )}

@@ -157,6 +157,10 @@ export const EXPLAIN = {
     title: 'Download the table',
     text: 'Fetches the whole table these rows were made from, straight from the portal that publishes it, with its license. Then you can write your own questions from it: other columns, other wording, more rows.',
   },
+  'next.export': {
+    title: 'Export, import, chat',
+    text: 'Runs export: the adapter is folded into a copy of the model it was trained on, and Ollama imports that copy under your adapter\'s name. When it is done, Chat opens with the original and yours side by side.',
+  },
   'data.hf': {
     title: 'Bring it in from Hugging Face',
     text: 'Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns.',

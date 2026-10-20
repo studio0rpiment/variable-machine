@@ -64,6 +64,15 @@ export default function LossChart({ points, iters, live }: Props) {
   const at = hover === null ? null : { iter: hover, train: train.find((p) => p.iter === hover)?.trainLoss, val: val.find((p) => p.iter === hover)?.valLoss, tps: train.find((p) => p.iter === hover)?.tokensPerSec }
   const lastT = train.at(-1)
   const lastV = val.at(-1)
+  // End labels: at their line's height, pushed apart (the higher value above) when they would overlap.
+  let labelT = lastT ? y(lastT.trainLoss!) : 0
+  let labelV = lastV ? y(lastV.valLoss!) : 0
+  if (lastT && lastV && Math.abs(labelT - labelV) < 14) {
+    const mid = (labelT + labelV) / 2
+    const vAbove = labelV <= labelT
+    labelV = mid + (vAbove ? -7 : 7)
+    labelT = mid + (vAbove ? 7 : -7)
+  }
 
   return (
     <figure className="loss">
@@ -114,12 +123,12 @@ export default function LossChart({ points, iters, live }: Props) {
             <circle key={p.iter} cx={x(p.iter)} cy={y(p.valLoss!)} r={4} className="loss__dot" />
           ))}
           {lastT && (
-            <text x={x(lastT.iter) + 8} y={y(lastT.trainLoss!)} className="loss__end" dominantBaseline="middle">
+            <text x={x(lastT.iter) + 8} y={labelT} className="loss__end" dominantBaseline="middle">
               train {lastT.trainLoss!.toFixed(2)}
             </text>
           )}
           {lastV && (
-            <text x={x(lastV.iter) + 8} y={y(lastV.valLoss!) + (lastT && Math.abs(y(lastV.valLoss!) - y(lastT.trainLoss!)) < 14 ? 14 : 0)} className="loss__end" dominantBaseline="middle">
+            <text x={x(lastV.iter) + 8} y={labelV} className="loss__end" dominantBaseline="middle">
               val {lastV.valLoss!.toFixed(2)}
             </text>
           )}

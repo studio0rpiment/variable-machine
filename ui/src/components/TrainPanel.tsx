@@ -10,6 +10,8 @@ import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
 import LossNotes from './LossNotes'
+import NextStep from './NextStep'
+import { NEXT } from '../explain/next'
 import ConfirmButton from './ConfirmButton'
 import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
@@ -34,13 +36,13 @@ interface RunManifest {
  * config, command, log, loss and manifest.
  */
 /** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function TrainPanel({ onAdapters, withData }: { onAdapters: () => void; withData?: { data: string; n: number } }) {
+export default function TrainPanel({ onAdapters, onChatPair, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; withData?: { data: string; n: number } }) {
   const { status } = useHelperState()
   const tier = status?.tier ?? '16'
   const defaults = TIER_DEFAULTS[tier]
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
-  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number } | null>(null)
+  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean } | null>(null)
   const [p, setP] = useState<TrainParams>({ name: '', data: '', ...TIER_DEFAULTS['16'] })
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['train'])
@@ -99,7 +101,7 @@ export default function TrainPanel({ onAdapters, withData }: { onAdapters: () =>
       .split('\n')
       .filter(Boolean)
       .map((l) => JSON.parse(l) as LossPoint)
-    setShown({ run: r.folder, points, iters: r.params.iters })
+    setShown({ run: r.folder, points, iters: r.params.iters, adapter: r.params.name, base: r.params.base, finished: r.status === 'finished' })
   }
 
   // the run in progress has already written its manifest; it doesn't count as taking its own name
@@ -191,11 +193,6 @@ export default function TrainPanel({ onAdapters, withData }: { onAdapters: () =>
             </button>
           </Explained>
         )}
-        {current?.done && current.ok && (
-          <button type="button" className="text-button" onClick={onAdapters}>
-            the adapter is ready: export it
-          </button>
-        )}
         {current?.done && (
           <button
             type="button"
@@ -211,6 +208,7 @@ export default function TrainPanel({ onAdapters, withData }: { onAdapters: () =>
           </button>
         )}
       </div>
+      <p className="mf-next">{NEXT.beforeTrain}</p>
       <details className="real-command">
         <summary className="label label--muted">which runs, after the Ollama models are stopped to free memory</summary>
         <code>{real}</code>
@@ -221,12 +219,14 @@ export default function TrainPanel({ onAdapters, withData }: { onAdapters: () =>
         <>
           <LossChart points={current.points} iters={(current.params as TrainParams).iters} live={!current.done} />
           <LossNotes points={current.points} live={!current.done} kind="train" />
+          {current.done && current.ok && <NextStep adapter={(current.params as TrainParams).name} base={(current.params as TrainParams).base} onChatPair={onChatPair} onAdapters={onAdapters} />}
         </>
       ) : (
         shown && (
           <>
             <LossChart points={shown.points} iters={shown.iters} />
             <LossNotes points={shown.points} kind="train" />
+            {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onAdapters={onAdapters} />}
           </>
         )
       )}

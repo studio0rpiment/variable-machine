@@ -682,3 +682,10 @@ a.text-button { text-decoration: none; }
 .train-form__col .choice > .label { flex-basis: 100%; margin: 0 0 0.15rem; }
 .train-form__col .choice > button { flex: 1 1 0; text-align: center; }
 .train-form__col .slider input[type="range"] { max-width: none; }
+
+/* ---- after a run: export → import → chat ---- */
+.next-step { display: flex; flex-direction: column; gap: 0.75rem; max-width: 52rem; padding: 1.25rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.next-step__intro { margin: 0; color: var(--line); }
+.next-step__steps { margin: 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 0.4rem; line-height: 1.55; }
+.next-step__steps li::marker { color: var(--muted); }
+.next-step__word { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; }
