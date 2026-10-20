@@ -730,3 +730,7 @@ a.text-button { text-decoration: none; }
 .flow__echo-line { display: block; white-space: pre; overflow: hidden; text-overflow: ellipsis; animation: echo-in 0.25s steps(8, end) both; }
 @keyframes echo-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @media (prefers-reduced-motion: reduce) { .flow__echo-line { animation: none; } }
+/* Chat, where everything you make is used: solid, doubled, labelled */
+.flow__box--dest { stroke-dasharray: none; }
+.flow__dest { fill: none; stroke: var(--act); stroke-width: 1.25; }
+.flow__dest-label { fill: var(--act); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }

@@ -22,6 +22,8 @@ interface Node {
   x: number
   y: number
   caption: string
+  /** where everything is used: drawn solid and doubled, with its own label */
+  dest?: boolean
 }
 
 const NODES: Node[] = [
@@ -32,7 +34,7 @@ const NODES: Node[] = [
   { id: 'prefer', n: '4', x: 360, y: 376, caption: 'lean toward the better' },
   { id: 'merge', n: '4', x: 360, y: 476, caption: 'blend two' },
   { id: 'adapters', n: '5', x: 650, y: 330, caption: 'make them models' },
-  { id: 'chat', x: 910, y: 150, caption: 'hear the difference' },
+  { id: 'chat', x: 910, y: 150, caption: 'hear the difference', dest: true },
   { id: 'share', x: 910, y: 466, caption: 'pass it on' },
 ]
 
@@ -272,7 +274,16 @@ export default function FlowMap() {
             onBlur={() => setHot(null)}
             aria-label={`${n.id}: ${n.caption}`}
           >
-            <rect x={n.x} y={n.y} width={W} height={H} className="flow__box" />
+            {n.dest && (
+              <>
+                {/* the destination: a second, solid outline around it, and a label over it */}
+                <rect x={n.x - 6} y={n.y - 6} width={W + 12} height={H + 12} className="flow__dest" />
+                <text x={n.x - 6} y={n.y - 14} className="flow__dest-label">
+                  use it here
+                </text>
+              </>
+            )}
+            <rect x={n.x} y={n.y} width={W} height={H} className={`flow__box ${n.dest ? 'flow__box--dest' : ''}`.trim()} />
             {/* ports: where wires plug in and out */}
             <rect x={n.x - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
             <rect x={n.x + W - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
