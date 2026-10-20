@@ -688,10 +688,10 @@ a.text-button { text-decoration: none; }
 @media (max-width: 48rem) { .about__tab { grid-template-columns: 1fr; } }
 
 /* ---- the Start map: tabs as nodes, wires for what flows between them ---- */
-.flow { position: relative; margin: 0; flex: 1; min-height: 16rem; border-top: 1px dashed var(--muted); overflow: hidden; }
+.flow { position: relative; margin: 0; flex: 1; min-height: 16rem; overflow: hidden; }
 .flow__svg { display: block; position: absolute; inset: 0; width: 100%; height: 100%; font-family: var(--font); cursor: grab; touch-action: none; user-select: none; }
 .flow__svg:active { cursor: grabbing; }
-.flow__tools { position: absolute; top: 0.4rem; right: 0; display: flex; align-items: baseline; gap: 0.1rem 0.35rem; padding: 0.1rem 0.4rem; background: color-mix(in srgb, var(--bg) 75%, transparent); }
+.flow__tools { position: absolute; bottom: 0.3rem; left: 0; display: flex; align-items: baseline; gap: 0.1rem 0.35rem; padding: 0.1rem 0.4rem; background: color-mix(in srgb, var(--bg) 75%, transparent); }
 .flow__hint { margin-left: 0.5rem; }
 .start { flex: 1; min-height: 0; max-width: none; gap: 1rem; padding-bottom: 0.5rem; }
 .flow__group { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 5; }
