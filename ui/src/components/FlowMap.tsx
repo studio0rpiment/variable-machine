@@ -12,6 +12,8 @@ import type { ExplainId } from '../explain/text'
  */
 
 const W = 150 // node width
+/** The three ways share one box, and one module: their flags hang out of the box, beside the node. */
+const WAYS = ['train', 'prefer', 'merge']
 /** Everything drawn, in the SVG's units: what "fit" shows. */
 const CONTENT = { x: 40, y: 30, w: 1070, h: 670 } // the bottom 70 are room for the echo
 const MIN_W = 360 // closest zoom, in units across
@@ -267,7 +269,7 @@ export default function FlowMap() {
 
         {NODES.map((n) => (
           // the same flag as the tab's name in the top bar; each node is its own module, so the flag hangs off it
-          <Explained key={n.id} id={`panel.${n.id}` as ExplainId} svg>
+          <Explained key={n.id} id={`panel.${n.id}` as ExplainId} svg module={WAYS.includes(n.id) ? '.flow__group' : undefined}>
           <a
             href={`#${n.id}`}
             className={`flow__node ${hot === n.id ? 'is-hot' : ''}`.trim()}

@@ -12,6 +12,8 @@ interface Props {
    * off the node rather than covering it.
    */
   svg?: boolean
+  /** a different element to treat as the module (a selector), e.g. the box around a group of nodes */
+  module?: string
 }
 
 type Side = 'below' | 'above' | 'right' | 'left'
@@ -43,6 +45,7 @@ const MODULE = [
   '.data-way',
   '.split',
   '.prefs__rule',
+  '.nav-group--ways',
   '.shell__nav',
 ].join(', ')
 
@@ -70,12 +73,12 @@ const TOP = 72 // below the app's top bar
  * the flag lies outside the module. Without a module, below the element (or
  * above it when it is low on the screen), as before.
  */
-function place(el: Element): { at: Placement; module: Element | null } {
+function place(el: Element, given?: Element | null): { at: Placement; module: Element | null } {
   const r = el.getBoundingClientRect()
   const vw = window.innerWidth
   const vh = window.innerHeight
   const w = Math.min(FLAG_W, vw - 16)
-  const module = el.parentElement?.closest(MODULE) ?? null
+  const module = given ?? el.parentElement?.closest(MODULE) ?? null
   const m = module?.getBoundingClientRect() ?? r
   const room: Record<Side, boolean> = {
     below: vh - r.bottom >= FLAG_H * 0.8,
@@ -136,7 +139,7 @@ function place(el: Element): { at: Placement; module: Element | null } {
  * The wrapper is display: contents, so wrapping a control never changes its
  * layout; the element measured is the wrapper's first child.
  */
-export function Explained({ id, children, svg }: Props) {
+export function Explained({ id, children, svg, module: moduleSel }: Props) {
   const tipId = useId()
   const wrap = useRef<HTMLSpanElement & SVGGElement>(null)
   const flag = useRef<HTMLSpanElement>(null)
@@ -150,7 +153,7 @@ export function Explained({ id, children, svg }: Props) {
     if (!el || dismissed) return
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height) return // nothing to point at if it isn't laid out (a hidden panel)
-    const p = place(el)
+    const p = place(el, moduleSel ? document.querySelector(moduleSel) : undefined)
     module.current = p.module
     setAt(p.at)
   }
@@ -241,7 +244,7 @@ export function Explained({ id, children, svg }: Props) {
     </>
   )
   return svg ? (
-    <g ref={wrap} data-module="" {...handlers}>
+    <g ref={wrap} {...(moduleSel ? {} : { 'data-module': '' })} {...handlers}>
       {inner}
     </g>
   ) : (

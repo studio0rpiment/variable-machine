@@ -736,3 +736,4 @@ a.text-button { text-decoration: none; }
 .flow__dest-label { fill: var(--act); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 /* a map node whose flag is open: drawn solid, as its outline (an SVG can't take a CSS outline) */
 .flow__svg .is-explained .flow__box, .flow__svg .is-explained .flow__dest { stroke-dasharray: none; }
+.flow__group.is-explained { stroke: var(--line); stroke-dasharray: 4 3; }
