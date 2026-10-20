@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useHelperEvent } from '../hooks/useHelper'
 
 /**
@@ -10,6 +10,10 @@ import { useHelperEvent } from '../hooks/useHelper'
  */
 
 const W = 150 // node width
+/** Everything drawn, in the SVG's units: what "fit" shows. */
+const CONTENT = { x: 40, y: 30, w: 1070, h: 670 } // the bottom 70 are room for the echo
+const MIN_W = 360 // closest zoom, in units across
+const MAX_W = 4000 // furthest
 const H = 44 // node height
 
 interface Node {
@@ -116,9 +120,125 @@ export default function FlowMap() {
   const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : ['variable machine', 'point at a tab to see what it runs']
 
   const joined = (w: Wire) => !!hot && (w.from === hot || w.to === hot)
+
+  // ---- the canvas: pan by dragging, zoom with pinch or ⌘/ctrl + wheel (or the buttons), fit to the space ----
+  const box = useRef<HTMLDivElement>(null)
+  const svg = useRef<SVGSVGElement>(null)
+  const [vb, setVb] = useState({ x: 0, y: 0, w: CONTENT.w, h: CONTENT.h })
+  const moved = useRef(false) // the user has panned or zoomed: a resize keeps their view instead of fitting again
+  const size = useRef({ w: 1, h: 1 })
+
+  /** The whole map, with a margin, shaped like the space it has (so 45° stays 45° and nothing is letterboxed). */
+  const fit = useCallback(() => {
+    const { w: cw, h: ch } = size.current
+    const pad = 24
+    const cwU = CONTENT.w + pad * 2
+    const chU = CONTENT.h + pad * 2
+    const scale = Math.max(cwU / cw, chU / ch) // svg units per pixel
+    const w = cw * scale
+    const h = ch * scale
+    setVb({ x: CONTENT.x - pad - (w - cwU) / 2, y: CONTENT.y - pad - (h - chU) / 2, w, h })
+    moved.current = false
+  }, [])
+
+  useEffect(() => {
+    const el = box.current!
+    const ro = new ResizeObserver(([e]) => {
+      const { width, height } = e.contentRect
+      if (!width || !height) return // hidden tab
+      const prev = size.current
+      size.current = { w: width, h: height }
+      if (!moved.current) return fit()
+      // keep the same scale and centre, reshaped to the new space
+      setVb((v) => {
+        const k = v.w / prev.w
+        const w = width * k
+        const h = height * k
+        return { x: v.x + (v.w - w) / 2, y: v.y + (v.h - h) / 2, w, h }
+      })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [fit])
+
+  /** Zoom by f around a point given in screen pixels (the pointer, or the centre). */
+  const zoomAt = useCallback((f: number, px?: number, py?: number) => {
+    const r = svg.current!.getBoundingClientRect()
+    const fx = px === undefined ? 0.5 : (px - r.left) / r.width
+    const fy = py === undefined ? 0.5 : (py - r.top) / r.height
+    setVb((v) => {
+      const w = Math.min(MAX_W, Math.max(MIN_W, v.w * f))
+      const k = w / v.w
+      const h = v.h * k
+      return { x: v.x + fx * v.w * (1 - k), y: v.y + fy * v.h * (1 - k), w, h }
+    })
+    moved.current = true
+  }, [])
+
+  // Wheel: a pinch (or ⌘/ctrl + wheel) zooms; a plain scroll pans. Native listener, so it can stop the page scrolling.
+  useEffect(() => {
+    const el = svg.current!
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (e.ctrlKey || e.metaKey) return zoomAt(Math.exp(e.deltaY * 0.01), e.clientX, e.clientY)
+      const r = el.getBoundingClientRect()
+      setVb((v) => ({ ...v, x: v.x + (e.deltaX * v.w) / r.width, y: v.y + (e.deltaY * v.h) / r.height }))
+      moved.current = true
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [zoomAt])
+
+  // Drag to pan, from anywhere; a drag that started on a node doesn't also open its tab.
+  const drag = useRef<{ x: number; y: number; vx: number; vy: number; far: boolean } | null>(null)
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return
+    drag.current = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y, far: false }
+  }
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = drag.current
+    if (!d) return
+    const dx = e.clientX - d.x
+    const dy = e.clientY - d.y
+    if (!d.far && Math.hypot(dx, dy) < 4) return
+    if (!d.far) {
+      d.far = true
+      svg.current!.setPointerCapture(e.pointerId)
+    }
+    const r = svg.current!.getBoundingClientRect()
+    setVb((v) => ({ ...v, x: d.vx - (dx * v.w) / r.width, y: d.vy - (dy * v.h) / r.height }))
+    moved.current = true
+  }
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = drag.current
+    drag.current = null
+    if (d?.far) svg.current!.releasePointerCapture(e.pointerId)
+    // keep the "it was a drag" mark until the click that follows has been stopped
+    if (d?.far) requestAnimationFrame(() => (wasDrag.current = false))
+    wasDrag.current = !!d?.far
+  }
+  const wasDrag = useRef(false)
+
   return (
-    <figure className="flow" aria-label="map of the tabs and what flows between them">
-      <svg className="flow__svg" viewBox="0 0 1110 760" role="img" aria-labelledby="flow-title">
+    <figure className="flow" aria-label="map of the tabs and what flows between them" ref={box}>
+      <svg
+        ref={svg}
+        className="flow__svg"
+        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+        role="img"
+        aria-labelledby="flow-title"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onClickCapture={(e) => {
+          if (wasDrag.current) {
+            e.preventDefault()
+            e.stopPropagation()
+            wasDrag.current = false
+          }
+        }}
+      >
         <title id="flow-title">The tabs of Variable Machine and what each passes to the next</title>
         <defs>
           <marker id="flow-end" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -170,6 +290,18 @@ export default function FlowMap() {
           </a>
         ))}
       </svg>
+      <div className="flow__tools" role="group" aria-label="view">
+        <button type="button" className="text-button" onClick={fit} title="fit the whole map to the space">
+          fit
+        </button>
+        <button type="button" className="text-button" onClick={() => zoomAt(1 / 1.25)} aria-label="zoom in">
+          +
+        </button>
+        <button type="button" className="text-button" onClick={() => zoomAt(1.25)} aria-label="zoom out">
+          −
+        </button>
+        <span className="label label--muted flow__hint">drag to move · pinch or ⌘ + scroll to zoom</span>
+      </div>
       <pre className="flow__echo" aria-live="off">
         {echo.map((l, i) => (
           <span key={`${hot ?? 'live'}-${i}-${l}`} className="flow__echo-line" style={{ animationDelay: `${i * 0.12}s` }}>

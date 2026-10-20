@@ -118,7 +118,7 @@ export default function App() {
         <ThemeToggle mode={theme.mode} onToggle={toggle} />
       </header>
       <main className="shell__main">
-        <div className="panel-slot" hidden={panel !== 'start'}>
+        <div className="panel-slot panel-slot--fill" hidden={panel !== 'start'}>
           <StartPanel />
         </div>
         <div className="panel-slot" hidden={panel !== 'about'}>
