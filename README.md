@@ -19,7 +19,7 @@ A localhost instrument for changing small language models on an Apple Silicon Ma
 
 **2. Get Variable Machine** (once):
 
-- Download the zip from the [latest release](https://github.com/studio0rpiment/variable-machine/releases) and unzip it, or clone it:
+- Download the zip from the [latest release](https://github.com/studio0rpiment/variable-machine/releases) (what changed in each: [docs/releases.md](docs/releases.md)) and unzip it, or clone it:
   ```bash
   git clone https://github.com/studio0rpiment/variable-machine
   ```
