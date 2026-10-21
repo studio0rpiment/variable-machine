@@ -1,0 +1,33 @@
+{
+  "name": "dolly-creative",
+  "kind": "dataset",
+  "created": "2026-10-21T00:00:00.000Z",
+  "license": "CC BY-SA 3.0 (databricks-dolly-15k, Databricks)",
+  "inputs": [
+    "https://huggingface.co/datasets/databricks/databricks-dolly-15k"
+  ],
+  "command": [
+    "data import dolly dolly-creative --limit 300 --category creative_writing",
+    "data split dolly-creative --valid 0.10"
+  ],
+  "format": "chat",
+  "counts": {
+    "train": 270,
+    "valid": 30
+  },
+  "split": {
+    "valid": 0.1,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "databricks/databricks-dolly-15k",
+      "kind": "import",
+      "license": "CC BY-SA 3.0",
+      "licenseChecked": true,
+      "url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k",
+      "rows": 300
+    }
+  ],
+  "about": "300 creative-writing requests and answers written by Databricks employees in 2023: stories, poems, letters, descriptions. CC BY-SA 3.0: what you share from it carries the same license."
+}

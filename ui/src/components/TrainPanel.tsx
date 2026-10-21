@@ -2,15 +2,17 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 import { useHelperEvent, useHelperState } from '../hooks/useHelper'
 import { usePipeline } from '../hooks/usePipeline'
 import { runCommand, sendEvent } from '../lib/helper'
-import { readFile, readManifests } from '../lib/workspace'
+import { readLossPoints, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
-import { PY_ENV, TIER_DEFAULTS, trainArgs, trainLine, type FineTune, type TrainParams } from '@shared/recipes'
+import { PY_ENV, TIER_DEFAULTS, trainArgs, trainLine, type FineTune, type TrainParams, parseTrainLine } from '@shared/recipes'
 import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
 import LossNotes from './LossNotes'
 import NextStep from './NextStep'
+import { BeforeAdvice, RunProblem } from './RunAdvice'
+import { adviseBefore } from '@shared/runAdvice'
 import { NEXT } from '../explain/next'
 import ConfirmButton from './ConfirmButton'
 import PipelineSteps from './PipelineSteps'
@@ -42,7 +44,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   const defaults = TIER_DEFAULTS[tier]
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
-  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean } | null>(null)
+  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean; failed?: boolean } | null>(null)
   const [p, setP] = useState<TrainParams>({ name: '', data: '', ...TIER_DEFAULTS['16'] })
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['train'])
@@ -95,18 +97,24 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
     if (!touchedName && p.data && base && !running) setP((x) => ({ ...x, name: free(`${p.data}-${base.params.toLowerCase()}`) }))
   }, [p.data, base, touchedName, free, running])
 
+  // A model has only so many layers: choosing the smaller model brings the choice down with it.
+  useEffect(() => {
+    if (base && p.layers > base.layers) setP((x) => ({ ...x, layers: base.layers }))
+  }, [base, p.layers])
+  /** What these settings will likely do, before they run; and the way back to settings that work for this Mac. */
+  const advice = adviseBefore(p, tier, 'train')
+  const recommended = () => setP((x) => ({ ...x, ...defaults }))
+  // The run that just finished, by its adapter name: its folder holds the log that says why it failed.
+  const lastRun = current && runs.find((r) => r.params?.name === (current.params as TrainParams).name)
+
   const showRun = async (r: RunManifest) => {
-    const text = (await readFile(`runs/${r.folder}/loss.jsonl`)) ?? ''
-    const points = text
-      .split('\n')
-      .filter(Boolean)
-      .map((l) => JSON.parse(l) as LossPoint)
-    setShown({ run: r.folder, points, iters: r.params.iters, adapter: r.params.name, base: r.params.base, finished: r.status === 'finished' })
+    const points = await readLossPoints<LossPoint>(r.folder, parseTrainLine)
+    setShown({ run: r.folder, points, iters: r.params.iters, adapter: r.params.name, base: r.params.base, finished: r.status === 'finished', failed: r.status === 'failed' })
   }
 
   // the run in progress has already written its manifest; it doesn't count as taking its own name
   const taken = runs.some((r) => r.params?.name === p.name) && !(running && (pipe?.params as TrainParams | undefined)?.name === p.name)
-  const valid = NAME.test(p.name) && !!p.data && !taken
+  const valid = NAME.test(p.name) && !!p.data && !taken && !advice.some((a) => a.level === 'stop')
   const line = joinWords(trainLine(p))
   const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...trainArgs(p, 'workspace/runs/<time>-' + p.name)])
   const set = <K extends keyof TrainParams>(k: K) => (v: TrainParams[K]) => setP((x) => ({ ...x, [k]: v }))
@@ -160,7 +168,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
             <Steps label="rank" value={p.rank} options={[4, 8, 16, 32, 64]} onChange={set('rank')} />
           </Explained>
           <Explained id="train.layers">
-            <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32]} onChange={set('layers')} />
+            <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32].filter((n) => !base || n <= base.layers)} onChange={set('layers')} />
           </Explained>
           <Explained id="train.lr">
             <Steps label="learning rate" value={p.lr} options={[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
@@ -182,6 +190,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         </div>
       </div>
 
+      <BeforeAdvice advice={advice} onRecommended={recommended} />
       <div className="train-run">
         <Explained id="train.run">
           <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="train" />
@@ -215,6 +224,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
       </details>
 
       {current && <PipelineSteps p={current} />}
+      {current?.done && !current.ok && lastRun && <RunProblem folder={lastRun.folder} onRecommended={recommended} />}
       {current ? (
         <>
           <LossChart points={current.points} iters={(current.params as TrainParams).iters} live={!current.done} />
@@ -226,6 +236,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
           <>
             <LossChart points={shown.points} iters={shown.iters} />
             <LossNotes points={shown.points} kind="train" />
+            {shown.failed && <RunProblem folder={shown.run} onRecommended={recommended} />}
             {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onChat={onChat} onAdapters={onAdapters} />}
           </>
         )

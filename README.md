@@ -49,6 +49,14 @@ It starts Ollama if it isn't running and opens http://localhost:4817 in your bro
 
 **Disk:** smollm2:360m is 725MB and qwen3:4b 2.5GB in Ollama. The first training run downloads its base model into `workspace/hf` (about 700MB for SmolLM2-360M, 3.4GB for the 1.7B). Exporting a trained model keeps a full-size copy in `workspace/fused` until you remove it.
 
+**To remove everything** (the app, everything made with it, the models, Ollama, uv, and Node if it came from nodejs.org): in Terminal, in the variable-machine folder,
+
+```bash
+bash scripts/remove-everything.sh
+```
+
+It shows what each step removes and its size, and asks before each one; anything you keep stays as it is. Most of it goes to the Trash, so empty the Trash to delete it for good. `--dry-run` only shows what it would remove.
+
 **For developers:** `npm run dev` rebuilds the page on save (reload to see it) and restarts the helper on save. `VARIABLE_MACHINE_PORT` picks another port and `VARIABLE_MACHINE_OPEN=0` stops it opening a browser.
 
 ## The tabs, in the order you'd use them
@@ -71,21 +79,22 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
    Each field explains itself in plain language, and a note says that small models follow instructions loosely and bigger ones closely. Choosing a preset moves it to the left with the others in a column on the right; step 1 makes the variant (and lists what goes into it), step 2 asks the original and the variant the same question. Variants are temporary until you press *keep it*: unkept ones are removed when the app stops. Twelve presets (one sentence, haiku, only questions, museum label, say "I don't know", always French, careful / surprising / falling apart…) fill the form. Each says which starters follow it well, from the run recorded in `docs/presets-check.md`. "Make variant" saves the Modelfile and runs `ollama create`; then the original and the variant answer one question side by side on the same screen. Folded below: what each Modelfile line means, and the file the form makes, with weights marked. The student's own variants are listed to reopen and change.
 4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. Every dataset has a plain description and an example row. Choose one to see what's in it, get it ready (check, count, split) and open Train or Prefer with it. Make a new one by:
    - bringing in any dataset from Hugging Face by its name, or your own .csv / .jsonl / .json file (the columns are read, the license recorded);
-   - searching public data (DC Open Data, data.gov) for a table and turning its rows into questions and answers with a template, such as "What kind of tree stands at {VICINITY}?";
-   - importing Dolly, OpenAssistant (oasst1), the Apache-2.0 subsets of SmolTalk, or the examples (including DC street trees);
+   - searching public data (DC Open Data, data.gov) for a table and turning its rows into questions and answers with a template, such as "What kind of tree stands at {VICINITY}?". DC tables are read straight from the city's map service, so a download the portal is still preparing never stalls it;
+   - adding one of the datasets that come with the app, shown on the tab's first screen: DC street trees (CC BY 4.0), art history from the Art Institute of Chicago (CC BY 4.0), customer-discovery interview coaching (CC0), Dolly creative writing (CC BY-SA 3.0) and two small starters;
+   - importing Dolly, OpenAssistant (oasst1) or the Apache-2.0 subsets of SmolTalk;
    - fetching raw material (a Project Gutenberg book, or a CSV or TXT) and having a model write rows from it, keeping, editing or rejecting each;
    - building preference sets from the chat log.
 
    A guide on the tab says where to look, what makes a good dataset, and what the licenses mean.
 5. **The three ways to change the numbers** (plan §2), outlined together in the tab row. Each leaves an adapter:
-   - **Train: imitate.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live. Under the chart, the run is read in plain words (learning, memorising, flat) with what loss, train and valid mean. When it finishes, the next step exports it into Ollama and opens Chat.
+   - **Train: imitate.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live. Before it starts, a *before you train* note warns in plain words when the settings will likely fall apart (learning rate too high), run out of memory, or crawl, with one press back to the recommended settings; a failed run says why, read from its log. Under the chart, the run is read in plain words (learning, memorising, flat) with what loss, train and valid mean. When it finishes, the next step exports it into Ollama and opens Chat.
    - **Prefer: prefer.** DPO on a base or a fused model, from a preference set. It shows the loss and a held-out before/after check.
    - **Merge: blend.** Blend two compatible adapters: out = (1 − t)·A + t·B.
 6. **Adapters.** Everything the three ways made: trained adapters, preference adapters and blends. Training leaves the original model untouched and learns an adapter; export joins the two into one model and imports it into Ollama. *Try it* asks the original and the trained model questions from the rows set aside at the split, next to the answer in the data. *Remove* moves an adapter to the Trash.
 7. **Chat.** Two to four models side by side, one prompt, every answer streaming. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
 8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
-**The explanation layer.** Things you can click are green. Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. A flag hangs outside the group of controls its control belongs to, and outlines that group while it's open. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
+**The explanation layer.** Things you can click are green. *flags on/off* in the top bar turns the flags off for those who know their way around; the terminal's *taller ▴* lifts it from a strip to half the window. Both are remembered in the browser. Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. A flag hangs outside the group of controls its control belongs to, and outlines that group while it's open. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
 
 ## Layout
 

@@ -1,6 +1,7 @@
 import { cloneElement, useEffect, useId, useRef, useState, type CSSProperties, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 import { EXPLAIN, type ExplainId } from './text'
+import { getPref } from '../lib/viewPrefs'
 
 interface Props {
   id: ExplainId
@@ -179,7 +180,7 @@ export function Explained({ id, children, svg, module: moduleSel }: Props) {
   const module = useRef<Element | null>(null)
   const open = () => {
     const el = wrap.current?.firstElementChild
-    if (!el || dismissed) return
+    if (!el || dismissed || !getPref('flags')) return // flags turned off in the top bar
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height) return // nothing to point at if it isn't laid out (a hidden panel)
     const p = place(el, moduleSel ? document.querySelector(moduleSel) : undefined, e.title.length + e.text.length)

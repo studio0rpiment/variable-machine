@@ -231,7 +231,7 @@ export default function FlowMap() {
         className="flow__svg"
         viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
         role="img"
-        aria-labelledby="flow-title"
+        aria-label="The tabs of Variable Machine and what each passes to the next"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -244,7 +244,6 @@ export default function FlowMap() {
           }
         }}
       >
-        <title id="flow-title">The tabs of Variable Machine and what each passes to the next</title>
         <defs>
           <marker id="flow-end" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
             <path d="M0 0.5 L7.5 4 L0 7.5" className="flow__tip" />
@@ -320,7 +319,7 @@ export default function FlowMap() {
         ))}
       </svg>
       <div className="flow__tools" role="group" aria-label="view">
-        <button type="button" className="text-button" onClick={fit} title="fit the whole map to the space">
+        <button type="button" className="text-button" onClick={fit} aria-label="fit the whole map to the space">
           fit
         </button>
         <button type="button" className="text-button" onClick={() => zoomAt(1 / 1.25)} aria-label="zoom in">

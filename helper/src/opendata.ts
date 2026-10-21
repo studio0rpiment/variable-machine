@@ -3,7 +3,7 @@ import type http from 'node:http'
 /**
  * Search public open-data portals for tables (plan §8: raw material with its
  * license). Read-only, like the workspace API: nothing is downloaded until the
- * student brings a table in with `data raw csv`, which shows in the terminal.
+ * student brings a table in with `data raw csv` (or `data raw arcgis`), which shows in the terminal.
  *
  *   GET /api/opendata/search?source=dc&q=traffic       → DC Open Data (opendata.dc.gov, an ArcGIS Hub)
  *   GET /api/opendata/search?source=datagov&q=traffic  → data.gov's catalog
@@ -21,6 +21,8 @@ export interface OpenDataResult {
   license: string | null
   page: string
   csv: string | null
+  /** how to bring it in: a CSV download, or a table read from an ArcGIS map service */
+  via: 'csv' | 'arcgis'
 }
 
 const strip = (html: string | undefined) =>
@@ -65,7 +67,10 @@ async function searchDc(q: string): Promise<OpenDataResult[]> {
       publisher: String(p.source ?? p.owner ?? 'DC Open Data'),
       license: licenseName(p.license as string),
       page: `https://opendata.dc.gov/datasets/${id}`,
-      csv: tabular ? `https://opendata.dc.gov/api/download/v1/items/${id}/csv?layers=0` : null,
+      // The service layer answers at once; the Hub's prepared CSV is often "being generated, check back later".
+      ...(tabular && typeof p.url === 'string' && /\/(MapServer|FeatureServer)(\/\d+)?$/.test(p.url)
+        ? { csv: /\/\d+$/.test(p.url) ? p.url : `${p.url}/0`, via: 'arcgis' as const }
+        : { csv: tabular ? `https://opendata.dc.gov/api/download/v1/items/${id}/csv?layers=0` : null, via: 'csv' as const }),
     }
   })
 }
@@ -88,6 +93,7 @@ async function searchDataGov(q: string): Promise<OpenDataResult[]> {
       license: licenseName(dcat.license as string),
       page: r.slug ? `https://catalog.data.gov/dataset/${r.slug}` : String(dcat.landingPage ?? 'https://catalog.data.gov'),
       csv,
+      via: 'csv' as const,
     }
   })
 }

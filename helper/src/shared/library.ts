@@ -69,13 +69,15 @@ export interface HfBase {
   params: string
   /** Rough memory during LoRA (plan §11). */
   loraGB: number
+  /** transformer layers in the model: training can adapt at most this many */
+  layers: number
   /** the Ollama model of the same weights, untouched: the before in a before/after */
   runsAs: string
 }
 
 export const HF_BASES: HfBase[] = [
-  { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The same tiny assistant as smollm2:360m, in the format training needs. The default starting point: quick to train on any 16GB Mac.', architecture: 'llama', template: 'chatml', params: '360M', loraGB: 2, runsAs: 'smollm2:360m' },
-  { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The larger SmolLM2, in the format training needs. Better results, but slower, and it needs more memory.', architecture: 'llama', template: 'chatml', params: '1.7B', loraGB: 8, runsAs: 'smollm2:1.7b' },
+  { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The same tiny assistant as smollm2:360m, in the format training needs. The default starting point: quick to train on any 16GB Mac.', architecture: 'llama', template: 'chatml', params: '360M', loraGB: 2, layers: 32, runsAs: 'smollm2:360m' },
+  { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The larger SmolLM2, in the format training needs. Better results, but slower, and it needs more memory.', architecture: 'llama', template: 'chatml', params: '1.7B', loraGB: 8, layers: 24, runsAs: 'smollm2:1.7b' },
 ]
 
 export interface DataSourceInfo {
@@ -120,4 +122,5 @@ export const RAW_SOURCES = {
   gutenberg: { about: 'a public-domain book from Project Gutenberg, by its number (e.g. 1342 for Pride and Prejudice)', license: 'public domain in the USA (Project Gutenberg; check the laws of your country)' },
   csv: { about: 'a CSV from a URL, e.g. DDOT traffic counts from Open Data DC; give the license the source states' },
   txt: { about: 'a plain-text file from a URL; give the license the source states' },
+  arcgis: { about: 'a table read straight from an ArcGIS map service (how DC Open Data serves its tables), by its layer address; give the license the source states' },
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { setPref, usePref } from '../lib/viewPrefs'
 import { Terminal as XTerm, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -27,6 +28,8 @@ function xtermTheme(t: Theme): ITheme {
  * whole lines.
  */
 export default function Terminal({ theme }: { theme: Theme }) {
+  // a short strip by default (15% of the window), half the window when you need to read it
+  const tall = usePref('tallTerminal')
   const host = useRef<HTMLDivElement>(null)
   const term = useRef<XTerm | null>(null)
   const [line, setLine] = useState('')
@@ -112,6 +115,9 @@ export default function Terminal({ theme }: { theme: Theme }) {
       <header className="panel-head">
         <TerminalMark size={1} />
         <span className="label">terminal</span>
+        <button type="button" className="text-button terminal__size" onClick={() => setPref('tallTerminal', !tall)} aria-pressed={tall}>
+          {tall ? 'smaller ▾' : 'taller ▴'}
+        </button>
       </header>
       <div className="terminal__screen" ref={host} />
       <div className="terminal__line">

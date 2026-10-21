@@ -13,6 +13,7 @@ import StartPanel from './components/StartPanel'
 import AboutPanel from './components/AboutPanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
+import { setPref, usePref } from './lib/viewPrefs'
 import StatusLine from './components/StatusLine'
 import { Explained } from './explain/Explained'
 import type { ExplainId } from './explain/text'
@@ -115,6 +116,7 @@ export default function App() {
           ))}
         </nav>
         <StatusLine />
+        <FlagsToggle />
         <ThemeToggle mode={theme.mode} onToggle={toggle} />
       </header>
       <main className="shell__main">
@@ -154,5 +156,15 @@ export default function App() {
       </main>
       <Terminal theme={theme} />
     </div>
+  )
+}
+
+/** Turn the explanation flags off (and on again), for when you know your way around. */
+function FlagsToggle() {
+  const on = usePref('flags')
+  return (
+    <button type="button" className="text-button flags-toggle" onClick={() => setPref('flags', !on)} aria-pressed={on} aria-label={on ? 'explanation flags are on: turn them off' : 'explanation flags are off: turn them on'}>
+      flags {on ? 'on' : 'off'}
+    </button>
   )
 }

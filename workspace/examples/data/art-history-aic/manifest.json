@@ -1,0 +1,32 @@
+{
+  "name": "art-history-aic",
+  "kind": "dataset",
+  "created": "2026-10-21T00:00:00.000Z",
+  "license": "CC BY 4.0 (descriptions © Art Institute of Chicago, artic.edu) · CC0 (titles, artists, dates)",
+  "inputs": [
+    "https://api.artic.edu/api/v1/artworks/search"
+  ],
+  "command": [
+    "built from the Art Institute of Chicago API: public-domain artworks with a description; the answer is the first sentences of the museum's description, the question one of four forms"
+  ],
+  "format": "chat",
+  "counts": {
+    "train": 187,
+    "valid": 33
+  },
+  "split": {
+    "valid": 0.15,
+    "seed": 7
+  },
+  "sources": [
+    {
+      "id": "artic.edu",
+      "kind": "import",
+      "license": "CC BY 4.0 (descriptions) + CC0 (other data), Art Institute of Chicago",
+      "licenseChecked": true,
+      "url": "https://api.artic.edu/docs/",
+      "rows": 220
+    }
+  ],
+  "about": "Questions about artworks in the Art Institute of Chicago, answered in the museum's own words: who made a work, what to notice, why it matters. Descriptions by the Art Institute of Chicago, CC BY 4.0: credit artic.edu when you share anything made from them."
+}

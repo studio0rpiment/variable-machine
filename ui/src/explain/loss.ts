@@ -4,6 +4,8 @@
  * different things.
  */
 
+import { diverging } from '@shared/runAdvice'
+
 export const LOSS_GUIDE = {
   train: [
     {
@@ -119,7 +121,9 @@ export function readLoss(points: Point[], kind: 'train' | 'prefer', live: boolea
   let verdict: string
   const prefix = live ? 'So far: ' : ''
   const trainDrop = t0 !== undefined && t1 !== undefined ? (t0 - t1) / t0 : 0
-  if (val.length >= 2 && best && v1 !== undefined && v1 > best.v * 1.05 && trainDrop > 0.05) {
+  if (kind === 'train' && diverging(points)) {
+    verdict = `${prefix}it is getting worse, not better: the loss is climbing, or sits far above where a model starts (around 2). The steps are too big: the learning rate is too high for this model. ${live ? 'Stop it, ' : ''}Train again at 1e-4 (the recommended settings).`
+  } else if (val.length >= 2 && best && v1 !== undefined && v1 > best.v * 1.05 && trainDrop > 0.05) {
     verdict = `${prefix}it learned, then started memorising. Valid was lowest at iteration ${best.iter} and has risen since, while train kept falling. Fewer iterations (about ${best.iter}) would likely give a better model.`
   } else if (val.length >= 2 && v0 !== undefined && v1 !== undefined && v1 < v0 * 0.97) {
     verdict = `${prefix}it is learning: valid, the rows it never trained on, went down too.`

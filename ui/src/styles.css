@@ -10,7 +10,7 @@
   --muted: color-mix(in srgb, var(--line) 55%, var(--bg));
   --overlay: color-mix(in srgb, var(--bg) 92%, transparent);
   --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --terminal-height: 17rem;
+  --terminal-height: 15vh; /* the terminal: a short strip, or half the window (taller ▴ in its header) */
 }
 
 * { box-sizing: border-box; }
@@ -737,3 +737,22 @@ a.text-button { text-decoration: none; }
 /* a map node whose flag is open: drawn solid, as its outline (an SVG can't take a CSS outline) */
 .flow__svg .is-explained .flow__box, .flow__svg .is-explained .flow__dest { stroke-dasharray: none; }
 .flow__group.is-explained { stroke: var(--line); stroke-dasharray: 4 3; }
+.od-arrived { color: var(--act); margin: 0 0 0.75rem; }
+
+/* ---- advice around a training run ---- */
+.advice { display: flex; flex-direction: column; gap: 0.5rem; max-width: 52rem; padding: 0.75rem 1rem; border: 1px dashed var(--line); }
+.advice--failed { border-style: solid; }
+.advice__title { color: var(--line); }
+.advice__list { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; line-height: 1.55; }
+.advice__item--stop { color: var(--line); font-weight: 500; }
+.advice__why { margin: 0; line-height: 1.55; }
+.advice__fix { align-self: flex-start; margin-left: -0.4rem; }
+.data-example { cursor: default; }
+.data-example .command-preview { margin-top: 0.4rem; margin-left: -0.4rem; }
+
+:root[data-terminal="tall"] { --terminal-height: 50vh; }
+.dock { min-height: 7.5rem; }
+.terminal__size { margin-left: auto; color: var(--muted); }
+.terminal__size:hover { color: var(--line); }
+.flags-toggle { color: var(--muted); }
+.flags-toggle:hover { color: var(--line); }

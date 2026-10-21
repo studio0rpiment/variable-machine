@@ -115,6 +115,12 @@ async function train(args: string[], line: string): Promise<boolean> {
     print('train: --base is a Hugging Face model id, like HuggingFaceTB/SmolLM2-360M-Instruct')
     return false
   }
+  // mlx-lm refuses more layers than the model has, after loading it; say so before starting.
+  const known = HF_BASES.find((b) => b.id === p.base)
+  if (known && p.layers > known.layers) {
+    print(`train: ${p.base.split('/')[1]} has ${known.layers} layers, so --layers can be at most ${known.layers}`)
+    return false
+  }
   if (/4bit|3bit|8bit|bnb|awq|gptq/i.test(p.base)) {
     print('train: train on an fp16/bf16 base, not a quantized repo (plan §8)')
     return false
@@ -267,6 +273,8 @@ async function prefer(args: string[], line: string): Promise<boolean> {
     return false
   }
   if ([p.beta, p.iters, p.lr, p.rank, p.layers].some((n) => !Number.isFinite(n) || n <= 0)) return print('prefer: the numbers must be positive numbers'), false
+  const knownBase = HF_BASES.find((b) => b.id === p.model)
+  if (knownBase && p.layers > knownBase.layers) return print(`prefer: ${p.model.split('/')[1]} has ${knownBase.layers} layers, so --layers can be at most ${knownBase.layers}`), false
   // The model is a Hugging Face id or a fused model in the workspace, nothing else.
   let hfBase = p.model
   if (p.model.startsWith('workspace/fused/')) {

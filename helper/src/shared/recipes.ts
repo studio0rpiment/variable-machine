@@ -133,7 +133,9 @@ export const createArgs = (model: string, quantize: Quantize) => ['ollama', 'cre
  * Returns what a line says, or null.
  */
 export function parseTrainLine(line: string): { iter: number; trainLoss?: number; valLoss?: number; tokensPerSec?: number } | null {
-  const plain = line.replace(/\x1b\[[0-9;]*m/g, '')
+  // mlx-lm can draw a progress bar and then rewrite the line (\r, erase-line) with the report:
+  // keep only what is left after the last carriage return, without any terminal codes.
+  const plain = (line.split('\r').pop() ?? '').replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
   const val = /^\s*(\d+)\s+val\s+([\d.]+)/.exec(plain)
   if (val) return { iter: Number(val[1]), valLoss: Number(val[2]) }
   const train = /^\s*(\d+)\s+([\d.]+)\s*[▼▲=•-]?\s+([\d.]+)(k?)\s+[\d.,]+k?\s*$/.exec(plain)

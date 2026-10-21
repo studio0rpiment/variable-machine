@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
-import { useHelperEvent } from '../hooks/useHelper'
+import { useHelperEvent, useHelperState } from '../hooks/useHelper'
 import { usePipeline } from '../hooks/usePipeline'
 import { runCommand, sendEvent } from '../lib/helper'
-import { readFile, readManifests } from '../lib/workspace'
+import { readLossPoints, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
-import { PY_ENV, preferArgs, preferLine, type PreferParams } from '@shared/recipes'
+import { PY_ENV, preferArgs, preferLine, type PreferParams, parseTrainLine } from '@shared/recipes'
 import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
 import LossNotes from './LossNotes'
 import NextStep from './NextStep'
+import { BeforeAdvice, RunProblem } from './RunAdvice'
+import { adviseBefore } from '@shared/runAdvice'
 import { NEXT } from '../explain/next'
 import ConfirmButton from './ConfirmButton'
 import PipelineSteps from './PipelineSteps'
@@ -42,7 +44,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
-  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean } | null>(null)
+  const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean; failed?: boolean } | null>(null)
   const [p, setP] = useState<PreferParams>({ name: '', model: HF_BASES[0].id, data: '', beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8 })
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['prefer'])
@@ -86,14 +88,20 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
     if (!touchedName && p.data && !running) setP((x) => ({ ...x, name: free(`${p.data}-dpo`) }))
   }, [p.data, touchedName, free, running])
 
+  const { status } = useHelperState()
+  /** What these settings will likely do, before they run, and the way back to ones that work. */
+  const advice = adviseBefore({ base: p.model, rank: p.rank, layers: p.layers, lr: p.lr }, status?.tier ?? '16', 'prefer')
+  const recommended = () => setP((x) => ({ ...x, model: HF_BASES[0].id, beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8 }))
+  const lastRun = current && runs.find((r) => r.params?.name === (current.params as PreferParams).name)
+
   const showRun = async (r: RunManifest) => {
-    const text = (await readFile(`runs/${r.folder}/loss.jsonl`)) ?? ''
-    setShown({ run: r.folder, iters: r.params.iters, points: text.split('\n').filter(Boolean).map((l) => JSON.parse(l) as LossPoint), adapter: r.params.name, base: r.params.model, finished: r.status === 'finished' })
+    const points = await readLossPoints<LossPoint>(r.folder, parseTrainLine)
+    setShown({ run: r.folder, iters: r.params.iters, points, adapter: r.params.name, base: r.params.model, finished: r.status === 'finished', failed: r.status === 'failed' })
   }
 
   const set = <K extends keyof PreferParams>(k: K) => (v: PreferParams[K]) => setP((x) => ({ ...x, [k]: v }))
   const taken = runs.some((r) => r.params?.name === p.name) && !(running && (pipe?.params as PreferParams | undefined)?.name === p.name)
-  const valid = NAME.test(p.name) && !!p.data && !taken
+  const valid = NAME.test(p.name) && !!p.data && !taken && !advice.some((a) => a.level === 'stop')
   const line = joinWords(preferLine(p))
   const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...preferArgs(p, 'workspace/runs/<time>-' + p.name)])
   const latest = runs[0]
@@ -162,6 +170,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
         </div>
       </div>
 
+      <BeforeAdvice advice={advice} onRecommended={recommended} />
       <div className="train-run">
         <Explained id="prefer.run">
           <CommandPreview command={line} onRun={() => void runCommand(line)} disabled={!valid} running={running} label="prefer" />
@@ -195,6 +204,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
       </details>
 
       {current && <PipelineSteps p={current} />}
+      {current?.done && !current.ok && lastRun && <RunProblem folder={lastRun.folder} onRecommended={recommended} />}
       {current ? (
         <>
           <LossChart points={current.points} iters={(current.params as PreferParams).iters} live={!current.done} />
@@ -206,6 +216,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
           <>
             <LossChart points={shown.points} iters={shown.iters} />
             <LossNotes points={shown.points} kind="prefer" />
+            {shown.failed && <RunProblem folder={shown.run} onRecommended={recommended} />}
             {shown.finished && shown.adapter && shown.base && <NextStep adapter={shown.adapter} base={shown.base} onChatPair={onChatPair} onChat={onChat} onAdapters={onAdapters} />}
           </>
         )

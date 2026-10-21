@@ -46,6 +46,8 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
   const [validFrac, setValidFrac] = useState(0.1)
   const [busy, setBusy] = useState('')
   const [about, setAbout] = useState('')
+  const [examples_, setExamples] = useState<DatasetManifest[]>([])
+  useEffect(() => void readManifests<DatasetManifest>('examples/data').then((m) => setExamples(m.sort((a, b) => a.name.localeCompare(b.name)))), [])
   /** a table just brought in from an open-data portal, for the template step */
   const [newTable, setNewTable] = useState('')
   /** tables already in workspace/raw, so a dataset made from one can offer to fetch it when it isn't here */
@@ -155,6 +157,8 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
     </button>
   )
   const created = (name: string) => () => choose(name)
+  /** The examples that ship with the app and aren't in workspace/data yet. */
+  const extras = examples_.filter((x) => !sets.some((s) => s.name === x.name))
 
   /** One row to show what the dataset is like. */
   const sample = isPref
@@ -179,6 +183,30 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
             {sets.map(card)}
             {newCard}
           </div>
+          {extras.length > 0 && (
+            <>
+              <h2 className="panel__title label mf-lead-plain">ready to use: datasets that come with Variable Machine</h2>
+              <p className="mf-next">Add one and it appears above, ready to check, split and train on. Each says where it came from and its license.</p>
+              <div className="mf-presets">
+                {extras.map((x) => {
+                  const line = joinWords(['data', 'import', 'example', x.name, x.name])
+                  return (
+                    <div key={x.name} className="mf-preset data-example">
+                      <span className="mf-preset__group label label--muted">
+                        {x.format === 'preference' ? 'chosen vs rejected · for Prefer' : 'to imitate · for Train'}
+                      </span>
+                      <span className="mf-preset__title">{x.name}</span>
+                      <span className="mf-preset__blurb">{clip(describeDataset(x), 220)}</span>
+                      <span className="mf-preset__follows label label--muted">
+                        {x.counts.train + x.counts.valid} {x.format === 'preference' ? 'pairs' : 'rows'} · {x.license}
+                      </span>
+                      <CommandPreview command={line} onRun={() => void run('example', line).then(created(x.name))} running={busy === 'example'} label="add it" />
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </>
       ) : (
         <div className="mf-studio">

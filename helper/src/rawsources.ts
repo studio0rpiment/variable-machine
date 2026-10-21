@@ -137,10 +137,80 @@ async function save(name: string, ext: string, text: string, chunks: string[], m
   print(`  ◂ workspace/raw/${name}: ${chunks.length} passages · ${meta.license}`)
 }
 
+/** A CSV field: quoted when it holds a comma, a quote or a line break. */
+const cell = (v: unknown) => {
+  const t = v === null || v === undefined ? '' : String(v)
+  return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+}
+
+/**
+ * A table straight from an ArcGIS map service layer (…/MapServer/11 or
+ * …/FeatureServer/0), page by page, without its shapes. DC Open Data's own
+ * download often answers "being generated, check back later"; the service
+ * answers at once. Dates come as milliseconds and are written as days.
+ */
+async function fetchArcgis(layer: string, abort: AbortController): Promise<string | null> {
+  const base = layer.replace(/\/+$/, '').replace(/\/query$/, '')
+  print(`GET ${base}`)
+  const info = (await (await fetch(`${base}?f=json`, { signal: abort.signal })).json()) as { name?: string; fields?: { name: string; type: string }[]; maxRecordCount?: number; error?: { message?: string } }
+  if (!info.fields?.length) {
+    print(`not a table: ${info.error?.message ?? 'the address has no fields; give a layer, like …/MapServer/11'}`)
+    return null
+  }
+  const fields = info.fields.filter((f) => !/geometry|blob|raster/i.test(f.type))
+  const dates = new Set(fields.filter((f) => /date/i.test(f.type)).map((f) => f.name))
+  const page = Math.min(info.maxRecordCount ?? 1000, 2000)
+  const lines = [fields.map((f) => cell(f.name)).join(',')]
+  let size = lines[0].length
+  for (let offset = 0; ; offset += page) {
+    const q = `${base}/query?where=1%3D1&outFields=*&returnGeometry=false&f=json&resultOffset=${offset}&resultRecordCount=${page}`
+    const d = (await (await fetch(q, { signal: abort.signal })).json()) as { features?: { attributes: Record<string, unknown> }[]; exceededTransferLimit?: boolean; error?: { message?: string } }
+    if (d.error) throw new Error(d.error.message ?? 'the service answered with an error')
+    for (const { attributes: a } of d.features ?? []) {
+      const row = fields.map((f) => {
+        const v = a[f.name]
+        return cell(dates.has(f.name) && typeof v === 'number' ? new Date(v).toISOString().slice(0, 10) : v)
+      }).join(',')
+      lines.push(row)
+      size += row.length + 1
+    }
+    write(`\r\x1b[2Kread ${(lines.length - 1).toLocaleString('en-US')} rows`)
+    if (!d.features?.length || !d.exceededTransferLimit) break
+    if (size > MAX_CHARS) {
+      write('\n')
+      print(`kept the first ${(lines.length - 1).toLocaleString('en-US')} rows: plenty for a class dataset; the rest stays on the portal`)
+      break
+    }
+  }
+  write('\n')
+  if (info.name) print(`table: ${info.name} · ${fields.length} columns`)
+  return lines.join('\n') + '\n'
+}
+
+/**
+ * Something that isn't a table where a table was expected: a portal's
+ * "still preparing" note, an error page, a login page. Says what it was.
+ */
+function notATable(text: string): string | null {
+  const t = text.trimStart()
+  if (t.startsWith('{')) {
+    try {
+      const j = JSON.parse(t) as { status?: string; message?: string }
+      if (/pending|processing/i.test(j.status ?? '') || /being generated|check back/i.test(j.message ?? ''))
+        return `the portal is still preparing this download ("${j.message ?? j.status}"). For DC Open Data, search again and bring the table in: it now reads the table directly. Or try again in a few minutes.`
+      return `the address sent back JSON, not a table${j.message ? `: ${j.message}` : ''}`
+    } catch {
+      return 'the address sent back something that is not a table'
+    }
+  }
+  if (t.startsWith('<')) return 'the address sent back a web page, not a table: it may need a login, or be the dataset\'s page rather than its download'
+  return null
+}
+
 export async function rawCommand(args: string[], opts: Record<string, string>, line: string): Promise<boolean> {
   const [kind, what, name] = args
   if (!kind || !(kind in RAW_SOURCES) || !what || !name || !NAME.test(name)) {
-    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw txt <url> <name> --license "<what the source states>"')
+    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw txt <url> <name> --license "<what the source states>"')
     return false
   }
   try {
@@ -172,10 +242,21 @@ export async function rawCommand(args: string[], opts: Record<string, string>, l
       print(`data raw ${kind}: say what license the source states, e.g. --license "CC BY 4.0". It goes in the manifest so everything made from it carries it.`)
       return false
     }
-    const text = await fetchText(what, abort)
+    const text = kind === 'arcgis' ? await fetchArcgis(what, abort) : await fetchText(what, abort)
     if (!text) return false
-    const chunks = kind === 'csv' ? chunkCsv(text) : chunkText(text)
-    await save(name, kind, text, chunks, { url: what, license: `${opts.license.trim()} (as stated at import)`, licenseChecked: false, line, kind, about: opts.about?.trim(), page: opts.page?.trim() })
+    const table = kind === 'csv' || kind === 'arcgis'
+    const wrong = table ? notATable(text) : null
+    if (wrong) {
+      print(`data raw: nothing saved. ${wrong}`)
+      return false
+    }
+    if (table && parseCsv(text.slice(0, 200_000)).length === 0) {
+      print('data raw: nothing saved. The table has no rows under its header line')
+      return false
+    }
+    const chunks = table ? chunkCsv(text) : chunkText(text)
+    await save(name, table ? 'csv' : kind, text, chunks, { url: what, license: `${opts.license.trim()} (as stated at import)`, licenseChecked: false, line, kind, about: opts.about?.trim(), page: opts.page?.trim() })
+    if (table) print(`  next: turn its rows into questions and answers ("turn a table into questions and answers" on the Data tab, or data template raw/${name} …)`)
     return true
   } catch (err) {
     print(abort.signal.aborted ? '  ◂ stopped' : `data raw: ${(err as Error).message}`)

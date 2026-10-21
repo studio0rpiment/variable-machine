@@ -22,6 +22,7 @@ interface Result {
   license: string | null
   page: string
   csv: string | null
+  via: 'csv' | 'arcgis'
 }
 
 const SOURCES = { dc: 'DC Open Data', datagov: 'data.gov' } as const
@@ -30,7 +31,8 @@ type Source = keyof typeof SOURCES
 /**
  * Search an open-data portal for a table and bring it in as raw material, with
  * the license the portal states (or one the student fills in after reading the
- * dataset's page). Searching only reads; bringing it in is `data raw csv`.
+ * dataset's page). Searching only reads; bringing it in is `data raw csv`, or
+ * `data raw arcgis` for a DC table, read straight from its map service.
  */
 export function OpenDataCard({ busy, onRun }: { busy: boolean; onRun: (line: string, raw: string) => void }) {
   const [source, setSource] = useState<Source>('dc')
@@ -58,7 +60,7 @@ export function OpenDataCard({ busy, onRun }: { busy: boolean; onRun: (line: str
   }
 
   const line = pick?.csv
-    ? joinWords(['data', 'raw', 'csv', pick.csv, name, '--license', license.trim() || '<license>', '--about', pick.title + (pick.about ? `: ${pick.about.slice(0, 160)}` : ''), '--page', pick.page])
+    ? joinWords(['data', 'raw', pick.via ?? 'csv', pick.csv, name, '--license', license.trim() || '<license>', '--about', pick.title + (pick.about ? `: ${pick.about.slice(0, 160)}` : ''), '--page', pick.page])
     : ''
   return (
     <Manifest name="search public data" lines={['tables of public facts, from city, state and federal portals', 'searching reads the catalog only; nothing downloads until you bring one in']}>
@@ -168,10 +170,15 @@ export function TemplateCard({ busy, onRun, prefer }: { busy: boolean; onRun: (l
     'workspace.changed',
     useCallback((e) => e.path.startsWith('raw/') && e.path.endsWith('manifest.json') && load(), [load]),
   )
-  // A table just brought in is the one to work on.
+  // A table just brought in is the one to work on, and this is the next step: bring it into view.
+  const card = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (prefer && tables.some((t) => t.name === prefer)) setTable(prefer)
-    else if (!table && tables[0]) setTable(tables[0].name)
+    if (prefer && tables.some((t) => t.name === prefer)) {
+      setTable(prefer)
+      requestAnimationFrame(() => {
+        card.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    } else if (!table && tables[0]) setTable(tables[0].name)
   }, [prefer, tables, table])
   useEffect(() => setName((n) => n || (table ? `${table}-qa` : '')), [table])
 
@@ -195,6 +202,8 @@ export function TemplateCard({ busy, onRun, prefer }: { busy: boolean; onRun: (l
 
   if (!tables.length) return <p className="mf-next">No tables yet: bring one in with the search above, or a CSV address under "bring in a book or a table".</p>
   return (
+    <div ref={card}>
+      {prefer && table === prefer && <p className="mf-next od-arrived">{prefer} is here. Next: write a question and its answer, with {'{column}'} where each row fills in.</p>}
     <Manifest name="table to questions and answers" lines={['write one question and its answer, with {column} where a row fills in', 'add |round to a number column for a whole number: {COUNT|round}']}>
       <div className="inline-fields">
         <label className="field">
@@ -280,5 +289,6 @@ export function TemplateCard({ busy, onRun, prefer }: { busy: boolean; onRun: (l
         </>
       )}
     </Manifest>
+    </div>
   )
 }

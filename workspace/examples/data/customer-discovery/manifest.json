@@ -1,0 +1,29 @@
+{
+  "name": "customer-discovery",
+  "kind": "dataset",
+  "created": "2026-10-21T00:00:00.000Z",
+  "license": "CC0 1.0 (written for Variable Machine)",
+  "inputs": [],
+  "command": [
+    "written for Variable Machine"
+  ],
+  "format": "chat",
+  "counts": {
+    "train": 65,
+    "valid": 11
+  },
+  "split": {
+    "valid": 0.15,
+    "seed": 11
+  },
+  "sources": [
+    {
+      "id": "examples/customer-discovery",
+      "kind": "typed",
+      "license": "CC0 1.0",
+      "licenseChecked": true,
+      "rows": 76
+    }
+  ],
+  "about": "An interview coach for customer discovery: it turns leading or hypothetical questions into ones about what people actually did, explains why, answers common questions about running interviews, and drafts opening questions for a topic. Written for Variable Machine by Claude, an AI model, from common interviewing practice; CC0."
+}
