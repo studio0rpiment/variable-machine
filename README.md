@@ -2,6 +2,8 @@
 
 A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.
 
+**[variablemachine.orpiment.studio](https://variablemachine.orpiment.studio)** · download, and how to start.
+
 ![The Start page: every tab as a box, with lines for what each passes to the next, from Models and Data through the three ways to change the numbers to Adapters, Chat and Share](docs/images/start-map.png)
 
 ## Start here
@@ -190,4 +192,4 @@ Each of these was checked against the installed tools (plan §13) on 2026-10-18 
 
 ## Licenses
 
-Code: MIT. The hand-drawn icons (`ui/src/icons/`, the favicon) are *hand-icons by Kevin Patton*, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The example datasets in `workspace/examples` are CC0. Models, weights and data used by the app are kept to open licenses that allow commercial use. Every artifact's manifest carries the licenses of everything it was made from.
+Code: MIT. The hand-drawn icons (`ui/src/icons/`, the favicon) are *hand-icons by Kevin Patton*, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The example datasets in `workspace/examples` carry their own licenses, recorded in each manifest: CC0 (the small starters and customer discovery), CC BY 4.0 (DC street trees; art-history descriptions by the Art Institute of Chicago) and CC BY-SA 3.0 (Dolly creative). Models, weights and data used by the app are kept to open licenses that allow commercial use. Every artifact's manifest carries the licenses of everything it was made from.

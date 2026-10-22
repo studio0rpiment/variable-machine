@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variable Machine</title>
+<meta name="description" content="A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Variable Machine">
+<meta property="og:description" content="Change small language models on your own Mac: with words, with examples, with taste. Every click shows the real command it runs.">
+<meta property="og:image" content="https://variablemachine.orpiment.studio/start-map.png">
+<style>
+  /* KP Minimal, as in the app: two colours and a green for things you click. */
+  :root {
+    --bg: #111613;
+    --line: #FFF7E6;
+    --act: #5CF25C;
+    --muted: color-mix(in srgb, var(--line) 55%, var(--bg));
+    --wash: color-mix(in srgb, var(--act) 12%, transparent);
+    --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #FFF7E6; --line: #111613; --act: #16752A; color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--line); font-family: var(--font); font-size: 0.9rem; line-height: 1.65; }
+  main { max-width: 52rem; margin: 0 auto; padding: 3rem 1rem 5rem; }
+  a { color: var(--act); text-underline-offset: 0.2em; }
+  a:hover { background: var(--wash); }
+  h1 { font-size: 1.6rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 0.75rem; }
+  h2 { font-size: 0.85rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin: 3rem 0 1rem; padding-top: 1rem; border-top: 1px dashed var(--muted); }
+  h3 { font-size: 0.9rem; font-weight: 500; margin: 1.75rem 0 0.5rem; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin: 0.3rem 0; }
+  li::marker { color: var(--muted); }
+  strong { font-weight: 600; }
+  .lead { font-size: 1rem; max-width: 44rem; }
+  .muted { color: var(--muted); }
+  .shot { display: block; width: 100%; height: auto; margin: 2rem 0; border: 1px solid var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: center; margin: 1.5rem 0; }
+  .button { display: inline-block; padding: 0.6rem 1rem; border: 1px dashed var(--act); color: var(--act); text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.8rem; }
+  .button:hover { border-style: solid; }
+  .button--main { border-style: solid; }
+  .note { font-size: 0.8rem; color: var(--muted); }
+  /* a command to copy: the command is the thing you click, as in the app */
+  .cmd { display: flex; align-items: flex-start; gap: 0.75rem; margin: 0.5rem 0 1rem; padding: 0.6rem 0.8rem; border: 1px solid var(--muted); }
+  .cmd code { flex: 1; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .cmd code::before { content: '▸ '; color: var(--muted); }
+  .copy { font: inherit; font-size: 0.75rem; color: var(--act); background: none; border: 0; cursor: pointer; padding: 0 0.25rem; }
+  .copy:hover { background: var(--wash); }
+  code { font-family: var(--font); }
+  p code, li code { color: var(--line); background: color-mix(in srgb, var(--line) 8%, transparent); padding: 0 0.25rem; }
+  .steps { list-style: none; padding: 0; counter-reset: step; }
+  .steps > li { counter-increment: step; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0 0.75rem; margin: 1.25rem 0; }
+  .steps > li::before { content: counter(step); color: var(--act); font-weight: 600; }
+  .tabs { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.6rem 1.5rem; margin: 0 0 1rem; }
+  .tabs dt { color: var(--act); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.8rem; padding-top: 0.15rem; }
+  .tabs dd { margin: 0; }
+  footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px dashed var(--muted); font-size: 0.8rem; color: var(--muted); }
+  @media (max-width: 36rem) {
+    main { padding-top: 2rem; }
+    .tabs { grid-template-columns: 1fr; gap: 0.2rem; }
+    .tabs dd { margin-bottom: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Variable Machine</h1>
+  <p class="lead">A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.</p>
+
+  <div class="actions">
+    <a class="button button--main" id="download" href="https://github.com/studio0rpiment/variable-machine/archive/refs/tags/v0.1.zip">Download <span id="version">v0.1</span> (zip)</a>
+    <a class="button" href="https://github.com/studio0rpiment/variable-machine">The code on GitHub</a>
+    <a href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/releases.md">What changed in each release</a>
+  </div>
+  <p class="note">Free and open source (MIT). It runs entirely on your own Mac: nothing you type or make is sent anywhere.</p>
+
+  <img class="shot" src="start-map.png" width="3000" height="2300" alt="The Start page: every tab as a box, with lines for what each passes to the next, from Models and Data through the three ways to change the numbers to Adapters, Chat and Share.">
+
+  <h2>Start here</h2>
+  <p><strong>You need:</strong> a Mac with Apple Silicon (M1 or later) and 16GB of memory or more, macOS 14 or later, and about 10GB of free disk.</p>
+
+  <ol class="steps">
+    <li><div>
+      <strong>Install three things</strong> <span class="muted">(once)</span>
+      <ul>
+        <li><strong>Ollama</strong>, which runs the models: download it from <a href="https://ollama.com">ollama.com</a> and install it. You don't need to open it.</li>
+        <li><strong>Node 22 or newer</strong>, which runs the app: download the LTS installer from <a href="https://nodejs.org">nodejs.org</a>.</li>
+        <li><strong>uv</strong>, which runs training: open Terminal and paste</li>
+      </ul>
+      <div class="cmd"><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code><button class="copy" type="button">copy</button></div>
+    </div></li>
+    <li><div>
+      <strong>Get Variable Machine</strong> <span class="muted">(once)</span>
+      <p>Download the zip above and unzip it, or clone it:</p>
+      <div class="cmd"><code>git clone https://github.com/studio0rpiment/variable-machine</code><button class="copy" type="button">copy</button></div>
+      <p>In Terminal, go into the folder (type <code>cd </code>, then drag the folder onto the Terminal window and press Return) and install what it uses:</p>
+      <div class="cmd"><code>npm install &amp;&amp; uv sync --project python</code><button class="copy" type="button">copy</button></div>
+    </div></li>
+    <li><div>
+      <strong>Start it</strong> <span class="muted">(every time)</span>
+      <div class="cmd"><code>npm run dev</code><button class="copy" type="button">copy</button></div>
+      <p>It starts Ollama if it isn't running and opens <code>http://localhost:4817</code> in your browser. To stop it, press ctrl-C in that Terminal window.</p>
+    </div></li>
+    <li><div>
+      <strong>Your first ten minutes</strong>
+      <ol>
+        <li><strong>Start</strong> shows a map of every tab and what flows between them. Click a box to open it; <strong>about</strong> has the same in words.</li>
+        <li><strong>Models:</strong> press <code>ollama pull smollm2:360m</code> on its card (about 700MB).</li>
+        <li><strong>Modelfile:</strong> choose a preset, press make variant, and ask the original and your variant the same question.</li>
+        <li><strong>Data → Train:</strong> add one of the datasets that come with the app, open Train with it, and train. When it finishes, the next step exports your model and opens <strong>Chat</strong> with it.</li>
+      </ol>
+    </div></li>
+  </ol>
+
+  <p><strong>If something isn't right:</strong> <code>npm run doctor</code> checks Ollama, uv, Python and memory and says what to fix. In the app, hover over any tab name or control for a flag that explains it.</p>
+  <p><strong>Disk:</strong> smollm2:360m is 725MB and qwen3:4b 2.5GB. The first training run downloads its base model (about 700MB for SmolLM2-360M, 3.4GB for the 1.7B).</p>
+
+  <h2>Three ways to change a model</h2>
+  <p>A language model is a large file of numbers learned from text. You can't edit those numbers by hand, but you can change what the model does:</p>
+  <dl class="tabs">
+    <dt>words</dt><dd><strong>Modelfile:</strong> standing instructions, a temperature and an example placed in front of the model. No training: the same numbers, reading a note before every question.</dd>
+    <dt>examples</dt><dd><strong>Train:</strong> show it questions with the answers you want until it answers like them. Training leaves the model untouched and learns an adapter, a small set of changes.</dd>
+    <dt>taste</dt><dd><strong>Prefer:</strong> show it pairs of answers, one marked better, and it leans toward the kind you chose.</dd>
+    <dt>blend</dt><dd><strong>Merge:</strong> mix two adapters into a third, with a slider for how much of each.</dd>
+  </dl>
+  <p>Then <strong>Adapters</strong> turns what you made into a model of your own, <strong>Chat</strong> puts it next to the original, and <strong>Share</strong> zips it, with the record of where its data came from and its license.</p>
+
+  <h2>The tabs</h2>
+  <dl class="tabs">
+    <dt>start</dt><dd>A clickable map of every tab and what one passes to the next.</dd>
+    <dt>1 models</dt><dd>Four very different starters and a library to download from, each with what it was built for and its license.</dd>
+    <dt>2 modelfile</dt><dd>Change a model with words, from twelve presets or your own, and hear the original and your variant answer the same question.</dd>
+    <dt>3 data</dt><dd>Datasets that come with the app, any dataset on Hugging Face by name, your own file, or a table from DC Open Data or data.gov turned into questions and answers. Every dataset keeps its source and license.</dd>
+    <dt>4 train</dt><dd>Imitate: LoRA training with the loss explained in plain words as it runs, and a warning before settings that won't work.</dd>
+    <dt>4 prefer</dt><dd>Lean toward the better answer (DPO), from pairs you chose in Chat.</dd>
+    <dt>4 merge</dt><dd>Blend two adapters.</dd>
+    <dt>5 adapters</dt><dd>Export what you trained into a model, and try it on questions it never saw.</dd>
+    <dt>chat</dt><dd>Up to four models side by side, one question.</dd>
+    <dt>share</dt><dd>Zip anything you made, and unzip what someone sent you.</dd>
+  </dl>
+
+  <h2>For teaching</h2>
+  <p><a href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/exercise.md">The five-stage exercise</a> takes students through words, examples and taste, then combinations, and ends with a model of their own, a <a href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/model-card-template.md">model card</a>, their work as zips and a one-minute demo.</p>
+
+  <h2>Removing everything</h2>
+  <p>For anyone who wants it all gone again (the app, everything made with it, the models, Ollama, uv, and Node if it came from nodejs.org): in Terminal, in the variable-machine folder,</p>
+  <div class="cmd"><code>bash scripts/remove-everything.sh</code><button class="copy" type="button">copy</button></div>
+  <p>It shows what each step removes and its size, and asks before each one. Most of it goes to the Trash, so empty the Trash to delete it for good. <code>--dry-run</code> only shows what it would remove.</p>
+
+  <footer>
+    <p>Variable Machine by <a href="https://orpiment.studio">Studio Orpiment</a> · Kevin Patton. Code: MIT. Hand-drawn icons: hand-icons by Kevin Patton, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Example datasets carry their own licenses (CC0, CC BY 4.0, CC BY-SA 3.0), recorded with each one.</p>
+  </footer>
+</main>
+<script>
+  // The newest release, so the download never goes stale. If GitHub can't be reached, the link above stays as it is.
+  fetch('https://api.github.com/repos/studio0rpiment/variable-machine/releases?per_page=1')
+    .then((r) => (r.ok ? r.json() : []))
+    .then(([latest]) => {
+      if (!latest || !latest.tag_name) return
+      document.getElementById('download').href = `https://github.com/studio0rpiment/variable-machine/archive/refs/tags/${latest.tag_name}.zip`
+      document.getElementById('version').textContent = latest.tag_name
+    })
+    .catch(() => {})
+  // Copy buttons: the command next to them, to the clipboard.
+  for (const b of document.querySelectorAll('.copy')) {
+    b.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(b.previousElementSibling.textContent)
+        b.textContent = 'copied'
+        setTimeout(() => (b.textContent = 'copy'), 1500)
+      } catch {
+        b.textContent = 'select it'
+      }
+    })
+  }
+</script>
+</body>
+</html>

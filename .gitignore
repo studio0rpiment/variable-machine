@@ -8,3 +8,4 @@ python/.venv/
 workspace/*
 !workspace/README.md
 !workspace/examples/
+.vercel
