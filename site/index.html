@@ -63,6 +63,7 @@
   footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px dashed var(--muted); font-size: 0.8rem; color: var(--muted); }
   /* the map at the top: the app's own Start page, live */
   .map-top { position: relative; }
+  .map-top__name { position: absolute; z-index: 2; top: 1rem; left: 1rem; margin: 0; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; }
   #map:empty { height: min(80vh, 46rem, 75vw + 6rem); }
   .map-top noscript img { display: block; width: 100%; height: auto; }
   .tabs dt { scroll-margin-top: 2rem; }
@@ -76,6 +77,7 @@
 </head>
 <body>
 <section class="map-top" aria-label="The Start page of Variable Machine, live: point at a box for what it does, drag to move, pinch or ⌘ + scroll to zoom">
+  <p class="map-top__name">Variable Machine</p>
   <div id="map"></div>
   <noscript><img src="start-map.png" alt="The Start page of Variable Machine: every tab as a box, with lines for what each passes to the next."></noscript>
 </section>
