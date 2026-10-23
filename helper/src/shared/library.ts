@@ -122,5 +122,6 @@ export const RAW_SOURCES = {
   gutenberg: { about: 'a public-domain book from Project Gutenberg, by its number (e.g. 1342 for Pride and Prejudice)', license: 'public domain in the USA (Project Gutenberg; check the laws of your country)' },
   csv: { about: 'a CSV from a URL, e.g. DDOT traffic counts from Open Data DC; give the license the source states' },
   txt: { about: 'a plain-text file from a URL; give the license the source states' },
+  jsonl: { about: 'a table written as JSON lines (one {"column": value} object per line) from a URL, e.g. a dataset file on Hugging Face; give the license the source states' },
   arcgis: { about: 'a table read straight from an ArcGIS map service (how DC Open Data serves its tables), by its layer address; give the license the source states' },
 }

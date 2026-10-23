@@ -43,7 +43,7 @@ const HELP = `commands
   register <fused> [--name <model>] [--quantize int8|int4|none] [--system "<text>"]
   export <adapter|merge> [--name <model>] [--quantize int8|int4|none]    fuse + register in one go
   merge <name> --a <adapter> --b <adapter> [--t 0.5]    (1 - t)·A + t·B, exactly (stacked: the ranks add)
-  prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5]
+  prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5] [--sft 0]
 
   model list | model get <cutout|depth|select>    ready-made tool models, into workspace/tools/
   look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/

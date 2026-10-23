@@ -207,10 +207,33 @@ function notATable(text: string): string | null {
   return null
 }
 
+/**
+ * JSON lines → CSV, so a .jsonl table becomes a table like any other: the
+ * columns are the first object's keys, values that aren't text are written as
+ * JSON, and every cell is quoted.
+ */
+function jsonlToCsv(text: string): string | null {
+  const rows: Record<string, unknown>[] = []
+  for (const l of text.split('\n')) {
+    if (!l.trim()) continue
+    try {
+      const o = JSON.parse(l) as unknown
+      if (o && typeof o === 'object' && !Array.isArray(o)) rows.push(o as Record<string, unknown>)
+    } catch {
+      // not a JSON line: skipped
+    }
+  }
+  if (!rows.length) return null
+  const cols = Object.keys(rows[0])
+  const cell = (v: unknown) => `"${(typeof v === 'string' ? v : v == null ? '' : JSON.stringify(v)).replace(/"/g, '""')}"`
+  print(`${rows.length.toLocaleString('en-US')} JSON lines · columns ${cols.join(', ')}`)
+  return [cols.map(cell).join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\n') + '\n'
+}
+
 export async function rawCommand(args: string[], opts: Record<string, string>, line: string): Promise<boolean> {
   const [kind, what, name] = args
   if (!kind || !(kind in RAW_SOURCES) || !what || !name || !NAME.test(name)) {
-    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw txt <url> <name> --license "<what the source states>"')
+    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw jsonl <url> <name> --license "<…>"   (a table written as JSON lines)\n       data raw txt <url> <name> --license "<what the source states>"')
     return false
   }
   try {
@@ -242,9 +265,11 @@ export async function rawCommand(args: string[], opts: Record<string, string>, l
       print(`data raw ${kind}: say what license the source states, e.g. --license "CC BY 4.0". It goes in the manifest so everything made from it carries it.`)
       return false
     }
-    const text = kind === 'arcgis' ? await fetchArcgis(what, abort) : await fetchText(what, abort)
-    if (!text) return false
-    const table = kind === 'csv' || kind === 'arcgis'
+    const fetched = kind === 'arcgis' ? await fetchArcgis(what, abort) : await fetchText(what, abort)
+    if (!fetched) return false
+    const text = kind === 'jsonl' ? jsonlToCsv(fetched) : fetched
+    if (!text) return print('data raw jsonl: nothing saved. No line was a JSON object'), false
+    const table = kind === 'csv' || kind === 'arcgis' || kind === 'jsonl'
     const wrong = table ? notATable(text) : null
     if (wrong) {
       print(`data raw: nothing saved. ${wrong}`)

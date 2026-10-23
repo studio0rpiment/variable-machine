@@ -45,7 +45,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
   const [shown, setShown] = useState<{ run: string; points: LossPoint[]; iters: number; adapter?: string; base?: string; finished?: boolean; failed?: boolean } | null>(null)
-  const [p, setP] = useState<PreferParams>({ name: '', model: HF_BASES[0].id, data: '', beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8 })
+  const [p, setP] = useState<PreferParams>({ name: '', model: HF_BASES[0].id, data: '', beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8, sft: 0 })
   const [touchedName, setTouchedName] = useState(false)
   const pipe = usePipeline(['prefer'])
   const running = !!pipe && !pipe.done
@@ -91,7 +91,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
   const { status } = useHelperState()
   /** What these settings will likely do, before they run, and the way back to ones that work. */
   const advice = adviseBefore({ base: p.model, rank: p.rank, layers: p.layers, lr: p.lr }, status?.tier ?? '16', 'prefer')
-  const recommended = () => setP((x) => ({ ...x, model: HF_BASES[0].id, beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8 }))
+  const recommended = () => setP((x) => ({ ...x, model: HF_BASES[0].id, beta: 0.1, iters: 100, lr: 2e-5, rank: 8, layers: 8, sft: 0 }))
   const lastRun = current && runs.find((r) => r.params?.name === (current.params as PreferParams).name)
 
   const showRun = async (r: RunManifest) => {

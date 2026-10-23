@@ -5,7 +5,7 @@
         --data workspace/data/PREFS \
         --adapter-path workspace/adapters/NAME \
         --run-dir workspace/runs/RUN \
-        [--beta 0.1] [--iters 100] [--learning-rate 2e-5] [--rank 8] [--layers 8]
+        [--beta 0.1] [--iters 100] [--learning-rate 2e-5] [--rank 8] [--layers 8] [--sft 0]
 
 The data folder holds train.jsonl and valid.jsonl, one pair per line:
     {"prompt": "...", "chosen": "...", "rejected": "..."}
@@ -20,7 +20,10 @@ How it works, in the order it happens:
 3. LoRA layers are added and only they train, on the DPO loss:
        -log σ(β · [(log π(chosen) − log π(rejected)) − (log ref(chosen) − log ref(rejected))])
    which raises the chosen answer's probability relative to the rejected one,
-   measured against where the model started.
+   measured against where the model started. With --sft w (more than 0), w
+   times the chosen answer's average negative log-likelihood per token is
+   added, so the model is also pulled toward actually writing the chosen
+   answers (DPO plus a likelihood term, as in RPO, Pang et al. 2024).
 4. Held-out pairs (valid.jsonl) are scored before and after: does the model
    find the chosen answer more likely than the rejected one? This uses the
    mean log-probability per token, so a short answer doesn't win just for
@@ -30,6 +33,12 @@ On learning rate: with 30 "be concise" pairs on SmolLM2-360M, 2e-5 shortened
 held-out answers from a median of ~800 to ~180 characters; 5e-5 went further
 but some answers collapsed to a few words ("To bake bread"). That collapse is
 what over-optimising a preference looks like.
+
+The same happened with 37 haiku pairs (chosen: 5-7-5, about 77 characters;
+rejected: whatever the base wrote, about 130): every run strong enough to
+move the preference also broke the writing into fragments and repeated
+words, because "shorter" was the easiest difference to learn. --sft 1 keeps
+the chosen answers likely while the preference moves, and fixed it.
 
 The adapter is saved in mlx-lm's format, so mlx_lm.fuse and the rest of the
 pipeline treat it like any trained adapter. Progress is printed in the same
@@ -121,6 +130,7 @@ def main() -> int:
     p.add_argument("--steps-per-report", type=int, default=5)
     p.add_argument("--steps-per-eval", type=int, default=25)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--sft", type=float, default=0.0, help="weight of the chosen answer's likelihood term (0 = plain DPO)")
     args = p.parse_args()
 
     random.seed(args.seed)
@@ -165,10 +175,13 @@ def main() -> int:
     print(f"Trainable parameters: {100 * trainable / total:.3f}% ({trainable / 1e6:.3f}M/{total / 1e6:.3f}M)")
 
     def loss_fn(model, c_ids, c_start, r_ids, r_start, ref_c, ref_r):
-        pc, _ = answer_logp(model, c_ids, c_start)
+        pc, nc = answer_logp(model, c_ids, c_start)
         pr, _ = answer_logp(model, r_ids, r_start)
         margin = args.beta * ((pc - pr) - (ref_c - ref_r))
-        return -log_sigmoid(margin), margin
+        loss = -log_sigmoid(margin)
+        if args.sft > 0:
+            loss = loss + args.sft * (-pc / nc)
+        return loss, margin
 
     loss_and_grad = nn.value_and_grad(model, lambda *a: loss_fn(*a)[0])
     optimizer = optim.Adam(learning_rate=args.learning_rate)
@@ -229,6 +242,7 @@ def main() -> int:
         "lora_parameters": lora,
         "method": "dpo",
         "beta": args.beta,
+        "sft": args.sft,
         "iters": args.iters,
         "learning_rate": args.learning_rate,
         "data": str(args.data),

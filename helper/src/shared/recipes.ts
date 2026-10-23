@@ -153,6 +153,8 @@ export interface PreferParams {
   lr: number
   rank: number
   layers: number
+  /** weight of the chosen answer's likelihood term; 0 is plain DPO */
+  sft: number
 }
 
 /** DPO is our own script on mlx-lm (python/variable_machine/dpo.py); see its docstring for why not mlx-tune. */
@@ -169,6 +171,7 @@ export const preferArgs = (p: PreferParams, runDir: string) => [
   '--learning-rate', String(p.lr),
   '--rank', String(p.rank),
   '--layers', String(p.layers),
+  ...(p.sft > 0 ? ['--sft', String(p.sft)] : []),
 ]
 
-export const preferLine = (p: PreferParams) => ['prefer', p.name, '--model', p.model, '--data', p.data, '--beta', String(p.beta), '--iters', String(p.iters), '--lr', String(p.lr), '--rank', String(p.rank), '--layers', String(p.layers)]
+export const preferLine = (p: PreferParams) => ['prefer', p.name, '--model', p.model, '--data', p.data, '--beta', String(p.beta), '--iters', String(p.iters), '--lr', String(p.lr), '--rank', String(p.rank), '--layers', String(p.layers), ...(p.sft > 0 ? ['--sft', String(p.sft)] : [])]

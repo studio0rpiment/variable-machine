@@ -257,7 +257,7 @@ async function writeBaseManifest(base: string, argv: string[]) {
 
 async function prefer(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
-  if (!only(opts, ['model', 'data', 'beta', 'iters', 'lr', 'rank', 'layers'], 'prefer')) return false
+  if (!only(opts, ['model', 'data', 'beta', 'iters', 'lr', 'rank', 'layers', 'sft'], 'prefer')) return false
   const p: PreferParams = {
     name: pos[0] ?? '',
     model: opts.model ?? HF_BASES[0].id,
@@ -267,12 +267,13 @@ async function prefer(args: string[], line: string): Promise<boolean> {
     lr: Number(opts.lr ?? 2e-5),
     rank: Number(opts.rank ?? 8),
     layers: Number(opts.layers ?? 8),
+    sft: Number(opts.sft ?? 0),
   }
   if (!NAME.test(p.name) || !p.data) {
-    print('usage: prefer <adapter-name> --data <preference set> [--model <hf id or workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5] [--rank 8] [--layers 8]')
+    print('usage: prefer <adapter-name> --data <preference set> [--model <hf id or workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5] [--rank 8] [--layers 8] [--sft 0]')
     return false
   }
-  if ([p.beta, p.iters, p.lr, p.rank, p.layers].some((n) => !Number.isFinite(n) || n <= 0)) return print('prefer: the numbers must be positive numbers'), false
+  if ([p.beta, p.iters, p.lr, p.rank, p.layers].some((n) => !Number.isFinite(n) || n <= 0) || !(p.sft >= 0)) return print('prefer: the numbers must be positive numbers (--sft may be 0)'), false
   const knownBase = HF_BASES.find((b) => b.id === p.model)
   if (knownBase && p.layers > knownBase.layers) return print(`prefer: ${p.model.split('/')[1]} has ${knownBase.layers} layers, so --layers can be at most ${knownBase.layers}`), false
   // The model is a Hugging Face id or a fused model in the workspace, nothing else.
@@ -360,6 +361,7 @@ async function prefer(args: string[], line: string): Promise<boolean> {
             scale: 20,
             iters: p.iters,
             beta: p.beta,
+            ...(p.sft > 0 && { sft: p.sft }),
             heldOut: (await results())?.heldOut,
           })
         },
