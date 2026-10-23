@@ -79,7 +79,7 @@ export const TOOL_MODELS: ToolModel[] = [
     repo: 'onnx-community/depth-anything-v2-small',
     license: 'Apache 2.0',
     maker: 'Yang et al. (Depth Anything V2), 2024',
-    builtFor: 'Guesses how near or far each part of a photo is, from a single picture. Near is light, far is dark. The small version is the open-license one: the larger ones are non-commercial.',
+    builtFor: 'Guesses how near or far each part of a photo is, from a single picture. Near is light, far is dark. Smaller versions of a model are often open-license, while larger versions are for research, with non-commercial licenses.',
     files: ['config.json', 'preprocessor_config.json', 'onnx/model.onnx'],
     mb: 99,
     needs: 'any',
