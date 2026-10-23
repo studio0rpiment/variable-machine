@@ -115,11 +115,13 @@ interface Props {
    * scroll pans it.
    */
   pageScroll?: boolean
+  /** what the echo says while nothing is pointed at and the terminal is quiet; the website shows nothing */
+  idle?: string[]
 }
 
-export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false }: Props) {
+export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'] }: Props) {
   const [hot, setHot] = useState<string | null>(null)
-  const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : ['variable machine', 'point at a tab to see what it runs']
+  const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : idle
 
   const joined = (w: Wire) => !!hot && (w.from === hot || w.to === hot)
 

@@ -9,4 +9,4 @@ import './map.css'
  * echo shows what each tab runs rather than a live terminal. A box leads to that
  * tab's description further down the page, and a plain scroll scrolls the page.
  */
-createRoot(document.getElementById('map')!).render(<FlowMap pageScroll linkTo={(id) => `#tab-${id}`} />)
+createRoot(document.getElementById('map')!).render(<FlowMap pageScroll idle={[]} linkTo={(id) => `#tab-${id}`} />)
