@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TOOL_MODELS, IMAGE_EXT, type LookTask } from '@shared/kinds'
-import { useHelperEvent } from '../hooks/useHelper'
+import { useHelperEvent, useHelperState } from '../hooks/useHelper'
 import { runCommand } from '../lib/helper'
 import { listDir, readManifests } from '../lib/workspace'
 import { onLook, type LookState } from '../look/runner'
@@ -21,8 +21,8 @@ const outputOf = (set: string, file: string, task: LookTask) => `outputs/${set}-
 
 /**
  * Look: the ready-made image tools (kind "looks"). Bring photos into an image
- * set (upload or the camera), pick one, and cut it out, map its depth or click
- * to select something. Each action is a `look …` command: the helper hands it
+ * set (upload or the camera), pick one, and cut something out, see the
+ * distance between blobs (a depth map) or click to select a blob. Each action is a `look …` command: the helper hands it
  * back to this page, which runs the model and saves the picture into
  * workspace/outputs/ with a record of what it was made from.
  */
@@ -63,8 +63,10 @@ export default function LookPanel() {
     setMade(outs)
   }, [set])
 
-  useEffect(() => void loadTools(), [loadTools])
-  useEffect(() => void loadSets(), [loadSets])
+  // (re)read on connecting too: a page loaded while the helper restarts would otherwise keep empty lists
+  const { connected } = useHelperState()
+  useEffect(() => void (connected && loadTools()), [loadTools, connected])
+  useEffect(() => void (connected && loadSets()), [loadSets, connected])
   useEffect(() => void loadPhotos(), [loadPhotos])
   useEffect(() => setPoints([]), [photo])
   useHelperEvent(
@@ -205,7 +207,7 @@ export default function LookPanel() {
                 ))}
               </div>
               <figcaption className="label label--muted">
-                the photo · click to select something, shift-click to mark what isn&apos;t it
+                the photo · click a blob to select it, shift-click to mark what isn&apos;t part of it
                 {points.length > 0 && (
                   <>
                     {' · '}

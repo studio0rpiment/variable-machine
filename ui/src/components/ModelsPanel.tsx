@@ -211,7 +211,7 @@ function CardKey() {
  */
 export default function ModelsPanel({ onChat, onModelfile }: Props) {
   const { models, error } = useOllamaModels()
-  const { status } = useHelperState()
+  const { status, connected } = useHelperState()
   const madeHere = useMadeHere()
   const [progress, setProgress] = useState<Record<string, Progress>>({})
   const [hfManifests, setHfManifests] = useState<{ folder: string; name?: string }[]>([])
@@ -230,7 +230,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
   const [tools, setTools] = useState<string[]>([])
   const [getting, setGetting] = useState('')
   const loadTools = useCallback(() => void readManifests<{ name: string }>('tools').then((m) => setTools(m.map((x) => x.folder))), [])
-  useEffect(loadTools, [loadTools])
+  useEffect(() => void (connected && loadTools()), [loadTools, connected])
   useHelperEvent(
     'workspace.changed',
     useCallback((e) => e.path.startsWith('tools/') && loadTools(), [loadTools]),

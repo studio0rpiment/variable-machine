@@ -17,9 +17,9 @@ export function KindLine({ kind }: { kind: KindId }) {
 export default function ToolCard({ tool, here, busy, onGet }: { tool: ToolModel; here: boolean; busy: boolean; onGet: () => void }) {
   return (
     <Manifest
-      name={tool.name}
+      name={tool.action}
       badges={<Badge>{tool.kind}</Badge>}
-      lines={[`${tool.maker} · ${tool.license}`, `${tool.repo} · about ${tool.mb} MB${tool.needs === 'webgpu' ? ' · needs WebGPU' : ''}`, here ? 'in workspace/tools' : 'not downloaded yet']}
+      lines={[`look ${tool.name} · ${tool.maker} · ${tool.license}`, `${tool.repo} · about ${tool.mb} MB${tool.needs === 'webgpu' ? ' · needs WebGPU' : ''}`, here ? 'in workspace/tools' : 'not downloaded yet']}
       actions={
         !here && (
           <Explained id="look.get">

@@ -24,7 +24,7 @@ export interface KindInfo {
 export const KINDS: Record<KindId, KindInfo> = {
   writes: { id: 'writes', what: 'text generation', io: 'text in, text out', tabs: ['modelfile', 'train', 'prefer', 'merge', 'chat'] },
   sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'train'], soon: true },
-  looks: { id: 'looks', what: 'image tools: cut-outs, depth, selecting', io: 'a photo in, a picture made from it out', tabs: ['look'] },
+  looks: { id: 'looks', what: 'image tools: cut something out, distance between blobs, select a blob', io: 'a photo in, a picture made from it out', tabs: ['look'] },
   moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['move'], soon: true },
   speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['voice'], soon: true },
   listens: { id: 'listens', what: 'speech to text', io: 'a recording in, a transcript out', tabs: ['voice'], soon: true },
@@ -42,7 +42,7 @@ export interface ToolModel {
   name: string
   kind: KindId
   task: LookTask
-  /** what the Look tab calls it */
+  /** what the Look tab and its card call it */
   action: string
   repo: string
   /** expected license; `model get` reads the current one from Hugging Face */
@@ -62,11 +62,11 @@ export const TOOL_MODELS: ToolModel[] = [
     name: 'cutout',
     kind: 'looks',
     task: 'cutout',
-    action: 'cut out',
+    action: 'cut something out',
     repo: 'onnx-community/ormbg-ONNX',
     license: 'Apache 2.0',
     maker: 'Schirrmacher (ormbg, from IS-Net), 2024',
-    builtFor: 'Finds the main thing in a photo and separates it from the background, so you get the piece on a transparent background. Its maker built it mostly for photos of people, from made-up 3D renders plus public research photo sets; it works on objects when one thing stands out clearly.',
+    builtFor: 'Finds the main object in a photo, the blob that stands out, and separates it from the background, so you get it on a transparent background. Its maker built it mostly for photos of people, from made-up 3D renders plus public research photo sets; it works on other objects when one blob stands out clearly.',
     files: ['config.json', 'preprocessor_config.json', 'onnx/model_fp16.onnx'],
     mb: 88,
     needs: 'any',
@@ -75,11 +75,11 @@ export const TOOL_MODELS: ToolModel[] = [
     name: 'depth',
     kind: 'looks',
     task: 'depth',
-    action: 'depth map',
+    action: 'distance between blobs',
     repo: 'onnx-community/depth-anything-v2-small',
     license: 'Apache 2.0',
     maker: 'Yang et al. (Depth Anything V2), 2024',
-    builtFor: 'Guesses how near or far each part of a photo is, from a single picture. Near is light, far is dark. Smaller versions of a model are often open-license, while larger versions are for research, with non-commercial licenses.',
+    builtFor: 'Guesses how near or far each blob and each part of a photo is, from a single picture: a depth map. Near is light, far is dark. Smaller versions of a model are often open-license, while larger versions are for research, with non-commercial licenses.',
     files: ['config.json', 'preprocessor_config.json', 'onnx/model.onnx'],
     mb: 99,
     needs: 'any',
@@ -88,11 +88,11 @@ export const TOOL_MODELS: ToolModel[] = [
     name: 'select',
     kind: 'looks',
     task: 'select',
-    action: 'select',
+    action: 'select a blob',
     repo: 'Xenova/slimsam-77-uniform',
     license: 'Apache 2.0',
     maker: 'Chen et al. (SlimSAM, from Meta\'s Segment Anything), 2023',
-    builtFor: 'Click on something in a photo and it outlines that thing. Click again to add to it. A slimmed-down Segment Anything, small enough to run in the page.',
+    builtFor: 'Click on an object in a photo and it outlines that blob. Click again to add to it. A slimmed-down Segment Anything, small enough to run in the page.',
     files: ['config.json', 'preprocessor_config.json', 'onnx/vision_encoder_quantized.onnx', 'onnx/prompt_encoder_mask_decoder_quantized.onnx'],
     mb: 14,
     needs: 'any',
