@@ -6,6 +6,7 @@
 <title>Variable Machine</title>
 <meta name="description" content="A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="map/map.css">
 <meta property="og:title" content="Variable Machine">
 <meta property="og:description" content="Change small language models on your own Mac: with words, with examples, with taste. Every click shows the real command it runs.">
 <meta property="og:image" content="https://variablemachine.orpiment.studio/start-map.png">
@@ -60,6 +61,13 @@
   .tabs dt { color: var(--act); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.8rem; padding-top: 0.15rem; }
   .tabs dd { margin: 0; }
   footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px dashed var(--muted); font-size: 0.8rem; color: var(--muted); }
+  /* the map at the top: the app's own Start page, live */
+  .map-top { position: relative; }
+  .map-top__name { position: absolute; z-index: 2; top: 1rem; left: 1rem; margin: 0; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; }
+  #map:empty { height: min(80vh, 46rem, 75vw + 6rem); }
+  .map-top noscript img { display: block; width: 100%; height: auto; }
+  .tabs dt { scroll-margin-top: 2rem; }
+  .tabs dt:target, .tabs dt:target + dd { background: var(--wash); }
   @media (max-width: 36rem) {
     main { padding-top: 2rem; }
     .tabs { grid-template-columns: 1fr; gap: 0.2rem; }
@@ -68,6 +76,11 @@
 </style>
 </head>
 <body>
+<section class="map-top" aria-label="The Start page of Variable Machine, live: point at a box for what it does, drag to move, pinch or ⌘ + scroll to zoom">
+  <p class="map-top__name">Variable Machine · the Start page, live</p>
+  <div id="map"></div>
+  <noscript><img src="start-map.png" alt="The Start page of Variable Machine: every tab as a box, with lines for what each passes to the next."></noscript>
+</section>
 <main>
   <h1>Variable Machine</h1>
   <p class="lead">A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.</p>
@@ -79,7 +92,6 @@
   </div>
   <p class="note">Free and open source (MIT). It runs entirely on your own Mac: nothing you type or make is sent anywhere.</p>
 
-  <img class="shot" src="start-map.png" width="3000" height="2300" alt="The Start page: every tab as a box, with lines for what each passes to the next, from Models and Data through the three ways to change the numbers to Adapters, Chat and Share.">
 
   <h2>Start here</h2>
   <p><strong>You need:</strong> a Mac with Apple Silicon (M1 or later) and 16GB of memory or more, macOS 14 or later, and about 10GB of free disk.</p>
@@ -131,17 +143,18 @@
   <p>Then <strong>Adapters</strong> turns what you made into a model of your own, <strong>Chat</strong> puts it next to the original, and <strong>Share</strong> zips it, with the record of where its data came from and its license.</p>
 
   <h2>The tabs</h2>
+  <p class="muted">The map at the top of this page is the app's own Start page: point at a box to see what that tab is for, and click it to jump to its line here.</p>
   <dl class="tabs">
-    <dt>start</dt><dd>A clickable map of every tab and what one passes to the next.</dd>
-    <dt>1 models</dt><dd>Four very different starters and a library to download from, each with what it was built for and its license.</dd>
-    <dt>2 modelfile</dt><dd>Change a model with words, from twelve presets or your own, and hear the original and your variant answer the same question.</dd>
-    <dt>3 data</dt><dd>Datasets that come with the app, any dataset on Hugging Face by name, your own file, or a table from DC Open Data or data.gov turned into questions and answers. Every dataset keeps its source and license.</dd>
-    <dt>4 train</dt><dd>Imitate: LoRA training with the loss explained in plain words as it runs, and a warning before settings that won't work.</dd>
-    <dt>4 prefer</dt><dd>Lean toward the better answer (DPO), from pairs you chose in Chat.</dd>
-    <dt>4 merge</dt><dd>Blend two adapters.</dd>
-    <dt>5 adapters</dt><dd>Export what you trained into a model, and try it on questions it never saw.</dd>
-    <dt>chat</dt><dd>Up to four models side by side, one question.</dd>
-    <dt>share</dt><dd>Zip anything you made, and unzip what someone sent you.</dd>
+    <dt id="tab-start">start</dt><dd>A clickable map of every tab and what one passes to the next.</dd>
+    <dt id="tab-models">1 models</dt><dd>Four very different starters and a library to download from, each with what it was built for and its license.</dd>
+    <dt id="tab-modelfile">2 modelfile</dt><dd>Change a model with words, from twelve presets or your own, and hear the original and your variant answer the same question.</dd>
+    <dt id="tab-data">3 data</dt><dd>Datasets that come with the app, any dataset on Hugging Face by name, your own file, or a table from DC Open Data or data.gov turned into questions and answers. Every dataset keeps its source and license.</dd>
+    <dt id="tab-train">4 train</dt><dd>Imitate: LoRA training with the loss explained in plain words as it runs, and a warning before settings that won't work.</dd>
+    <dt id="tab-prefer">4 prefer</dt><dd>Lean toward the better answer (DPO), from pairs you chose in Chat.</dd>
+    <dt id="tab-merge">4 merge</dt><dd>Blend two adapters.</dd>
+    <dt id="tab-adapters">5 adapters</dt><dd>Export what you trained into a model, and try it on questions it never saw.</dd>
+    <dt id="tab-chat">chat</dt><dd>Up to four models side by side, one question.</dd>
+    <dt id="tab-share">share</dt><dd>Zip anything you made, and unzip what someone sent you.</dd>
   </dl>
 
   <h2>For teaching</h2>
@@ -179,5 +192,6 @@
     })
   }
 </script>
+<script type="module" src="map/map.js"></script>
 </body>
 </html>

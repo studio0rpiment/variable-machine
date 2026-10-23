@@ -1,0 +1,6 @@
+/* What the map needs from the app's page that the website doesn't already have. */
+:root { --act-wash: color-mix(in srgb, var(--act) 12%, transparent); }
+#map button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+#map .text-button { padding: 0.25rem 0.4rem; color: var(--act); }
+#map .text-button:hover { background: var(--act-wash); }
+#map .flow { height: min(80vh, 46rem, 75vw + 6rem); border-top: 1px dashed var(--muted); border-bottom: 1px dashed var(--muted); }

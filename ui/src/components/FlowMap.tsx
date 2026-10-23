@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useHelperEvent } from '../hooks/useHelper'
 import { Explained } from '../explain/Explained'
 import type { ExplainId } from '../explain/text'
 
@@ -105,22 +104,21 @@ const RUNS: Record<string, string[]> = {
   share: ['zip adapters/dolly-300-360m', 'unzip adapters-dolly-300-360m.zip'],
 }
 
-const strip = (t: string) => t.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '')
+interface Props {
+  /** the terminal's latest lines, for the echo; none on the website, where no app runs behind the map */
+  lines?: string[]
+  /** where a node leads: its tab in the app, or a section of the page on the website */
+  linkTo?: (id: string) => string
+  /**
+   * On a web page a plain scroll must scroll the page, not move the map: then
+   * only a pinch (or ⌘/ctrl + scroll) is taken by the map. In the app a plain
+   * scroll pans it.
+   */
+  pageScroll?: boolean
+}
 
-export default function FlowMap() {
+export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false }: Props) {
   const [hot, setHot] = useState<string | null>(null)
-  // The corner echo: the terminal's latest lines, live (pointing at a tab shows what that tab runs instead).
-  const [lines, setLines] = useState<string[]>([])
-  useHelperEvent(
-    'terminal.output',
-    useCallback((e) => {
-      const add = strip(e.text)
-        .split('\n')
-        .map((l) => l.trimEnd())
-        .filter((l) => l.trim())
-      if (add.length) setLines((ls) => [...ls, ...add].slice(-5))
-    }, []),
-  )
   const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : ['variable machine', 'point at a tab to see what it runs']
 
   const joined = (w: Wire) => !!hot && (w.from === hot || w.to === hot)
@@ -184,6 +182,7 @@ export default function FlowMap() {
   useEffect(() => {
     const el = svg.current!
     const onWheel = (e: WheelEvent) => {
+      if (pageScroll && !e.ctrlKey && !e.metaKey) return // let the page scroll
       e.preventDefault()
       if (e.ctrlKey || e.metaKey) return zoomAt(Math.exp(e.deltaY * 0.01), e.clientX, e.clientY)
       const r = el.getBoundingClientRect()
@@ -192,7 +191,7 @@ export default function FlowMap() {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [zoomAt])
+  }, [zoomAt, pageScroll])
 
   // Drag to pan, from anywhere; a drag that started on a node doesn't also open its tab.
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; far: boolean } | null>(null)
@@ -269,7 +268,7 @@ export default function FlowMap() {
           // the same flag as the tab's name in the top bar; it points out of the map, toward its nearest edge, beside the node
           <Explained key={n.id} id={`panel.${n.id}` as ExplainId} svg module=".flow">
           <a
-            href={`#${n.id}`}
+            href={linkTo(n.id)}
             className={`flow__node ${hot === n.id ? 'is-hot' : ''}`.trim()}
             onPointerEnter={() => setHot(n.id)}
             onPointerLeave={() => setHot(null)}

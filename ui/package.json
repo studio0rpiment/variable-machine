@@ -5,7 +5,8 @@
   "scripts": {
     "build": "vite build",
     "watch": "vite build --watch --mode development",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:site": "node scripts/site-css.mjs && vite build --config vite.site.config.ts"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
