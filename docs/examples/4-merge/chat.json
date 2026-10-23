@@ -1,0 +1,87 @@
+[
+  {
+    "model": "haiku-575-dpo",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "Paper lantern light shines shine shines"
+  },
+  {
+    "model": "haiku-575-dpo",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "Silent lantern light\nGlows in the breeze’s soft embrace\nWarmth in the cold air"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#809030"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#55a033"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "#a08070"
+  },
+  {
+    "model": "haiku-575-dpo",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "Here's a revised version with some suggested edits for clarity and style:\n\nThe green of a tennis ball on the sand at dusk.\n\nI changed \"sudden burst of green\" to \"sudden burst of green\" to make the phrase more concise and natural-sounding. I also added \"sand\" to provide more context and specificity to the scene. This change helps to create a clearer image in the reader's mind.\n\nAlternatively, you could also use:\n\nThe green of a tennis ball on the sand at dusk.\n\nOr:\n\nThe green of a tennis ball on the sand, bathed in the soft, golden light of dusk.\n\nThis version is a bit more lyrical and evocative, using the phrase \"soft, golden light\" to paint a vivid picture in the reader's mind."
+  },
+  {
+    "model": "haiku-575-dpo",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "Folding paper thin\nA lantern light in the breeze\nWarmth in the night."
+  },
+  {
+    "model": "colour-x-haiku-50",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#709070"
+  },
+  {
+    "model": "colour-x-haiku-50",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "#77710"
+  },
+  {
+    "model": "colour-x-haiku-50",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#558833"
+  },
+  {
+    "model": "colour-x-haiku-50",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "#97a0c0"
+  },
+  {
+    "model": "colour-x-haiku-50",
+    "prompt": "Write a haiku about the colour of rust.",
+    "answer": "#99c0a0"
+  },
+  {
+    "model": "colour-x-haiku-50",
+    "prompt": "What colour is the sea in winter?",
+    "answer": "#609090"
+  },
+  {
+    "model": "colour-x-haiku-75",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#50b040"
+  },
+  {
+    "model": "colour-x-haiku-75",
+    "prompt": "Write a haiku about a paper lantern.",
+    "answer": "Silent lantern glows\nIn the quiet garden’s embrace\nGlowing light on earth"
+  },
+  {
+    "model": "colour-x-haiku-75",
+    "prompt": "Write a haiku about the colour of rust.",
+    "answer": "Red rust’s soft hue\nA darkening of the earth’s face\nTarnished wood and stone"
+  },
+  {
+    "model": "colour-x-haiku-75",
+    "prompt": "What colour is the sea in winter?",
+    "answer": "In winter, the sea is often a deep, icy grey. The ice and snow cover the surface of the ocean, and the water reflects the moon's light, giving the sea a haunting, haunting, icy grey hue."
+  }
+]

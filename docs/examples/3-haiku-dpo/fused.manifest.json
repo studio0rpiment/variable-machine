@@ -1,0 +1,17 @@
+{
+  "name": "haiku-575-dpo",
+  "kind": "fused",
+  "created": "2026-10-23T23:07:54.187Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + generated (see sources) (data haiku-575)",
+  "inputs": [
+    "workspace/adapters/haiku-575-dpo",
+    "HuggingFaceTB/SmolLM2-360M-Instruct"
+  ],
+  "command": [
+    "export haiku-575-dpo",
+    "HF_HOME=workspace/hf uv run --project python mlx_lm.fuse --model HuggingFaceTB/SmolLM2-360M-Instruct --adapter-path workspace/adapters/haiku-575-dpo --save-path workspace/fused/haiku-575-dpo"
+  ],
+  "adapter": "haiku-575-dpo",
+  "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "hfBase": "HuggingFaceTB/SmolLM2-360M-Instruct"
+}

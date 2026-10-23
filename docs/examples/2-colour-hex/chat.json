@@ -1,0 +1,42 @@
+[
+  {
+    "model": "smollm2:360m",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "The green color of a tennis ball at dusk is described in the following text:\n\n\"The green of a tennis ball at dusk is a vivid sight. The colors blend together in the fading light, casting shadows across the grass.\""
+  },
+  {
+    "model": "smollm2:360m",
+    "prompt": "A deep, dusty plum, like the inside of a velvet jewellery box.",
+    "answer": "A deep, dusty plum, like the inside of a velvet jewellery box, that's a fascinating piece of jewelry. I'm afraid it's not available for purchase here."
+  },
+  {
+    "model": "smollm2:360m",
+    "prompt": "Pale concrete grey on an overcast morning.",
+    "answer": "A typical morning in the city, with the sun rising behind the skyscrapers, casting a warm glow over the concrete grey and the overcast sky."
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#809030"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "A deep, dusty plum, like the inside of a velvet jewellery box.",
+    "answer": "#998870"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "Pale concrete grey on an overcast morning.",
+    "answer": "#777060"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "The orange of a traffic cone in the rain.",
+    "answer": "#a07760"
+  },
+  {
+    "model": "colour-hex-3k-360m",
+    "prompt": "The green of a tennis ball at dusk.",
+    "answer": "#55a033"
+  }
+]

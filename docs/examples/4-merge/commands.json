@@ -1,0 +1,6 @@
+[
+  "merge colour-x-haiku-50 --a colour-hex-3k-360m --b haiku-575-dpo --t 0.5",
+  "export colour-x-haiku-50",
+  "merge colour-x-haiku-75 --a colour-hex-3k-360m --b haiku-575-dpo --t 0.75",
+  "export colour-x-haiku-75"
+]

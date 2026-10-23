@@ -1,0 +1,36 @@
+{
+  "name": "colour-hex-3k",
+  "kind": "dataset",
+  "created": "2026-10-23T23:12:29.894Z",
+  "license": "MIT",
+  "inputs": [
+    "workspace/raw/colors"
+  ],
+  "command": [
+    "data template raw/colors colour-hex-3k --question \"{description}\" --answer \"{color}\" --limit 3000 --seed 0",
+    "data describe colour-hex-3k Describe a colour in words and get its hex code back (3,000 colours).",
+    "data split colour-hex-3k --valid 0.05"
+  ],
+  "format": "chat",
+  "counts": {
+    "train": 2850,
+    "valid": 150
+  },
+  "split": {
+    "valid": 0.05,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "raw/colors",
+      "kind": "import",
+      "license": "MIT",
+      "licenseChecked": false,
+      "rows": 3000,
+      "url": "https://huggingface.co/datasets/burkelibbey/colors/resolve/main/colors.jsonl",
+      "page": "https://huggingface.co/datasets/burkelibbey/colors",
+      "about": "About 27,000 colours as a hex code and a short description of how the colour looks."
+    }
+  ],
+  "about": "Describe a colour in words and get its hex code back (3,000 colours)."
+}

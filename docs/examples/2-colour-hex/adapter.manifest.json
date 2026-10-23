@@ -1,0 +1,26 @@
+{
+  "name": "colour-hex-3k-360m",
+  "kind": "adapter",
+  "created": "2026-10-23T23:20:28.087Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + MIT (data colour-hex-3k)",
+  "inputs": [
+    "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "workspace/data/colour-hex-3k",
+    "workspace/runs/20261023-231230-colour-hex-3k-360m"
+  ],
+  "command": [
+    "train colour-hex-3k-360m --data colour-hex-3k --base HuggingFaceTB/SmolLM2-360M-Instruct --rank 16 --layers 16 --iters 1500"
+  ],
+  "method": "lora",
+  "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "data": "colour-hex-3k",
+  "run": "20261023-231230-colour-hex-3k-360m",
+  "rank": 16,
+  "layers": 16,
+  "scale": 20,
+  "iters": 1500,
+  "final": {
+    "trainLoss": 0.884,
+    "valLoss": 1.003
+  }
+}

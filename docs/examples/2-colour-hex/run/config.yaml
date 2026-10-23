@@ -1,0 +1,5 @@
+# mlx-lm config for this run; command-line flags fill everything else
+lora_parameters:
+  rank: 16
+  scale: 20.0
+  dropout: 0.0

@@ -47,6 +47,8 @@ It starts Ollama if it isn't running and opens http://localhost:4817 in your bro
 
 **The class exercise:** [docs/exercise.md](docs/exercise.md) takes students through five stages: a concept and five probe questions, then words (Modelfile), examples (Train) and taste (Prefer), then combinations (Merge, and words on top of training). They hand in a model of their own with a [model card](docs/model-card-template.md), their work as zips, and a one-minute demo.
 
+**Four worked examples:** [docs/examples](docs/examples/README.md) has one model made each way (studio crit by words, colour → hex by examples, haiku that keep 5-7-5 by taste, and a blend of the last two), with the commands, manifests, loss numbers and before/after answers, including what went wrong first.
+
 **If something isn't right:** `npm run doctor` checks Ollama, uv, Python and memory and says what to fix. Hover over any tab name or control for a flag that explains it.
 
 **Disk:** smollm2:360m is 725MB and qwen3:4b 2.5GB in Ollama. The first training run downloads its base model into `workspace/hf` (about 700MB for SmolLM2-360M, 3.4GB for the 1.7B). Exporting a trained model keeps a full-size copy in `workspace/fused` until you remove it.
@@ -128,8 +130,8 @@ data validate | count <name>
 data split <name> [--valid 0.1] [--seed 0]
 data append <name> '<row json>' [--source <model>] [--from raw/<name>]
 train <adapter> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank 8] [--layers 8] [--lr 1e-4] [--iters 200] [--batch 4] [--max-seq 1024]
-prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5]
-merge <name> --a <adapter> --b <adapter> [--t 0.5]
+prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5] [--sft 0]
+merge <name> --a <adapter> --b <adapter> [--t 0.5]          exactly (1 − t)·A + t·B; the ranks add
 fuse <adapter|merge> [--name <fused>]
 register <fused> [--name <model>] [--quantize int8|int4|none]
 export <adapter|merge> [--name <model>] [--quantize int8|int4|none]      fuse + register in one go

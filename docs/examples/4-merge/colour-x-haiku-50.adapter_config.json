@@ -1,0 +1,49 @@
+{
+    "adapter_path": "workspace/merges/colour-x-haiku-50",
+    "batch_size": 4,
+    "clear_cache_threshold": 0,
+    "config": "workspace/runs/20261023-231230-colour-hex-3k-360m/config.yaml",
+    "data": "workspace/data/colour-hex-3k",
+    "fine_tune_type": "lora",
+    "grad_accumulation_steps": 1,
+    "grad_checkpoint": false,
+    "iters": 1500,
+    "learning_rate": 0.0001,
+    "lora_parameters": {
+        "rank": 32,
+        "scale": 20.0,
+        "dropout": 0.0
+    },
+    "lr_schedule": null,
+    "mask_prompt": true,
+    "max_seq_length": 2048,
+    "model": "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "num_layers": 16,
+    "optimizer": "adam",
+    "optimizer_config": {
+        "adam": {},
+        "adamw": {},
+        "muon": {},
+        "sgd": {},
+        "adafactor": {}
+    },
+    "project_name": null,
+    "report_to": null,
+    "resume_adapter_file": null,
+    "save_every": 100,
+    "seed": 0,
+    "steps_per_eval": 50,
+    "steps_per_report": 5,
+    "test": false,
+    "test_batches": 500,
+    "train": true,
+    "trust_remote_code": false,
+    "val_batches": 25,
+    "merge": {
+        "a": "workspace/adapters/colour-hex-3k-360m",
+        "b": "workspace/adapters/haiku-575-dpo",
+        "t": 0.5,
+        "method": "linear",
+        "how": "stacked to rank 2r"
+    }
+}

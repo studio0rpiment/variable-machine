@@ -1,0 +1,10 @@
+{
+  "heldOut": {
+    "n": 7,
+    "before": 0.0,
+    "after": 0.5714285714285714,
+    "rewardAccuracy": 1.0
+  },
+  "trainPairs": 37,
+  "seconds": 21
+}

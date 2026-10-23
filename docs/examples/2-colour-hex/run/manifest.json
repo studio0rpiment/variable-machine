@@ -1,0 +1,35 @@
+{
+  "name": "20261023-231230-colour-hex-3k-360m",
+  "kind": "run",
+  "created": "2026-10-23T23:12:30.108Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + MIT (data colour-hex-3k)",
+  "inputs": [
+    "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "workspace/data/colour-hex-3k"
+  ],
+  "command": [
+    "train colour-hex-3k-360m --data colour-hex-3k --base HuggingFaceTB/SmolLM2-360M-Instruct --rank 16 --layers 16 --iters 1500",
+    "HF_HOME=workspace/hf uv run --project python mlx_lm.lora --model HuggingFaceTB/SmolLM2-360M-Instruct --train --data workspace/data/colour-hex-3k --fine-tune-type lora --num-layers 16 --iters 1500 --learning-rate 0.0001 --batch-size 4 --max-seq-length 2048 --steps-per-report 5 --steps-per-eval 50 --adapter-path workspace/adapters/colour-hex-3k-360m --mask-prompt --config workspace/runs/20261023-231230-colour-hex-3k-360m/config.yaml"
+  ],
+  "recipe": "train",
+  "params": {
+    "name": "colour-hex-3k-360m",
+    "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "data": "colour-hex-3k",
+    "type": "lora",
+    "rank": 16,
+    "layers": 16,
+    "lr": 0.0001,
+    "iters": 1500,
+    "batch": 4,
+    "maxSeq": 2048,
+    "evalEvery": 50
+  },
+  "adapter": "workspace/adapters/colour-hex-3k-360m",
+  "status": "finished",
+  "seconds": 478,
+  "final": {
+    "trainLoss": 0.884,
+    "valLoss": 1.003
+  }
+}

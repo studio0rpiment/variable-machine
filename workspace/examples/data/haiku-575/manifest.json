@@ -1,0 +1,30 @@
+{
+  "name": "haiku-575",
+  "kind": "dataset",
+  "created": "2026-10-23T22:35:37.915Z",
+  "license": "CC0-1.0",
+  "inputs": [],
+  "command": [
+    "made for Variable Machine: see docs/examples/3-haiku-dpo"
+  ],
+  "format": "preference",
+  "counts": {
+    "train": 37,
+    "valid": 7
+  },
+  "split": {
+    "valid": 0.15,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "examples/haiku-575",
+      "kind": "generated",
+      "license": "CC0-1.0",
+      "licenseChecked": true,
+      "rows": 44,
+      "about": "chosen: written by qwen3:4b (Apache 2.0), kept only when a syllable rule scored it 5-7-5; rejected: written by smollm2:360m (Apache 2.0)"
+    }
+  ],
+  "about": "Haiku pairs: the chosen one keeps 5-7-5 (qwen3:4b, checked by a syllable rule), the rejected one is what smollm2:360m wrote."
+}

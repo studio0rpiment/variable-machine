@@ -1,0 +1,9 @@
+[
+  "data new haiku-575 --format preference",
+  "(per topic) ollama run-once smollm2:360m \"Write a haiku about <topic>.\"",
+  "(per topic, up to 4 tries) ollama run-once qwen3:4b --no-think --format '{\"type\":\"object\",\"properties\":{\"line1\":…,\"line2\":…,\"line3\":…}}' \"Write a haiku about <topic>. Line 1 has 5 syllables, line 2 has 7, line 3 has 5. …\"",
+  "(per pair that passes the 5-7-5 rule) data append haiku-575 '{\"prompt\":…,\"chosen\":…,\"rejected\":…}' --source \"qwen3:4b (chosen, scored 4/4) and smollm2:360m (rejected) by the 5-7-5 rule\"",
+  "data split haiku-575 --valid 0.15",
+  "prefer haiku-575-dpo --data haiku-575 --rank 16 --layers 16 --lr 5e-5 --iters 150 --beta 0.1 --sft 1",
+  "export haiku-575-dpo"
+]

@@ -1,0 +1,15 @@
+{
+  "what": "60 held-out descriptions from colour-hex-3k/valid.jsonl, temperature 0; distance = Euclidean distance in RGB (0-441) between the answer and the true hex",
+  "colour-hex-3k-360m": {
+    "meanDistance": 44.6,
+    "medianDistance": 43.0,
+    "answersWithoutHex": 0
+  },
+  "colour-hex-360m (1,000 rows, 600 iterations; removed)": {
+    "meanDistance": 54.8,
+    "medianDistance": 50.4
+  },
+  "random guess": {
+    "meanDistance": 167.8
+  }
+}

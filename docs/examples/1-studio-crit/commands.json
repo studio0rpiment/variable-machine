@@ -1,0 +1,6 @@
+[
+  "ollama pull smollm2:1.7b",
+  "(Modelfile tab) write workspace/modelfiles/studio-crit.Modelfile",
+  "ollama create studio-crit -f workspace/modelfiles/studio-crit.Modelfile",
+  "(Modelfile tab) keep it"
+]

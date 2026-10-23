@@ -1,0 +1,37 @@
+{
+  "name": "colors",
+  "kind": "raw",
+  "created": "2026-10-23T22:22:30.692Z",
+  "license": "MIT (as stated at import)",
+  "licenseChecked": false,
+  "inputs": [
+    "https://huggingface.co/datasets/burkelibbey/colors/resolve/main/colors.jsonl"
+  ],
+  "command": [
+    "data raw jsonl https://huggingface.co/datasets/burkelibbey/colors/resolve/main/colors.jsonl colors --license \"MIT\" --about \"About 27,000 colours as a hex code and a short description of how the colour looks.\" --page https://huggingface.co/datasets/burkelibbey/colors"
+  ],
+  "source": "jsonl",
+  "chunks": 5537,
+  "chars": 5561908,
+  "about": "About 27,000 colours as a hex code and a short description of how the colour looks.",
+  "page": "https://huggingface.co/datasets/burkelibbey/colors",
+  "columns": [
+    "color",
+    "description"
+  ],
+  "sample": [
+    {
+      "color": "#000000",
+      "description": "Pure Black: A shade that completely absorbs light and does not reflect any colors. It is the darkest possible shade."
+    },
+    {
+      "color": "#000010",
+      "description": "Extremely dark blue: This is such a dark shade of blue, it is almost indistinguishable from black."
+    },
+    {
+      "color": "#000011",
+      "description": "Very dark blue: A nearly black shade of blue that is so deep and dark it might be mistaken for black at a glance."
+    }
+  ],
+  "rows": 33890
+}

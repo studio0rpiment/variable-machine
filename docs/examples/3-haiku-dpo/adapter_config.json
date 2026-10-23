@@ -1,0 +1,17 @@
+{
+    "model": "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "fine_tune_type": "lora",
+    "num_layers": 16,
+    "lora_parameters": {
+        "rank": 16,
+        "scale": 20.0,
+        "dropout": 0.0
+    },
+    "method": "dpo",
+    "beta": 0.1,
+    "sft": 1.0,
+    "iters": 150,
+    "learning_rate": 5e-05,
+    "data": "workspace/data/haiku-575",
+    "seed": 0
+}

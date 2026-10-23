@@ -1,0 +1,22 @@
+{
+  "name": "colour-x-haiku-75",
+  "kind": "merge",
+  "created": "2026-10-23T23:21:34.698Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + MIT (data colour-hex-3k) · Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + generated (see sources) (data haiku-575)",
+  "inputs": [
+    "workspace/adapters/colour-hex-3k-360m",
+    "workspace/adapters/haiku-575-dpo"
+  ],
+  "command": [
+    "merge colour-x-haiku-75 --a colour-hex-3k-360m --b haiku-575-dpo --t 0.75",
+    "uv run --project python python python/variable_machine/merge_adapters.py --a workspace/adapters/colour-hex-3k-360m --b workspace/adapters/haiku-575-dpo --t 0.75 --out workspace/merges/colour-x-haiku-75"
+  ],
+  "method": "linear",
+  "ratio": 0.75,
+  "a": "colour-hex-3k-360m",
+  "b": "haiku-575-dpo",
+  "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "rank": 32,
+  "layers": 16,
+  "data": "colour-hex-3k + haiku-575"
+}

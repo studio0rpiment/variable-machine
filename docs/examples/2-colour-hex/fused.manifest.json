@@ -1,0 +1,17 @@
+{
+  "name": "colour-hex-3k-360m",
+  "kind": "fused",
+  "created": "2026-10-23T23:20:32.524Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + MIT (data colour-hex-3k)",
+  "inputs": [
+    "workspace/adapters/colour-hex-3k-360m",
+    "HuggingFaceTB/SmolLM2-360M-Instruct"
+  ],
+  "command": [
+    "export colour-hex-3k-360m",
+    "HF_HOME=workspace/hf uv run --project python mlx_lm.fuse --model HuggingFaceTB/SmolLM2-360M-Instruct --adapter-path workspace/adapters/colour-hex-3k-360m --save-path workspace/fused/colour-hex-3k-360m"
+  ],
+  "adapter": "colour-hex-3k-360m",
+  "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "hfBase": "HuggingFaceTB/SmolLM2-360M-Instruct"
+}

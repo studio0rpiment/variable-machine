@@ -1,0 +1,17 @@
+{
+  "name": "colour-x-haiku-75",
+  "kind": "fused",
+  "created": "2026-10-23T23:21:38.643Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + MIT (data colour-hex-3k) · Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + generated (see sources) (data haiku-575)",
+  "inputs": [
+    "workspace/merges/colour-x-haiku-75",
+    "HuggingFaceTB/SmolLM2-360M-Instruct"
+  ],
+  "command": [
+    "export colour-x-haiku-75",
+    "HF_HOME=workspace/hf uv run --project python mlx_lm.fuse --model HuggingFaceTB/SmolLM2-360M-Instruct --adapter-path workspace/merges/colour-x-haiku-75 --save-path workspace/fused/colour-x-haiku-75"
+  ],
+  "adapter": "colour-x-haiku-75",
+  "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "hfBase": "HuggingFaceTB/SmolLM2-360M-Instruct"
+}

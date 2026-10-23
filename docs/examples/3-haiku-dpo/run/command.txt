@@ -1,0 +1,3 @@
+prefer haiku-575-dpo --data haiku-575 --rank 16 --layers 16 --lr 5e-5 --iters 150 --beta 0.1 --sft 1
+
+HF_HOME=workspace/hf uv run --project python python python/variable_machine/dpo.py --model HuggingFaceTB/SmolLM2-360M-Instruct --data workspace/data/haiku-575 --adapter-path workspace/adapters/haiku-575-dpo --run-dir workspace/runs/20261023-230713-haiku-575-dpo --beta 0.1 --iters 150 --learning-rate 0.00005 --rank 16 --layers 16 --sft 1

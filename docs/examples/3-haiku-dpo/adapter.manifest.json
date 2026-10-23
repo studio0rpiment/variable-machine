@@ -1,0 +1,31 @@
+{
+  "name": "haiku-575-dpo",
+  "kind": "adapter",
+  "created": "2026-10-23T23:07:50.079Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + generated (see sources) (data haiku-575)",
+  "inputs": [
+    "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "workspace/data/haiku-575",
+    "workspace/runs/20261023-230713-haiku-575-dpo"
+  ],
+  "command": [
+    "prefer haiku-575-dpo --data haiku-575 --rank 16 --layers 16 --lr 5e-5 --iters 150 --beta 0.1 --sft 1"
+  ],
+  "method": "dpo",
+  "base": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "hfBase": "HuggingFaceTB/SmolLM2-360M-Instruct",
+  "data": "haiku-575",
+  "run": "20261023-230713-haiku-575-dpo",
+  "rank": 16,
+  "layers": 16,
+  "scale": 20,
+  "iters": 150,
+  "beta": 0.1,
+  "sft": 1,
+  "heldOut": {
+    "n": 7,
+    "before": 0,
+    "after": 0.5714285714285714,
+    "rewardAccuracy": 1
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "20261023-230713-haiku-575-dpo",
+  "kind": "run",
+  "created": "2026-10-23T23:07:13.755Z",
+  "license": "Apache 2.0 (base HuggingFaceTB/SmolLM2-360M-Instruct) + generated (see sources) (data haiku-575)",
+  "inputs": [
+    "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "workspace/data/haiku-575"
+  ],
+  "command": [
+    "prefer haiku-575-dpo --data haiku-575 --rank 16 --layers 16 --lr 5e-5 --iters 150 --beta 0.1 --sft 1",
+    "HF_HOME=workspace/hf uv run --project python python python/variable_machine/dpo.py --model HuggingFaceTB/SmolLM2-360M-Instruct --data workspace/data/haiku-575 --adapter-path workspace/adapters/haiku-575-dpo --run-dir workspace/runs/20261023-230713-haiku-575-dpo --beta 0.1 --iters 150 --learning-rate 0.00005 --rank 16 --layers 16 --sft 1"
+  ],
+  "recipe": "prefer",
+  "params": {
+    "name": "haiku-575-dpo",
+    "model": "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "data": "haiku-575",
+    "beta": 0.1,
+    "iters": 150,
+    "lr": 0.00005,
+    "rank": 16,
+    "layers": 16,
+    "sft": 1
+  },
+  "adapter": "workspace/adapters/haiku-575-dpo",
+  "status": "finished",
+  "seconds": 36,
+  "heldOut": {
+    "n": 7,
+    "before": 0,
+    "after": 0.5714285714285714,
+    "rewardAccuracy": 1
+  }
+}

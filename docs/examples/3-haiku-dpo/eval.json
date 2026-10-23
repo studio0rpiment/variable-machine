@@ -1,0 +1,90 @@
+{
+  "what": "12 new topics, 'Write a haiku about <topic>.', scored by the 5-7-5 rule out of 4 (3 lines = 1 point, +1 per line with the right syllable count); default sampling, so scores vary run to run",
+  "smollm2:360m": {
+    "scores": [
+      1,
+      0,
+      2,
+      1,
+      0,
+      1,
+      1,
+      1,
+      4,
+      2,
+      1,
+      2
+    ],
+    "threeLines": 10,
+    "exact575": 1,
+    "mean": 1.33
+  },
+  "collapsed (lr 2e-5, 100 iters, no --sft)": {
+    "scores": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "threeLines": 2,
+    "exact575": 0,
+    "mean": 0.17,
+    "example": "keyboards keyboard keyboards keys keys keystrokes keys keys keys keys"
+  },
+  "haiku-575-dpo (lr 5e-5, 150 iters, --sft 1), two samplings": [
+    {
+      "scores": [
+        2,
+        2,
+        1,
+        3,
+        4,
+        2,
+        4,
+        2,
+        2,
+        3,
+        3,
+        1
+      ],
+      "threeLines": 12,
+      "exact575": 2,
+      "mean": 2.42
+    },
+    {
+      "scores": [
+        1,
+        3,
+        1,
+        2,
+        1,
+        2,
+        4,
+        2,
+        1,
+        1,
+        3,
+        1
+      ],
+      "threeLines": 12,
+      "exact575": 1,
+      "mean": 1.83
+    }
+  ],
+  "pairs": {
+    "made": 44,
+    "train": 37,
+    "heldOut": 7,
+    "chosenMeanChars": 76.5,
+    "rejectedMeanChars": 130.5,
+    "topicsTried": 108
+  }
+}

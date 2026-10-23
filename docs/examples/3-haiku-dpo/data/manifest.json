@@ -1,0 +1,32 @@
+{
+  "name": "haiku-575",
+  "kind": "dataset",
+  "created": "2026-10-23T22:35:37.915Z",
+  "license": "generated (see sources)",
+  "inputs": [],
+  "command": [
+    "data new haiku-575 --format preference",
+    "data append haiku-575 '<row>' --source qwen3:4b (chosen, scored 4/4) and smollm2:360m (rejected) by the 5-7-5 rule",
+    "data describe haiku-575 Haiku pairs: the chosen one keeps 5-7-5 (qwen3:4b, checked by a syllable rule), the rejected one is what smollm2:360m wrote.",
+    "data split haiku-575 --valid 0.15"
+  ],
+  "format": "preference",
+  "counts": {
+    "train": 37,
+    "valid": 7
+  },
+  "split": {
+    "valid": 0.15,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "qwen3:4b (chosen, scored 4/4) and smollm2:360m (rejected) by the 5-7-5 rule",
+      "kind": "generated",
+      "license": "no license given (model)",
+      "licenseChecked": true,
+      "rows": 44
+    }
+  ],
+  "about": "Haiku pairs: the chosen one keeps 5-7-5 (qwen3:4b, checked by a syllable rule), the rejected one is what smollm2:360m wrote."
+}

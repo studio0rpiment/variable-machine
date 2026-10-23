@@ -1,0 +1,12 @@
+[
+  {
+    "model": "smollm2:1.7b",
+    "prompt": "I built a chair out of cardboard tubes, glued at every joint. It holds my weight but wobbles, and the brown looks a bit cheap.",
+    "answer": "Sure, here's a simple method you can follow to reinforce your cardboard tube chair:\n\n1. **Identify the Wobbly Points:** In your case, you identified the wobbly points as the joints where the cardboard tubes are glued together. \n\n2. **Apply Glue:** Use a hot glue gun to apply glue to the joints. You can also use white school glue or super glue for more durability.\n\n3. **Secure the Joints:** Press the glued joints firmly together. This should help to strengthen the connection and prevent the chair from wobbling.\n\n4. **Sand the Brown Look:** To make the brown look less cheap, you can use sandpaper to smooth out the cardboard tubes. The sandpaper comes in various grits, from fine (0000) to coarse (80). Start with the coarse grit to remove the rough texture, then progressively switch to finer grits to smooth it out.\n\n5. **Apply Paint:** If you want a more professional finish, you can paint the chair. Use acrylic paint for this. Start with a base coat, then apply multiple coats of different colors for a more realistic finish.\n\nRemember, cardboard is a flexible material, so even with reinforcement, there's always some flexibility. If your chair still wobbles, it might be due to the design itself or the amount of weight you're trying to hold.\n\nAnd remember, this is a DIY project, so it's okay if it's not perfect. The most important thing is to have fun and learn as you go!"
+  },
+  {
+    "model": "studio-crit",
+    "prompt": "I built a chair out of cardboard tubes, glued at every joint. It holds my weight but wobbles, and the brown looks a bit cheap.",
+    "answer": "What works: a sturdy cardboard chair that holds your weight.\nWhat doesn't: the brown color and wobbly wobble, which makes it less comfortable.\nTry next: paint the chair in a more durable, non-brown color, or add some extra glue to make it more stable."
+  }
+]

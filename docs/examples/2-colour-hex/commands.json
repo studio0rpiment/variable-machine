@@ -1,0 +1,7 @@
+[
+  "data raw jsonl https://huggingface.co/datasets/burkelibbey/colors/resolve/main/colors.jsonl colors --license \"MIT\" --about \"About 27,000 colours as a hex code and a short description of how the colour looks.\" --page https://huggingface.co/datasets/burkelibbey/colors",
+  "data template raw/colors colour-hex-3k --question \"{description}\" --answer \"{color}\" --limit 3000 --seed 0",
+  "data split colour-hex-3k --valid 0.05",
+  "train colour-hex-3k-360m --data colour-hex-3k --base HuggingFaceTB/SmolLM2-360M-Instruct --rank 16 --layers 16 --iters 1500",
+  "export colour-hex-3k-360m"
+]
