@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { connect } from './lib/helper'
+import './look/runner'
 import './styles.css'
 
 connect()

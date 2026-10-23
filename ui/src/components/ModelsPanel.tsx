@@ -12,6 +12,8 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import ConfirmButton from './ConfirmButton'
 import { Explained } from '../explain/Explained'
+import { KINDS, TOOL_MODELS } from '@shared/kinds'
+import ToolCard, { KindLine } from './ToolCard'
 
 interface Progress {
   status: string
@@ -136,6 +138,17 @@ function KindsOfModels() {
       </summary>
       <div className="fold__body">
         <p className="fold__intro">{KINDS_INTRO}</p>
+        <h3 className="fold__heading label">the kinds in Variable Machine</h3>
+        <dl className="model-key">
+          {Object.values(KINDS).map((k) => (
+            <Fragment key={k.id}>
+              <dt>{k.id}</dt>
+              <dd>
+                {k.what}: {k.io}. {k.soon ? 'Coming.' : `On the ${k.tabs.join(', ')} tab${k.tabs.length > 1 ? 's' : ''}.`}
+              </dd>
+            </Fragment>
+          ))}
+        </dl>
         <h3 className="fold__heading label">by what goes in and out</h3>
         <dl className="model-key">
           {BY_INPUT.map((k) => (
@@ -213,6 +226,20 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
       if (e.change === 'pulled') setProgress(({ [e.model]: _done, ...rest }) => rest)
     }, []),
   )
+
+  const [tools, setTools] = useState<string[]>([])
+  const [getting, setGetting] = useState('')
+  const loadTools = useCallback(() => void readManifests<{ name: string }>('tools').then((m) => setTools(m.map((x) => x.folder))), [])
+  useEffect(loadTools, [loadTools])
+  useHelperEvent(
+    'workspace.changed',
+    useCallback((e) => e.path.startsWith('tools/') && loadTools(), [loadTools]),
+  )
+  const getTool = async (name: string) => {
+    setGetting(name)
+    await runCommand(`model get ${name}`)
+    setGetting('')
+  }
 
   const loadHf = useCallback(() => void readManifests<{ name?: string }>('hf').then(setHfManifests), [])
   useEffect(loadHf, [loadHf])
@@ -360,6 +387,9 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
     <section className="panel" aria-label="models">
       <h2 className="panel__title label">start with these four</h2>
       <p className="models-intro">
+        <KindLine kind="writes" />
+      </p>
+      <p className="models-intro">
         Four models, chosen to be as different from each other as possible. Pull the ones you want to try. Anything you make from one is listed inside its card as a variation.
       </p>
       <div className="folds">
@@ -422,6 +452,16 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
           .map((h) => (
             <Manifest key={h.folder} name={h.name ?? h.folder} badges={<Badge>trains on</Badge>} lines={['in workspace/hf']} />
           ))}
+      </div>
+
+      <h2 className="panel__title label">tools for images · run in the page</h2>
+      <p className="models-intro">
+        <KindLine kind="looks" />
+      </p>
+      <div className="cards">
+        {TOOL_MODELS.map((t) => (
+          <ToolCard key={t.name} tool={t} here={tools.includes(t.name)} busy={getting === t.name} onGet={() => void getTool(t.name)} />
+        ))}
       </div>
     </section>
   )

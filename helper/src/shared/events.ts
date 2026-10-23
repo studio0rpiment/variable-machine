@@ -12,6 +12,13 @@ export interface Status {
   arch: string
 }
 
+/** A file a page run made: where it went, what it was made from, which tool made it. */
+export interface PageOutput {
+  path: string
+  from: string
+  tool: string
+}
+
 export type ServerEvent =
   | ({ type: 'status' } & Status)
   | { type: 'terminal.output'; text: string }
@@ -28,6 +35,10 @@ export type ServerEvent =
   | { type: 'pipeline.finished'; runId: string; ok: boolean; outputs: string[] }
   | { type: 'workspace.changed'; path: string; kind: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir' }
   | { type: 'heartbeat'; at: number }
+  /** Run a command in this page (the image tools run with onnxruntime-web, not in the helper). */
+  | { type: 'page.run'; id: string; words: string[] }
+  /** ctrl-c: drop that page run. */
+  | { type: 'page.stop'; id: string }
 
 export type ClientEvent =
   | { type: 'terminal.input'; line: string }
@@ -41,3 +52,7 @@ export type ClientEvent =
   | { type: 'pipeline.run'; recipe: string; params: unknown }
   | { type: 'pipeline.stop'; runId: string }
   | { type: 'ollama.unload'; model: string }
+  /** This page can run page commands (look …). */
+  | { type: 'page.ready' }
+  /** A page run finished; what it made has already been uploaded into workspace/outputs/. */
+  | { type: 'page.done'; id: string; ok: boolean; message?: string; outputs: PageOutput[] }

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type http from 'node:http'
-import { UI_DIST } from './config.ts'
+import { ROOT, UI_DIST } from './config.ts'
 import { restoreSync } from './conflicts.ts'
 
 const TYPES: Record<string, string> = {
@@ -13,11 +13,42 @@ const TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.woff2': 'font/woff2',
   '.map': 'application/json',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.wasm': 'application/wasm',
+}
+
+/**
+ * Runtimes the page loads its own files from (the image tools' onnxruntime-web
+ * WebAssembly), served from node_modules so nothing comes from a CDN.
+ */
+const VENDOR: Record<string, string> = {
+  '/vendor/ort/': path.join(ROOT, 'node_modules', 'onnxruntime-web', 'dist'),
+}
+
+/**
+ * Cross-origin isolation, so onnxruntime-web may use threads (SharedArrayBuffer).
+ * Everything the page loads is from here, so requiring it costs nothing.
+ */
+const ISOLATED = { 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp' }
+
+function serveVendor(urlPath: string, res: http.ServerResponse): boolean {
+  const prefix = Object.keys(VENDOR).find((p) => urlPath.startsWith(p))
+  if (!prefix) return false
+  const root = VENDOR[prefix]
+  const file = path.join(root, path.normalize(urlPath.slice(prefix.length)))
+  if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    res.writeHead(404).end()
+    return true
+  }
+  res.writeHead(200, { 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'public, max-age=86400', ...ISOLATED })
+  fs.createReadStream(file).pipe(res)
+  return true
 }
 
 /** Serve ui/dist. Unknown paths fall back to index.html; hashed assets are cached for good. */
 export function serveStatic(req: http.IncomingMessage, res: http.ServerResponse) {
   const urlPath = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname)
+  if (serveVendor(urlPath, res)) return
   let file = path.join(UI_DIST, path.normalize(urlPath))
   if (!file.startsWith(UI_DIST)) {
     res.writeHead(403).end()
@@ -34,6 +65,7 @@ export function serveStatic(req: http.IncomingMessage, res: http.ServerResponse)
   res.writeHead(200, {
     'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream',
     'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+    ...ISOLATED,
   })
   fs.createReadStream(file).pipe(res)
 }

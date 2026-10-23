@@ -12,7 +12,7 @@ export interface Explanation {
 export const EXPLAIN = {
   'panel.models': {
     title: 'Models',
-    text: 'A model is the thing that answers when you type to it: a large file of numbers learned from text, packaged so it can run on your computer. This screen lists two kinds. "Runs on" models live in Ollama, the program that runs them here, and they are the ones you can chat with. "Trains on" models are starting points you can teach new habits to. Each card shows the model\'s license, which says what you are allowed to do with it, and the library at the bottom lets you download more.',
+    text: 'A model is the thing that answers when you type to it: a large file of numbers learned from text, packaged so it can run on your computer. This screen lists the language models (they write: text in, text out) and, at the bottom, the image tools (they look). For the language models there are two lists. "Runs on" models live in Ollama, the program that runs them here, and they are the ones you can chat with. "Trains on" models are starting points you can teach new habits to. Each card shows the model\'s license, which says what you are allowed to do with it, and the library at the bottom lets you download more.',
   },
   'panel.modelfile': {
     title: 'Modelfile',
@@ -362,6 +362,51 @@ export const EXPLAIN = {
   'share.upload': {
     title: 'Add a zip',
     text: 'Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card.',
+  },
+  /* ---- Look ---- */
+  'panel.look': {
+    title: 'Look',
+    text: 'Image tools, the kind of model that looks: cut-outs, depth maps and selecting things in a photo. They are ready-made models you download once; you don\'t train them. They run inside this page, on your computer, and nothing is sent anywhere. Bring your photos into a set, pick one, and run a tool. What it makes is saved in workspace/outputs with a record of which photo and which model made it.',
+  },
+  'look.get': {
+    title: 'Download this tool',
+    text: 'Fetches the model\'s files from Hugging Face into workspace/tools, one file at a time, with curl. You can watch it in the terminal. You only do this once.',
+  },
+  'look.set': {
+    title: 'Image set',
+    text: 'A set is a folder of photos in workspace/images. Keep one set per project, so what you make from it stays together.',
+  },
+  'look.license': {
+    title: 'Whose photos',
+    text: 'Written into the set\'s record, and carried by everything made from it. If they are your own photos of your own work, leave it as it is. If they are someone else\'s, write whose, and under what license.',
+  },
+  'look.photos': {
+    title: 'Add photos',
+    text: 'Copies photos from your computer into the set. JPEG, PNG or WebP.',
+  },
+  'look.camera': {
+    title: 'Take a photo',
+    text: 'Opens your camera in this page. Nothing is recorded or saved until you press "keep this one", and then only that one frame goes into the set.',
+  },
+  'look.click': {
+    title: 'Click to select',
+    text: 'For the select tool: click on the thing you want, and it outlines it. Click more places on it to add to the selection. Shift-click a place that is not part of it.',
+  },
+  'look.cutout': {
+    title: 'Cut out',
+    text: 'Separates the main thing in the photo from its background, down to fine edges. You get a PNG with a transparent background: ready for a portfolio, a layout or a projection.',
+  },
+  'look.depth': {
+    title: 'Depth map',
+    text: 'Guesses how near or far each part of the photo is. Near is light, far is dark. It is a guess from one picture, not a measurement, but it is often good enough for relief, displacement or projection mapping.',
+  },
+  'look.select': {
+    title: 'Select',
+    text: 'Outlines the thing you clicked on and cuts it out. Use it when the photo has more than one thing in it, or the cut-out tool picked the wrong one.',
+  },
+  'look.all': {
+    title: 'Every photo in the set',
+    text: 'Runs the same tool on every photo in the set, one after another. Each one is its own command in the terminal.',
   },
 } satisfies Record<string, Explanation>
 

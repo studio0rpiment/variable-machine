@@ -16,6 +16,7 @@ import { stopPipeline } from './pipeline.ts'
 import { ollamaPost } from './ollama.ts'
 import type { ClientEvent } from './shared/events.ts'
 import { keep, sweep } from './temporary.ts'
+import { addRunner, pageDone } from './pagerun.ts'
 
 for (const dir of WORKSPACE_DIRS) fs.mkdirSync(path.join(WORKSPACE, dir), { recursive: true })
 
@@ -101,6 +102,12 @@ wss.on('connection', (ws) => {
         break
       case 'ollama.unload':
         void ollamaPost('/api/generate', { model: event.model, keep_alive: 0 }).catch(() => {})
+        break
+      case 'page.ready':
+        addRunner(ws)
+        break
+      case 'page.done':
+        void pageDone(event.id, event.ok, event.message, event.outputs ?? [])
         break
       case 'pipeline.stop':
         stopPipeline(event.runId)

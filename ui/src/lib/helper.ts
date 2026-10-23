@@ -27,6 +27,8 @@ export function connect() {
   ws.onopen = () => {
     connected = true
     notifyState()
+    // every page can run page commands (look …): see look/runner.ts
+    ws?.send(JSON.stringify({ type: 'page.ready' } satisfies ClientEvent))
   }
   ws.onclose = () => {
     connected = false

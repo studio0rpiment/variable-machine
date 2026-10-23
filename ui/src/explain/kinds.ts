@@ -10,10 +10,10 @@ export interface Kind {
 }
 
 export const KINDS_INTRO =
-  'Models can be sorted two ways: by what they take in and give out, and by what job they are tuned for. Every model in Variable Machine is the first kind on this list: text in, text out.'
+  'Models can be sorted two ways: by what they take in and give out, and by what job they are tuned for. Variable Machine gives each kind it works with a one-word name, the same word its tab uses. Most of what you change here writes: text in, text out. The image tools look.'
 
 export const BY_INPUT: Kind[] = [
-  { name: 'Text to text', text: 'Language models: chat, writing, summarising, answering questions. Everything here.' },
+  { name: 'Text to text', text: 'Language models: chat, writing, summarising, answering questions. The kind that writes, and most of what you change here.' },
   { name: 'Code', text: 'Text models specialised in programming: writing, explaining and fixing code.' },
   { name: 'Maths and reasoning', text: 'Tuned to work through problems step by step, including mathematical notation and proofs.' },
   { name: 'Translation', text: 'Built to move text between languages, often better at it than a general chat model.' },

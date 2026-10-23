@@ -13,6 +13,8 @@ import { WORKSPACE } from './config.ts'
  *   GET /api/workspace/file?path=shared/x.zip&download=1 → the same, as a download
  *   POST /api/workspace/upload?name=x.zip     → a zip into workspace/shared
  *   POST /api/workspace/upload?name=x.csv      → a .csv, .jsonl or .json into workspace/uploads (for data import file)
+ *   POST /api/workspace/upload?name=x.jpg&set=s → a photo into workspace/images/<set>/ (the set's manifest lists it)
+ *   POST /api/workspace/output?path=outputs/s/x.png → a picture a page run made (look …); the run records it
  * Every other write is a command, so it shows in the terminal; an upload is
  * announced there too, and unpacking it is the `unzip` command.
  */
@@ -31,6 +33,17 @@ function inside(rel: string): string | null {
   }
 }
 
+/** Photos and outputs are shown by the page, and tool models are loaded by it; everything else is read as text. */
+const TYPES: Record<string, string> = {
+  '.zip': 'application/zip',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.onnx': 'application/octet-stream',
+  '.json': 'application/json',
+}
+
 function json(res: http.ServerResponse, code: number, body: unknown) {
   res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(body))
 }
@@ -38,19 +51,15 @@ function json(res: http.ServerResponse, code: number, body: unknown) {
 /** A shared zip or a data file; bigger than this isn't a class's material, and would fill the disk. */
 const MAX_UPLOAD = 200 * 1024 * 1024
 
-async function upload(req: http.IncomingMessage, res: http.ServerResponse, name: string | null) {
-  // A zip is something shared (unzip puts it back); a table or JSON file is data to bring in.
-  const kind = name && /^[\w.-]+\.zip$/.test(name) ? 'shared' : name && /^[\w.-]+\.(csv|jsonl|json)$/.test(name) ? 'uploads' : null
-  if (req.method !== 'POST' || !name || !kind) return json(res, 400, { error: 'POST a .zip, .csv, .jsonl or .json with ?name=<file>' })
-  const dest = path.join(WORKSPACE, kind, name)
-  await fs.mkdir(path.dirname(dest), { recursive: true })
-  try {
-    await fs.access(dest)
-    return json(res, 409, { error: `workspace/${kind}/${name} exists` })
-  } catch {
-    // free
+const SET = /^[a-z0-9][a-z0-9._-]{0,63}$/
+const PHOTO = /^[\w.-]+\.(jpe?g|png|webp)$/i
+
+/** Write the request body to dest, through a .part file, up to MAX_UPLOAD. False if it was too big. */
+async function receive(req: http.IncomingMessage, res: http.ServerResponse, dest: string): Promise<boolean> {
+  if (Number(req.headers['content-length'] ?? 0) > MAX_UPLOAD) {
+    json(res, 413, { error: `larger than ${MAX_UPLOAD / 1024 / 1024}MB` })
+    return false
   }
-  if (Number(req.headers['content-length'] ?? 0) > MAX_UPLOAD) return json(res, 413, { error: `larger than ${MAX_UPLOAD / 1024 / 1024}MB` })
   const ok = await new Promise<boolean>((resolve, reject) => {
     const out = createWriteStream(dest + '.part')
     let size = 0
@@ -71,9 +80,65 @@ async function upload(req: http.IncomingMessage, res: http.ServerResponse, name:
   })
   if (!ok) {
     await fs.rm(dest + '.part', { force: true })
-    return
+    return false
   }
   await fs.rename(dest + '.part', dest)
+  return true
+}
+
+/** A photo into images/<set>/. The set's manifest says where its photos came from and under what license. */
+async function uploadPhoto(req: http.IncomingMessage, res: http.ServerResponse, name: string, set: string, license: string) {
+  const folder = path.join(WORKSPACE, 'images', set)
+  await fs.mkdir(folder, { recursive: true })
+  const dest = path.join(folder, name)
+  try {
+    await fs.access(dest)
+    return json(res, 409, { error: `workspace/images/${set}/${name} exists` })
+  } catch {
+    // free
+  }
+  if (!(await receive(req, res, dest))) return
+  const mfile = path.join(folder, 'manifest.json')
+  const now = new Date().toISOString()
+  let m: { name: string; kind: string; created: string; license: string; inputs: string[]; command: string }
+  try {
+    m = JSON.parse(await fs.readFile(mfile, 'utf8'))
+  } catch {
+    m = { name: set, kind: 'images', created: now, license, inputs: [], command: 'uploaded from the browser (Look tab)' }
+  }
+  if (!m.inputs.includes(name)) m.inputs.push(name)
+  await fs.writeFile(mfile, JSON.stringify(m, null, 2) + '\n')
+  print(`▸ received workspace/images/${set}/${name} (from the browser · ${m.license})`)
+  json(res, 200, { path: `images/${set}/${name}` })
+}
+
+/** A picture a page run made. Only into outputs/<set>/; replacing is fine (running a tool again). */
+async function uploadOutput(req: http.IncomingMessage, res: http.ServerResponse, rel: string | null) {
+  const parts = (rel ?? '').split('/')
+  if (req.method !== 'POST' || parts.length !== 3 || parts[0] !== 'outputs' || !SET.test(parts[1]) || !/^[\w.-]+\.png$/.test(parts[2])) {
+    return json(res, 400, { error: 'POST a .png with ?path=outputs/<set>/<file>.png' })
+  }
+  await fs.mkdir(path.join(WORKSPACE, 'outputs', parts[1]), { recursive: true })
+  if (await receive(req, res, path.join(WORKSPACE, ...parts))) json(res, 200, { path: rel })
+}
+
+async function upload(req: http.IncomingMessage, res: http.ServerResponse, name: string | null, set: string | null, license: string | null) {
+  if (req.method === 'POST' && name && set && PHOTO.test(name)) {
+    if (!SET.test(set)) return json(res, 400, { error: 'a set name is lowercase letters, digits, . _ -' })
+    return uploadPhoto(req, res, name, set, license?.trim() || 'your own work')
+  }
+  // A zip is something shared (unzip puts it back); a table or JSON file is data to bring in.
+  const kind = name && /^[\w.-]+\.zip$/.test(name) ? 'shared' : name && /^[\w.-]+\.(csv|jsonl|json)$/.test(name) ? 'uploads' : null
+  if (req.method !== 'POST' || !name || !kind) return json(res, 400, { error: 'POST a .zip, .csv, .jsonl or .json with ?name=<file>, or a photo with ?name=<file>&set=<set>' })
+  const dest = path.join(WORKSPACE, kind, name)
+  await fs.mkdir(path.dirname(dest), { recursive: true })
+  try {
+    await fs.access(dest)
+    return json(res, 409, { error: `workspace/${kind}/${name} exists` })
+  } catch {
+    // free
+  }
+  if (!(await receive(req, res, dest))) return
   print(`▸ received workspace/${kind}/${name} (uploaded from the browser)`)
   json(res, 200, { path: `${kind}/${name}` })
 }
@@ -81,7 +146,9 @@ async function upload(req: http.IncomingMessage, res: http.ServerResponse, name:
 export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x')
   const what = url.pathname.replace('/api/workspace/', '')
-  if (what === 'upload') return upload(req, res, url.searchParams.get('name')).catch((err: Error) => json(res, 500, { error: err.message }))
+  const fail = (err: Error) => json(res, 500, { error: err.message })
+  if (what === 'upload') return upload(req, res, url.searchParams.get('name'), url.searchParams.get('set'), url.searchParams.get('license')).catch(fail)
+  if (what === 'output') return uploadOutput(req, res, url.searchParams.get('path')).catch(fail)
   const target = inside(url.searchParams.get(what === 'file' ? 'path' : 'dir') ?? '')
   if (!target) return json(res, 403, { error: 'outside workspace/' })
   try {
@@ -113,7 +180,7 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
       const st = await fs.stat(target)
       const download = url.searchParams.get('download') === '1'
       res.writeHead(200, {
-        'content-type': target.endsWith('.zip') ? 'application/zip' : 'text/plain; charset=utf-8',
+        'content-type': TYPES[path.extname(target).toLowerCase()] ?? 'text/plain; charset=utf-8',
         'content-length': String(st.size),
         'cache-control': 'no-store',
         ...(download ? { 'content-disposition': `attachment; filename="${path.basename(target)}"` } : {}),

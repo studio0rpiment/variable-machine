@@ -4,11 +4,11 @@ import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { print } from './hub.ts'
 
-const KINDS = ['data', 'raw', 'runs', 'adapters', 'merges', 'fused'] as const
+const KINDS = ['data', 'raw', 'runs', 'adapters', 'merges', 'fused', 'tools', 'images', 'outputs'] as const
 const NAME = /^[A-Za-z0-9][\w.-]{0,127}$/
 
 /**
- * `trash <data|runs|adapters|merges|fused>/<name>`: move one artifact to the
+ * `trash <data|runs|adapters|merges|fused|tools|images|outputs>/<name>`: move one artifact to the
  * Mac's Trash, so starting over never loses anything for good (it can be put
  * back from the Trash). A model exported to Ollama is removed separately,
  * with `ollama rm`.

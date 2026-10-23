@@ -12,6 +12,8 @@ import { dataCommand } from './data.ts'
 import { recipeCommand } from './recipes.ts'
 import { formatChecks, runDoctor } from './doctor.ts'
 import { unzipCommand, zipCommand } from './share.ts'
+import { modelCommand } from './tools.ts'
+import { lookCommand } from './pagerun.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -32,7 +34,7 @@ const HELP = `commands
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused>/<name>     share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|raw|runs|adapters|merges|fused>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -42,6 +44,9 @@ const HELP = `commands
   export <adapter|merge> [--name <model>] [--quantize int8|int4|none]    fuse + register in one go
   merge <name> --a <adapter> --b <adapter> [--t 0.5]    (1 - t)·A + t·B, tensor by tensor
   prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5]
+
+  model list | model get <cutout|depth|select>    ready-made tool models, into workspace/tools/
+  look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/
 `
 
 
@@ -115,6 +120,8 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'ollama') return ollamaCommand(args)
   if (cmd === 'data') return dataCommand(args, line)
   if (['train', 'fuse', 'register', 'export', 'merge', 'prefer'].includes(cmd)) return recipeCommand(cmd, args, line)
+  if (cmd === 'model') return modelCommand(args)
+  if (cmd === 'look') return lookCommand(args, line)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)
