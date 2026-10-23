@@ -64,7 +64,8 @@
   /* the map at the top: the app's own Start page, live */
   .map-top { position: relative; }
   .map-top__name { position: absolute; z-index: 2; top: 1rem; left: 1rem; margin: 0; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; display: flex; align-items: center; gap: 0.5rem; }
-  .map-top__name img { width: 1.4em; height: 1.4em; }
+  /* the favicon's swirl as a mask, so it takes the text colour (cream on dark) */
+  .map-top__swirl { width: 1.4em; height: 1.4em; background: var(--line); -webkit-mask: url(favicon.svg) center / contain no-repeat; mask: url(favicon.svg) center / contain no-repeat; }
   #map:empty { height: min(80vh, 46rem, 75vw + 6rem); }
   .map-top noscript img { display: block; width: 100%; height: auto; }
   .tabs dt { scroll-margin-top: 2rem; }
@@ -78,7 +79,7 @@
 </head>
 <body>
 <section class="map-top" aria-label="The Start page of Variable Machine, live: point at a box for what it does, drag to move, pinch or ⌘ + scroll to zoom">
-  <p class="map-top__name"><img src="favicon.svg" alt="">Variable Machine</p>
+  <p class="map-top__name"><span class="map-top__swirl" aria-hidden="true"></span>Variable Machine</p>
   <div id="map"></div>
   <noscript><img src="start-map.png" alt="The Start page of Variable Machine: every tab as a box, with lines for what each passes to the next."></noscript>
 </section>
