@@ -186,7 +186,7 @@ Each of these was checked against the installed tools (plan §13) on 2026-10-18 
 - **SmolTalk's license is per subset.** Its dataset card declares none in its metadata, and its License section names only the four new subsets as Apache 2.0. The importer offers only those.
 - **Raw CSV and TXT sources take the license you read on the source page** (`--license`), recorded "as stated at import". The plan's Open Data DC traffic counts go through this route; the DC dataset itself wasn't fetched while building.
 - **A pull doesn't stop when the page stops listening.** Ollama finishes the download on its own, and the terminal says so.
-- **What a linear merge averages.** LoRA stores each weight change as a product, `lora_b @ lora_a`. Averaging the factors separately isn't the same as averaging the weight changes. It behaves sensibly here because mlx-lm starts every run from the same seeded initialisation.
+- **What a linear merge averages.** LoRA stores each weight change as a product of two small matrices. Averaging the two factors separately isn't the same as averaging the weight changes: the product picks up cross terms neither adapter learned. So merge stacks the two adapters side by side (rank r + r) with their factors weighted by 1 − t and t, and the result is exactly (1 − t)·A + t·B. A merged adapter has twice the rank and twice the size.
 - **`pipeline.run` isn't used.** The page sends recipes as command lines (`train …`, `export …`), so typed and clicked runs are literally the same thing.
 - **Native code:** there are no node-gyp modules. Vite 8 (rolldown) and tsx (esbuild) ship prebuilt platform binaries, and TypeScript 7 is the native tsc.
 

@@ -456,7 +456,10 @@ async function merge(args: string[], line: string): Promise<boolean> {
   const b = await readJson<AdapterManifest>(ws('adapters', opts.b, 'manifest.json'))
   if (!a || !b) return print(`merge: no adapter ${!a ? opts.a : opts.b} in workspace/adapters`), false
   // The script checks the tensors themselves; this catches the obvious mismatch before Python starts.
-  const differ = (['base', 'method', 'rank', 'layers'] as const).filter((k) => a[k] !== b[k])
+  // A Prefer (DPO) adapter is a LoRA adapter underneath, so it blends with a trained LoRA one.
+  const tensors = (m: AdapterManifest) => (m.method === 'dpo' ? 'lora' : m.method)
+  const differ: string[] = (['base', 'rank', 'layers'] as const).filter((k) => a[k] !== b[k])
+  if (tensors(a) !== tensors(b)) differ.push('type')
   if (differ.length) return print(`merge: A and B differ in ${differ.join(', ')}; they need the same base, type, rank and layers`), false
 
   const argv = mergeArgs(a.name, b.name, t, name)
@@ -482,7 +485,8 @@ async function merge(args: string[], line: string): Promise<boolean> {
             a: a.name,
             b: b.name,
             base: a.base,
-            rank: a.rank,
+            // stacked side by side (merge_adapters.py), so the ranks add up
+            rank: tensors(a) === 'full' ? a.rank : a.rank * 2,
             layers: a.layers,
             data: `${(a as Manifest & { data?: string }).data} + ${(b as Manifest & { data?: string }).data}`,
           }),

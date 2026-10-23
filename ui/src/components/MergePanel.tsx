@@ -30,8 +30,9 @@ interface MergeManifest extends AdapterManifest {
 }
 
 const sameTag = (a: string, b: string) => a.replace(/:latest$/, '') === b.replace(/:latest$/, '')
-/** Adapters merge only when their tensors line up: same base, type, rank and layers. */
-const compatible = (x: AdapterManifest, y: AdapterManifest) => x.base === y.base && x.method === y.method && x.rank === y.rank && x.layers === y.layers
+/** Adapters merge only when their tensors line up: same base, type, rank and layers. A Prefer (DPO) adapter is LoRA underneath. */
+const tensors = (m: AdapterManifest) => (m.method === 'dpo' ? 'lora' : m.method)
+const compatible = (x: AdapterManifest, y: AdapterManifest) => x.base === y.base && tensors(x) === tensors(y) && x.rank === y.rank && x.layers === y.layers
 
 /**
  * Merge (plan §3.2): blend two adapters trained on the same base into a

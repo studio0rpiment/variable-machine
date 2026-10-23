@@ -1,26 +1,32 @@
 """Linear merge of two LoRA adapters (plan §6, merge).
 
-    out = (1 - t) * A + t * B      for every tensor
+    change = (1 - t) * change_A + t * change_B      for every layer
 
 Run by the helper as:
     uv run --project python python python/variable_machine/merge_adapters.py \
         --a workspace/adapters/A --b workspace/adapters/B --t 0.5 --out workspace/merges/NAME
 
 Both adapters must come from the same base with the same fine-tune type,
-rank, scale and layers, so every tensor lines up. They are checked before
+rank, scale and layers, so every layer lines up. They are checked before
 anything is written.
 
-A note on what this averages: LoRA stores each weight change as a product
-lora_b @ lora_a. Averaging the two factors separately is not the same as
-averaging the two weight changes; the product picks up cross terms. It
-behaves sensibly when both adapters started from the same initialisation
-(mlx-lm seeds it, seed 0 by default), the way averaged "model soups" do.
-SLERP and other methods are a later flag.
+How: LoRA stores each layer's change as a product, x @ lora_a @ lora_b.
+Averaging lora_a and lora_b separately is not the same as averaging the two
+changes: the product picks up cross terms (A's lora_a times B's lora_b),
+which neither adapter learned. So the two are stacked side by side instead:
+
+    lora_a = [A.lora_a | B.lora_a]               (rank r + r)
+    lora_b = [(1 - t) * A.lora_b ; t * B.lora_b]
+
+and the product is exactly (1 - t) * A's change + t * B's change. The merged
+adapter has twice the rank, so it is twice the size, and fuse, export and
+everything else take it as they take any adapter. Tensors that aren't LoRA
+factors (DoRA's magnitudes, or a full fine-tune's weights) are averaged as
+they are; for a full fine-tune that is exact too. SLERP is a later flag.
 """
 
 import argparse
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -63,18 +69,41 @@ def main() -> int:
             return 1
 
     t = args.t
-    merged = {k: (1 - t) * a[k] + t * b[k] for k in sorted(a)}
+    rank = config_a["lora_parameters"]["rank"]
+    lora = config_a["fine_tune_type"] in ("lora", "dora")
+    merged = {}
+    for k in sorted(a):
+        if lora and k.endswith(".lora_a"):
+            merged[k] = mx.concatenate([a[k], b[k]], axis=-1)
+        elif lora and k.endswith(".lora_b"):
+            merged[k] = mx.concatenate([(1 - t) * a[k], t * b[k]], axis=-2)
+        else:
+            merged[k] = (1 - t) * a[k] + t * b[k]
+
+    # Show it is exact on one layer: the stacked product against the weighted sum of the two changes.
+    first = next((k for k in sorted(a) if k.endswith(".lora_a")), None)
+    if lora and first:
+        kb = first[: -len("lora_a")] + "lora_b"
+        want = (1 - t) * (a[first] @ a[kb]) + t * (b[first] @ b[kb])
+        got = merged[first] @ merged[kb]
+        err = mx.max(mx.abs(got - want)).item()
+        print(f"check on {first[: -len('.lora_a')]}: stacked product vs (1 - t)·A + t·B, largest difference {err:.2e}")
 
     args.out.mkdir(parents=True, exist_ok=True)
     mx.save_safetensors(str(args.out / "adapters.safetensors"), merged)
     config = dict(config_a)
     config["adapter_path"] = str(args.out)
-    config["merge"] = {"a": str(args.a), "b": str(args.b), "t": t, "method": "linear"}
+    if lora:
+        config["lora_parameters"] = {**config_a["lora_parameters"], "rank": 2 * rank}
+    config["merge"] = {"a": str(args.a), "b": str(args.b), "t": t, "method": "linear", "how": "stacked to rank 2r" if lora else "averaged"}
     (args.out / "adapter_config.json").write_text(json.dumps(config, indent=4))
 
     print(f"checked: same base ({config_a['model']}), {config_a['fine_tune_type']}, "
-          f"rank {config_a['lora_parameters']['rank']}, {config_a['num_layers']} layers, {len(a)} tensors")
-    print(f"merged {len(merged)} tensors: {1 - t:.2f} x {args.a.name} + {t:.2f} x {args.b.name}")
+          f"rank {rank}, {config_a['num_layers']} layers, {len(a)} tensors")
+    if lora:
+        print(f"merged: {1 - t:.2f} x {args.a.name} + {t:.2f} x {args.b.name}, stacked side by side: rank {rank} + {rank} = {2 * rank}")
+    else:
+        print(f"merged {len(merged)} tensors: {1 - t:.2f} x {args.a.name} + {t:.2f} x {args.b.name}")
     print(f"wrote {args.out}/adapters.safetensors and adapter_config.json")
     return 0
 
