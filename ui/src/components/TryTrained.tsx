@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { readFile } from '../lib/workspace'
-import { rowProblem, type ChatRow, type PrefRow } from '@shared/chatRow'
+import { rowProblem, type ChatRow, type PictureRow, type PrefRow } from '@shared/chatRow'
 import AnswerColumn from './AnswerColumn'
 import { useCompare } from '../hooks/useCompare'
 import { Explained } from '../explain/Explained'
@@ -15,18 +15,20 @@ interface Props {
   onClose: () => void
 }
 
-type Q = { question: string; expected?: string; worse?: string }
+/** image: a picture row's photo, as a workspace path */
+type Q = { question: string; expected?: string; worse?: string; image?: string }
 
-function readRows(text: string): Q[] {
-  return text.split('\n').flatMap((l) => {
+function readRows(text: string, data: string): Q[] {
+  return text.split('\n').flatMap((l): Q[] => {
     if (!l.trim()) return []
     try {
-      const r = JSON.parse(l) as ChatRow | PrefRow
+      const r = JSON.parse(l) as ChatRow | PrefRow | PictureRow
       if ('prompt' in r) return [{ question: r.prompt, expected: r.chosen, worse: r.rejected }]
       if (rowProblem(r)) return []
       const user = r.messages.find((m) => m.role === 'user')?.content
       const answer = r.messages.find((m) => m.role === 'assistant')?.content
-      return user ? [{ question: user, expected: answer }] : []
+      const image = 'images' in r && typeof r.images?.[0] === 'string' ? `data/${data}/${r.images[0]}` : undefined
+      return user ? [{ question: user, expected: answer, ...(image && { image }) }] : []
     } catch {
       return []
     }
@@ -49,8 +51,8 @@ export default function TryTrained({ model, original, data, onClose }: Props) {
 
   useEffect(() => {
     void (async () => {
-      const valid = readRows((await readFile(`data/${data}/valid.jsonl`)) ?? '')
-      const pool = valid.length ? valid : readRows((await readFile(`data/${data}/train.jsonl`)) ?? '')
+      const valid = readRows((await readFile(`data/${data}/valid.jsonl`)) ?? '', data)
+      const pool = valid.length ? valid : readRows((await readFile(`data/${data}/train.jsonl`)) ?? '', data)
       setFrom(valid.length ? 'set aside' : 'trained on')
       setRows(pool)
       setI(0)
@@ -88,8 +90,9 @@ export default function TryTrained({ model, original, data, onClose }: Props) {
           </span>
           <textarea rows={2} value={question} onChange={(e) => setQuestion(e.target.value)} />
         </label>
+        {row?.image && <img className="row__picture" src={`/api/workspace/file?path=${encodeURIComponent(row.image)}`} alt={row.image} />}
         <Explained id="adapters.try">
-          <button type="button" className="text-button" onClick={() => question.trim() && !busy && void ask(question.trim(), models)} aria-disabled={!question.trim() || busy || undefined}>
+          <button type="button" className="text-button" onClick={() => question.trim() && !busy && void ask(question.trim(), models, row?.image)} aria-disabled={!question.trim() || busy || undefined}>
             ask {original ? 'both' : 'it'}
           </button>
         </Explained>

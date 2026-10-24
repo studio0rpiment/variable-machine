@@ -17,7 +17,7 @@ const CHAT_SET = 'chat-photos'
  */
 export default function PicturePicker({ value, onChange }: { value: string; onChange: (path: string) => void }) {
   const [open, setOpen] = useState(false)
-  const [sets, setSets] = useState<string[]>([])
+  const [sets, setSets] = useState<string[] | null>(null) // null until read
   const [set, setSet] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
   const [note, setNote] = useState('')
@@ -77,12 +77,12 @@ export default function PicturePicker({ value, onChange }: { value: string; onCh
             <label className="field">
               <span className="label label--muted">set · workspace/images</span>
               <select value={set} onChange={(e) => setSet(e.target.value)}>
-                {sets.map((s) => (
+                {(sets ?? []).map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
-                {!sets.includes(CHAT_SET) && <option value="">{CHAT_SET} (new)</option>}
+                {sets && !sets.includes(CHAT_SET) && <option value="">{CHAT_SET} (new)</option>}
               </select>
             </label>
             <Explained id="chat.pictureAdd">
@@ -101,7 +101,7 @@ export default function PicturePicker({ value, onChange }: { value: string; onCh
                 e.target.value = ''
               }}
             />
-            {!sets.length && <span className="label label--muted">no image sets yet: add a photo, or the example photos on the Look tab</span>}
+            {sets?.length === 0 && <span className="label label--muted">no image sets yet: add a photo, or the example photos on the Look tab</span>}
             {note && <span className="label label--muted">{note}</span>}
           </div>
           {photos.length > 0 && (

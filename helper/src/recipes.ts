@@ -7,11 +7,13 @@ import { OLLAMA_URL } from './config.ts'
 import { ollamaPost } from './ollama.ts'
 import { runRecipe, type Step } from './pipeline.ts'
 import { HF_BASES } from './shared/library.ts'
-import { SEE_MODELS, seeModel } from './shared/kinds.ts'
+import { SEE_MODELS, seeModel, seeModelfile, type SeeModel } from './shared/kinds.ts'
+import { modelCommand, seePresent } from './tools.ts'
 import type { DatasetManifest, Manifest } from './shared/manifest.ts'
 import {
   PY_ENV,
   SEES_DEFAULTS,
+  UV_SEES,
   TIER_DEFAULTS,
   seesTrainArgs,
   createArgs,
@@ -296,8 +298,9 @@ async function prefer(args: string[], line: string): Promise<boolean> {
   // The model is a Hugging Face id or a fused model in the workspace, nothing else.
   let hfBase = p.model
   if (p.model.startsWith('workspace/fused/')) {
-    const fused = await readJson<{ base: string; hfBase?: string }>(ws('fused', p.model.slice('workspace/fused/'.length), 'manifest.json'))
+    const fused = await readJson<{ base: string; hfBase?: string; sees?: string }>(ws('fused', p.model.slice('workspace/fused/'.length), 'manifest.json'))
     if (!fused) return print(`prefer: no fused model at ${p.model}`), false
+    if (fused.sees) return print('prefer: a model that sees is fused as a GGUF for Ollama; Prefer (DPO) for it is not built yet'), false
     hfBase = fused.hfBase ?? fused.base
   } else if (!/^[\w.-]+\/[\w.-]+$/.test(p.model)) return print('prefer: --model is a Hugging Face id or workspace/fused/<name>'), false
   const data = await readJson<DatasetManifest>(ws('data', p.data, 'manifest.json'))
@@ -401,7 +404,88 @@ interface AdapterManifest extends Manifest {
   method: string
   /** where it lives: trained adapters and merges are both adapters to fuse */
   dir: 'adapters' | 'merges'
+  /** trained on a model that sees: its SEE_MODELS name */
+  sees?: string
 }
+
+/* ---------- a model that sees: fuse into its GGUF, register with its projector ---------- */
+
+const seesGguf = (out: string) => `workspace/fused/${out}/model.gguf`
+const seesExportArgs = (see: SeeModel, adapter: AdapterManifest, out: string) => [
+  ...UV_SEES,
+  'python',
+  'python/variable_machine/vlm_export.py',
+  '--model', see.hf,
+  '--adapter-path', `workspace/${adapter.dir}/${adapter.name}`,
+  '--gguf', `workspace/tools/${see.name}/${see.gguf}`,
+  '--out', seesGguf(out),
+]
+
+/**
+ * The fuse for an adapter trained on a model that sees: the trained weights
+ * written into a copy of the base's GGUF (vlm_export.py says why), next to
+ * which the base's projector is used as it is. The base's two files come
+ * from `model get`, which runs first if they aren't here.
+ */
+function seesFuseSteps(see: SeeModel, adapter: AdapterManifest, out: string, line: string): Step[] {
+  return [
+    unloadStep,
+    {
+      kind: 'do',
+      display: `model get ${see.name}   (the base GGUF and projector, if they aren't in workspace/tools yet)`,
+      run: async () => {
+        if (await seePresent(see)) return print(`  here: workspace/tools/${see.name}`)
+        if (!(await modelCommand(['get', see.name]))) throw new Error(`model get ${see.name} didn't finish`)
+      },
+    },
+    { kind: 'spawn', argv: seesExportArgs(see, adapter, out), env: PY_ENV },
+    {
+      kind: 'do',
+      display: `write workspace/fused/${out}/manifest.json`,
+      run: () =>
+        writeJson(ws('fused', out, 'manifest.json'), {
+          name: out,
+          kind: 'fused',
+          created: now(),
+          license: adapter.license,
+          inputs: [`workspace/${adapter.dir}/${adapter.name}`, `workspace/tools/${see.name}/${see.gguf}`, see.hf],
+          command: [line, [...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...seesExportArgs(see, adapter, out)].join(' ')],
+          adapter: adapter.name,
+          base: adapter.base,
+          hfBase: see.hf,
+          sees: see.name,
+          gguf: seesGguf(out),
+          projector: `workspace/tools/${see.name}/${see.mmproj}`,
+        }),
+    },
+  ]
+}
+
+function seesRegisterSteps(see: SeeModel, o: { fused: string; model: string; adapter: string; license: string }): Step[] {
+  const file = `workspace/modelfiles/${o.model}.Modelfile`
+  return [
+    {
+      kind: 'do',
+      display: `write ${file}   (FROM your model's GGUF, FROM ${see.tag}'s projector, unchanged)`,
+      run: async () => {
+        await fs.mkdir(ws('modelfiles'), { recursive: true })
+        await fs.writeFile(
+          ws('modelfiles', `${o.model}.Modelfile`),
+          seeModelfile({ gguf: `../fused/${o.fused}/model.gguf`, mmproj: `../tools/${see.name}/${see.mmproj}`, license: o.license, note: `made by Variable Machine from adapter ${o.adapter} on ${see.hf}` }),
+        )
+      },
+    },
+    { kind: 'spawn', argv: ['ollama', 'create', o.model, '-f', file], env: { OLLAMA_HOST: OLLAMA_URL.origin } },
+    {
+      kind: 'do',
+      display: `ollama list  (refresh the runs-on inventory)`,
+      run: async () => broadcast({ type: 'ollama.changed', model: o.model, change: 'created' }),
+    },
+  ]
+}
+
+/** The model that sees an adapter (or fused model) was made on, if any. */
+const seeOf = (m: { sees?: string; base?: string }) => (m.sees ? seeModel(m.sees) : m.base ? seeModel(m.base) : undefined)
 
 function fuseStep(adapter: AdapterManifest, out: string, line: string): Step[] {
   return [
@@ -474,6 +558,7 @@ async function merge(args: string[], line: string): Promise<boolean> {
   const a = await readJson<AdapterManifest>(ws('adapters', opts.a, 'manifest.json'))
   const b = await readJson<AdapterManifest>(ws('adapters', opts.b, 'manifest.json'))
   if (!a || !b) return print(`merge: no adapter ${!a ? opts.a : opts.b} in workspace/adapters`), false
+  if (seeOf(a) || seeOf(b)) return print('merge: adapters for a model that sees don\'t blend yet; merge_adapters.py is written for mlx-lm\'s adapters'), false
   // The script checks the tensors themselves; this catches the obvious mismatch before Python starts.
   // A Prefer (DPO) adapter is a LoRA adapter underneath, so it blends with a trained LoRA one.
   const tensors = (m: AdapterManifest) => (m.method === 'dpo' ? 'lora' : m.method)
@@ -524,6 +609,8 @@ async function fuse(args: string[], line: string) {
   }
   const out = opts.name ?? adapter.name
   if (!NAME.test(out)) return print('fuse: names are lowercase letters, digits and . _ -'), false
+  const see = seeOf(adapter)
+  if (see) return runRecipe({ recipe: 'fuse', params: { adapter: adapter.name, name: out }, outputs: [`workspace/fused/${out}`], steps: seesFuseSteps(see, adapter, out, line) })
   return runRecipe({ recipe: 'fuse', params: { adapter: adapter.name, name: out }, outputs: [`workspace/fused/${out}`], steps: fuseStep(adapter, out, line) })
 }
 
@@ -532,10 +619,17 @@ const QUANT = new Set(['int8', 'int4', 'none'])
 async function register(args: string[]) {
   const { pos, opts } = flags(args)
   if (!only(opts, ['name', 'quantize', 'system'], 'register')) return false
-  const fused = await readJson<Manifest & { adapter: string; base: string; hfBase?: string }>(ws('fused', pos[0] ?? '', 'manifest.json'))
+  const fused = await readJson<Manifest & { adapter: string; base: string; hfBase?: string; sees?: string }>(ws('fused', pos[0] ?? '', 'manifest.json'))
   if (!fused) {
     print('usage: register <fused> [--name <ollama model>] [--quantize int8|int4|none] [--system "<text>"]')
     return false
+  }
+  const see = seeOf(fused)
+  if (see) {
+    const model = opts.name ?? fused.name
+    if (!NAME.test(model)) return print('register: names are lowercase letters, digits and . _ -'), false
+    if (opts.quantize || opts.system) print(`  note: a model that sees keeps its base's ${see.gguf.match(/Q\d_\d|f16/i)?.[0] ?? ''} GGUF type; --quantize and --system aren't used`)
+    return runRecipe({ recipe: 'register', params: { fused: fused.name, model }, outputs: [`ollama:${model}`], steps: seesRegisterSteps(see, { fused: fused.name, model, adapter: fused.adapter, license: fused.license }) })
   }
   const quantize = (opts.quantize ?? 'int8') as Quantize
   if (!QUANT.has(quantize)) return print('register: --quantize is int8, int4 or none (what this Ollama can quantize safetensors to)'), false
@@ -562,6 +656,16 @@ async function exportRecipe(args: string[], line: string) {
   if (!QUANT.has(quantize)) return print('export: --quantize is int8, int4 or none'), false
   const model = opts.name ?? adapter.name
   if (!NAME.test(model)) return print('export: names are lowercase letters, digits and . _ -'), false
+  const see = seeOf(adapter)
+  if (see) {
+    if (opts.quantize || opts.system) print(`  note: a model that sees keeps its base's ${see.gguf.match(/Q\d_\d|f16/i)?.[0] ?? ''} GGUF type; --quantize and --system aren't used`)
+    return runRecipe({
+      recipe: 'export',
+      params: { adapter: adapter.name, model },
+      outputs: [`workspace/fused/${adapter.name}`, `ollama:${model}`],
+      steps: [...seesFuseSteps(see, adapter, adapter.name, line), ...seesRegisterSteps(see, { fused: adapter.name, model, adapter: adapter.name, license: adapter.license })],
+    })
+  }
   const base = HF_BASES.find((b) => b.id === adapter.base)
   if (base && base.architecture !== 'llama') print(`  note: ${adapter.base} is ${base.architecture}; Ollama's safetensors import may not support it`)
   return runRecipe({

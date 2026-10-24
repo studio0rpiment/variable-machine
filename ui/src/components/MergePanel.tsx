@@ -4,6 +4,7 @@ import { usePipeline } from '../hooks/usePipeline'
 import { useOllamaModels } from '../hooks/useOllamaModels'
 import { runCommand } from '../lib/helper'
 import { readManifests } from '../lib/workspace'
+import { seeModel } from '@shared/kinds'
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
 import { mergeArgs, mergeLine } from '@shared/recipes'
@@ -52,7 +53,8 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
   const running = !!pipe && !pipe.done
 
   const load = useCallback(() => {
-    void readManifests<AdapterManifest>('adapters').then(setAdapters)
+    // adapters for a model that sees don't blend yet (merge_adapters.py is written for mlx-lm's adapters)
+    void readManifests<AdapterManifest>('adapters').then((all) => setAdapters(all.filter((x) => !seeModel(x.base))))
     void readManifests<MergeManifest>('merges').then((m) => setMerges(m.sort((x, y) => y.created.localeCompare(x.created))))
   }, [])
   useEffect(load, [load])

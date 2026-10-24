@@ -6,6 +6,7 @@ import { runCommand } from '../lib/helper'
 import { readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
+import { seeModel } from '@shared/kinds'
 import type { Quantize } from '@shared/recipes'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
@@ -107,10 +108,11 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
       <h2 className="panel__title label">adapters · from training (imitate) and preference tuning (prefer)</h2>
       <div className="cards">
         {adapters.map((a) => {
-          const runsAs = HF_BASES.find((b) => b.id === (a.hfBase ?? a.base))?.runsAs
+          const runsAs = HF_BASES.find((b) => b.id === (a.hfBase ?? a.base))?.runsAs ?? seeModel(a.base)?.tag
           const registered = models.some((m) => sameTag(m.name, a.name))
           const baseInstalled = runsAs && models.some((m) => sameTag(m.name, runsAs))
-          const cmd = joinWords(['export', a.name, '--quantize', quantize])
+          // a model that sees keeps its base's GGUF type, so its export takes no --quantize
+          const cmd = joinWords(['export', a.name, ...(seeModel(a.base) ? [] : ['--quantize', quantize])])
           return (
             <Manifest
               key={a.name}

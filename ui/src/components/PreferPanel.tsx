@@ -68,7 +68,8 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
 
   const load = useCallback(() => {
     void readManifests<DatasetManifest>('data').then((d) => setSets(d.filter((x) => x.format === 'preference')))
-    void readManifests<{ name: string }>('fused').then(setFused)
+    // a fused model that sees is a GGUF for Ollama, not a folder DPO can start from
+    void readManifests<{ name: string; sees?: string }>('fused').then((f) => setFused(f.filter((x) => !x.sees)))
     void readManifests<RunManifest>('runs').then((r) => setRuns(r.filter((x) => x.recipe === 'prefer').sort((a, b) => b.folder.localeCompare(a.folder))))
   }, [])
   useEffect(load, [load])

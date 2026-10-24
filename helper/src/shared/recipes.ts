@@ -44,11 +44,13 @@ export const UV = ['uv', 'run', '--project', 'python']
 export const UV_SEES = [...UV, '--extra', 'sees']
 
 /**
- * Training a model that sees on a picture dataset (mlx-vlm 0.7.10), checked
- * on SmolVLM-256M, 2026-10-23: LoRA on the language half, about 4.4GB at
- * batch 1, about 2.4s a step on an M1 Pro. With --train-on-completions (only
- * the answers are learned, like mlx-lm's --mask-prompt) the 16-row museum
- * label example learns its style in about 20 steps at 1e-4. A picture is
+ * Training a model that sees on a picture dataset (mlx-vlm 0.7.10, through
+ * python/variable_machine/vlm_train.py, which keeps SmolVLM's attention
+ * causal in training), checked on SmolVLM-256M, 2026-10-23: LoRA on the
+ * language half, about 4.4GB at batch 1, about 2.4s a step on an M1 Pro.
+ * With --train-on-completions (only the answers are learned, like mlx-lm's
+ * --mask-prompt) the 16-row museum label example goes from loss 5.1 to 0.01
+ * in 60 steps at 1e-4, and answers with its labels in Ollama. A picture is
  * about 900 tokens, so max seq stays at 2048. mlx-vlm adapts every layer of
  * the language half; there is no layers setting.
  */
@@ -57,7 +59,8 @@ export const SEES_DEFAULTS: Omit<TrainParams, 'name' | 'data'> = { base: 'Huggin
 export function seesTrainArgs(p: TrainParams): string[] {
   return [
     ...UV_SEES,
-    'python', '-m', 'mlx_vlm.train',
+    // mlx_vlm.train itself, with SmolVLM's causal mask kept in training (see the script)
+    'python', 'python/variable_machine/vlm_train.py',
     '--model', p.base,
     '--data', `workspace/data/${p.data}`,
     '--train-type', p.type,

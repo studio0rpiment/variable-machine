@@ -17,7 +17,8 @@ export function useCompare(count: number) {
 
   const put = (i: number, f: (a: Answer) => Answer) => setAnswers((all) => all.map((a, j) => (j === i ? f(a) : a)))
 
-  const ask = async (question: string, models: string[]) => {
+  /** image: a picture for models that see, by its workspace path */
+  const ask = async (question: string, models: string[], image?: string) => {
     aborts.current.forEach((a) => a.abort())
     aborts.current = []
     const mine = ++turn.current
@@ -39,6 +40,7 @@ export function useCompare(count: number) {
           })),
         ctrl.signal,
         ASK_OPTIONS,
+        image,
       ).catch((e: Error) => {
         if (!ctrl.signal.aborted) put(i, (a) => ({ ...a, state: 'error', meta: e.message }))
       })

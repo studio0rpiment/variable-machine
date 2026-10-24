@@ -1,5 +1,6 @@
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
+import { seeModel } from '@shared/kinds'
 import { runCommand } from '../lib/helper'
 import { useOllamaModels } from '../hooks/useOllamaModels'
 import { usePipeline } from '../hooks/usePipeline'
@@ -32,10 +33,12 @@ export default function NextStep({ adapter, base, onChatPair, onChat, onAdapters
   const mine = pipe && (pipe.params as { adapter?: string })?.adapter === adapter ? pipe : null
   const exporting = !!mine && !mine.done
   const exported = models.some((m) => sameTag(m.name, adapter))
-  const original = HF_BASES.find((b) => b.id === base)?.runsAs
+  // a model that sees keeps its base's GGUF type, so its export takes no --quantize
+  const see = seeModel(base)
+  const original = HF_BASES.find((b) => b.id === base)?.runsAs ?? see?.tag
   const originalHere = !!original && models.some((m) => sameTag(m.name, original))
   const chat = () => (originalHere ? onChatPair(original!, adapter) : onChat(adapter))
-  const line = joinWords(['export', adapter, '--quantize', 'int8'])
+  const line = joinWords(['export', adapter, ...(see ? [] : ['--quantize', 'int8'])])
 
   return (
     <section className="next-step" aria-label="next step">
@@ -72,7 +75,8 @@ export default function NextStep({ adapter, base, onChatPair, onChat, onAdapters
         </button>
       </div>
       {mine && <PipelineSteps p={mine} />}
-      {!originalHere && original && <p className="mf-next">{original} isn't installed, so Chat opens with yours alone; pull it on Models to compare.</p>}
+      {!originalHere && original && <p className="mf-next">{original} isn't installed, so Chat opens with yours alone; {see ? `get it on Models (model get ${see.name})` : 'pull it on Models'} to compare.</p>}
+      {see && <p className="mf-next">In Chat, add a picture: both columns look at the same photo, the original and yours.</p>}
       <p className="mf-next">{NEXT.note}</p>
     </section>
   )
