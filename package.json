@@ -17,6 +17,7 @@
     "build": "npm run build -w ui",
     "start": "npm run build && npm run start -w helper",
     "typecheck": "npm run typecheck -w helper && npm run typecheck -w ui",
-    "site:examples": "tsx scripts/examples-data.ts"
+    "site:examples": "tsx scripts/examples-data.ts",
+    "flags": "npm run flags -w ui"
   }
 }

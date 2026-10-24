@@ -1,8 +1,6 @@
 /**
- * The explanation layer's words. Plain language: written for someone who has
- * never trained a model, and kept apart from the components so the text can
- * be read and edited in one place. Keys name the element a flag points at;
- * later flags (buttons, fields, the terminal) join this list.
+ * The explanation layer's words, made from flags.md by ui/scripts/flags.mjs on
+ * every build. Edit flags.md, not this file: it is written over.
  */
 export interface Explanation {
   title: string
@@ -10,476 +8,121 @@ export interface Explanation {
 }
 
 export const EXPLAIN = {
-  'panel.models': {
-    title: 'Models',
-    text: 'A model is the thing that answers when you type to it: a large file of numbers learned from text, packaged so it can run on your computer. This screen lists the language models (they write: text in, text out) and, at the bottom, the image tools (they look). For the language models there are two lists. "Runs on" models live in Ollama, the program that runs them here, and they are the ones you can chat with. "Trains on" models are starting points you can teach new habits to. Each card shows the model\'s license, which says what you are allowed to do with it, and the library at the bottom lets you download more.',
-  },
-  'panel.modelfile': {
-    title: 'Modelfile',
-    text: 'Change how a model behaves using only words: standing instructions, how adventurous it is, and an example to imitate. No training, and the weights stay exactly the same. Pick a preset or write your own, make the variant, and see its answer next to the original right on this screen. Behind it is a short file, the Modelfile, which you can open to see what each line does.',
-  },
-  'panel.data': {
-    title: 'Data',
-    text: 'Training data is a pile of examples: a question, and the answer you would like the model to give. Here you collect them. Bring in a public set, start from one of the examples, or ask a model to write new ones from a book or a table and keep only the ones you like. You also check them for mistakes and set a few aside to test with later. Every set keeps a record of where each example came from and the license it came with, so you always know whose words these are.',
-  },
-  'panel.start': {
-    title: 'Start',
-    text: 'A map of the whole app. Each box is a tab and each line is what one passes to the next: a model, your words, examples, an adapter. Click a box to open that tab. Start here if you are new.',
-  },
-  'panel.about': {
-    title: 'About the process',
-    text: 'The long form of the map, in words: every tab with what it does, what it takes, what it gives and where that leads. Not a step on the path; a place to read.',
-  },
-  'panel.train': {
-    title: 'Train · imitate',
-    text: 'The first of the three ways to change a model. Training shows the model your examples over and over and nudges its numbers so its answers come out more like them. It leaves the model itself as it was and learns a small set of changes, called an adapter, kept apart from it. The solid line on the chart is how far off the model still is on your examples, and it should fall. The dashed line is the examples you set aside. If it starts rising while the solid line keeps falling, the model is memorising your examples rather than learning from them.',
-  },
-  'panel.prefer': {
-    title: 'Prefer',
-    text: 'The second of the three ways to change a model. Instead of showing the model the right answer, here you show it two answers and say which one you like better, and it learns to lean toward the kind you chose. The pairs come from your own conversations in Chat. Afterwards it is tested on pairs it never saw, to see whether it now favours the ones you would. Push it too hard and its answers can fall apart, which is worth seeing too.',
-  },
-  'panel.adapters': {
-    title: 'Adapters',
-    text: 'An adapter is what each of the three ways leaves behind: a small file of changes that only works on top of the model it started from. The original model stays as it was; original plus adapter is your trained model. Here export joins the two into one model and hands it to Ollama, so you can chat with it next to the original and hear what changed. Adapters are small, which also makes them the easiest thing to share.',
-  },
-  'panel.merge': {
-    title: 'Merge · blend',
-    text: 'The third of the three ways to change a model. Merging blends two adapters that were trained on the same starting model into a third one. The slider sets the mix: all of A at one end, all of B at the other, an even blend in the middle. What the blend does is not always halfway between the two. Chatting with all three side by side is how you find out.',
-  },
-  'panel.chat': {
-    title: 'Chat',
-    text: 'Type one question and two to four models answer it at the same time, side by side. This is where you compare: the original and what you made of it, two different models, or a series of blends. Each answer also appears in the terminal below as the command that produced it, and every conversation is saved, so the answers you liked can become training data later.',
-  },
-  'panel.share': {
-    title: 'Share',
-    text: 'Everything you make here is a folder: a dataset, an adapter, a training run. Sharing means zipping that folder so someone else can open exactly what you made, along with its record of where it came from. Download a zip to send it, or add a zip someone sent you and it goes back to where it belongs.',
-  },
-  /* ---- Models ---- */
-  'models.get': {
-    title: 'Get',
-    text: 'This model is not in Ollama\'s library, so it can\'t be pulled. Get downloads its two files from Hugging Face (the language model, and the projector that turns a picture into its tokens) into workspace/tools, writes a Modelfile naming both, and runs ollama create.',
-  },
-  'models.pull': {
-    title: 'Download this model',
-    text: 'Downloads the model into Ollama so it can run on this computer. The line shows the exact command, and clicking it runs that command in the terminal below. Progress shows on the card and in the terminal. Models are big: from a few hundred megabytes to several gigabytes.',
-  },
-  'models.chat': {
-    title: 'Chat with it',
-    text: 'Opens Chat with this model in the second column, next to whatever is in the first.',
-  },
-  'models.modelfile': {
-    title: 'Its recipe card',
-    text: 'Opens this model\'s Modelfile, the short text that says which weights to load and how to use them, so you can make a variant of it.',
-  },
-  'models.rm': {
-    title: 'Remove',
-    text: 'Deletes the model from Ollama to free disk space. It asks first. You can download it again later, and anything you made from it stays where it is.',
-  },
-  /* ---- Modelfile ---- */
-  'modelfile.startFrom': {
-    title: 'Start from',
-    text: 'The model your variant is based on. Its weights stay exactly as they are; you are only adding words. Bigger models follow instructions more closely than small ones.',
-  },
-  'modelfile.preset': {
-    title: 'Preset',
-    text: 'A ready-made set of instructions, temperature and example that changes answers in an obvious way. Pick one to fill in the form, then change anything you like.',
-  },
-  'modelfile.name': {
-    title: 'Name',
-    text: 'What the variant will be called. It appears in the Models tab, inside the card of the model it was made from.',
-  },
-  'modelfile.create': {
-    title: 'Make the variant',
-    text: 'Saves your words as a Modelfile and asks Ollama to make a new model from it. It takes a second, because no weights are copied or changed: the new model uses the same numbers with your words added.',
-  },
-  'modelfile.try': {
-    title: 'Ask both',
-    text: 'Sends the same question to the original and to your variant, and shows both answers side by side, so you can see what your words changed.',
-  },
-  'modelfile.chat': {
-    title: 'Keep talking',
-    text: 'Opens Chat with the original and your variant side by side, for longer comparisons.',
-  },
-  'modelfile.open': {
-    title: 'Open',
-    text: 'Loads this variant back into the form, so you can change its words and make it again.',
-  },
-  'modelfile.keep': {
-    title: 'Keep it',
-    text: 'Variants you make here are temporary: when Variable Machine stops, they are removed so a class of experiments doesn\'t pile up on the computer. Keep the ones you want to come back to; they stay in Ollama and in workspace/modelfiles until you remove them yourself.',
-  },
-  /* ---- Data ---- */
-  'data.import': {
-    title: 'Import',
-    text: 'Copies examples from a public collection into a new dataset here. The license is read from the source while it downloads and written into the dataset\'s record, so you always know the terms.',
-  },
-  'data.raw': {
-    title: 'Fetch raw material',
-    text: 'Downloads a book or a table and cuts it into passages. These are not training examples yet. They are material you can ask a model to write examples from, further down this screen.',
-  },
-  'data.new': {
-    title: 'Start an empty dataset',
-    text: 'Makes a new, empty dataset to fill yourself. "chat" holds questions with the answers you want. "preference" holds pairs of answers where you say which one is better, for the Prefer screen.',
-  },
-  'data.choose': {
-    title: 'Choose a dataset',
-    text: 'Each card is one set of examples. "To imitate" sets teach a model to answer like their answers, on the Train tab; "chosen vs rejected" sets teach it to prefer one kind of answer, on the Prefer tab. Choose one to see what is in it and get it ready, or make a new one to bring in one you found.',
-  },
-  'data.contents': {
-    title: 'What is in it',
-    text: 'What the dataset is, one example row, how many rows it has and how many are set aside for testing, where the rows came from and the license they carry. The license passes on to anything you train with it.',
-  },
-  'data.ready': {
-    title: 'Get it ready',
-    text: 'Three checks before training, each a command you can see in the terminal. Check finds rows a model can\'t learn from. Count measures how long the rows are. Split sets some rows aside as the test. Training needs a split dataset; the other two are worth doing once.',
-  },
-  'data.use': {
-    title: 'Use it',
-    text: 'Takes you to another tab: Train for a dataset to imitate, Prefer for a chosen vs rejected one. That tab opens with this dataset already picked, ready to train. Come back to Data with the 3 · data tab at the top.',
-  },
-  'data.useButton': {
-    title: 'Opens another tab',
-    text: 'This leaves the Data tab and opens Train (or Prefer) with this dataset chosen. Nothing starts until you press the train line there.',
-  },
-  'data.more': {
-    title: 'Add rows',
-    text: 'More rows for this dataset. A model writes new ones in the style of the rows you already have (or from a book you brought in), and you keep the good ones. For a chosen vs rejected set, the pairs come from questions you asked two models in Chat.',
-  },
-  'data.rows': {
-    title: 'The rows',
-    text: 'Every row in the dataset, as training will read it: the question and the answer it should learn. "valid" shows the rows set aside for testing. Problems lists rows a model can\'t learn from.',
-  },
-  'data.all': {
-    title: 'All datasets',
-    text: 'Back to every dataset as cards, where you can choose another or make a new one.',
-  },
-  'data.opendata': {
-    title: 'Search',
-    text: 'Searches the portal\'s catalog for tables. Each result says who published it and its license; its title opens the dataset\'s page, where you can read more. Nothing downloads until you choose a table and bring it in.',
-  },
-  'data.template': {
-    title: 'Make questions and answers',
-    text: 'Fills your question and answer from each row of the table and saves them as a dataset, ready to check, split and train on. Rows with an empty blank (or a 0, if you said so) are left out, and so are repeated questions.',
-  },
-  'data.getTable': {
-    title: 'Download the table',
-    text: 'Fetches the whole table these rows were made from, straight from the portal that publishes it, with its license. Then you can write your own questions from it: other columns, other wording, more rows.',
-  },
-  'next.export': {
-    title: 'Export, import, chat',
-    text: 'Runs export: the adapter is folded into a copy of the model it was trained on, and Ollama imports that copy under your adapter\'s name. When it is done, Chat opens with the original and yours side by side.',
-  },
-  'data.hf': {
-    title: 'Bring it in from Hugging Face',
-    text: 'Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns.',
-  },
-  'data.upload': {
-    title: 'Choose a file',
-    text: 'Copies a .csv, .jsonl or .json file from this computer into workspace/uploads. Nothing leaves the computer. Then "make it a dataset" reads its columns into rows.',
-  },
-  'data.describe': {
-    title: 'Describe it',
-    text: 'Your own words about what this dataset is and what a model would learn from it. It shows on the dataset\'s card and travels with it when you share it.',
-  },
-  'data.validate': {
-    title: 'Check for mistakes',
-    text: 'Checks that every example is in the shape training needs: a question and an answer, with nothing empty. If something is wrong, it says which line.',
-  },
-  'data.count': {
-    title: 'Count',
-    text: 'Estimates how much text there is in tokens, the word pieces a model reads. Examples longer than the limit get cut off during training, and this tells you how many there are.',
-  },
-  'data.split': {
-    title: 'Set some aside',
-    text: 'Puts a share of your examples to one side, where training never sees them. They are the test: if the model does well on these, it learned something rather than memorising. The slider sets how many.',
-  },
-  'data.generate': {
-    title: 'Write new examples',
-    text: 'Asks a model to write new examples in the style of yours, or from the passage above if you picked one. They appear one by one below. Nothing is added to your dataset until you keep it.',
-  },
-  'data.keep': {
-    title: 'Keep',
-    text: 'Adds this example to the dataset, with a note saying which model wrote it. Edit the text first if you want to fix it.',
-  },
-  'data.reject': {
-    title: 'Reject',
-    text: 'Throws this example away. Nothing is saved.',
-  },
-  'data.rule': {
-    title: 'Pair them all',
-    text: 'For every question both models answered in Chat, makes a pair with the first model\'s answer marked as the one you prefer. Pairs already in the set are skipped.',
-  },
-  'data.chosen': {
-    title: 'The better answer',
-    text: 'Marks this answer as the one you prefer. Mark another as rejected, then add the pair.',
-  },
-  'data.rejected': {
-    title: 'The worse answer',
-    text: 'Marks this answer as the one you would rather the model did not give.',
-  },
-  /* ---- Train ---- */
-  'train.base': {
-    title: 'Starting model',
-    text: 'The model training starts from. Training adds to it, and the original is never changed. The smaller one is quicker and fits on any 16GB Mac.',
-  },
-  'train.data': {
-    title: 'Examples',
-    text: 'The dataset to learn from. Only datasets with some examples set aside appear here, because those are how training checks itself.',
-  },
-  'train.type': {
-    title: 'Kind of training',
-    text: 'LoRA learns a small add-on and is the usual choice. DoRA is a variation that can learn a little more for about the same cost. Full changes every number in the model: it is the slowest, needs the most memory, and makes a whole new model rather than an add-on.',
-  },
-  'train.rank': {
-    title: 'Rank',
-    text: 'How big the add-on is. A higher rank can pick up finer habits, but it takes more memory and can memorise more easily.',
-  },
-  'train.layers': {
-    title: 'Layers',
-    text: 'A model is a stack of layers. This is how many of them get an add-on, counting from the top. More layers means more change and more memory.',
-  },
-  'train.lr': {
-    title: 'Learning rate',
-    text: 'How big each nudge is. Too small and nothing changes; too big and the model forgets what it knew. 1e-4 means 0.0001.',
-  },
-  'train.iters': {
-    title: 'Iterations',
-    text: 'How many nudges in total. Each one looks at a small batch of your examples. 200 is a good start for a few hundred examples.',
-  },
-  'train.batch': {
-    title: 'Batch',
-    text: 'How many examples each nudge looks at. Bigger is steadier but needs more memory. With the larger model on a 16GB Mac, use 1.',
-  },
-  'train.maxSeq': {
-    title: 'Longest example',
-    text: 'The longest example, in word pieces, the model will read. Anything longer is cut off. A higher limit needs more memory.',
-  },
-  'train.evalEvery': {
-    title: 'Check every',
-    text: 'How often training tests itself on the examples you set aside. Those tests are the dashed line on the chart.',
-  },
-  'train.run': {
-    title: 'Start training',
-    text: 'Starts training with exactly these settings. Ollama\'s models are put away first to free memory. Every step and its output appear in the terminal, and everything is saved in a folder under runs.',
-  },
-  'train.stop': {
-    title: 'Stop',
-    text: 'Stops training partway. A stopped run does not leave an adapter you can export, so start it again to finish.',
-  },
-  /* ---- Prefer ---- */
-  'prefer.model': {
-    title: 'Starting model',
-    text: 'The model to tune. It can be an original or one you already trained and exported (a "fused" model).',
-  },
-  'prefer.data': {
-    title: 'Preference pairs',
-    text: 'Pairs of answers where you said which one is better. Build them in the Data screen from your Chat conversations. Some pairs are set aside to test with.',
-  },
-  'prefer.beta': {
-    title: 'Beta',
-    text: 'How far the model may move from where it started. A smaller number lets it change more.',
-  },
-  'prefer.iters': {
-    title: 'Iterations',
-    text: 'How many nudges toward the answers you preferred. More is not always better: push too far and the answers fall apart.',
-  },
-  'prefer.lr': {
-    title: 'Learning rate',
-    text: 'How big each nudge is. 2e-5 (0.00002) is a careful start. Raise it and the change comes faster, until the answers start to collapse.',
-  },
-  'prefer.run': {
-    title: 'Start',
-    text: 'Starts preference training with these settings. Afterwards it tests the pairs you set aside and shows how often the model now favours the answer you chose, before and after.',
-  },
-  /* ---- Adapters ---- */
-  'adapters.quantize': {
-    title: 'How Ollama stores it',
-    text: 'int8 keeps the model close to the original at about half the size. int4 is smaller again but a little rougher. fp16 keeps it exactly as it is, at full size.',
-  },
-  'adapters.try': {
-    title: 'Ask',
-    text: 'Asks the original model and the trained one the same question, one after the other, and shows their answers next to the answer the dataset gives. The trained model should sound more like the data.',
-  },
-  'adapters.remove': {
-    title: 'Remove',
-    text: 'Moves this adapter to the Trash and removes the model exported from it from Ollama, to free the disk and start again. The run and its chart stay on the Train tab. You can put the adapter back from the Trash.',
-  },
-  'adapters.export': {
-    title: 'Make it chattable',
-    text: 'Folds the adapter into its model, then gives the result to Ollama as a new model you can chat with. It takes a few seconds.',
-  },
-  'adapters.chat': {
-    title: 'Compare',
-    text: 'Opens Chat with the original model in one column and this one in the next, so you can hear the difference.',
-  },
-  'adapters.register': {
-    title: 'Give it to Ollama',
-    text: 'This model is already folded together. Registering hands it to Ollama so you can chat with it.',
-  },
-  /* ---- Merge ---- */
-  'merge.a': {
-    title: 'Adapter A',
-    text: 'One of the two adapters to blend. Its share is 1 minus the slider.',
-  },
-  'merge.b': {
-    title: 'Adapter B',
-    text: 'The other adapter. Only adapters trained on the same model with the same settings can be blended, so the list shows just those.',
-  },
-  'merge.t': {
-    title: 'The mix',
-    text: 'All of A at the left, all of B at the right, an even blend in the middle. Try a few points along the way and compare them in Chat.',
-  },
-  'merge.run': {
-    title: 'Blend',
-    text: 'Makes the blend, number by number, and saves it as a new adapter. Export it from its card below to chat with it.',
-  },
-  'merge.chat': {
-    title: 'Compare all three',
-    text: 'Opens Chat with A, B and the blend side by side, so you can hear whether the blend really sits between them.',
-  },
-  'data.picture': {
-    title: 'Add the row',
-    text: 'Adds one row: the photo, the question and your answer. The photo is copied into the dataset folder, so the dataset is complete on its own, and its credit and license are written into the dataset\'s record.',
-  },
-  'data.pictureAnswer': {
-    title: 'The answer you want',
-    text: 'What a model that sees should say about this photo. Training learns the way you answer: how long, in what voice, what you notice first. Answer every photo the same way and the model will pick that way up.',
-  },
-  /* ---- Chat ---- */
-  'chat.model': {
-    title: 'Which model',
-    text: 'The model that answers in this column. Change it at any time. Earlier answers stay where they are.',
-  },
-  'chat.addColumn': {
-    title: 'Another column',
-    text: 'Adds a column, up to four, so more models can answer the same question side by side.',
-  },
-  'chat.picture': {
-    title: 'A picture',
-    text: 'Sends a picture with your question, from the photos in your image sets. Models that see (like SmolVLM) look at it and answer about it; models that only write get the words alone, and say so. The terminal shows it as --image and the file it is.',
-  },
-  'chat.pictureAdd': {
-    title: 'Add a photo',
-    text: 'Copies a photo from your computer into the chosen image set (or a new one called chat-photos), so the Look tab and the Data tab can use it too. JPEG, PNG or WebP.',
-  },
-  'chat.send': {
-    title: 'Ask',
-    text: 'Sends your question to every column at once. Each answer streams in as it is written, and each exchange is saved in the chat log.',
-  },
-  /* ---- Share ---- */
-  'share.zip': {
-    title: 'Zip',
-    text: 'Packs this folder, with its record of where it came from, into one zip file you can send to someone.',
-  },
-  'share.download': {
-    title: 'Download',
-    text: 'Saves the zip through your browser, usually into Downloads, ready to send.',
-  },
-  'share.unzip': {
-    title: 'Unzip',
-    text: 'Unpacks a zip someone sent you and puts it back where it belongs. It checks the zip first and never overwrites anything you already have.',
-  },
-  'share.upload': {
-    title: 'Add a zip',
-    text: 'Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card.',
-  },
-  /* ---- Look ---- */
-  'panel.move': {
-    title: 'Move',
-    text: 'The kind of model that moves: a tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.',
-  },
-  'move.get': {
-    title: 'Download the tracker',
-    text: 'Downloads the tracker, one small file from Google\'s MediaPipe, into workspace/tools. It runs in this page. You don\'t train it: it finds the points, and your own model names the gesture.',
-  },
-  'move.set': {
-    title: 'Gesture set',
-    text: 'A set of your gestures, with the examples you recorded and the model trained on them, in workspace/gestures. A set follows hands or a body, not both.',
-  },
-  'move.new': {
-    title: 'Make a set',
-    text: 'Starts a new gesture set for hands or for a body. Then name a gesture and record some examples of it.',
-  },
-  'move.record': {
-    title: 'Hold to record',
-    text: 'While you hold the button, the shape of your hand (or body) is recorded ten times a second: the points, measured from the wrist (or hips), so the same gesture reads the same anywhere in the picture. Move a little while you hold it, so the examples vary: 20 to 50 of each gesture is plenty.',
-  },
-  'move.train': {
-    title: 'Train',
-    text: 'k-nearest neighbours: a new pose is compared with every example you recorded, and the 5 closest vote. Training keeps your examples, after checking it on every fifth one set aside. The grid shows the check: each gesture you made, down the side, and what it was named, across. Mistakes off the diagonal show which gestures look alike to it.',
-  },
-  'move.test': {
-    title: 'Test it live',
-    text: 'Names your gesture as you make it, and shows how many of the nearest examples agree. Try the gestures it mixes up, and record more examples of them.',
-  },
-  'move.send': {
-    title: 'Send it on',
-    text: 'While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture\'s name and how sure it is (0 to 1). In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer.',
-  },
-  'panel.voice': {
-    title: 'Voice',
-    text: 'Two kinds of model, used as they are: one that speaks (text in, a voice out) and one that listens (a recording in, what was said out). Type something and Soprano reads it aloud; record your voice and Qwen3-ASR writes down what it heard, in 52 languages and dialects. Both run on this computer, and the first use of each downloads it. Every sound is a WAV file in workspace/audio, with a record of where it came from and what was heard in it.',
-  },
-  'voice.speak': {
-    title: 'Speak',
-    text: 'Soprano reads the text aloud and saves it as a WAV file in workspace/audio/spoken. It has one voice, on purpose: it can\'t copy anyone\'s. Press listen on the result to hear what the listening model makes of it: a round trip from text to voice and back.',
-  },
-  'voice.record': {
-    title: 'Record',
-    text: 'Records your microphone in this page until you press again, then saves it as a WAV file in workspace/audio/recorded and has the listening model (Qwen3-ASR) write down what it heard straight away. The browser asks first. Nothing is sent anywhere.',
-  },
-  'voice.listen': {
-    title: 'Listen',
-    text: 'Qwen3-ASR writes down what it hears in this sound, in whichever language it hears. What it heard is saved next to the sound, and in the set\'s record.',
-  },
-  'panel.look': {
-    title: 'Look',
-    text: 'Image tools, the kind of model that looks: cut something out, the distance between blobs, select a blob. A blob is early computer vision\'s word for a region of a picture that stands out from what surrounds it: an object, as the computer finds it. The tools are ready-made models you download once; you don\'t train them. They run inside this page, on your computer, and nothing is sent anywhere. Bring your photos into a set, pick one, and run a tool. What it makes is saved in workspace/outputs with a record of which photo and which model made it.',
-  },
-  'look.get': {
-    title: 'Download this tool',
-    text: 'Fetches the model\'s files from Hugging Face into workspace/tools, one file at a time, with curl. You can watch it in the terminal. You only do this once.',
-  },
-  'look.set': {
-    title: 'Image set',
-    text: 'A set is a folder of photos in workspace/images. Keep one set per project, so what you make from it stays together.',
-  },
-  'look.license': {
-    title: 'Whose photos',
-    text: 'Written into the set\'s record, and carried by everything made from it. If they are your own photos of your own work, leave it as it is. If they are someone else\'s, write whose, and under what license.',
-  },
-  'look.photos': {
-    title: 'Add photos',
-    text: 'Copies photos from your computer into the set. JPEG, PNG or WebP.',
-  },
-  'look.example': {
-    title: 'The example photos',
-    text: 'Four classic subjects of computer science, to try the tools on before your own: the rubber duck programmers explain their code to, a duck in a glass bowl, the Utah teapot that early 3D graphics drew again and again, and the Stanford bunny, a 3D scan used to test graphics for thirty years. Each photo\'s author and license are in the set\'s record.',
-  },
-  'look.camera': {
-    title: 'Take a photo',
-    text: 'Opens your camera in this page. Nothing is recorded or saved until you press "keep this one", and then only that one frame goes into the set.',
-  },
-  'look.click': {
-    title: 'Click to select a blob',
-    text: 'For select a blob: click on the object you want, and it outlines that blob. Click more places on it to add to the selection. Shift-click a place that is not part of it.',
-  },
-  'look.cutout': {
-    title: 'Cut something out',
-    text: 'Separates the main object in the photo, the blob that stands out most, from its background. You get a PNG with a transparent background: ready for a portfolio, a layout or a projection.',
-  },
-  'look.depth': {
-    title: 'Distance between blobs',
-    text: 'A depth map: guesses how near or far each blob and each part of the photo is. Near is light, far is dark. It is a guess from one picture, not a measurement, but it is often good enough for relief, displacement or projection mapping.',
-  },
-  'look.select': {
-    title: 'Select a blob',
-    text: 'Outlines the blob you clicked on and cuts it out. Use it when the photo has more than one object in it, or cut something out picked the wrong one.',
-  },
-  'look.all': {
-    title: 'Every photo in the set',
-    text: 'Runs the same tool on every photo in the set, one after another. Each one is its own command in the terminal.',
-  },
+  "panel.models": { title: "Models", text: "A model is the thing that answers when you type to it: a large file of numbers learned from text, packaged so it can run on your computer. This screen lists the language models (they write: text in, text out) and, at the bottom, the image tools (they look). For the language models there are two lists. \"Runs on\" models live in Ollama, the program that runs them here, and they are the ones you can chat with. \"Trains on\" models are starting points you can teach new habits to. Each card shows the model's license, which says what you are allowed to do with it, and the library at the bottom lets you download more." },
+  "panel.modelfile": { title: "Modelfile", text: "Change how a model behaves using only words: standing instructions, how adventurous it is, and an example to imitate. No training, and the weights stay exactly the same. Pick a preset or write your own, make the variant, and see its answer next to the original right on this screen. Behind it is a short file, the Modelfile, which you can open to see what each line does." },
+  "panel.data": { title: "Data", text: "Training data is a pile of examples: a question, and the answer you would like the model to give. Here you collect them. Bring in a public set, start from one of the examples, or ask a model to write new ones from a book or a table and keep only the ones you like. You also check them for mistakes and set a few aside to test with later. Every set keeps a record of where each example came from and the license it came with, so you always know whose words these are." },
+  "panel.start": { title: "Start", text: "A map of the whole app. Each box is a tab and each line is what one passes to the next: a model, your words, examples, an adapter. Click a box to open that tab. Start here if you are new." },
+  "panel.about": { title: "About the process", text: "The long form of the map, in words: every tab with what it does, what it takes, what it gives and where that leads. Not a step on the path; a place to read." },
+  "panel.train": { title: "Train · imitate", text: "The first of the three ways to change a model. Training shows the model your examples over and over and nudges its numbers so its answers come out more like them. It leaves the model itself as it was and learns a small set of changes, called an adapter, kept apart from it. The solid line on the chart is how far off the model still is on your examples, and it should fall. The dashed line is the examples you set aside. If it starts rising while the solid line keeps falling, the model is memorising your examples rather than learning from them." },
+  "panel.prefer": { title: "Prefer", text: "The second of the three ways to change a model. Instead of showing the model the right answer, here you show it two answers and say which one you like better, and it learns to lean toward the kind you chose. The pairs come from your own conversations in Chat. Afterwards it is tested on pairs it never saw, to see whether it now favours the ones you would. Push it too hard and its answers can fall apart, which is worth seeing too." },
+  "panel.adapters": { title: "Adapters", text: "An adapter is what each of the three ways leaves behind: a small file of changes that only works on top of the model it started from. The original model stays as it was; original plus adapter is your trained model. Here export joins the two into one model and hands it to Ollama, so you can chat with it next to the original and hear what changed. Adapters are small, which also makes them the easiest thing to share." },
+  "panel.merge": { title: "Merge · blend", text: "The third of the three ways to change a model. Merging blends two adapters that were trained on the same starting model into a third one. The slider sets the mix: all of A at one end, all of B at the other, an even blend in the middle. What the blend does is not always halfway between the two. Chatting with all three side by side is how you find out." },
+  "panel.chat": { title: "Chat", text: "Type one question and two to four models answer it at the same time, side by side. This is where you compare: the original and what you made of it, two different models, or a series of blends. Each answer also appears in the terminal below as the command that produced it, and every conversation is saved, so the answers you liked can become training data later." },
+  "panel.share": { title: "Share", text: "Everything you make here is a folder: a dataset, an adapter, a training run. Sharing means zipping that folder so someone else can open exactly what you made, along with its record of where it came from. Download a zip to send it, or add a zip someone sent you and it goes back to where it belongs." },
+  "models.get": { title: "Get", text: "This model is not in Ollama's library, so it can't be pulled. Get downloads its two files from Hugging Face (the language model, and the projector that turns a picture into its tokens) into workspace/tools, writes a Modelfile naming both, and runs ollama create." },
+  "models.pull": { title: "Download this model", text: "Downloads the model into Ollama so it can run on this computer. The line shows the exact command, and clicking it runs that command in the terminal below. Progress shows on the card and in the terminal. Models are big: from a few hundred megabytes to several gigabytes." },
+  "models.chat": { title: "Chat with it", text: "Opens Chat with this model in the second column, next to whatever is in the first." },
+  "models.modelfile": { title: "Its recipe card", text: "Opens this model's Modelfile, the short text that says which weights to load and how to use them, so you can make a variant of it." },
+  "models.rm": { title: "Remove", text: "Deletes the model from Ollama to free disk space. It asks first. You can download it again later, and anything you made from it stays where it is." },
+  "modelfile.startFrom": { title: "Start from", text: "The model your variant is based on. Its weights stay exactly as they are; you are only adding words. Bigger models follow instructions more closely than small ones." },
+  "modelfile.preset": { title: "Preset", text: "A ready-made set of instructions, temperature and example that changes answers in an obvious way. Pick one to fill in the form, then change anything you like." },
+  "modelfile.name": { title: "Name", text: "What the variant will be called. It appears in the Models tab, inside the card of the model it was made from." },
+  "modelfile.create": { title: "Make the variant", text: "Saves your words as a Modelfile and asks Ollama to make a new model from it. It takes a second, because no weights are copied or changed: the new model uses the same numbers with your words added." },
+  "modelfile.try": { title: "Ask both", text: "Sends the same question to the original and to your variant, and shows both answers side by side, so you can see what your words changed." },
+  "modelfile.chat": { title: "Keep talking", text: "Opens Chat with the original and your variant side by side, for longer comparisons." },
+  "modelfile.open": { title: "Open", text: "Loads this variant back into the form, so you can change its words and make it again." },
+  "modelfile.keep": { title: "Keep it", text: "Variants you make here are temporary: when Variable Machine stops, they are removed so a class of experiments doesn't pile up on the computer. Keep the ones you want to come back to; they stay in Ollama and in workspace/modelfiles until you remove them yourself." },
+  "data.import": { title: "Import", text: "Copies examples from a public collection into a new dataset here. The license is read from the source while it downloads and written into the dataset's record, so you always know the terms." },
+  "data.raw": { title: "Fetch raw material", text: "Downloads a book or a table and cuts it into passages. These are not training examples yet. They are material you can ask a model to write examples from, further down this screen." },
+  "data.new": { title: "Start an empty dataset", text: "Makes a new, empty dataset to fill yourself. \"chat\" holds questions with the answers you want. \"preference\" holds pairs of answers where you say which one is better, for the Prefer screen." },
+  "data.choose": { title: "Choose a dataset", text: "Each card is one set of examples. \"To imitate\" sets teach a model to answer like their answers, on the Train tab; \"chosen vs rejected\" sets teach it to prefer one kind of answer, on the Prefer tab. Choose one to see what is in it and get it ready, or make a new one to bring in one you found." },
+  "data.contents": { title: "What is in it", text: "What the dataset is, one example row, how many rows it has and how many are set aside for testing, where the rows came from and the license they carry. The license passes on to anything you train with it." },
+  "data.ready": { title: "Get it ready", text: "Three checks before training, each a command you can see in the terminal. Check finds rows a model can't learn from. Count measures how long the rows are. Split sets some rows aside as the test. Training needs a split dataset; the other two are worth doing once." },
+  "data.use": { title: "Use it", text: "Takes you to another tab: Train for a dataset to imitate, Prefer for a chosen vs rejected one. That tab opens with this dataset already picked, ready to train. Come back to Data with the 3 · data tab at the top." },
+  "data.useButton": { title: "Opens another tab", text: "This leaves the Data tab and opens Train (or Prefer) with this dataset chosen. Nothing starts until you press the train line there." },
+  "data.more": { title: "Add rows", text: "More rows for this dataset. A model writes new ones in the style of the rows you already have (or from a book you brought in), and you keep the good ones. For a chosen vs rejected set, the pairs come from questions you asked two models in Chat." },
+  "data.rows": { title: "The rows", text: "Every row in the dataset, as training will read it: the question and the answer it should learn. \"valid\" shows the rows set aside for testing. Problems lists rows a model can't learn from." },
+  "data.all": { title: "All datasets", text: "Back to every dataset as cards, where you can choose another or make a new one." },
+  "data.opendata": { title: "Search", text: "Searches the portal's catalog for tables. Each result says who published it and its license; its title opens the dataset's page, where you can read more. Nothing downloads until you choose a table and bring it in." },
+  "data.template": { title: "Make questions and answers", text: "Fills your question and answer from each row of the table and saves them as a dataset, ready to check, split and train on. Rows with an empty blank (or a 0, if you said so) are left out, and so are repeated questions." },
+  "data.getTable": { title: "Download the table", text: "Fetches the whole table these rows were made from, straight from the portal that publishes it, with its license. Then you can write your own questions from it: other columns, other wording, more rows." },
+  "next.export": { title: "Export, import, chat", text: "Runs export: the adapter is folded into a copy of the model it was trained on, and Ollama imports that copy under your adapter's name. When it is done, Chat opens with the original and yours side by side." },
+  "data.hf": { title: "Bring it in from Hugging Face", text: "Reads rows from the dataset viewer on Hugging Face, works out which column is the question and which the answer, and makes them a dataset here. The license on the dataset card is recorded with it. The terminal says how it read the columns." },
+  "data.upload": { title: "Choose a file", text: "Copies a .csv, .jsonl or .json file from this computer into workspace/uploads. Nothing leaves the computer. Then \"make it a dataset\" reads its columns into rows." },
+  "data.describe": { title: "Describe it", text: "Your own words about what this dataset is and what a model would learn from it. It shows on the dataset's card and travels with it when you share it." },
+  "data.validate": { title: "Check for mistakes", text: "Checks that every example is in the shape training needs: a question and an answer, with nothing empty. If something is wrong, it says which line." },
+  "data.count": { title: "Count", text: "Estimates how much text there is in tokens, the word pieces a model reads. Examples longer than the limit get cut off during training, and this tells you how many there are." },
+  "data.split": { title: "Set some aside", text: "Puts a share of your examples to one side, where training never sees them. They are the test: if the model does well on these, it learned something rather than memorising. The slider sets how many." },
+  "data.generate": { title: "Write new examples", text: "Asks a model to write new examples in the style of yours, or from the passage above if you picked one. They appear one by one below. Nothing is added to your dataset until you keep it." },
+  "data.keep": { title: "Keep", text: "Adds this example to the dataset, with a note saying which model wrote it. Edit the text first if you want to fix it." },
+  "data.reject": { title: "Reject", text: "Throws this example away. Nothing is saved." },
+  "data.rule": { title: "Pair them all", text: "For every question both models answered in Chat, makes a pair with the first model's answer marked as the one you prefer. Pairs already in the set are skipped." },
+  "data.chosen": { title: "The better answer", text: "Marks this answer as the one you prefer. Mark another as rejected, then add the pair." },
+  "data.rejected": { title: "The worse answer", text: "Marks this answer as the one you would rather the model did not give." },
+  "train.base": { title: "Starting model", text: "The model training starts from. Training adds to it, and the original is never changed. The smaller one is quicker and fits on any 16GB Mac." },
+  "train.data": { title: "Examples", text: "The dataset to learn from. Only datasets with some examples set aside appear here, because those are how training checks itself." },
+  "train.type": { title: "Kind of training", text: "LoRA learns a small add-on and is the usual choice. DoRA is a variation that can learn a little more for about the same cost. Full changes every number in the model: it is the slowest, needs the most memory, and makes a whole new model rather than an add-on." },
+  "train.rank": { title: "Rank", text: "How big the add-on is. A higher rank can pick up finer habits, but it takes more memory and can memorise more easily." },
+  "train.layers": { title: "Layers", text: "A model is a stack of layers. This is how many of them get an add-on, counting from the top. More layers means more change and more memory." },
+  "train.lr": { title: "Learning rate", text: "How big each nudge is. Too small and nothing changes; too big and the model forgets what it knew. 1e-4 means 0.0001." },
+  "train.iters": { title: "Iterations", text: "How many nudges in total. Each one looks at a small batch of your examples. 200 is a good start for a few hundred examples." },
+  "train.batch": { title: "Batch", text: "How many examples each nudge looks at. Bigger is steadier but needs more memory. With the larger model on a 16GB Mac, use 1." },
+  "train.maxSeq": { title: "Longest example", text: "The longest example, in word pieces, the model will read. Anything longer is cut off. A higher limit needs more memory." },
+  "train.evalEvery": { title: "Check every", text: "How often training tests itself on the examples you set aside. Those tests are the dashed line on the chart." },
+  "train.run": { title: "Start training", text: "Starts training with exactly these settings. Ollama's models are put away first to free memory. Every step and its output appear in the terminal, and everything is saved in a folder under runs." },
+  "train.stop": { title: "Stop", text: "Stops training partway. A stopped run does not leave an adapter you can export, so start it again to finish." },
+  "prefer.model": { title: "Starting model", text: "The model to tune. It can be an original or one you already trained and exported (a \"fused\" model)." },
+  "prefer.data": { title: "Preference pairs", text: "Pairs of answers where you said which one is better. Build them in the Data screen from your Chat conversations. Some pairs are set aside to test with." },
+  "prefer.beta": { title: "Beta", text: "How far the model may move from where it started. A smaller number lets it change more." },
+  "prefer.iters": { title: "Iterations", text: "How many nudges toward the answers you preferred. More is not always better: push too far and the answers fall apart." },
+  "prefer.lr": { title: "Learning rate", text: "How big each nudge is. 2e-5 (0.00002) is a careful start. Raise it and the change comes faster, until the answers start to collapse." },
+  "prefer.run": { title: "Start", text: "Starts preference training with these settings. Afterwards it tests the pairs you set aside and shows how often the model now favours the answer you chose, before and after." },
+  "adapters.quantize": { title: "How Ollama stores it", text: "int8 keeps the model close to the original at about half the size. int4 is smaller again but a little rougher. fp16 keeps it exactly as it is, at full size." },
+  "adapters.try": { title: "Ask", text: "Asks the original model and the trained one the same question, one after the other, and shows their answers next to the answer the dataset gives. The trained model should sound more like the data." },
+  "adapters.remove": { title: "Remove", text: "Moves this adapter to the Trash and removes the model exported from it from Ollama, to free the disk and start again. The run and its chart stay on the Train tab. You can put the adapter back from the Trash." },
+  "adapters.export": { title: "Make it chattable", text: "Folds the adapter into its model, then gives the result to Ollama as a new model you can chat with. It takes a few seconds." },
+  "adapters.chat": { title: "Compare", text: "Opens Chat with the original model in one column and this one in the next, so you can hear the difference." },
+  "adapters.register": { title: "Give it to Ollama", text: "This model is already folded together. Registering hands it to Ollama so you can chat with it." },
+  "merge.a": { title: "Adapter A", text: "One of the two adapters to blend. Its share is 1 minus the slider." },
+  "merge.b": { title: "Adapter B", text: "The other adapter. Only adapters trained on the same model with the same settings can be blended, so the list shows just those." },
+  "merge.t": { title: "The mix", text: "All of A at the left, all of B at the right, an even blend in the middle. Try a few points along the way and compare them in Chat." },
+  "merge.run": { title: "Blend", text: "Makes the blend, number by number, and saves it as a new adapter. Export it from its card below to chat with it." },
+  "merge.chat": { title: "Compare all three", text: "Opens Chat with A, B and the blend side by side, so you can hear whether the blend really sits between them." },
+  "data.picture": { title: "Add the row", text: "Adds one row: the photo, the question and your answer. The photo is copied into the dataset folder, so the dataset is complete on its own, and its credit and license are written into the dataset's record." },
+  "data.pictureAnswer": { title: "The answer you want", text: "What a model that sees should say about this photo. Training learns the way you answer: how long, in what voice, what you notice first. Answer every photo the same way and the model will pick that way up." },
+  "chat.model": { title: "Which model", text: "The model that answers in this column. Change it at any time. Earlier answers stay where they are." },
+  "chat.addColumn": { title: "Another column", text: "Adds a column, up to four, so more models can answer the same question side by side." },
+  "chat.picture": { title: "A picture", text: "Sends a picture with your question, from the photos in your image sets. Models that see (like SmolVLM) look at it and answer about it; models that only write get the words alone, and say so. The terminal shows it as --image and the file it is." },
+  "chat.pictureAdd": { title: "Add a photo", text: "Copies a photo from your computer into the chosen image set (or a new one called chat-photos), so the Look tab and the Data tab can use it too. JPEG, PNG or WebP." },
+  "chat.send": { title: "Ask", text: "Sends your question to every column at once. Each answer streams in as it is written, and each exchange is saved in the chat log." },
+  "share.zip": { title: "Zip", text: "Packs this folder, with its record of where it came from, into one zip file you can send to someone." },
+  "share.download": { title: "Download", text: "Saves the zip through your browser, usually into Downloads, ready to send." },
+  "share.unzip": { title: "Unzip", text: "Unpacks a zip someone sent you and puts it back where it belongs. It checks the zip first and never overwrites anything you already have." },
+  "share.upload": { title: "Add a zip", text: "Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card." },
+  "panel.move": { title: "Move", text: "The kind of model that moves: a tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture." },
+  "move.get": { title: "Download the tracker", text: "Downloads the tracker, one small file from Google's MediaPipe, into workspace/tools. It runs in this page. You don't train it: it finds the points, and your own model names the gesture." },
+  "move.set": { title: "Gesture set", text: "A set of your gestures, with the examples you recorded and the model trained on them, in workspace/gestures. A set follows hands or a body, not both." },
+  "move.new": { title: "Make a set", text: "Starts a new gesture set for hands or for a body. Then name a gesture and record some examples of it." },
+  "move.record": { title: "Hold to record", text: "While you hold the button, the shape of your hand (or body) is recorded ten times a second: the points, measured from the wrist (or hips), so the same gesture reads the same anywhere in the picture. Move a little while you hold it, so the examples vary: 20 to 50 of each gesture is plenty." },
+  "move.train": { title: "Train", text: "k-nearest neighbours: a new pose is compared with every example you recorded, and the 5 closest vote. Training keeps your examples, after checking it on every fifth one set aside. The grid shows the check: each gesture you made, down the side, and what it was named, across. Mistakes off the diagonal show which gestures look alike to it." },
+  "move.test": { title: "Test it live", text: "Names your gesture as you make it, and shows how many of the nearest examples agree. Try the gestures it mixes up, and record more examples of them." },
+  "move.send": { title: "Send it on", text: "While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture's name and how sure it is (0 to 1). In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer." },
+  "panel.voice": { title: "Voice", text: "Two kinds of model, used as they are: one that speaks (text in, a voice out) and one that listens (a recording in, what was said out). Type something and Soprano reads it aloud; record your voice and Qwen3-ASR writes down what it heard, in 52 languages and dialects. Both run on this computer, and the first use of each downloads it. Every sound is a WAV file in workspace/audio, with a record of where it came from and what was heard in it." },
+  "voice.speak": { title: "Speak", text: "Soprano reads the text aloud and saves it as a WAV file in workspace/audio/spoken. It has one voice, on purpose: it can't copy anyone's. Press listen on the result to hear what the listening model makes of it: a round trip from text to voice and back." },
+  "voice.record": { title: "Record", text: "Records your microphone in this page until you press again, then saves it as a WAV file in workspace/audio/recorded and has the listening model (Qwen3-ASR) write down what it heard straight away. The browser asks first. Nothing is sent anywhere." },
+  "voice.listen": { title: "Listen", text: "Qwen3-ASR writes down what it hears in this sound, in whichever language it hears. What it heard is saved next to the sound, and in the set's record." },
+  "panel.look": { title: "Look", text: "Image tools, the kind of model that looks: cut something out, the distance between blobs, select a blob. A blob is early computer vision's word for a region of a picture that stands out from what surrounds it: an object, as the computer finds it. The tools are ready-made models you download once; you don't train them. They run inside this page, on your computer, and nothing is sent anywhere. Bring your photos into a set, pick one, and run a tool. What it makes is saved in workspace/outputs with a record of which photo and which model made it." },
+  "look.get": { title: "Download this tool", text: "Fetches the model's files from Hugging Face into workspace/tools, one file at a time, with curl. You can watch it in the terminal. You only do this once." },
+  "look.set": { title: "Image set", text: "A set is a folder of photos in workspace/images. Keep one set per project, so what you make from it stays together." },
+  "look.license": { title: "Whose photos", text: "Written into the set's record, and carried by everything made from it. If they are your own photos of your own work, leave it as it is. If they are someone else's, write whose, and under what license." },
+  "look.photos": { title: "Add photos", text: "Copies photos from your computer into the set. JPEG, PNG or WebP." },
+  "look.example": { title: "The example photos", text: "Four classic subjects of computer science, to try the tools on before your own: the rubber duck programmers explain their code to, a duck in a glass bowl, the Utah teapot that early 3D graphics drew again and again, and the Stanford bunny, a 3D scan used to test graphics for thirty years. Each photo's author and license are in the set's record." },
+  "look.camera": { title: "Take a photo", text: "Opens your camera in this page. Nothing is recorded or saved until you press \"keep this one\", and then only that one frame goes into the set." },
+  "look.click": { title: "Click to select a blob", text: "For select a blob: click on the object you want, and it outlines that blob. Click more places on it to add to the selection. Shift-click a place that is not part of it." },
+  "look.cutout": { title: "Cut something out", text: "Separates the main object in the photo, the blob that stands out most, from its background. You get a PNG with a transparent background: ready for a portfolio, a layout or a projection." },
+  "look.depth": { title: "Distance between blobs", text: "A depth map: guesses how near or far each blob and each part of the photo is. Near is light, far is dark. It is a guess from one picture, not a measurement, but it is often good enough for relief, displacement or projection mapping." },
+  "look.select": { title: "Select a blob", text: "Outlines the blob you clicked on and cuts it out. Use it when the photo has more than one object in it, or cut something out picked the wrong one." },
+  "look.all": { title: "Every photo in the set", text: "Runs the same tool on every photo in the set, one after another. Each one is its own command in the terminal." },
 } satisfies Record<string, Explanation>
 
 export type ExplainId = keyof typeof EXPLAIN

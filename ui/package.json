@@ -6,7 +6,8 @@
     "build": "vite build",
     "watch": "vite build --watch --mode development",
     "typecheck": "tsc --noEmit",
-    "build:site": "node scripts/site-css.mjs && vite build --config vite.site.config.ts"
+    "build:site": "node scripts/site-css.mjs && vite build --config vite.site.config.ts",
+    "flags": "node scripts/flags.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
