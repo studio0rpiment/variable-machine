@@ -13,6 +13,11 @@ merges/<name>/                averaged adapter + manifest.json
 chat/<date>.jsonl             chat log: prompt, model, answer, timestamp
 modelfiles/<name>.Modelfile   what was sent to ollama create
 shared/<kind>-<name>.zip      artifacts zipped to share, and zips received
+tools/<name>/                 ready-made models (image tools, trackers, SmolVLM's GGUFs) + manifest.json
+images/<set>/                 photos + manifest.json (each photo's credit and license)
+outputs/<set>-<tool>/         pictures the Look tab made
+audio/<set>/                  WAV sounds (spoken, recorded) + their transcripts + manifest.json
+gestures/<name>/              examples.jsonl (points, never pictures), model.json, manifest.json
 ```
 
 Every manifest has `name`, `kind`, `created`, `license`, `inputs` (paths it was made from) and `command` (the command that made it). Follow `inputs` to reconstruct lineage.

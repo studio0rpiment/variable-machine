@@ -99,6 +99,12 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
 7. **Chat.** Two to four models side by side, one prompt, every answer streaming. *Add a picture* sends a photo from an image set to the models that see (`--image` in the echo); the others get the words only, and say so. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
 8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
+**Use it as it is:** three tabs for the other kinds of model, which you use rather than change. Nothing leaves the computer.
+
+- **Look.** Ready-made image tools that run in the page (onnxruntime-web): cut something out (ormbg), the distance between blobs (Depth Anything V2 Small), select a blob you click (SlimSAM). Outputs land in `workspace/outputs` with a record of which photo and model made them.
+- **Voice.** *Speak*: Soprano-1.1-80M (Apache 2.0) reads your text aloud. *Listen*: record your voice in the page (as WAV) and Qwen3-ASR-0.6B (Apache 2.0, 52 languages and dialects) writes down what it heard. Both run through mlx-audio in the python project's `voice` extra, installed on first use; sounds and transcripts live in `workspace/audio/<set>/`.
+- **Move.** MediaPipe's hand (21 points) and body (33 points) trackers run in the page, on the camera or a photo. Hold a button to record examples of your own gestures (only the points, measured from the wrist or hips, never pictures), train a k-nearest-neighbours model on them in TypeScript (`gesture train`, checked on every fifth example, with a confusion grid), test it live, and send each guess as OSC to TouchDesigner, Max or Pure Data on this computer (`gesture send <set> --port 9000`). The camera is on only while the tab is open.
+
 **The explanation layer.** Things you can click are green. *flags on/off* in the top bar turns the flags off for those who know their way around; the terminal's *taller ▴* lifts it from a strip to half the window. Both are remembered in the browser. Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. A flag hangs outside the group of controls its control belongs to, and outlines that group while it's open. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
 
 ## Layout
@@ -110,7 +116,8 @@ helper/     Node + TypeScript. One process on 127.0.0.1:4817: serves ui/dist, pr
 ui/         React + Vite + TypeScript. One panel per workflow step; xterm.js terminal always docked.
 workspace/  The state: plain folders and JSON manifests (see workspace/README.md). No database.
             workspace/examples/ is tracked in git; everything else in workspace/ stays local.
-python/     uv project with mlx-lm, plus two scripts: merge_adapters.py and dpo.py. Only the helper runs them.
+python/     uv project with mlx-lm (extras: sees = mlx-vlm + gguf, voice = mlx-audio), plus merge_adapters.py, dpo.py,
+            vlm_train.py and vlm_export.py. Only the helper runs them.
 ```
 
 ## Terminal
@@ -138,8 +145,17 @@ merge <name> --a <adapter> --b <adapter> [--t 0.5]          exactly (1 − t)·A
 fuse <adapter|merge> [--name <fused>]
 register <fused> [--name <model>] [--quantize int8|int4|none]
 export <adapter|merge> [--name <model>] [--quantize int8|int4|none]      fuse + register in one go
-zip <data|adapters|merges|runs|fused>/<name>
+zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>
 unzip <file.zip>
+model get cutout|depth|select|hands|body             ready-made models for Look and Move, into workspace/tools
+look cutout|depth|select images/<set>/<photo> [--point x,y]…
+speak <name> "<text>" [--set spoken]                 Soprano reads it aloud: workspace/audio/<set>/<name>.wav
+listen audio/<set>/<file>.wav [--language English]  Qwen3-ASR writes down what it hears
+gesture new <name> --tracker hands|body
+gesture train <name> [--k 5]
+gesture clear <name> <gesture>
+gesture send <name> --port 9000 [--address /vm/<name>] | --stop     OSC to 127.0.0.1 while the Move tab tests
+osc send <port> <address> [values…]
 ls | cat | head | tail | wc <path>        inside workspace/ only
 status   doctor   help   clear            ctrl-c stops what is running
 ```
@@ -198,6 +214,11 @@ Each of these was checked against the installed tools (plan §13) on 2026-10-18 
   - Ollama refuses a Modelfile that mixes a safetensors folder with a GGUF, and a safetensors import alone loses the projector. So `export` writes the trained weights into a copy of the base GGUF (`python/variable_machine/vlm_export.py`) and keeps the base projector.
   - mlx-vlm's trainer gives SmolVLM the padding mask where it expects an attention mask, which replaces the causal mask: every token can see the answer ahead of it. Loss falls to 0.001 and the adapter answers worse than the base. `python/variable_machine/vlm_train.py` runs `mlx_vlm.train` with the causal mask kept; the museum-label example then goes from loss 5.1 to 0.01 in 60 steps and answers with its labels.
   - Merge and Prefer don't take picture adapters yet.
+- **Voice, checked 2026-10-24 with mlx-audio 0.6.1:**
+  - Kokoro-82M was the plan's voice. Its English needs misaki, which falls back to espeak-ng (GPL-3.0) through espeakng-loader, and that wheel's Mac build looks for its data where it was built and fails. Soprano-1.1-80M needs neither.
+  - Whisper was the plan's ear. As mlx-audio runs it, a short clip came back with invented words after the speech, in several languages, or repeated a dozen times, whatever the settings (temperature, silence threshold, clip timestamps). Qwen3-ASR-0.6B wrote the same clips down exactly, with punctuation.
+  - Browsers record webm/opus, which would need ffmpeg; the page records WAV itself, which both models read as it is.
+- **Move:** MediaPipe Tasks Vision 1.1.1 (Apache 2.0), its WebAssembly served from node_modules like onnxruntime's. The gesture model is k-nearest neighbours rather than a small neural network: training is instant, and a student can say exactly why it named a gesture (these are its closest examples).
 - **Native code:** there are no node-gyp modules. Vite 8 (rolldown) and tsx (esbuild) ship prebuilt platform binaries, and TypeScript 7 is the native tsc.
 
 ## Licenses
