@@ -87,7 +87,9 @@ async function speak(args: string[], line: string): Promise<boolean> {
   const m = await readAudioSet(set)
   if (m.files[`${name}.wav`]) return print(`speak: workspace/audio/${set}/${name}.wav exists; choose another name`), false
   const model = voiceModel('speaks')
-  const argv = [...UV_VOICE, 'python', '-m', 'mlx_audio.tts.generate', '--model', model.repo, '--text', text, '--output_path', `workspace/audio/${set}`, '--file_prefix', name, '--audio_format', 'wav']
+  // Greedy (temperature 0): sampled, Soprano sometimes never says its stop token and hums to its
+  // 32-second limit (2 of 3 tries on one sentence, 2026-10-24); greedy finished every sentence tried.
+  const argv = [...UV_VOICE, 'python', '-m', 'mlx_audio.tts.generate', '--model', model.repo, '--text', text, '--temperature', '0', '--output_path', `workspace/audio/${set}`, '--file_prefix', name, '--audio_format', 'wav']
   return runRecipe({
     recipe: 'speak',
     params: { name, set, text },
