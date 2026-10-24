@@ -2,6 +2,11 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.3: the Start map, redrawn; tabs named for what their models do (2026-10-24)
+
+- **Start map:** five columns read left to right: what you bring, preparing it, how a model learns, making it a model, using it. The language models' tabs fill a band across the top, with your words and your photos (and what they show) coming in as rows and picture rows. Below, one row for each other kind: image segmentation and speech, whose models their makers trained (drawn dotted), and gesture, which you train yourself in seconds. Every box opens its tab, lights its wires and shows its commands.
+- **Tabs renamed** for what their models do: *look*, *voice* and *move* are now **image segmentation**, **speech** and **gesture**. Old links still land on them; the terminal commands are unchanged.
+
 ## v0.2.2: audio players in the page's own style (2026-10-24)
 
 - **Voice:** sounds play in Variable Machine's own style instead of the browser's player: the hand-drawn play triangle and stop blob, a fine line for where you are (drag it, or use the arrow keys), and the time.
