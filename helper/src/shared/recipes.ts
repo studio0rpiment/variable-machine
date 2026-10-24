@@ -42,7 +42,7 @@ export const PY_ENV = { HF_HOME: 'workspace/hf' }
 export const UV = ['uv', 'run', '--project', 'python']
 /** The same, with the extra packages for models that see (mlx-vlm, gguf); uv installs them on first use. */
 export const UV_SEES = [...UV, '--extra', 'sees']
-/** The same, with mlx-audio for the Voice tab (helper/src/voice.ts). */
+/** The same, with mlx-audio for the speech tab (helper/src/voice.ts). */
 export const UV_VOICE = [...UV, '--extra', 'voice']
 
 /**

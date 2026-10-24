@@ -73,7 +73,7 @@ function draw(canvas: HTMLCanvasElement, w: number, h: number, points: Point[] |
  * own, train a k-nearest-neighbours model on them (`gesture train`), test it
  * live, and send what it sees to TouchDesigner, Max or anything that takes OSC.
  */
-/** active: the Move tab is showing. Panels stay mounted when hidden, and the camera must only be on while you can see it. */
+/** active: the gesture tab is showing. Panels stay mounted when hidden, and the camera must only be on while you can see it. */
 export default function MovePanel({ active }: { active: boolean }) {
   const [here, setHere] = useState<Record<string, boolean>>({})
   const [sets, setSets] = useState<GestureSet[]>([])

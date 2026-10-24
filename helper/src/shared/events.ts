@@ -54,7 +54,7 @@ export type ClientEvent =
   | { type: 'ollama.unload'; model: string }
   /** This page can run page commands (look …). */
   | { type: 'page.ready' }
-  /** The Move tab's live test named a gesture; sent on as OSC when `gesture send` is on for that set. */
+  /** The gesture tab's live test named a gesture; sent on as OSC when `gesture send` is on for that set. */
   | { type: 'gesture.live'; name: string; label: string; confidence: number }
   /** A page run finished; what it made has already been uploaded into workspace/outputs/. */
   | { type: 'page.done'; id: string; ok: boolean; message?: string; outputs: PageOutput[] }

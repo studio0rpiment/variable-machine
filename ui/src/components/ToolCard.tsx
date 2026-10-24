@@ -3,7 +3,7 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
 
-/** "looks · image tools: cut-outs, depth, selecting · on the look tab": a kind's word, what it does, and where you use it. */
+/** "looks · image tools: cut-outs, depth, selecting · on the image segmentation tab": a kind's word, what it does, and where you use it. */
 export function KindLine({ kind }: { kind: KindId }) {
   const k = KINDS[kind]
   return (

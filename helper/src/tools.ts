@@ -121,7 +121,7 @@ async function getSee(s: SeeModel): Promise<boolean> {
 
 export const trackerPresent = (t: TrackerModel) => exists(path.join(dir(t), 'manifest.json'))
 
-/** A tracker for the Move tab: its one .task file from MediaPipe's model store. */
+/** A tracker for the gesture tab: its one .task file from MediaPipe's model store. */
 async function getTracker(t: TrackerModel): Promise<boolean> {
   if (await trackerPresent(t)) return print(`  already here: workspace/tools/${t.name}`), true
   print(`  ${t.name}: ${t.file} · ${t.license} · about ${t.mb} MB · ${KINDS.moves.id} (${KINDS.moves.what})`)

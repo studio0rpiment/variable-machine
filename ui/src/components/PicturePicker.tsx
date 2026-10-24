@@ -11,7 +11,7 @@ const CHAT_SET = 'chat-photos'
 
 /**
  * A picture to send with a prompt, to the models that see: one from the image
- * sets the Look tab uses (workspace/images/<set>/), or one added here, which
+ * sets the image segmentation tab uses (workspace/images/<set>/), or one added here, which
  * goes into a set like any other. The value is its workspace path; the helper
  * reads the file in and echoes it as `--image <path>`.
  */
@@ -101,7 +101,7 @@ export default function PicturePicker({ value, onChange }: { value: string; onCh
                 e.target.value = ''
               }}
             />
-            {sets?.length === 0 && <span className="label label--muted">no image sets yet: add a photo, or the example photos on the Look tab</span>}
+            {sets?.length === 0 && <span className="label label--muted">no image sets yet: add a photo, or the example photos on the image segmentation tab</span>}
             {note && <span className="label label--muted">{note}</span>}
           </div>
           {photos.length > 0 && (

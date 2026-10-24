@@ -8,7 +8,7 @@ import { PY_ENV, UV_VOICE } from './shared/recipes.ts'
 import { joinWords } from './shared/quote.ts'
 
 /**
- * `speak` and `listen`: the Voice tab's two commands (the speaks and listens
+ * `speak` and `listen`: the speech tab's two commands (the speaks and listens
  * kinds). Each is a real mlx-audio command run in the python project's voice
  * extra. Sounds live in workspace/audio/<set>/, a folder of WAV files with a
  * manifest that says, for each file, where it came from (spoken by a model,

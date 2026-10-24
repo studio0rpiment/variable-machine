@@ -2,7 +2,7 @@ import type * as Ort from 'onnxruntime-web'
 import { toolModel, type LookTask } from '@shared/kinds'
 
 /**
- * The Look tab's three tools, run in the page with onnxruntime-web. Model
+ * The image segmentation tab's three tools, run in the page with onnxruntime-web. Model
  * files come from workspace/tools/<name>/ (downloaded with `model get`) and
  * the WebAssembly runtime from /vendor/ort/, so nothing is fetched from a CDN.
  *

@@ -110,7 +110,7 @@ async function uploadPhoto(req: http.IncomingMessage, res: http.ServerResponse, 
   try {
     m = JSON.parse(await fs.readFile(mfile, 'utf8'))
   } catch {
-    m = { name: set, kind: 'images', created: now, license, inputs: [], command: 'uploaded from the browser (Look tab)' }
+    m = { name: set, kind: 'images', created: now, license, inputs: [], command: 'uploaded from the browser (image segmentation tab)' }
   }
   if (!m.inputs.includes(name)) m.inputs.push(name)
   await fs.writeFile(mfile, JSON.stringify(m, null, 2) + '\n')
@@ -142,7 +142,7 @@ async function uploadAudio(req: http.IncomingMessage, res: http.ServerResponse, 
   }
   if (!(await receive(req, res, dest))) return
   const m = await readAudioSet(set)
-  if (!m.command.length) m.command.push('recorded in the browser (Voice tab)')
+  if (!m.command.length) m.command.push('recorded in the browser (speech tab)')
   m.files[name] = { made: 'recorded', license }
   await writeAudioSet(m)
   print(`▸ received workspace/audio/${set}/${name} (recorded in the browser · ${license})`)

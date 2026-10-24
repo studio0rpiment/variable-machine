@@ -7,7 +7,7 @@ import { OSC_ADDRESS, sendOsc } from './osc.ts'
 import { POINTS, train, type Check, type Example, type Tracker } from './shared/gesture.ts'
 
 /**
- * `gesture …` (the Move tab). A gesture set is workspace/gestures/<name>/:
+ * `gesture …` (the gesture tab). A gesture set is workspace/gestures/<name>/:
  * examples.jsonl (one {"label","v"} per recorded moment: the shape of the
  * points, never a camera frame), model.json once trained, and manifest.json.
  *
@@ -118,7 +118,7 @@ async function create(name: string, tracker: string, line: string) {
   await fs.mkdir(dir(name), { recursive: true })
   await fs.writeFile(path.join(dir(name), 'examples.jsonl'), '')
   await writeManifest({ name, kind: 'gesture', created: now(), license: 'your own movements', inputs: [], command: [line], tracker: tracker as Tracker, counts: {} })
-  print(`  ◂ workspace/gestures/${name}/ · ${tracker}: record some examples of each gesture on the Move tab`)
+  print(`  ◂ workspace/gestures/${name}/ · ${tracker}: record some examples of each gesture on the gesture tab`)
   return true
 }
 
@@ -175,7 +175,7 @@ async function send(name: string, opts: Record<string, string>) {
   const address = opts.address ?? `/vm/${name}`
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || !OSC_ADDRESS.test(address)) return print('usage: gesture send <name> --port 9000 [--address /vm/<name>] | gesture send <name> --stop'), false
   sending.set(name, { port, address })
-  print(`  ◂ while the Move tab tests ${name}: OSC ${address} <gesture> <confidence 0–1> → 127.0.0.1:${port}`)
+  print(`  ◂ while the gesture tab tests ${name}: OSC ${address} <gesture> <confidence 0–1> → 127.0.0.1:${port}`)
   return true
 }
 

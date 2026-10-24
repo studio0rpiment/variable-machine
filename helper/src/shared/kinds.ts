@@ -42,7 +42,7 @@ export interface ToolModel {
   name: string
   kind: KindId
   task: LookTask
-  /** what the Look tab and its card call it */
+  /** what the image segmentation tab and its card call it */
   action: string
   repo: string
   /** expected license; `model get` reads the current one from Hugging Face */

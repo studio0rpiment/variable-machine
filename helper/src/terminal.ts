@@ -55,7 +55,7 @@ const HELP = `commands
   speak <name> "<text>" [--set spoken]             a model reads it aloud: workspace/audio/<set>/<name>.wav
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
 
-  model get hands | model get body                the trackers that find points on a hand or a body (Move tab)
+  model get hands | model get body                the trackers that find points on a hand or a body (gesture tab)
   gesture new <name> --tracker hands|body          a set of your gestures: workspace/gestures/<name>/
   gesture train <name> [--k 5]                     k-nearest neighbours: check on every fifth example, keep them all
   gesture clear <name> <gesture>                   forget one gesture's examples

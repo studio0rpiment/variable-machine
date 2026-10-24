@@ -3,7 +3,7 @@ import { TRACKER_MODELS } from '@shared/kinds'
 import type { Point, Tracker } from '@shared/gesture'
 
 /**
- * The Move tab's trackers: MediaPipe's hand and body landmarkers, in the page.
+ * The gesture tab's trackers: MediaPipe's hand and body landmarkers, in the page.
  * Its WebAssembly comes from the helper (/vendor/mediapipe/, out of
  * node_modules) and the .task model from workspace/tools/<name>/ (model get),
  * so nothing loads from a CDN. Frames never leave the page: only points do.

@@ -12,7 +12,7 @@ import type { LookRun } from './tools'
 export type LookState = { id: string; run: LookRun; phase: 'running' } | { id: string; run: LookRun; phase: 'done'; out: string; ms: number } | { id: string; run: LookRun; phase: 'failed'; error: string }
 
 const listeners = new Set<(s: LookState) => void>()
-/** Follow page runs as they start and finish (the Look tab shows them). */
+/** Follow page runs as they start and finish (the image segmentation tab shows them). */
 export function onLook(fn: (s: LookState) => void) {
   listeners.add(fn)
   return () => {
