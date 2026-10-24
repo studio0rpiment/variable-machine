@@ -29,7 +29,7 @@ export { stopRunning } from './run.ts'
 const HELP = `commands
   ollama list | show <model> | pull <model> | rm <model>
   ollama create <name> -f workspace/modelfiles/<name>.Modelfile [-q q4_K_M]
-  ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>
+  ollama run-once <model> [--system "<text>"] [--image images/<set>/<photo>] [--no-think] [--format json|<schema>] <prompt…>
   data new [--format chat|preference] | import dolly | validate | split | count | append <name>   (data help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused>/<name>     share an artifact: workspace/shared/<kind>-<name>.zip
@@ -46,6 +46,7 @@ const HELP = `commands
   prefer <adapter> --data <preference set> [--model <hf id|workspace/fused/NAME>] [--beta 0.1] [--iters 100] [--lr 2e-5] [--sft 0]
 
   model list | model get <cutout|depth|select>    ready-made tool models, into workspace/tools/
+  model get <smolvlm-256m|smolvlm-500m>           a model that sees: its GGUFs into workspace/tools/, then ollama create
   look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/
   look example classic-cv                         the example photos: duck, teapot, bunny
 `

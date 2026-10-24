@@ -12,7 +12,7 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import ConfirmButton from './ConfirmButton'
 import { Explained } from '../explain/Explained'
-import { KINDS, TOOL_MODELS } from '@shared/kinds'
+import { KINDS, SEE_MODELS, TOOL_MODELS } from '@shared/kinds'
 import ToolCard, { KindLine } from './ToolCard'
 
 interface Progress {
@@ -209,6 +209,19 @@ function CardKey() {
  * variation inside the card of the model it came from, not as a card of its own.
  * Every action is a command shown before it runs.
  */
+/** The models that see, as library entries: made by `model get`, since Ollama's library doesn't have them. */
+const SEE_LIBRARY: LibraryModel[] = SEE_MODELS.map((s) => ({
+  tag: s.tag,
+  license: s.license,
+  open: true,
+  role: 'sees: a picture in, words out',
+  maker: s.maker,
+  builtFor: s.builtFor,
+  trainsAs: s.hf,
+  get: s.name,
+}))
+const LIBRARY = [...OLLAMA_LIBRARY, ...SEE_LIBRARY]
+
 export default function ModelsPanel({ onChat, onModelfile }: Props) {
   const { models, error } = useOllamaModels()
   const { status, connected } = useHelperState()
@@ -253,7 +266,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
     void runCommand(joinWords(['ollama', 'pull', tag]))
   }
 
-  const inLibrary = (name: string) => OLLAMA_LIBRARY.find((l) => sameTag(l.tag, name))
+  const inLibrary = (name: string) => LIBRARY.find((l) => sameTag(l.tag, name))
   const installed = (name: string) => models.find((m) => sameTag(m.name, name))
 
   /**
@@ -344,6 +357,10 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
               {/* a rule that grows, not a filled bar: outlines only */}
               <span className="pull-progress__rule" style={{ width: `${pct ?? 0}%` }} />
             </span>
+          ) : l.get ? (
+            <Explained id="models.get">
+              <CommandPreview command={`model get ${l.get}`} onRun={() => void getTool(l.get!)} running={getting === l.get} label="get" />
+            </Explained>
           ) : (
             <Explained id="models.pull">
               <CommandPreview command={`ollama pull ${l.tag}`} onRun={() => pull(l.tag)} label="pull" />
@@ -363,6 +380,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
         ) : (
           <span className="label label--muted">
             {l.license} (listed){heavy ? ' · heavy on a 16GB Mac: better on an instructor machine' : ''}
+            {l.get ? ` · about ${SEE_MODELS.find((x) => x.name === l.get)?.mb} MB · not in Ollama's library, so it is downloaded as two files and made with ollama create` : ''}
           </span>
         )}
         {vars.length > 0 && (
@@ -427,6 +445,15 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
           </div>
         </>
       )}
+
+      <h2 className="panel__title label">models that see · pictures in, words out</h2>
+      <p className="models-intro">
+        <KindLine kind="sees" />
+      </p>
+      <p className="models-intro">
+        A vision encoder turns the picture into tokens, and a language model like the ones above answers about it. Ask one about a photo in Chat with add a picture.
+      </p>
+      <div className="cards">{SEE_LIBRARY.map(card)}</div>
 
       <h2 className="panel__title label">trains on · hugging face</h2>
       <div className="cards">

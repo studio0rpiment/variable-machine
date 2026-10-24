@@ -3,7 +3,7 @@ import path from 'node:path'
 import { OLLAMA_URL, ROOT } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { ollamaPost, readNdjson, type ChatChunk, type ChatMessage } from './ollama.ts'
-import { appendChat } from './chatlog.ts'
+import { appendChat, readPicture } from './chatlog.ts'
 import { formatBytes, refuse, scopePath, setRunning, spawnStreamed, write } from './run.ts'
 import { isPath, parseModelfile } from './shared/modelfile.ts'
 
@@ -160,9 +160,18 @@ async function runOnce(args: string[]): Promise<boolean> {
   let system: string | undefined
   let think: boolean | undefined
   let format: unknown
+  let image: { path: string; base64: string } | null = null
   const words: string[] = []
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--system') system = rest[++i]
+    else if (rest[i] === '--image') {
+      const rel = rest[++i] ?? ''
+      image = await readPicture(rel)
+      if (!image) {
+        print(`ollama run-once: --image takes a .jpg, .png or .webp inside workspace/ (${rel || 'none given'})`)
+        return false
+      }
+    }
     else if (rest[i] === '--no-think') think = false
     else if (rest[i] === '--format') {
       // "json", or a JSON schema the answer must match (Ollama structured outputs)
@@ -177,11 +186,11 @@ async function runOnce(args: string[]): Promise<boolean> {
   }
   const prompt = words.join(' ')
   if (!model || !prompt) {
-    print('usage: ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>')
+    print('usage: ollama run-once <model> [--system "<text>"] [--image workspace/images/<set>/<photo>] [--no-think] [--format json|<schema>] <prompt…>')
     return false
   }
 
-  const messages: ChatMessage[] = [...(system ? [{ role: 'system' as const, content: system }] : []), { role: 'user', content: prompt }]
+  const messages: ChatMessage[] = [...(system ? [{ role: 'system' as const, content: system }] : []), { role: 'user', content: prompt, ...(image ? { images: [image.base64] } : {}) }]
   const abort = new AbortController()
   setRunning({ abort })
   let answer = ''
@@ -217,6 +226,7 @@ async function runOnce(args: string[]): Promise<boolean> {
       timestamp: new Date().toISOString(),
       model,
       prompt,
+      ...(image ? { image: image.path } : {}),
       system,
       answer,
       ...(thinking ? { thinking } : {}),

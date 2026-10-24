@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { chatOnce, type OllamaModel } from '../lib/ollama'
+import { chatOnce, seesPictures, type OllamaModel } from '../lib/ollama'
 import { useOllamaModels } from '../hooks/useOllamaModels'
 import { ChatMark, Run, Stop } from '../icons'
 import ModelSelect from './ModelSelect'
+import PicturePicker from './PicturePicker'
 import { OLLAMA_LIBRARY } from '@shared/library'
 import { Explained } from '../explain/Explained'
 
 interface Exchange {
   id: number
   prompt: string
+  /** the picture sent with it, a workspace path */
+  image?: string
+  /** a picture was attached, but this model doesn't see, so it got the words only */
+  wordsOnly?: boolean
   answer: string
   thinking: string
   state: 'streaming' | 'done' | 'stopped' | 'error'
@@ -55,6 +60,7 @@ export default function Chat({ request }: Props) {
     { key: nextId++, model: '', log: [] },
   ])
   const [prompt, setPrompt] = useState('')
+  const [picture, setPicture] = useState('')
   const aborts = useRef(new Map<number, AbortController>())
   const streaming = columns.some((c) => c.log.at(-1)?.state === 'streaming')
 
@@ -79,11 +85,13 @@ export default function Chat({ request }: Props) {
   const patchCol = (key: number, fn: (c: Column) => Column) => setColumns((cs) => cs.map((c) => (c.key === key ? fn(c) : c)))
   const patch = (key: number, id: number, fn: (x: Exchange) => Exchange) => patchCol(key, (c) => ({ ...c, log: c.log.map((x) => (x.id === id ? fn(x) : x)) }))
 
-  const ask = (key: number, model: string, text: string) => {
+  const ask = async (key: number, model: string, text: string, image: string) => {
     const id = nextId++
     const abort = new AbortController()
     aborts.current.set(key, abort)
-    patchCol(key, (c) => ({ ...c, log: [...c.log, { id, prompt: text, answer: '', thinking: '', state: 'streaming' }] }))
+    // Only a model that sees gets the picture; the others would refuse the whole question.
+    const sees = image ? await seesPictures(model) : false
+    patchCol(key, (c) => ({ ...c, log: [...c.log, { id, prompt: text, ...(image && { image, wordsOnly: !sees }), answer: '', thinking: '', state: 'streaming' }] }))
     chatOnce(
       model,
       text,
@@ -99,6 +107,8 @@ export default function Chat({ request }: Props) {
         }))
       },
       abort.signal,
+      undefined,
+      sees ? image : undefined,
     )
       .then(() => patch(key, id, (x) => (x.state === 'streaming' ? { ...x, state: 'done' } : x)))
       .catch((e: Error) => patch(key, id, (x) => ({ ...x, state: abort.signal.aborted ? 'stopped' : 'error', meta: abort.signal.aborted ? 'stopped' : e.message })))
@@ -107,7 +117,7 @@ export default function Chat({ request }: Props) {
   const send = () => {
     const text = prompt.trim()
     if (!text || streaming) return
-    for (const c of columns) if (c.model) ask(c.key, c.model, text)
+    for (const c of columns) if (c.model) void ask(c.key, c.model, text, picture)
     setPrompt('')
   }
 
@@ -146,6 +156,12 @@ export default function Chat({ request }: Props) {
               <ol className="chat__log">
                 {c.log.map((x) => (
                   <li key={x.id} className={`exchange is-${x.state}`}>
+                    {x.image && (
+                      <figure className="exchange__picture">
+                        <img src={`/api/workspace/file?path=${encodeURIComponent(x.image)}`} alt={x.image} />
+                        {x.wordsOnly && <figcaption className="label label--muted">doesn't see pictures: it got the words only</figcaption>}
+                      </figure>
+                    )}
                     <p className="exchange__prompt">{x.prompt}</p>
                     {x.thinking && (
                       <details className="exchange__thinking" open={x.state === 'streaming' && !x.answer}>
@@ -162,11 +178,12 @@ export default function Chat({ request }: Props) {
           </div>
         ))}
       </div>
+      <PicturePicker value={picture} onChange={setPicture} />
       <div className="chat__prompt">
         <textarea
           value={prompt}
           rows={2}
-          placeholder={`one prompt, ${n === 2 ? 'both' : `all ${n}`} models · enter sends, shift-enter for a new line`}
+          placeholder={`one prompt${picture ? ' and the picture' : ''}, ${n === 2 ? 'both' : `all ${n}`} models · enter sends, shift-enter for a new line`}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

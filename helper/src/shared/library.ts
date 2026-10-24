@@ -20,6 +20,8 @@ export interface LibraryModel {
   heavy?: boolean
   /** one of the four starters on the Models tab, chosen to differ as much as possible; the rest sit in the library */
   featured?: string
+  /** not in Ollama's library: made here by `model get <name>` instead of pulled (the models that see, shared/kinds.ts) */
+  get?: string
 }
 
 export const OLLAMA_LIBRARY: LibraryModel[] = [

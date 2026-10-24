@@ -3,7 +3,7 @@ import { OLLAMA_URL } from './config.ts'
 import { echo, print } from './hub.ts'
 import { markOllama } from './status.ts'
 import { joinWords } from './shared/quote.ts'
-import { appendChat } from './chatlog.ts'
+import { appendChat, readPicture } from './chatlog.ts'
 import type { ChatChunk, ChatMessage } from './ollama.ts'
 
 const PREFIX = '/ollama'
@@ -17,10 +17,30 @@ interface ChatRequest {
 }
 
 /** The CLI form of a one-prompt chat call, as the terminal would accept it back. */
-export function runOnceLine(req: ChatRequest): string {
+export function runOnceLine(req: ChatRequest, image?: string): string {
   const system = req.messages.find((m) => m.role === 'system')?.content
   const prompt = req.messages.filter((m) => m.role === 'user').at(-1)?.content ?? ''
-  return joinWords(['ollama', 'run-once', req.model, ...(system ? ['--system', system] : []), ...(req.think === false ? ['--no-think'] : []), ...(req.format ? ['--format', typeof req.format === 'string' ? req.format : JSON.stringify(req.format)] : []), prompt])
+  return joinWords(['ollama', 'run-once', req.model, ...(system ? ['--system', system] : []), ...(image ? ['--image', image] : []), ...(req.think === false ? ['--no-think'] : []), ...(req.format ? ['--format', typeof req.format === 'string' ? req.format : JSON.stringify(req.format)] : []), prompt])
+}
+
+/**
+ * The page names a picture by its workspace path; Ollama wants its bytes.
+ * Swap each path for the file, base64, and say which file it was.
+ */
+async function readPictures(chat: ChatRequest): Promise<{ image?: string; error?: string }> {
+  let image: string | undefined
+  for (const m of chat.messages) {
+    if (!m.images?.length) continue
+    const read = []
+    for (const rel of m.images) {
+      const p = await readPicture(rel)
+      if (!p) return { error: `no photo ${rel} inside workspace/` }
+      read.push(p.base64)
+      image = p.path
+    }
+    m.images = read
+  }
+  return { image }
 }
 
 function readBody(req: http.IncomingMessage): Promise<Buffer> {
@@ -33,7 +53,7 @@ function readBody(req: http.IncomingMessage): Promise<Buffer> {
 }
 
 /** Summarise a finished /api/chat stream and, for the Chat panel, append it to the chat log. */
-async function finishChat(chat: ChatRequest, raw: string, log: boolean, stopped: boolean) {
+async function finishChat(chat: ChatRequest, raw: string, log: boolean, stopped: boolean, image?: string) {
   let answer = ''
   let thinking = ''
   let last: ChatChunk | undefined
@@ -57,6 +77,7 @@ async function finishChat(chat: ChatRequest, raw: string, log: boolean, stopped:
       timestamp: new Date().toISOString(),
       model: chat.model,
       prompt: chat.messages.filter((m) => m.role === 'user').at(-1)?.content ?? '',
+      ...(image ? { image } : {}),
       system: chat.messages.find((m) => m.role === 'system')?.content,
       answer,
       ...(thinking ? { thinking } : {}),
@@ -74,21 +95,32 @@ async function finishChat(chat: ChatRequest, raw: string, log: boolean, stopped:
  * (isAllowedOrigin in server.ts) and forwards without Origin.
  *
  * Responses are piped, so /api/chat, /api/pull and /api/create stream through.
- * /api/chat is also echoed as `ollama run-once …`, and when the Chat panel sends
+ * /api/chat is also echoed as `ollama run-once …`; a picture named by its
+ * workspace path is read in here (`--image <path>` in the echo). When the Chat panel sends
  * `x-variable-machine-source: chat` the exchange is appended to workspace/chat/<date>.jsonl.
  */
 export async function proxyOllama(req: http.IncomingMessage, res: http.ServerResponse) {
   const upstreamPath = (req.url ?? '/').slice(PREFIX.length) || '/'
   const isChat = req.method === 'POST' && upstreamPath.split('?')[0] === '/api/chat'
-  const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await readBody(req)
+  let body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await readBody(req)
 
   let chat: ChatRequest | undefined
+  let image: string | undefined
   if (isChat && body) {
     try {
       chat = JSON.parse(body.toString('utf8')) as ChatRequest
-      echo(runOnceLine(chat))
     } catch {
       // not JSON; let Ollama answer with its own error
+    }
+    if (chat) {
+      const pics = await readPictures(chat)
+      if (pics.error) {
+        res.writeHead(400, { 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ error: pics.error }))
+      }
+      image = pics.image
+      if (image) body = Buffer.from(JSON.stringify(chat))
+      echo(runOnceLine(chat, image))
     }
   }
   // Only the Chat panel's exchanges go in the chat log; the Data panel's generation calls (source: data) are shown but not logged.
@@ -110,7 +142,7 @@ export async function proxyOllama(req: http.IncomingMessage, res: http.ServerRes
       if (chat) up.on('data', (c: Buffer) => (raw += c.toString('utf8')))
       up.pipe(res)
       // A stopped answer is shown but not logged: the log keeps whole exchanges only.
-      up.on('close', () => chat && void finishChat(chat, raw, log && up.complete, !up.complete))
+      up.on('close', () => chat && void finishChat(chat, raw, log && up.complete, !up.complete, image))
     },
   )
   upstream.on('error', (err) => {

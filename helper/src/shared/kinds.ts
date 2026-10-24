@@ -103,3 +103,103 @@ export const toolModel = (name: string) => TOOL_MODELS.find((t) => t.name === na
 
 /** The photos the image tools take: what an image set may hold. */
 export const IMAGE_EXT = /\.(jpe?g|png|webp)$/i
+
+/**
+ * A vision-language model (the sees kind): a vision encoder turns a picture
+ * into tokens, a projector maps them into the language model, and the same
+ * kind of decoder as the writes models answers. SmolVLM's decoder is a
+ * SmolLM2-sized llama.
+ *
+ * Checked against the installed tools, 2026-10-23 (Ollama 0.40.6, mlx-vlm 0.7.10):
+ * - SmolVLM isn't in Ollama's library, so `ollama pull` can't get it. ggml-org
+ *   publishes it as two GGUF files, the language model and the projector
+ *   (vision encoder + connector); a Modelfile with two FROM lines makes an
+ *   Ollama model that takes pictures.
+ * - It trains (LoRA on the language half) from the Hugging Face repo with
+ *   mlx_vlm.train. Ollama won't take a safetensors folder and a GGUF in one
+ *   Modelfile, and a safetensors import alone loses the projector, so export
+ *   writes the trained weights into a copy of the base GGUF instead
+ *   (python/variable_machine/vlm_export.py) and keeps the base projector.
+ */
+export interface SeeModel {
+  /** the folder under workspace/tools/ and the word in `model get <name>` */
+  name: string
+  kind: 'sees'
+  /** what it is called in Ollama once made */
+  tag: string
+  /** the Hugging Face repo training starts from */
+  hf: string
+  /** the GGUF repo Ollama runs it from, and its two files */
+  repo: string
+  gguf: string
+  mmproj: string
+  license: string
+  maker: string
+  builtFor: string
+  params: string
+  /** about how much it downloads */
+  mb: number
+  /** decoder layers: training can adapt at most this many */
+  layers: number
+  /** about how much memory LoRA takes, measured */
+  loraGB: number
+}
+
+export const SEE_MODELS: SeeModel[] = [
+  {
+    name: 'smolvlm-256m',
+    kind: 'sees',
+    tag: 'smolvlm:256m',
+    hf: 'HuggingFaceTB/SmolVLM-256M-Instruct',
+    repo: 'ggml-org/SmolVLM-256M-Instruct-GGUF',
+    gguf: 'SmolVLM-256M-Instruct-Q8_0.gguf',
+    mmproj: 'mmproj-SmolVLM-256M-Instruct-f16.gguf',
+    license: 'Apache 2.0',
+    maker: 'Hugging Face, 2025',
+    builtFor: 'The smallest model that looks at a picture and answers in words: what is in it, what it says, what is going on. Its language half is the same size as SmolLM2. It is often wrong about details, and it is quick to train on any 16GB Mac.',
+    params: '256M',
+    mb: 365,
+    layers: 30,
+    loraGB: 4.5,
+  },
+  {
+    name: 'smolvlm-500m',
+    kind: 'sees',
+    tag: 'smolvlm:500m',
+    hf: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+    repo: 'ggml-org/SmolVLM-500M-Instruct-GGUF',
+    gguf: 'SmolVLM-500M-Instruct-Q8_0.gguf',
+    mmproj: 'mmproj-SmolVLM-500M-Instruct-f16.gguf',
+    license: 'Apache 2.0',
+    maker: 'Hugging Face, 2025',
+    builtFor: 'The larger SmolVLM: the same idea, with a bigger language half, so its descriptions are steadier. Slower to train.',
+    params: '500M',
+    mb: 636,
+    layers: 32,
+    loraGB: 7,
+  },
+]
+
+export const seeModel = (name: string) => SEE_MODELS.find((s) => s.name === name || s.tag === name || s.hf === name)
+
+/**
+ * SmolVLM's chat format, as its processor writes it for training:
+ * <|im_start|>User:<image>What is this?<end_of_utterance>\nAssistant: …
+ * Ollama puts the picture at the start of the message that carries it.
+ */
+export const SMOLVLM_TEMPLATE = `<|im_start|>{{- range .Messages }}{{ if eq .Role "user" }}User:{{ else if eq .Role "assistant" }}Assistant:{{ else }}System:{{ end }}{{ .Content }}<end_of_utterance>
+{{ end }}Assistant:`
+
+/** The Modelfile that makes an Ollama model from a language-model GGUF and the projector GGUF beside it. */
+export function seeModelfile(o: { gguf: string; mmproj: string; license: string; note: string }) {
+  return [
+    `# ${o.note}`,
+    `FROM ${o.gguf}`,
+    `FROM ${o.mmproj}`,
+    `TEMPLATE """${SMOLVLM_TEMPLATE}"""`,
+    'PARAMETER stop "<end_of_utterance>"',
+    'PARAMETER temperature 0.2',
+    `LICENSE """${o.license}"""`,
+    '',
+  ].join('\n')
+}

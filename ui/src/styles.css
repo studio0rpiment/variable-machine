@@ -248,6 +248,14 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
 .exchange.is-streaming .exchange__answer::after { content: '▍'; color: var(--muted); }
 .exchange.is-error .label { text-decoration: underline dashed; }
 .chat__prompt { display: flex; align-items: end; gap: 0.75rem; }
+/* a picture sent with the prompt, to the models that see */
+.picture { display: flex; flex-direction: column; gap: 0.6rem; }
+.picture__row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.picture__chosen { padding: 0; border: 1px solid var(--line); background: none; cursor: pointer; line-height: 0; }
+.picture__chosen img { height: 2.5rem; width: auto; display: block; }
+.picture__choose { display: flex; flex-direction: column; gap: 0.6rem; border: 1px dashed var(--muted); padding: 0.75rem 1rem; }
+.exchange__picture { margin: 0; display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start; }
+.exchange__picture img { max-height: 6rem; max-width: 100%; width: auto; border: 1px solid var(--line); display: block; }
 
 /* ---- terminal dock (not .terminal: xterm uses that class for its own element) ---- */
 .dock {

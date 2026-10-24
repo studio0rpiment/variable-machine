@@ -49,13 +49,15 @@ export interface ChatDelta {
  * terminal as `ollama run-once …` and, because of the header, logs it to
  * workspace/chat/<date>.jsonl when it finishes.
  */
-export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal, options?: Record<string, number>) {
+export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal, options?: Record<string, number>, image?: string) {
   const res = await fetch('/ollama/api/chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-variable-machine-source': 'chat' },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], stream: true, ...(options && { options }) }),
+    // a picture goes by its workspace path; the helper reads the file in (helper/src/proxy.ts)
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt, ...(image && { images: [image] }) }], stream: true, ...(options && { options }) }),
     signal,
   })
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `ollama: ${res.status}`)
   if (!res.body) throw new Error(`ollama: ${res.status}`)
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buf = ''
@@ -85,4 +87,15 @@ export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatD
       })
     }
   }
+}
+
+/** Whether a model takes pictures (Ollama's "vision" capability), read once per model. */
+const seesCache = new Map<string, Promise<boolean>>()
+export function seesPictures(model: string): Promise<boolean> {
+  let p = seesCache.get(model)
+  if (!p) {
+    p = showModel(model).then((s) => !!s.capabilities?.includes('vision'), () => false)
+    seesCache.set(model, p)
+  }
+  return p
 }

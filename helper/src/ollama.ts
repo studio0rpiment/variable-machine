@@ -5,6 +5,8 @@ export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
   thinking?: string
+  /** pictures, base64, as Ollama takes them (the page and run-once name workspace files; the helper reads them in) */
+  images?: string[]
 }
 
 export interface ChatChunk {

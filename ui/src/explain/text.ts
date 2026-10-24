@@ -55,6 +55,10 @@ export const EXPLAIN = {
     text: 'Everything you make here is a folder: a dataset, an adapter, a training run. Sharing means zipping that folder so someone else can open exactly what you made, along with its record of where it came from. Download a zip to send it, or add a zip someone sent you and it goes back to where it belongs.',
   },
   /* ---- Models ---- */
+  'models.get': {
+    title: 'Get',
+    text: 'This model is not in Ollama\'s library, so it can\'t be pulled. Get downloads its two files from Hugging Face (the language model, and the projector that turns a picture into its tokens) into workspace/tools, writes a Modelfile naming both, and runs ollama create.',
+  },
   'models.pull': {
     title: 'Download this model',
     text: 'Downloads the model into Ollama so it can run on this computer. The line shows the exact command, and clicking it runs that command in the terminal below. Progress shows on the card and in the terminal. Models are big: from a few hundred megabytes to several gigabytes.',
@@ -341,6 +345,14 @@ export const EXPLAIN = {
   'chat.addColumn': {
     title: 'Another column',
     text: 'Adds a column, up to four, so more models can answer the same question side by side.',
+  },
+  'chat.picture': {
+    title: 'A picture',
+    text: 'Sends a picture with your question, from the photos in your image sets. Models that see (like SmolVLM) look at it and answer about it; models that only write get the words alone, and say so. The terminal shows it as --image and the file it is.',
+  },
+  'chat.pictureAdd': {
+    title: 'Add a photo',
+    text: 'Copies a photo from your computer into the chosen image set (or a new one called chat-photos), so the Look tab and the Data tab can use it too. JPEG, PNG or WebP.',
   },
   'chat.send': {
     title: 'Ask',
