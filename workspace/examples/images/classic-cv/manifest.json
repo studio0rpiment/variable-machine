@@ -1,0 +1,44 @@
+{
+  "name": "classic-cv",
+  "kind": "images",
+  "created": "2026-10-24T00:00:00.000Z",
+  "license": "CC BY 2.0 · CC BY-SA 3.0 · Public domain (each photo's in credits)",
+  "about": "Classic subjects of computer science and computer graphics: the rubber duck from rubber-duck debugging, a duck in a glass bowl, the original 1974 Utah teapot at the Computer History Museum, and a 3D print of the Stanford bunny.",
+  "inputs": [
+    "rubber-duck.jpg",
+    "duck-in-a-bowl.jpg",
+    "utah-teapot.jpg",
+    "stanford-bunny.jpg"
+  ],
+  "credits": [
+    {
+      "file": "rubber-duck.jpg",
+      "title": "Rubber duck assisting with debugging.jpg",
+      "author": "Tom Morris",
+      "license": "CC BY-SA 3.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Rubber_duck_assisting_with_debugging.jpg"
+    },
+    {
+      "file": "duck-in-a-bowl.jpg",
+      "title": "Rubber duck in glass bowl crop.jpg",
+      "author": "User:Nanda93",
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Rubber_duck_in_glass_bowl_crop.jpg"
+    },
+    {
+      "file": "utah-teapot.jpg",
+      "title": "Original Utah Teapot - Computer History Museums.jpg",
+      "author": "Michael Hicks from Saint Paul, MN, USA",
+      "license": "CC BY 2.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Original_Utah_Teapot_-_Computer_History_Museums.jpg"
+    },
+    {
+      "file": "stanford-bunny.jpg",
+      "title": "Stanford Bunny Cleaned up.jpg",
+      "author": "funnypolynomial",
+      "license": "CC BY 2.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Stanford_Bunny_Cleaned_up.jpg"
+    }
+  ],
+  "command": "look example classic-cv"
+}

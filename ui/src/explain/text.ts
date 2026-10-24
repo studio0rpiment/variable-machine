@@ -384,6 +384,10 @@ export const EXPLAIN = {
     title: 'Add photos',
     text: 'Copies photos from your computer into the set. JPEG, PNG or WebP.',
   },
+  'look.example': {
+    title: 'The example photos',
+    text: 'Four classic subjects of computer science, to try the tools on before your own: the rubber duck programmers explain their code to, a duck in a glass bowl, the Utah teapot that early 3D graphics drew again and again, and the Stanford bunny, a 3D scan used to test graphics for thirty years. Each photo\'s author and license are in the set\'s record.',
+  },
   'look.camera': {
     title: 'Take a photo',
     text: 'Opens your camera in this page. Nothing is recorded or saved until you press "keep this one", and then only that one frame goes into the set.',

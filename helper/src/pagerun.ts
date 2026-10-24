@@ -117,14 +117,42 @@ async function licenseOf(from: string) {
 }
 
 const TASKS: LookTask[] = ['cutout', 'depth', 'select']
+const EXAMPLES = path.join(WORKSPACE, 'examples', 'images')
 
 /**
- * `look <cutout|depth|select> images/<set>/<file> [--point x,y]… [--not x,y]…`
+ * `look example <set>`: copy a photo set that comes with the app
+ * (workspace/examples/images/<set>/) into workspace/images/, with its manifest,
+ * which credits each photo's author and license.
+ */
+async function lookExample(set: string | undefined): Promise<boolean> {
+  const sets = await fs.readdir(EXAMPLES).catch(() => [] as string[])
+  if (!set || !sets.includes(set)) {
+    print(`usage: look example <${sets.join('|') || 'set'}>   (photo sets that come with Variable Machine)`)
+    return false
+  }
+  const to = path.join(WORKSPACE, 'images', set)
+  try {
+    await fs.access(to)
+    print(`workspace/images/${set} is already here`)
+    return false
+  } catch {
+    // free
+  }
+  await fs.cp(path.join(EXAMPLES, set), to, { recursive: true })
+  const m = JSON.parse(await fs.readFile(path.join(to, 'manifest.json'), 'utf8')) as { credits?: { file: string; author: string; license: string }[] }
+  for (const c of m.credits ?? []) print(`  ${c.file.padEnd(20)} ${c.license} · ${c.author}`)
+  print(`  ◂ workspace/images/${set}`)
+  return true
+}
+
+/**
+ * `look <cutout|depth|select> images/<set>/<file> [--point x,y]… [--not x,y]…`, or `look example <set>`
  * Points are in the photo's own pixels. `select` needs at least one --point;
  * --not marks a place that is not part of the thing.
  */
 export async function lookCommand(args: string[], line: string): Promise<boolean> {
   const [task, image, ...rest] = args
+  if (task === 'example') return lookExample(image)
   const usage = () => (print(`usage: look <${TASKS.join('|')}> images/<set>/<photo> [--point x,y]… [--not x,y]…   (${KINDS.looks.id}: ${KINDS.looks.what})`), false)
   if (!TASKS.includes(task as LookTask) || !image) return usage()
   const t = toolModel(task)!

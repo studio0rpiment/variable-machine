@@ -47,6 +47,7 @@ const HELP = `commands
 
   model list | model get <cutout|depth|select>    ready-made tool models, into workspace/tools/
   look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/
+  look example classic-cv                         the example photos: duck, teapot, bunny
 `
 
 

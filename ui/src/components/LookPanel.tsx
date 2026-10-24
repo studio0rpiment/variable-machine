@@ -179,6 +179,11 @@ export default function LookPanel() {
             {camera ? 'close the camera' : 'take a photo'}
           </button>
         </Explained>
+        {!sets.some((x) => x.folder === 'classic-cv') && (
+          <Explained id="look.example">
+            <CommandPreview command="look example classic-cv" onRun={() => void run('example', 'look example classic-cv').then(() => setSet('classic-cv'))} running={busy === 'example'} label="add the example photos" />
+          </Explained>
+        )}
         {note && <span className="label label--muted">{note}</span>}
       </div>
       {camera && <Camera onShot={(b) => void upload(b, `camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`)} />}
@@ -254,7 +259,7 @@ export default function LookPanel() {
           </div>
         </>
       )}
-      {sets.length === 0 && photos.length === 0 && <p className="label label--muted">no photos yet: name a set, then add photos or take one</p>}
+      {sets.length === 0 && photos.length === 0 && <p className="label label--muted">no photos yet: add the example photos, or name a set and add your own</p>}
     </section>
   )
 }
