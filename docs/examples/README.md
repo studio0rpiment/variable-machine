@@ -52,7 +52,7 @@ export colour-hex-3k-360m
 
 **Before and after** ("The green of a tennis ball at dusk."):
 - `smollm2:360m`: a paragraph about the scene.
-- `colour-hex-3k-360m`: `#809030`.
+- `colour-hex-3k-360m`: `#55a033` (asked again, `#809030`: sampling varies).
 
 **What went wrong first:** the first run used the Train tab's default base, which on a 32GB Mac is the larger SmolLM2-1.7B. The name said 360M, but it wasn't, and it couldn't be blended with the 360M haiku adapter. Naming the base (`--base …360M…`) fixed it. A 1,000-row, 600-step run on 360M was further off (54.8), so this one has more examples and more steps.
 

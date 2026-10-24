@@ -16,11 +16,6 @@
   },
   {
     "model": "colour-hex-3k-360m",
-    "prompt": "The green of a tennis ball at dusk.",
-    "answer": "#809030"
-  },
-  {
-    "model": "colour-hex-3k-360m",
     "prompt": "A deep, dusty plum, like the inside of a velvet jewellery box.",
     "answer": "#998870"
   },

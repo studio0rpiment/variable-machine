@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Worked Examples · Variable Machine</title>
+<meta name="description" content="Four small models made with Variable Machine, one for each way of changing a model (words, examples, taste, blend), animated from the real records: the data, the commands, the loss, the adapter's numbers and the answers.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+  /* KP Minimal, as on the about page: two colours, green for data and things you click,
+     yellow for weights, fuchsia for what changed. */
+  :root {
+    --bg: #111613;
+    --line: #FFF7E6;
+    --act: #5CF25C;
+    --w: #FDDA24;
+    --chg: #ff2fb4;
+    --muted: color-mix(in srgb, var(--line) 55%, var(--bg));
+    --faint: color-mix(in srgb, var(--line) 18%, var(--bg));
+    --wash: color-mix(in srgb, var(--act) 12%, transparent);
+    --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #FFF7E6; --line: #111613; --act: #16752A; --w: #E0B800; --chg: #D4007F; color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--line); font-family: var(--font); font-size: 0.9rem; line-height: 1.6; }
+  main { max-width: 60rem; margin: 0 auto; padding: 2rem 1rem 5rem; }
+  a { color: var(--act); text-underline-offset: 0.2em; }
+  a:hover { background: var(--wash); }
+  .back { display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.8rem; color: var(--line); }
+  .back__swirl { width: 1.3em; height: 1.3em; background: var(--line); -webkit-mask: url(../favicon.svg) center / contain no-repeat; mask: url(../favicon.svg) center / contain no-repeat; }
+  h1 { font-size: 1.5rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; margin: 2.5rem 0 0.75rem; }
+  .lead { font-size: 1rem; max-width: 46rem; margin: 0 0 1rem; }
+  .muted { color: var(--muted); }
+  .key { display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem; font-size: 0.8rem; margin: 1rem 0 0; }
+  .key span::before { content: ''; display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.45rem; vertical-align: -0.05rem; }
+  .key .k-data::before { border: 1px solid var(--act); }
+  .key .k-w::before { background: var(--w); }
+  .key .k-chg::before { background: var(--chg); }
+  .chapters { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 2rem 0 0; padding: 0; list-style: none; }
+  .chapters a { display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.8rem; }
+  .hi { width: 1em; height: 1em; flex: none; fill: currentColor; }
+
+  /* a chapter */
+  .chapter { margin: 3.5rem 0 0; padding-top: 1rem; border-top: 1px dashed var(--muted); scroll-margin-top: 1rem; }
+  .chapter__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
+  .chapter__head h2 { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  .chapter__head h2 .hi { font-size: 1.1rem; }
+  .chapter__name { text-transform: uppercase; letter-spacing: 0.06em; }
+  .chapter__what { margin: 0.6rem 0 1rem; max-width: 46rem; }
+
+  /* the chain: one chip per station, dashed until reached, solid when done, green while it plays */
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0 0 0.75rem; padding: 0; list-style: none; }
+  .chain li { display: flex; align-items: center; gap: 0.35rem; }
+  .chain li + li::before { content: '→'; color: var(--muted); }
+  .chip { display: inline-flex; align-items: center; gap: 0.35rem; font: inherit; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: lowercase; color: var(--muted); background: none; border: 1px dashed var(--muted); padding: 0.2rem 0.55rem; cursor: pointer; }
+  .chip:hover { border-style: solid; }
+  .chip.is-done { color: var(--line); border-style: solid; border-color: var(--muted); }
+  .chip.is-on { color: var(--act); border: 1px solid var(--act); background: var(--wash); }
+  .chip.is-skipped { text-decoration: line-through; cursor: default; border-color: var(--faint); color: var(--faint); }
+  .chip .hi { font-size: 0.9rem; }
+
+  .stage { position: relative; min-height: 22rem; border: 1px solid var(--muted); padding: 1rem; overflow: hidden; }
+  .stage__title { margin: 0 0 0.75rem; font-size: 0.75rem; color: var(--muted); letter-spacing: 0.05em; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0.5rem 0 0; font-size: 0.8rem; }
+  .controls button { font: inherit; color: var(--act); background: none; border: 0; padding: 0.15rem 0.25rem; cursor: pointer; }
+  .controls button:hover { background: var(--wash); }
+  .controls .muted { margin-left: auto; }
+
+  /* pieces the stations are drawn with */
+  .cmd { margin: 0 0 0.75rem; padding: 0.5rem 0.7rem; border: 1px solid var(--faint); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.78rem; }
+  .cmd::before { content: '▸ '; color: var(--muted); }
+  .cmd.is-out::before { content: '◂ '; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+  .card { border: 1px dashed var(--muted); padding: 0.7rem 0.8rem; min-width: 0; }
+  .card.is-solid { border-style: solid; }
+  .card.is-chg { border: 1px solid var(--chg); }
+  .card.is-data { border: 1px solid var(--act); }
+  .card h3 { margin: 0 0 0.4rem; font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; overflow-wrap: anywhere; }
+  .card .label { font-size: 0.75rem; color: var(--muted); }
+  .answer { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.4rem 0 0; }
+  .answer.is-long { max-height: 11rem; overflow: hidden; -webkit-mask: linear-gradient(#000 70%, transparent); mask: linear-gradient(#000 70%, transparent); }
+  .caret::after { content: '▍'; color: var(--act); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .mf { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); font-size: 0.78rem; border: 1px solid var(--faint); }
+  .mf__gutter { padding: 0.15rem 0.5rem; font-size: 0.7rem; color: var(--muted); border-right: 1px dashed var(--faint); }
+  .mf__gutter.is-w { color: var(--bg); background: var(--w); }
+  .mf__gutter.is-chg { color: var(--chg); }
+  .mf__line { padding: 0.15rem 0.6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  .weights { display: grid; grid-template-columns: repeat(32, 1fr); gap: 2px; margin: 0.6rem 0; }
+  .weights i { aspect-ratio: 1; background: var(--w); opacity: 0.85; }
+  .weights.is-touched i.on { background: var(--chg); }
+
+  .rows { display: flex; flex-direction: column; gap: 0.3rem; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) 1.4rem 5.5rem; gap: 0.6rem; align-items: center; font-size: 0.78rem; animation: rise 0.35s ease-out both; }
+  .row__q { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .swatch { width: 1.4rem; height: 1.4rem; border: 1px solid var(--faint); }
+  @keyframes rise { from { opacity: 0; transform: translateY(0.4rem); } }
+
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 0 0 0.75rem; animation: rise 0.35s ease-out both; }
+  .haiku { white-space: pre-wrap; font-size: 0.78rem; border-left: 2px solid var(--faint); padding-left: 0.6rem; }
+  .haiku.is-chosen { border-left-color: var(--act); }
+  .haiku .n { color: var(--muted); }
+  .haiku .n.ok { color: var(--act); }
+
+  .chart { width: 100%; height: auto; display: block; }
+  .chart text { fill: var(--muted); font: 11px var(--font); }
+  .chart .axis { stroke: var(--faint); }
+  .chart .train { fill: none; stroke: var(--line); stroke-width: 1; }
+  .chart .val { fill: var(--act); }
+  .chart .ghost { fill: none; stroke: var(--chg); stroke-width: 1; stroke-dasharray: 3 3; }
+
+  .heat { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+  .heat figure { margin: 0; }
+  .heat figcaption { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+  .heat svg { display: block; height: auto; }
+  .times { color: var(--muted); }
+
+  .bars { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 0.35rem 0.75rem; align-items: center; font-size: 0.78rem; margin: 0.5rem 0 0; }
+  .bar { height: 0.7rem; background: var(--line); width: 0; transition: width 1s ease-out; }
+  .bar.is-chg { background: var(--chg); }
+  .bar.is-data { background: var(--act); }
+
+  .table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .table th, .table td { text-align: left; vertical-align: top; padding: 0.4rem 0.5rem; border-top: 1px dashed var(--faint); overflow-wrap: anywhere; }
+  .table th { font-weight: 500; color: var(--muted); }
+  .table td { white-space: pre-wrap; }
+  .table th[scope=row] { white-space: nowrap; overflow-wrap: normal; }
+  .note { font-size: 0.75rem; color: var(--muted); margin: 0.6rem 0 0; }
+  footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px dashed var(--muted); font-size: 0.8rem; color: var(--muted); }
+
+  @media (max-width: 36rem) {
+    .pair { grid-template-columns: 1fr; }
+    .mf { grid-template-columns: 4.5rem minmax(0, 1fr); }
+    .controls .muted { margin-left: 0; width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .row, .pair { animation: none; }
+    .bar { transition: none; }
+    .caret::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="../"><span class="back__swirl" aria-hidden="true"></span>Variable Machine</a>
+  <h1>Four ways, four models</h1>
+  <p class="lead">Variable Machine changes a model in four ways: with words, with examples, with taste, and by blending. Here is one small model made each way, step by step, drawn from the real records: the data it learned from, the commands that ran, the training numbers, a corner of the adapter's own numbers, and what it answers next to the model it started from.</p>
+  <p class="muted">Each chapter plays when you reach it. Click a step to jump to it.</p>
+  <div class="key"><span class="k-data">data, and things you click</span><span class="k-w">weights: the model's numbers</span><span class="k-chg">what changed</span></div>
+  <ul class="chapters" id="toc"></ul>
+  <div id="book"><p class="muted">Loading the records…</p></div>
+  <footer>
+    Made from <a href="https://github.com/studio0rpiment/variable-machine/tree/main/docs/examples">docs/examples</a> in the Variable Machine repository, where every command, manifest and number shown here is kept. Hand-drawn icons: Kevin Patton, CC BY 4.0. <span id="made"></span>
+  </footer>
+</main>
+<script>
+'use strict'
+/*
+ * The examples, animated. Each chapter is a chain of stations (data → run → adapter → fused → model → chat,
+ * or the shorter chain for a Modelfile); each station draws itself into the stage from data.json, which
+ * scripts/examples-data.ts builds from docs/examples and the adapters' tensors. A chapter plays when it
+ * scrolls into view (an IntersectionObserver, no timers polling); clicking a station jumps to it.
+ */
+// reduced motion, or ?still in the address (for screenshots): every step drawn whole, at once, one at a time
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches || new URLSearchParams(location.search).has('still')
+
+/* ---------- small helpers ---------- */
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag)
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v
+    else if (k === 'text') el.textContent = v
+    else if (k === 'style') el.setAttribute('style', v)
+    else el.setAttribute(k, v)
+  }
+  for (const kid of kids.flat()) if (kid != null) el.append(kid)
+  return el
+}
+const SVG = 'http://www.w3.org/2000/svg'
+const s = (tag, attrs = {}) => {
+  const el = document.createElementNS(SVG, tag)
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v)
+  return el
+}
+const icon = (id) => {
+  const svg = s('svg', { class: 'hi', 'aria-hidden': 'true' })
+  svg.append(s('use', { href: `icons.svg#${id}` }))
+  return svg
+}
+const ICON = { modelfile: 'hi-triangle-b-fill-r180', data: 'hi-star-scribble-fill-r45', train: 'hi-triangle-y-fill-r90', prefer: 'hi-bolt-fill', merge: 'hi-dumbbell-fill-r90', adapter: 'hi-triangle-y-fill-r270', chat: 'hi-dumbbell-fill', model: 'hi-blob-fill' }
+const mb = (n) => (n ? (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`) : '')
+const fmt = (n) => n.toLocaleString('en-US')
+
+/** A run of the stage that can be cut short: every wait checks it. */
+class Run {
+  constructor() { this.live = true }
+  stop() { this.live = false }
+  wait(ms) { return REDUCED || !this.live ? Promise.resolve(this.live) : new Promise((r) => setTimeout(() => r(this.live), ms)) }
+  /** Type text into el, a few characters per frame. */
+  async type(el, text, cps = 90) {
+    if (REDUCED) { el.textContent = text; return this.live }
+    el.classList.add('caret')
+    const per = Math.max(1, Math.round(cps / 30))
+    for (let i = 0; i <= text.length; i += per) {
+      if (!this.live) break
+      el.textContent = text.slice(0, i)
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    el.textContent = text
+    el.classList.remove('caret')
+    return this.live
+  }
+}
+
+async function typeCmd(stage, run, text, out = false) {
+  const el = h('div', { class: `cmd${out ? ' is-out' : ''}` })
+  stage.append(el)
+  return run.type(el, text, out ? 200 : 140)
+}
+
+/* ---------- pictures ---------- */
+
+/** A grid of the weights' cells: yellow, and some fuchsia when an adapter touches them. */
+function weightsGrid(n = 256, touched = 0) {
+  const g = h('div', { class: `weights${touched ? ' is-touched' : ''}`, 'aria-hidden': 'true' })
+  for (let i = 0; i < n; i++) g.append(h('i', touched && (i * 7919) % 13 < touched ? { class: 'on' } : {}))
+  return g
+}
+
+/** A heat map of real numbers: fuchsia above zero, the line colour below, strength by size. */
+function heat(m, cell = 7, label = '') {
+  const rows = m.length, cols = m[0].length
+  const max = Math.max(...m.flat().map(Math.abs)) || 1
+  const svg = s('svg', { viewBox: `0 0 ${cols * cell} ${rows * cell}`, width: cols * cell, role: 'img', 'aria-label': label })
+  m.forEach((row, i) => row.forEach((v, j) => {
+    const a = Math.abs(v) / max
+    svg.append(s('rect', { x: j * cell, y: i * cell, width: cell - 1, height: cell - 1, fill: v >= 0 ? 'var(--chg)' : 'var(--line)', 'fill-opacity': (0.08 + 0.92 * a).toFixed(3) }))
+  }))
+  return svg
+}
+
+/** Reveal a heat map's cells column by column. */
+async function grow(svg, run, ms = 900) {
+  if (REDUCED) return
+  const cells = [...svg.children]
+  cells.forEach((c) => (c.style.opacity = 0))
+  const cols = new Set(cells.map((c) => c.getAttribute('x'))).size
+  const xs = [...new Set(cells.map((c) => +c.getAttribute('x')))].sort((a, b) => a - b)
+  for (const x of xs) {
+    if (!run.live) break
+    cells.filter((c) => +c.getAttribute('x') === x).forEach((c) => (c.style.opacity = 1))
+    await run.wait(ms / cols)
+  }
+  cells.forEach((c) => (c.style.opacity = 1))
+}
+
+/** The loss chart, drawn point by point from loss.jsonl. ghost: another run's train loss, dashed. */
+async function lossChart(stage, run, loss, { label, ghost, ms = 2600 } = {}) {
+  const W = 600, H = 210, P = 30
+  const all = [...loss, ...(ghost ?? [])]
+  const maxIter = Math.max(...all.map((p) => p.iter))
+  const ys = all.flatMap((p) => [p.train, p.val]).filter((v) => v != null)
+  const top = Math.max(...ys) * 1.05
+  const x = (i) => P + (i / maxIter) * (W - P - 10)
+  const y = (v) => H - P - (v / top) * (H - P - 10)
+  const svg = s('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': label })
+  svg.append(s('line', { class: 'axis', x1: P, y1: H - P, x2: W - 10, y2: H - P }), s('line', { class: 'axis', x1: P, y1: 10, x2: P, y2: H - P }))
+  const t1 = s('text', { x: P, y: H - 8 }); t1.textContent = 'step 0'
+  const t2 = s('text', { x: W - 10, y: H - 8, 'text-anchor': 'end' }); t2.textContent = `step ${maxIter}`
+  const t3 = s('text', { x: P + 4, y: 20 }); t3.textContent = `loss ${top.toFixed(1)}`
+  svg.append(t1, t2, t3)
+  if (ghost) {
+    const pts = ghost.filter((p) => p.train != null)
+    svg.append(s('polyline', { class: 'ghost', points: pts.map((p) => `${x(p.iter)},${y(p.train)}`).join(' ') }))
+  }
+  const line = s('polyline', { class: 'train', points: '' })
+  svg.append(line)
+  const readout = h('p', { class: 'note' })
+  stage.append(svg, readout)
+  const pts = []
+  const step = REDUCED ? loss.length : Math.max(1, Math.round(loss.length / 90))
+  for (let i = 0; i < loss.length; i++) {
+    const p = loss[i]
+    if (p.train != null) pts.push(`${x(p.iter)},${y(p.train)}`)
+    if (p.val != null) svg.append(s('circle', { class: 'val', cx: x(p.iter), cy: y(p.val), r: 3 }))
+    if (i % step === 0 || i === loss.length - 1) {
+      line.setAttribute('points', pts.join(' '))
+      const lastVal = [...loss.slice(0, i + 1)].reverse().find((q) => q.val != null)
+      readout.textContent = `step ${p.iter} · training loss (line) ${p.train ?? '–'}${lastVal ? ` · held-out loss (green dots) ${lastVal.val}` : ''}`
+      if (!(await run.wait(ms / 90))) break
+    }
+  }
+  line.setAttribute('points', pts.join(' '))
+}
+
+/** Bars that grow to a value, with the value written after. */
+function bars(rows, max) {
+  const g = h('div', { class: 'bars' })
+  const fill = []
+  for (const r of rows) {
+    const bar = h('div', { class: `bar ${r.cls ?? ''}` })
+    g.append(h('span', { text: r.label }), h('div', {}, bar), h('span', { text: r.value }))
+    fill.push(() => (bar.style.width = `${(100 * r.n) / max}%`))
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => fill.forEach((f) => f())))
+  return g
+}
+
+function answerCard(title, sub, text, cls = '') {
+  const a = h('div', { class: `answer${text.length > 260 ? ' is-long' : ''}` })
+  return { el: h('div', { class: `card ${cls}` }, h('h3', { text: title }), sub ? h('div', { class: 'label', text: sub }) : null, a), a, text }
+}
+
+/* ---------- the stations, chapter by chapter ---------- */
+
+function adapterStation(ch, verbIcon) {
+  return {
+    key: 'adapter', label: 'adapter', icon: ICON.adapter,
+    async draw(stage, run) {
+      const p = ch.adapter.picture
+      stage.append(h('p', { text: `The adapter: a small set of changes beside the model, not inside it. For each of ${ch.adapter.layers} layers, two thin matrices A and B whose product is the change to that layer's weights. Rank ${ch.adapter.rank} is how thin they are.` }))
+      const fa = heat(p.a, 6, 'matrix A'), fb = heat(p.b, 6, 'matrix B'), fd = heat(p.delta, 6, 'the change A times B')
+      stage.append(h('div', { class: 'heat' },
+        h('figure', {}, fa, h('figcaption', { text: `A · ${p.shapeA.join(' × ')} (corner)` })),
+        h('span', { class: 'times', text: '×' }),
+        h('figure', {}, fb, h('figcaption', { text: `B · ${p.shapeB.join(' × ')} (corner)` })),
+        h('span', { class: 'times', text: '=' }),
+        h('figure', {}, fd, h('figcaption', { text: 'the change to the weights (corner)' }))))
+      stage.append(h('p', { class: 'note', text: `${p.layer}, the top-left corner of each, from workspace/adapters/${ch.model}/adapters.safetensors. Fuchsia above zero, the text colour below; stronger means further from zero.` }))
+      await grow(fa, run, 500); await grow(fb, run, 500); await grow(fd, run, 900)
+    },
+  }
+}
+function fusedStation(ch) {
+  return {
+    key: 'fused', label: 'fused', icon: null,
+    async draw(stage, run) {
+      stage.append(h('p', { text: 'Fuse: the adapter is added into the model\'s own weights, so the two become one model of the same size.' }))
+      const grid = weightsGrid(256, 0)
+      stage.append(grid)
+      const c = ch.fused.command
+      await typeCmd(stage, run, c[c.length - 1])
+      if (!(await run.wait(400))) return
+      grid.classList.add('is-touched')
+      grid.querySelectorAll('i').forEach((cell, i) => { if ((i * 7919) % 13 < 3) cell.classList.add('on') })
+      await typeCmd(stage, run, `workspace/fused/${ch.model}`, true)
+    },
+  }
+}
+function modelStation(ch) {
+  return {
+    key: 'model', label: 'ollama model', icon: ICON.model,
+    async draw(stage, run) {
+      stage.append(h('p', { text: 'Register: the fused model goes into Ollama, stored as 8-bit numbers (int8), with its own name you can chat with.' }))
+      await typeCmd(stage, run, `ollama create ${ch.model} -q int8 -f workspace/modelfiles/${ch.model}.Modelfile`)
+      await typeCmd(stage, run, `${ch.model} · ${mb(ch.size)} · int8`, true)
+      stage.append(h('p', { class: 'note', text: 'In the brief this step went through a GGUF file. In the real pipeline it doesn\'t: the fused folder is imported directly, because the GGUF that mlx-lm writes does not load in this version of Ollama.' }))
+    },
+  }
+}
+
+function chapterWords(ch) {
+  const ask = ch.chat.find((c) => c.model === ch.base)
+  const crit = ch.chat.find((c) => c.model === ch.model && c.prompt === ask.prompt)
+  return {
+    lead: 'A Modelfile changes how a model answers without changing a single weight. FROM names the weights; every other line is instructions read before each question.',
+    skipped: ['data', 'run', 'adapter', 'fused'],
+    stations: [
+      { key: 'model', label: ch.base, icon: ICON.model, async draw(stage, run) {
+        stage.append(h('p', { text: `Start from a model as it is: ${ch.base}, ${mb(ch.baseSize)}. These are its weights, and in this chapter they never change.` }), weightsGrid(256))
+        await run.wait(600)
+      } },
+      { key: 'modelfile', label: 'modelfile', icon: ICON.modelfile, async draw(stage, run) {
+        const box = h('div', { class: 'mf' })
+        stage.append(h('p', { text: 'The Modelfile: one line of weights, the rest is words.' }), box)
+        let section = ''
+        for (const line of ch.modelfile) {
+          const word = /^(FROM|SYSTEM|PARAMETER|MESSAGE|TEMPLATE)\b/.exec(line)?.[1]
+          if (word) section = word
+          const w = section === 'FROM'
+          const g = h('div', { class: `mf__gutter ${w ? 'is-w' : 'is-chg'}`, text: word ? (w ? 'weights' : 'not weights') : '' })
+          const l = h('div', { class: 'mf__line' })
+          box.append(g, l)
+          if (!(await run.type(l, line, 240))) return
+        }
+      } },
+      { key: 'create', label: 'ollama create', icon: ICON.model, async draw(stage, run) {
+        for (const c of ch.commands.filter((c) => c.startsWith('ollama'))) await typeCmd(stage, run, c)
+        await typeCmd(stage, run, `${ch.model} · ${mb(ch.size)} · the same weights as ${ch.base} (${mb(ch.baseSize)})`, true)
+        stage.append(weightsGrid(256))
+      } },
+      { key: 'chat', label: 'chat', icon: ICON.chat, async draw(stage, run) {
+        stage.append(h('p', {}, h('span', { class: 'muted', text: 'asked both: ' }), ask.prompt))
+        const a = answerCard(ch.base, 'as it was', ask.answer)
+        const b = answerCard(ch.model, 'with the Modelfile', crit.answer, 'is-chg')
+        stage.append(h('div', { class: 'cols' }, a.el, b.el))
+        await Promise.all([run.type(a.a, a.text, 900), run.type(b.a, b.text, 70)])
+      } },
+    ],
+  }
+}
+
+function chapterExamples(ch) {
+  const ask = ch.chat.filter((c) => c.prompt.startsWith('The green of a tennis'))
+  const base = ask.find((c) => c.model === ch.base), mine = ask.find((c) => c.model === ch.model)
+  const e = ch.eval
+  return {
+    lead: 'Training on examples teaches a new habit: describe a colour in words, and it answers with the colour\'s hex code and nothing else.',
+    stations: [
+      { key: 'data', label: 'data', icon: ICON.data, async draw(stage, run) {
+        stage.append(h('p', { text: `${fmt(ch.raw.counts?.rows ?? 33887)} colours from burkelibbey/colors (${ch.raw.license.replace(/ \(as stated at import\)/, '')}), each a description and a hex code. 3,000 were picked at random: ${fmt(ch.data.counts.train)} to learn from, ${fmt(ch.data.counts.valid)} kept aside to test with.` }))
+        await typeCmd(stage, run, ch.commands[1])
+        const rows = h('div', { class: 'rows' })
+        stage.append(rows)
+        for (const r of ch.rows.slice(0, 10)) {
+          rows.append(h('div', { class: 'row' }, h('span', { class: 'row__q', text: r.q }), h('span', { class: 'swatch', style: `background:${r.a}` }), h('span', { text: r.a })))
+          if (!(await run.wait(180))) return
+        }
+      } },
+      { key: 'run', label: 'train', icon: ICON.train, async draw(stage, run) {
+        await typeCmd(stage, run, ch.commands[3])
+        await lossChart(stage, run, ch.run.loss, { label: 'training loss falling over 1,500 steps' })
+      } },
+      adapterStation(ch),
+      fusedStation(ch),
+      modelStation(ch),
+      { key: 'chat', label: 'chat', icon: ICON.chat, async draw(stage, run) {
+        stage.append(h('p', {}, h('span', { class: 'muted', text: 'asked both: ' }), base.prompt))
+        const a = answerCard(ch.base, 'as it was', base.answer)
+        const b = answerCard(ch.model, 'trained', mine.answer, 'is-chg')
+        const sw = h('div', { class: 'swatch', style: `background:${mine.answer.trim()};width:4rem;height:4rem;margin-top:0.5rem` })
+        b.el.append(sw)
+        stage.append(h('div', { class: 'cols' }, a.el, b.el))
+        await Promise.all([run.type(a.a, a.text, 500), run.type(b.a, b.text, 20)])
+        if (!(await run.wait(500))) return
+        const m = e['colour-hex-3k-360m'], rnd = e['random guess']
+        stage.append(h('p', { class: 'note', text: `How close, over 60 held-out descriptions (distance in RGB; black to white is 441):` }),
+          bars([{ label: 'trained', n: m.meanDistance, value: `${m.meanDistance} away`, cls: 'is-chg' }, { label: 'random guess', n: rnd.meanDistance, value: `${rnd.meanDistance} away` }], 200))
+      } },
+    ],
+  }
+}
+
+function chapterTaste(ch) {
+  const r = ch.run.results.heldOut, c = ch.collapsed.results.heldOut
+  const ev = ch.eval
+  return {
+    lead: 'Preference tuning teaches a model to lean toward one kind of answer over another. Here the preference is form: three lines of 5, 7 and 5 syllables.',
+    stations: [
+      { key: 'data', label: 'pairs', icon: ICON.data, async draw(stage, run) {
+        stage.append(h('p', { text: `${ch.data.counts.train + ch.data.counts.valid} pairs, made here. For each topic, smollm2:360m wrote a haiku and qwen3:4b wrote one asked for 5-7-5. A small rule counted the syllables. When qwen3's kept 5-7-5 and the small model's didn't, the pair went in: chosen and rejected.` }))
+        for (const p of ch.pairs.slice(0, 3)) {
+          const counts = (n, want) => n.map((v, i) => h('span', { class: `n${v === want[i] ? ' ok' : ''}`, text: ` ${v}` }))
+          const line = (text, n, chosen) => {
+            const el = h('div', { class: `haiku${chosen ? ' is-chosen' : ''}` })
+            text.split('\n').forEach((l, i) => el.append(l, n[i] != null ? h('span', { class: `n${n[i] === [5, 7, 5][i] ? ' ok' : ''}`, text: `  ${n[i]}` }) : '', '\n'))
+            return el
+          }
+          stage.append(h('p', { class: 'label', style: 'margin:0.5rem 0 0.3rem', text: p.prompt }),
+            h('div', { class: 'pair' },
+              h('div', {}, h('div', { class: 'label', text: 'chosen · qwen3:4b' }), line(p.chosen, p.chosenCounts, true)),
+              h('div', {}, h('div', { class: 'label', text: 'rejected · smollm2:360m' }), line(p.rejected, p.rejectedCounts, false))))
+          if (!(await run.wait(900))) return
+        }
+      } },
+      { key: 'run', label: 'prefer', icon: ICON.prefer, async draw(stage, run) {
+        await typeCmd(stage, run, ch.run.command[0])
+        stage.append(h('p', { class: 'note', text: 'The dashed fuchsia line is the first try, without --sft: its loss fell to almost nothing, and its haiku fell apart.' }))
+        await lossChart(stage, run, ch.run.loss, { label: 'preference loss, with the collapsed first run dashed', ghost: ch.collapsed.loss })
+        await typeCmd(stage, run, `held out: prefers the chosen haiku in ${Math.round(r.before * r.n)}/${r.n} pairs before, ${Math.round(r.after * r.n)}/${r.n} after`, true)
+        stage.append(h('p', { class: 'note', text: `--sft 1 also pulls the model toward writing the chosen haiku, so the preference moves without the writing collapsing. The first run's answers had turned into "${ev['collapsed (lr 2e-5, 100 iters, no --sft)'].example}".` }))
+      } },
+      adapterStation(ch),
+      fusedStation(ch),
+      modelStation(ch),
+      { key: 'chat', label: 'chat', icon: ICON.chat, async draw(stage, run) {
+        stage.append(h('p', { text: '12 new topics, "Write a haiku about …", each scored out of 4 by the same rule.' }))
+        const base = ev['smollm2:360m'], col = ev['collapsed (lr 2e-5, 100 iters, no --sft)'], mine = ev['haiku-575-dpo (lr 5e-5, 150 iters, --sft 1), two samplings']
+        const best = mine.reduce((a, b) => (a.mean > b.mean ? a : b)), low = mine.reduce((a, b) => (a.mean < b.mean ? a : b))
+        stage.append(h('p', { class: 'label', text: 'mean score out of 4' }), bars([
+          { label: 'smollm2:360m', n: base.mean, value: base.mean.toFixed(2) },
+          { label: 'first try (collapsed)', n: col.mean, value: col.mean.toFixed(2) },
+          { label: ch.model, n: best.mean, value: `${low.mean.toFixed(2)}–${best.mean.toFixed(2)}`, cls: 'is-chg' },
+        ], 4))
+        stage.append(h('p', { class: 'label', style: 'margin-top:1rem', text: 'three lines, out of 12' }), bars([
+          { label: 'smollm2:360m', n: base.threeLines, value: `${base.threeLines}` },
+          { label: 'first try (collapsed)', n: col.threeLines, value: `${col.threeLines}` },
+          { label: ch.model, n: best.threeLines, value: `${best.threeLines}`, cls: 'is-chg' },
+        ], 12))
+        const poem = h('div', { class: 'haiku is-chosen', style: 'margin-top:1rem' })
+        stage.append(poem)
+        await run.wait(800)
+        await run.type(poem, 'Snow-covered fox steps\nSilent as a shadow’s sigh\nLeaves a trail of frost', 40)
+        stage.append(h('p', { class: 'note', text: `${ch.model}, "a fox in the snow": 5, 7, 5. Scores vary from one asking to the next; exact 5-7-5 is still rare (1–2 of 12, the base 1).` }))
+      } },
+    ],
+  }
+}
+
+function chapterBlend(ch, A, B) {
+  const [b50, b75] = ch.blends
+  const said = (model, prompt) => ch.chat.findLast((c) => c.model === model && c.prompt === prompt)?.answer ?? ''
+  return {
+    lead: 'Two adapters made on the same model can be blended into one. t is how much of each: 0 is all of the first, 1 is all of the second.',
+    stations: [
+      { key: 'two', label: 'two adapters', icon: ICON.adapter, async draw(stage, run) {
+        stage.append(h('p', { text: `The colour adapter (examples) and the haiku adapter (taste), both on SmolLM2-360M, both rank ${A.adapter.rank} over ${A.adapter.layers} layers, so their layers line up.` }))
+        const fa = heat(A.adapter.picture.delta, 6, 'change made by the colour adapter'), fb = heat(B.adapter.picture.delta, 6, 'change made by the haiku adapter')
+        stage.append(h('div', { class: 'heat' },
+          h('figure', {}, fa, h('figcaption', { text: `${ch.a}: its change (corner)` })),
+          h('figure', {}, fb, h('figcaption', { text: `${ch.b}: its change (corner)` }))))
+        await grow(fa, run, 700); await grow(fb, run, 700)
+      } },
+      { key: 'merge', label: 'merge', icon: ICON.merge, async draw(stage, run) {
+        stage.append(h('p', { text: 'Each layer\'s change is A × B. Averaging the A\'s and the B\'s separately would mix one adapter\'s A with the other\'s B: a change neither learned. So the two are stacked side by side, B weighted by 1 − t and t, and the product is exactly (1 − t) × the first change + t × the second.' }))
+        const pa = A.adapter.picture.a, pb = B.adapter.picture.a
+        const stacked = pa.map((row, i) => [...row, ...pb[i]])
+        const fs = heat(stacked, 6, 'the two A matrices stacked side by side')
+        stage.append(h('div', { class: 'heat' }, h('figure', {}, fs, h('figcaption', { text: `A, stacked: rank ${A.adapter.rank} + ${B.adapter.rank} = ${b50.manifest.rank}` }))))
+        await grow(fs, run, 900)
+        await typeCmd(stage, run, ch.commands[0])
+        const fd = heat(b50.picture.delta, 6, 'the blended change at t = 0.5')
+        stage.append(h('div', { class: 'heat' }, h('figure', {}, fd, h('figcaption', { text: 'the blend\'s change at t = 0.5 (corner)' }))))
+        await grow(fd, run, 700)
+        stage.append(h('p', { class: 'note', text: `Checked from the files: the stacked product differs from (1 − t)·first + t·second by at most ${b50.check.toExponential(1)} (t = 0.5) and ${b75.check.toExponential(1)} (t = 0.75): the size of rounding.` }))
+      } },
+      { key: 'model', label: 'ollama models', icon: ICON.model, async draw(stage, run) {
+        stage.append(h('p', { text: 'Each blend is fused and registered like any adapter. Two were made.' }))
+        for (const b of ch.blends) {
+          await typeCmd(stage, run, `export ${b.name}`)
+          await typeCmd(stage, run, `${b.name} · t = ${b.t} · ${Math.round((1 - b.t) * 100)}% colour, ${Math.round(b.t * 100)}% haiku · ${mb(b.size)}`, true)
+        }
+      } },
+      { key: 'chat', label: 'chat', icon: ICON.chat, async draw(stage, run) {
+        const qs = ['The green of a tennis ball at dusk.', 'Write a haiku about a paper lantern.']
+        const models = [ch.a, ch.b, b50.name, b75.name]
+        const tbl = h('table', { class: 'table' })
+        tbl.append(h('tr', {}, h('th', { text: '' }), ...qs.map((q) => h('th', { text: q }))))
+        stage.append(tbl)
+        for (const m of models) {
+          const cells = qs.map((q) => h('td', {}))
+          tbl.append(h('tr', {}, h('th', { scope: 'row', text: m }), ...cells))
+          for (let i = 0; i < qs.length; i++) {
+            const text = said(m, qs[i]).trim()
+            const hex = /^#[0-9a-f]{3,6}$/i.test(text)
+            if (!(await run.type(cells[i], text.length > 180 ? text.slice(0, 180) + '…' : text, 160))) return
+            if (hex && text.length === 7) cells[i].prepend(h('span', { class: 'swatch', style: `display:inline-block;vertical-align:-0.3rem;margin-right:0.4rem;background:${text}` }))
+          }
+        }
+        stage.append(h('p', { class: 'note', text: 'Half the weights is not half the behaviour. The colour habit is strong and narrow, so at t = 0.5 it answers everything with a hex code, even a haiku request. At t = 0.75 the model does both: colours get hex codes, haiku requests get haiku, and a plain question gets ordinary prose.' }))
+      } },
+    ],
+  }
+}
+
+/* ---------- a chapter on the page ---------- */
+
+const WAYS = { words: { n: 1, icon: ICON.modelfile }, examples: { n: 2, icon: ICON.train }, taste: { n: 3, icon: ICON.prefer }, blend: { n: 4, icon: ICON.merge } }
+
+function mount(ch, plan) {
+  const way = WAYS[ch.way]
+  const sec = h('section', { class: 'chapter', id: ch.id, 'aria-labelledby': `${ch.id}-h` })
+  const title = h('h2', { id: `${ch.id}-h` }, icon(way.icon), `${way.n} · ${ch.way}`)
+  sec.append(h('div', { class: 'chapter__head' }, title, h('span', { class: 'chapter__name', text: ch.title })), h('p', { class: 'chapter__what', text: plan.lead }))
+  const chain = h('ol', { class: 'chain', 'aria-label': 'steps' })
+  const chips = plan.stations.map((st, i) => {
+    const b = h('button', { class: 'chip', type: 'button' }, st.icon ? icon(st.icon) : null, st.label)
+    b.addEventListener('click', () => (seen.disconnect(), go(i, true)))
+    chain.append(h('li', {}, b))
+    return b
+  })
+  for (const k of plan.skipped ?? []) chain.append(h('li', {}, h('span', { class: 'chip is-skipped', title: 'not used: no weights change' }, k)))
+  const stage = h('div', { class: 'stage', 'aria-live': 'polite' })
+  const status = h('span', { class: 'muted' })
+  const playBtn = h('button', { type: 'button', text: 'play' })
+  const prev = h('button', { type: 'button', text: '◂ back' }), next = h('button', { type: 'button', text: 'next ▸' })
+  sec.append(chain, stage, h('div', { class: 'controls' }, prev, playBtn, next, status))
+
+  let at = -1, current = null, playing = false
+  // play once, the first time the chapter comes into view (any click first takes over); reduced motion shows each step whole
+  const seen = new IntersectionObserver((entries) => {
+    if (!entries.some((e) => e.isIntersecting)) return
+    seen.disconnect()
+    playing = !REDUCED
+    go(0)
+  }, { threshold: 0.35 })
+  async function go(i, manual = false) {
+    if (manual) playing = false
+    current?.stop()
+    const run = (current = new Run())
+    at = i
+    chips.forEach((c, j) => c.className = `chip${j < i ? ' is-done' : j === i ? ' is-on' : ''}`)
+    // each step draws into its own box: one that was cut short keeps drawing into a box no longer on the page
+    const box = h('div')
+    stage.replaceChildren(h('p', { class: 'stage__title', text: `${i + 1} of ${plan.stations.length} · ${plan.stations[i].label}` }), box)
+    status.textContent = ''
+    playBtn.textContent = playing ? 'pause' : i === plan.stations.length - 1 ? 'play again' : 'play'
+    await plan.stations[i].draw(box, run)
+    if (!run.live) return
+    if (playing && i < plan.stations.length - 1 && (await run.wait(1400))) go(i + 1)
+    else if (playing) { playing = false; playBtn.textContent = 'play again'; chips[i].className = 'chip is-done' }
+  }
+  playBtn.addEventListener('click', () => {
+    seen.disconnect()
+    if (playing) { playing = false; current?.stop(); playBtn.textContent = 'play'; return }
+    playing = true
+    go(at < 0 || at === plan.stations.length - 1 ? 0 : at + 1)
+  })
+  prev.addEventListener('click', () => (seen.disconnect(), go(Math.max(0, at - 1), true)))
+  next.addEventListener('click', () => (seen.disconnect(), go(Math.min(plan.stations.length - 1, at + 1), true)))
+
+  seen.observe(sec)
+  return sec
+}
+
+fetch('data.json').then((r) => r.json()).then((d) => {
+  const [words, examples, taste, blend] = d.chapters
+  const plans = [chapterWords(words), chapterExamples(examples), chapterTaste(taste), chapterBlend(blend, examples, taste)]
+  const book = document.getElementById('book')
+  book.replaceChildren()
+  d.chapters.forEach((ch, i) => {
+    book.append(mount(ch, plans[i]))
+    const w = WAYS[ch.way]
+    document.getElementById('toc').append(h('li', {}, h('a', { href: `#${ch.id}` }, icon(w.icon), `${w.n} ${ch.way} · ${ch.title}`)))
+  })
+  document.getElementById('made').textContent = `Records gathered ${d.made}.`
+}, () => {
+  document.getElementById('book').replaceChildren(h('p', { text: 'The records (data.json) did not load.' }))
+})
+</script>
+</body>
+</html>
