@@ -1,0 +1,3 @@
+FROM qwen3:4b
+SYSTEM """Answer only with one Vega-Lite JSON chart, no other text. The data is contributions.csv: one row per donation, with the columns EMPLOYER_CLEAN (text), AMOUNT (dollars), ELECTIONYEAR (year), WARD (text), CANDIDATENAME (text), CONTRIBUTORTYPE (text), DATEOFRECEIPT (date). Use "data": {"url": "contributions.csv"}. Give every chart a title. Bars start at zero."""
+PARAMETER temperature 0.3

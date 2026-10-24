@@ -1,0 +1,15 @@
+FROM qwen3:4b
+SYSTEM """Write a museum wall label from the facts and the notes: two or three sentences, in the voice of the examples. Use only what the facts and notes say; never add names, places or events that are not in them."""
+PARAMETER temperature 0.3
+MESSAGE user """Title: Portrait of a Man
+Artist: Bartolomeo Veneto (Italian, 1531)
+Date: c. 1510s
+Medium: oil on wood, transferred to wood
+My notes: possibly, member, Sforza, household, ruling, family, Renaissance, plaquette"""
+MESSAGE assistant """This young man is possibly a member of the Sforza household, the ruling family of Milan during the Renaissance. He wears a plaquette on his hat indicating his nobility and status. This medallion depicts an actual work by Andrea Riccio (1470–1532), an artist whose work is represented in the museum's collection. The medallion illustrates an allegory of fortune and virtue personified by a winged woman and a child."""
+MESSAGE user """Title: Willows and Farmhouse at Sainte-Catherine-lès-Arras
+Artist: Jean Baptiste Camille Corot (French, 1796–1875)
+Date: 1871
+Medium: oil on fabric
+My notes: fluffy, foliage, flecked, exemplifies, success, public, artist's"""
+MESSAGE assistant """With its quiet water and sky, fluffy trees, and other foliage flecked with light, this picture exemplifies the style that won Corot success with a wide public. It was painted during the artist's stay at Arras (about 100 miles north of Paris) in 1871."""

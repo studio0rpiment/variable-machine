@@ -1,0 +1,8 @@
+{"type":"object","required":["title","data","mark","encoding"],"properties":{
+ "title":{"type":"string"},
+ "data":{"type":"object","required":["url"],"properties":{"url":{"const":"contributions.csv"}}},
+ "mark":{"enum":["bar","line","point","area","tick"]},
+ "encoding":{"type":"object","required":["x","y"],"properties":{
+  "x":{"type":"object","required":["field","type"],"properties":{"field":{"enum":["EMPLOYER_CLEAN","AMOUNT","ELECTIONYEAR","WARD","CANDIDATENAME","CONTRIBUTORTYPE","DATEOFRECEIPT"]},"type":{"enum":["nominal","ordinal","quantitative","temporal"]},"aggregate":{"enum":["sum","mean","count","max"]},"bin":{"type":"boolean"},"sort":{"enum":["-y","y","-x","x"]}}},
+  "y":{"type":"object","required":["field","type"],"properties":{"field":{"enum":["EMPLOYER_CLEAN","AMOUNT","ELECTIONYEAR","WARD","CANDIDATENAME","CONTRIBUTORTYPE","DATEOFRECEIPT"]},"type":{"enum":["nominal","ordinal","quantitative","temporal"]},"aggregate":{"enum":["sum","mean","count","max"]},"sort":{"enum":["-y","y","-x","x"]}}},
+  "color":{"type":"object","required":["field","type"],"properties":{"field":{"enum":["EMPLOYER_CLEAN","WARD","CANDIDATENAME","CONTRIBUTORTYPE","ELECTIONYEAR"]},"type":{"enum":["nominal","ordinal"]}}}}}}}
