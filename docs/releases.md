@@ -2,6 +2,19 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.1: fixes from trying the four briefs (2026-10-24)
+
+Fixes found by working through the four class briefs as a student would; their records and rewritten instructions are in [docs/briefs](briefs/README.md). If you have v0.2, replace it with this one.
+
+**Fixes**
+- **Voice:** *speak* sometimes hummed for half a minute instead of stopping at the end of the text. It now finishes every sentence, every time.
+- **Move:** right after you picked a new photo, *add this photo* could save the previous photo's points under the new gesture. Picking a photo now clears the old points at once.
+- **Move:** *train* chooses how many neighbours vote from your smallest gesture, so five examples each works.
+
+**Editing the flags:** every explanation flag's words are in one plain-text file, `ui/src/explain/flags.md`. Edit it and the page shows the change on the next reload (with `npm run dev`; restart it once after updating).
+
+**The four briefs, tried:** public data, gallery, gesture and making information tangible, each with what worked, what didn't, timings, and the instructions rewritten from what happened.
+
 ## v0.2: every kind of model (2026-10-24)
 
 With this release every kind of model on the Models tab works: it writes, sees, looks, speaks, listens and moves. If you have v0.1 or v0.1.5, replace it with this one, then run `npm install && uv sync --project python` again in the folder.
