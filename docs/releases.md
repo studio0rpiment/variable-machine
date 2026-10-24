@@ -2,6 +2,10 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.2: audio players in the page's own style (2026-10-24)
+
+- **Voice:** sounds play in Variable Machine's own style instead of the browser's player: the hand-drawn play triangle and stop blob, a fine line for where you are (drag it, or use the arrow keys), and the time.
+
 ## v0.2.1: fixes from trying the four briefs (2026-10-24)
 
 Fixes found by working through the four class briefs as a student would; their records and rewritten instructions are in [docs/briefs](briefs/README.md). If you have v0.2, replace it with this one.
