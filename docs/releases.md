@@ -2,6 +2,27 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2: every kind of model (2026-10-24)
+
+With this release every kind of model on the Models tab works: it writes, sees, looks, speaks, listens and moves. If you have v0.1 or v0.1.5, replace it with this one, then run `npm install && uv sync --project python` again in the folder.
+
+**Voice tab** (new: speaks and listens)
+- **Speak:** type something and Soprano-1.1-80M (Apache 2.0) reads it aloud (`speak <name> "<text>"`).
+- **Listen:** record your voice in the page, or pick any sound, and Qwen3-ASR-0.6B (Apache 2.0) writes down what it heard, in 52 languages and dialects (`listen audio/<set>/<file>.wav`). Speak something, then listen to it: text to voice and back.
+- Sounds are WAV files in `workspace/audio`, each with what it was asked to say or what was heard. Both models download the first time they run (about 300MB and 1GB), and their Python packages install then too.
+
+**Move tab** (new: gesture and pose tracking)
+- MediaPipe finds 21 points on a hand or 33 on a body, from the camera or a photo, in the page (`model get hands`, `model get body`).
+- Hold a button to record examples of your own gestures; only the points are kept, never pictures. *Train* is k-nearest neighbours, instant, checked on every fifth example with a grid of what it mixed up (`gesture train`).
+- Test it live, and send each guess as OSC to TouchDesigner, Max or Pure Data on this computer (`gesture send <set> --port 9000`).
+- The camera is on only while the Move tab is open.
+
+**Also**
+- The Start map shows Look, Voice and Move together under *use it as it is*; the About page and the Models tab list them.
+- Share zips image sets, sounds and gesture sets too.
+
+**Not yet:** Merge and Prefer for picture adapters; the Voice and Move tabs' timings on a 16GB Mac.
+
 ## v0.1.5: models that see, the Look tab, worked examples (2026-10-23)
 
 If you have v0.1, replace it with this one, then run `npm install && uv sync --project python` again in the folder.
