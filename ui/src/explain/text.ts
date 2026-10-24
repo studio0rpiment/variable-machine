@@ -384,6 +384,38 @@ export const EXPLAIN = {
     text: 'Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card.',
   },
   /* ---- Look ---- */
+  'panel.move': {
+    title: 'Move',
+    text: 'The kind of model that moves: a tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.',
+  },
+  'move.get': {
+    title: 'Download the tracker',
+    text: 'Downloads the tracker, one small file from Google\'s MediaPipe, into workspace/tools. It runs in this page. You don\'t train it: it finds the points, and your own model names the gesture.',
+  },
+  'move.set': {
+    title: 'Gesture set',
+    text: 'A set of your gestures, with the examples you recorded and the model trained on them, in workspace/gestures. A set follows hands or a body, not both.',
+  },
+  'move.new': {
+    title: 'Make a set',
+    text: 'Starts a new gesture set for hands or for a body. Then name a gesture and record some examples of it.',
+  },
+  'move.record': {
+    title: 'Hold to record',
+    text: 'While you hold the button, the shape of your hand (or body) is recorded ten times a second: the points, measured from the wrist (or hips), so the same gesture reads the same anywhere in the picture. Move a little while you hold it, so the examples vary: 20 to 50 of each gesture is plenty.',
+  },
+  'move.train': {
+    title: 'Train',
+    text: 'k-nearest neighbours: a new pose is compared with every example you recorded, and the 5 closest vote. Training keeps your examples, after checking it on every fifth one set aside. The grid shows the check: each gesture you made, down the side, and what it was named, across. Mistakes off the diagonal show which gestures look alike to it.',
+  },
+  'move.test': {
+    title: 'Test it live',
+    text: 'Names your gesture as you make it, and shows how many of the nearest examples agree. Try the gestures it mixes up, and record more examples of them.',
+  },
+  'move.send': {
+    title: 'Send it on',
+    text: 'While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture\'s name and how sure it is (0 to 1). In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer.',
+  },
   'panel.voice': {
     title: 'Voice',
     text: 'Two kinds of model, used as they are: one that speaks (text in, a voice out) and one that listens (a recording in, what was said out). Type something and Soprano reads it aloud; record your voice and Qwen3-ASR writes down what it heard, in 52 languages and dialects. Both run on this computer, and the first use of each downloads it. Every sound is a WAV file in workspace/audio, with a record of where it came from and what was heard in it.',

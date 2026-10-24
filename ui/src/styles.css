@@ -804,3 +804,26 @@ a.text-button { text-decoration: none; }
 .voice-file { display: flex; flex-direction: column; gap: 0.4rem; border: 1px dashed var(--muted); padding: 0.75rem 1rem; max-width: 40rem; }
 .voice-file audio { width: 100%; max-width: 28rem; height: 2rem; }
 .voice-heard { margin: 0; }
+
+/* ---- Move: the picture with its points, recording, the check grid ---- */
+.move-source { margin: 0.5rem 0 1rem; }
+.move-work { display: grid; grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr); gap: 2rem; align-items: start; margin-top: 1rem; }
+@media (max-width: 56rem) { .move-work { grid-template-columns: 1fr; } }
+.move-view { position: relative; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.move-view__picture { width: 100%; height: auto; display: block; border: 1px solid var(--line); transform: scaleX(-1); }
+img.move-view__picture { transform: none; }
+.move-view__points { position: absolute; top: 0; left: 0; width: 100%; height: auto; aspect-ratio: auto; pointer-events: none; color: var(--line); }
+.move-view:has(video) .move-view__points { transform: scaleX(-1); }
+.move-side { display: flex; flex-direction: column; gap: 0.75rem; }
+.move-side h3 { margin: 0.75rem 0 0; }
+.move-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem; }
+.move-label__name { min-width: 6rem; }
+.move-label__new { flex: 1 1 10rem; }
+.move-grid { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.move-grid th, .move-grid td { border: 1px dashed var(--muted); padding: 0.25rem 0.6rem; text-align: right; }
+.move-grid td.is-right { color: var(--line); }
+.move-grid td.is-wrong { text-decoration: underline; }
+.move-guess { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; }
+.move-guess__label { font-size: 1.6rem; }
+.move-guess__bar { display: block; height: 1px; background: var(--line); }
+.move-port { max-width: 7rem; }

@@ -25,7 +25,7 @@ export const KINDS: Record<KindId, KindInfo> = {
   writes: { id: 'writes', what: 'text generation', io: 'text in, text out', tabs: ['modelfile', 'train', 'prefer', 'merge', 'chat'] },
   sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'data', 'train'] },
   looks: { id: 'looks', what: 'image tools: cut something out, distance between blobs, select a blob', io: 'a photo in, a picture made from it out', tabs: ['look'] },
-  moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['move'], soon: true },
+  moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['move'] },
   speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['voice'] },
   listens: { id: 'listens', what: 'speech to text', io: 'a recording in, a transcript out', tabs: ['voice'] },
 }
@@ -257,3 +257,46 @@ export const voiceModel = (kind: 'speaks' | 'listens') => VOICE_MODELS.find((v) 
 
 /** What a recording may be: WAV, which the models read without ffmpeg. */
 export const AUDIO_EXT = /\.wav$/i
+
+/**
+ * The trackers (the moves kind): MediaPipe's hand and body landmarkers, run in
+ * the page by @mediapipe/tasks-vision (Apache 2.0). They find the points; the
+ * student's own k-NN (shared/gesture.ts) names the gesture. Each is one .task
+ * file from Google's MediaPipe model store, downloaded with curl into
+ * workspace/tools/<name>/ like the image tools.
+ */
+export interface TrackerModel {
+  name: 'hands' | 'body'
+  kind: 'moves'
+  file: string
+  url: string
+  license: string
+  maker: string
+  builtFor: string
+  mb: number
+}
+
+export const TRACKER_MODELS: TrackerModel[] = [
+  {
+    name: 'hands',
+    kind: 'moves',
+    file: 'hand_landmarker.task',
+    url: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
+    license: 'Apache 2.0',
+    maker: 'Google (MediaPipe), 2023',
+    builtFor: 'Finds hands in the camera picture and 21 points on each: the wrist, and four along every finger. Quick enough to follow a hand as it moves.',
+    mb: 8,
+  },
+  {
+    name: 'body',
+    kind: 'moves',
+    file: 'pose_landmarker_lite.task',
+    url: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+    license: 'Apache 2.0',
+    maker: 'Google (MediaPipe BlazePose), 2023',
+    builtFor: 'Finds a person and 33 points on the body: face, shoulders, elbows, wrists, hips, knees, ankles. The lite version, made for laptops and phones.',
+    mb: 6,
+  },
+]
+
+export const trackerModel = (name: string) => TRACKER_MODELS.find((t) => t.name === name)

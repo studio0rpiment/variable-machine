@@ -13,21 +13,22 @@ import StartPanel from './components/StartPanel'
 import AboutPanel from './components/AboutPanel'
 import LookPanel from './components/LookPanel'
 import VoicePanel from './components/VoicePanel'
+import MovePanel from './components/MovePanel'
 import Terminal from './components/Terminal'
 import ThemeToggle from './components/ThemeToggle'
 import { setPref, usePref } from './lib/viewPrefs'
 import StatusLine from './components/StatusLine'
 import { Explained } from './explain/Explained'
 import type { ExplainId } from './explain/text'
-import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark, AboutMark, LookMark, VoiceMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark, AboutMark, LookMark, VoiceMark, MoveMark } from './icons'
 
 /**
  * The tabs, in the order you'd use them, grouped: the map; what to start from;
  * what to show it; the three ways to change it (imitate, prefer, blend); then
  * making it a model, comparing, sharing. Then the tabs for the other kinds of
- * model, used as they are (Look: image tools; Voice: speaking and listening). The Start panel tells the same story.
+ * model, used as they are (Look: image tools; Voice: speaking and listening; Move: your gestures). The Start panel tells the same story.
  */
-const GROUPS = [['start', 'about'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share'], ['look', 'voice']] as const
+const GROUPS = [['start', 'about'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share'], ['look', 'voice', 'move']] as const
 const PANELS = GROUPS.flat()
 type Panel = (typeof GROUPS)[number][number]
 const MARKS: Record<Panel, ReactNode> = {
@@ -44,6 +45,7 @@ const MARKS: Record<Panel, ReactNode> = {
   chat: <ChatMark size={0.9} />,
   look: <LookMark size={0.9} />,
   voice: <VoiceMark size={0.9} />,
+  move: <MoveMark size={0.9} />,
 }
 
 /**
@@ -157,6 +159,9 @@ export default function App() {
         </div>
         <div className="panel-slot" hidden={panel !== 'share'}>
           <SharePanel />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'move'}>
+          <MovePanel active={panel === 'move'} />
         </div>
         <div className="panel-slot" hidden={panel !== 'voice'}>
           <VoicePanel />

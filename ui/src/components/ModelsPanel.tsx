@@ -12,7 +12,9 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import ConfirmButton from './ConfirmButton'
 import { Explained } from '../explain/Explained'
-import { KINDS, SEE_MODELS, TOOL_MODELS } from '@shared/kinds'
+import { KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, VOICE_MODELS } from '@shared/kinds'
+import { TrackerCard } from './MovePanel'
+import { VoiceCard } from './VoicePanel'
 import ToolCard, { KindLine } from './ToolCard'
 
 interface Progress {
@@ -488,6 +490,29 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
       <div className="cards">
         {TOOL_MODELS.map((t) => (
           <ToolCard key={t.name} tool={t} here={tools.includes(t.name)} busy={getting === t.name} onGet={() => void getTool(t.name)} />
+        ))}
+      </div>
+
+      <h2 className="panel__title label">trackers · run in the page, on the move tab</h2>
+      <p className="models-intro">
+        <KindLine kind="moves" />
+      </p>
+      <div className="cards">
+        {TRACKER_MODELS.map((t) => (
+          <TrackerCard key={t.name} t={t} here={tools.includes(t.name)} busy={getting === t.name} onGet={() => void getTool(t.name)} />
+        ))}
+      </div>
+
+      <h2 className="panel__title label">voices · on the voice tab</h2>
+      <p className="models-intro">
+        <KindLine kind="speaks" />
+      </p>
+      <p className="models-intro">
+        <KindLine kind="listens" />
+      </p>
+      <div className="cards">
+        {VOICE_MODELS.map((m) => (
+          <VoiceCard key={m.name} m={m} />
         ))}
       </div>
     </section>

@@ -12,7 +12,7 @@ import type { ExplainId } from '../explain/text'
 
 const W = 150 // node width
 /** Everything drawn, in the SVG's units: what "fit" shows. */
-const CONTENT = { x: 40, y: 30, w: 1070, h: 785 } // the bottom 70 are room for the echo
+const CONTENT = { x: 40, y: 30, w: 1070, h: 965 } // the bottom 70 are room for the echo
 const MIN_W = 360 // closest zoom, in units across
 const MAX_W = 4000 // furthest
 const H = 44 // node height
@@ -39,6 +39,8 @@ const NODES: Node[] = [
   { id: 'share', x: 910, y: 466, caption: 'pass it on' },
   // apart from the change loop: ready-made tools, used as they are
   { id: 'look', x: 360, y: 650, caption: 'ready-made image tools' },
+  { id: 'voice', x: 360, y: 740, caption: 'it speaks, it listens' },
+  { id: 'move', x: 360, y: 830, caption: 'your gestures, named' },
 ]
 
 type P = [number, number]
@@ -98,6 +100,10 @@ const WIRES: Wire[] = [
   { from: 'models', to: 'look', label: 'a ready-made tool', points: [[60, 162], [44, 162], [44, 664], [360, 664]], at: [52, 656], anchor: 'start' },
   { from: 'images', to: 'look', label: 'your photos', points: [[220, 682], [360, 682]], at: [220, 700], anchor: 'start' },
   { from: 'look', to: 'outputs', label: 'a picture + its record', points: [[510, 672], [650, 672]], at: [518, 664], anchor: 'start' },
+  { from: 'words', to: 'voice', label: 'your words or your voice', points: [[200, 762], [360, 762]], at: [322, 780], anchor: 'end' },
+  { from: 'voice', to: 'audio', label: 'a sound + what was heard', points: [[510, 762], [650, 762]], at: [518, 754], anchor: 'start' },
+  { from: 'camera', to: 'move', label: 'the camera, as points', points: [[200, 852], [360, 852]], at: [322, 870], anchor: 'end' },
+  { from: 'move', to: 'osc', label: 'a gesture + how sure, as OSC', points: [[510, 852], [650, 852]], at: [518, 844], anchor: 'start' },
 ]
 
 /** What each tab runs, for the corner echo when you point at it. */
@@ -112,6 +118,8 @@ const RUNS: Record<string, string[]> = {
   chat: ['ollama run-once smollm2:360m "…"', 'ollama run-once smolvlm:256m --image images/classic-cv/utah-teapot.jpg "What is this?"'],
   share: ['zip adapters/dolly-300-360m', 'unzip adapters-dolly-300-360m.zip'],
   look: ['model get depth', 'look cutout images/studio/chair.jpg', 'look select images/studio/chair.jpg --point 320,240'],
+  voice: ['speak teapot-label "Utah teapot, 1974."', 'listen audio/recorded/rec-2026-10-24.wav'],
+  move: ['model get hands', 'gesture train studio-hands', 'gesture send studio-hands --port 9000'],
 }
 
 interface Props {
@@ -268,12 +276,18 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
         </text>
 
         {/* set apart: tools used as they are, outside the loop that changes numbers */}
-        <rect x={330} y={630} width={400} height={100} className="flow__group" />
+        <rect x={330} y={630} width={400} height={280} className="flow__group" />
         <text x={330} y={622} className="flow__group-label">
           use it as it is · nothing changes
         </text>
         <text x={656} y={676} className="flow__label">
           outputs
+        </text>
+        <text x={656} y={766} className="flow__label">
+          audio
+        </text>
+        <text x={656} y={856} className="flow__label">
+          TouchDesigner, Max…
         </text>
 
         {WIRES.map((w) => (

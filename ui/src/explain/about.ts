@@ -87,7 +87,7 @@ export const ABOUT_TABS: AboutTab[] = [
   {
     panel: 'chat',
     title: 'Chat: hear the difference',
-    does: 'Puts models side by side and asks them the same question. Everything you ask is kept in a log, and two answers to the same question can become a pair for Prefer.',
+    does: 'Puts models side by side and asks them the same question, with a picture for the models that see. Everything you ask is kept in a log, and two answers to the same question can become a pair for Prefer.',
     takes: 'Any model: pulled, a variant, or trained.',
     gives: 'Answers to compare, and a chat log.',
     next: 'Data, where pairs from the log become a preference set; or back to any step.',
@@ -99,5 +99,29 @@ export const ABOUT_TABS: AboutTab[] = [
     takes: 'Anything you made.',
     gives: 'A zip file, and from someone else, their work back in your tabs.',
     next: 'Whichever tab the unzipped work belongs to.',
+  },
+  {
+    panel: 'look',
+    title: 'Look: ready-made image tools',
+    does: 'Cuts something out of a photo, guesses how far away each part is, or outlines the blob you click. Models used as they are: nothing is trained, and they run inside the page.',
+    takes: 'Your photos, in an image set.',
+    gives: 'Pictures made from them, each with a record of which photo and which model made it.',
+    next: 'Your own work outside the app; the photos also go to Chat and Data for the models that see.',
+  },
+  {
+    panel: 'voice',
+    title: 'Voice: it speaks, it listens',
+    does: 'One model reads your text aloud; another writes down what it hears in a recording, in 52 languages and dialects. Both used as they are, on this computer.',
+    takes: 'Text you type, or your voice from the microphone.',
+    gives: 'Sounds as WAV files, each with what it was asked to say or what was heard in it.',
+    next: 'Your own work; or a transcript as a question in Chat.',
+  },
+  {
+    panel: 'move',
+    title: 'Move: your gestures, named',
+    does: 'A tracker finds points on your hand or body in the camera picture. You record examples of a few gestures and train a small model of your own that names them (k-nearest neighbours: the closest examples vote). Only points are kept, never pictures.',
+    takes: 'The camera (or a photo), and a few seconds of each gesture.',
+    gives: 'A gesture model, and while you test it, OSC messages for TouchDesigner, Max or Pure Data.',
+    next: 'Whatever listens to OSC: sound, light, projection.',
   },
 ]

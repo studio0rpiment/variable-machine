@@ -17,6 +17,7 @@ import { ollamaPost } from './ollama.ts'
 import type { ClientEvent } from './shared/events.ts'
 import { keep, sweep } from './temporary.ts'
 import { addRunner, pageDone } from './pagerun.ts'
+import { gestureLive } from './gestures.ts'
 
 for (const dir of WORKSPACE_DIRS) fs.mkdirSync(path.join(WORKSPACE, dir), { recursive: true })
 
@@ -105,6 +106,9 @@ wss.on('connection', (ws) => {
         break
       case 'page.ready':
         addRunner(ws)
+        break
+      case 'gesture.live':
+        gestureLive(event.name, event.label, event.confidence)
         break
       case 'page.done':
         void pageDone(event.id, event.ok, event.message, event.outputs ?? [])

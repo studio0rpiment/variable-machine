@@ -15,6 +15,7 @@ import { unzipCommand, zipCommand } from './share.ts'
 import { modelCommand } from './tools.ts'
 import { lookCommand } from './pagerun.ts'
 import { voiceCommand } from './voice.ts'
+import { gestureCommand, oscCommand } from './gestures.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -53,6 +54,13 @@ const HELP = `commands
 
   speak <name> "<text>" [--set spoken]             a model reads it aloud: workspace/audio/<set>/<name>.wav
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
+
+  model get hands | model get body                the trackers that find points on a hand or a body (Move tab)
+  gesture new <name> --tracker hands|body          a set of your gestures: workspace/gestures/<name>/
+  gesture train <name> [--k 5]                     k-nearest neighbours: check on every fifth example, keep them all
+  gesture clear <name> <gesture>                   forget one gesture's examples
+  gesture send <name> --port 9000 [--address /vm/<name>] | --stop   while testing, OSC to this computer
+  osc send <port> <address> [values…]              one OSC message to 127.0.0.1, to try a connection
 `
 
 
@@ -129,6 +137,8 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'model') return modelCommand(args)
   if (cmd === 'look') return lookCommand(args, line)
   if (cmd === 'speak' || cmd === 'listen') return voiceCommand(cmd, args, line)
+  if (cmd === 'gesture') return gestureCommand(args, line)
+  if (cmd === 'osc') return oscCommand(args)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)

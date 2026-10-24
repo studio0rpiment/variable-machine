@@ -5,6 +5,7 @@ import { print } from './hub.ts'
 import type http from 'node:http'
 import { WORKSPACE } from './config.ts'
 import { readAudioSet, writeAudioSet } from './voice.ts'
+import { receiveExamples } from './gestures.ts'
 
 /**
  * Read-only access to workspace/ for the UI, which renders from these files:
@@ -17,6 +18,7 @@ import { readAudioSet, writeAudioSet } from './voice.ts'
  *   POST /api/workspace/upload?name=x.jpg&set=s → a photo into workspace/images/<set>/ (the set's manifest lists it)
  *   POST /api/workspace/output?path=outputs/s/x.png → a picture a page run made (look …); the run records it
  *   POST /api/workspace/upload?name=x.wav&audio=s → a recording from the page into workspace/audio/<set>/ (the set's manifest lists it)
+ *   POST /api/workspace/gesture?name=s&label=l → recorded gesture examples (points, not pictures) into workspace/gestures/<set>/
  * Every other write is a command, so it shows in the terminal; an upload is
  * announced there too, and unpacking it is the `unzip` command.
  */
@@ -44,6 +46,7 @@ const TYPES: Record<string, string> = {
   '.webp': 'image/webp',
   '.wav': 'audio/wav',
   '.onnx': 'application/octet-stream',
+  '.task': 'application/octet-stream',
   '.json': 'application/json',
 }
 
@@ -173,6 +176,7 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
   const what = url.pathname.replace('/api/workspace/', '')
   const fail = (err: Error) => json(res, 500, { error: err.message })
   if (what === 'upload') return upload(req, res, url.searchParams.get('name'), url.searchParams.get('set'), url.searchParams.get('license'), url.searchParams.get('audio')).catch(fail)
+  if (what === 'gesture') return receiveExamples(req, res, url.searchParams.get('name'), url.searchParams.get('label')).catch(fail)
   if (what === 'output') return uploadOutput(req, res, url.searchParams.get('path')).catch(fail)
   const target = inside(url.searchParams.get(what === 'file' ? 'path' : 'dir') ?? '')
   if (!target) return json(res, 403, { error: 'outside workspace/' })

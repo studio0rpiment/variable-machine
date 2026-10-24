@@ -39,7 +39,7 @@ const nameFrom = (text: string) =>
     .join('-')
     .replace(/-+$/, '')
 
-function VoiceCard({ m }: { m: VoiceModel }) {
+export function VoiceCard({ m }: { m: VoiceModel }) {
   return (
     <Manifest
       name={m.name}

@@ -19,10 +19,13 @@ const TYPES: Record<string, string> = {
 
 /**
  * Runtimes the page loads its own files from (the image tools' onnxruntime-web
- * WebAssembly), served from node_modules so nothing comes from a CDN.
+ * WebAssembly, the trackers' MediaPipe WebAssembly), served from node_modules
+ * so nothing comes from a CDN.
  */
 const VENDOR: Record<string, string> = {
   '/vendor/ort/': path.join(ROOT, 'node_modules', 'onnxruntime-web', 'dist'),
+  // the Move tab's trackers (MediaPipe Tasks Vision): its WebAssembly, 39MB, not bundled
+  '/vendor/mediapipe/': path.join(ROOT, 'node_modules', '@mediapipe', 'tasks-vision', 'wasm'),
 }
 
 /**

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { spawnStreamed } from './run.ts'
-import { KINDS, SEE_MODELS, TOOL_MODELS, seeModelfile, toolModel, type SeeModel, type ToolModel } from './shared/kinds.ts'
+import { KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, seeModelfile, toolModel, trackerModel, type SeeModel, type ToolModel, type TrackerModel } from './shared/kinds.ts'
 import { ollamaCommand } from './ollamaCommands.ts'
 
 /**
@@ -119,10 +119,42 @@ async function getSee(s: SeeModel): Promise<boolean> {
   return true
 }
 
+export const trackerPresent = (t: TrackerModel) => exists(path.join(dir(t), 'manifest.json'))
+
+/** A tracker for the Move tab: its one .task file from MediaPipe's model store. */
+async function getTracker(t: TrackerModel): Promise<boolean> {
+  if (await trackerPresent(t)) return print(`  already here: workspace/tools/${t.name}`), true
+  print(`  ${t.name}: ${t.file} · ${t.license} · about ${t.mb} MB · ${KINDS.moves.id} (${KINDS.moves.what})`)
+  const dest = path.join(dir(t), t.file)
+  print(`▸ curl -fL --create-dirs -o ${path.relative(path.dirname(WORKSPACE), dest)}.part ${t.url}`)
+  if (!(await spawnStreamed('curl', ['-fL', '--progress-bar', '--create-dirs', '-o', `${dest}.part`, t.url]))) {
+    print(`  ${t.file} didn't download; run model get ${t.name} again`)
+    return false
+  }
+  await fs.rename(`${dest}.part`, dest)
+  const manifest = {
+    name: t.name,
+    kind: 'tool-model',
+    modelKind: t.kind,
+    created: new Date().toISOString(),
+    // Google's model store has no license field to read; this is the model card's
+    license: `${t.license} (as its MediaPipe model card states)`,
+    licenseChecked: false,
+    inputs: [t.url],
+    command: `model get ${t.name}`,
+    runsIn: 'the page (MediaPipe Tasks Vision)',
+  }
+  await fs.writeFile(path.join(dir(t), 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+  print(`  ◂ workspace/tools/${t.name} · ${manifest.license}`)
+  broadcast({ type: 'workspace.changed', path: `tools/${t.name}/manifest.json`, kind: 'add' })
+  return true
+}
+
 export async function modelCommand(args: string[]): Promise<boolean> {
   const [sub, name, ...rest] = args
   if (sub === 'list' && !name) {
     for (const t of TOOL_MODELS) print(`  ${(await toolPresent(t)) ? '●' : '○'} ${t.name.padEnd(12)} ${t.kind} · ${t.action} · ${t.repo} · ${t.license} · ${t.mb} MB`)
+    for (const t of TRACKER_MODELS) print(`  ${(await trackerPresent(t)) ? '●' : '○'} ${t.name.padEnd(12)} ${t.kind} · ${t.file} · ${t.license} · ${t.mb} MB`)
     for (const s of SEE_MODELS) print(`  ${(await seePresent(s)) ? '●' : '○'} ${s.name.padEnd(12)} ${s.kind} · ${s.tag} in Ollama · ${s.repo} · ${s.license} · ${s.mb} MB`)
     print('  ● here   ○ not downloaded: model get <name>')
     return true
@@ -131,6 +163,8 @@ export async function modelCommand(args: string[]): Promise<boolean> {
   if (sub === 'get' && t && !rest.length) return get(t)
   const s = name ? SEE_MODELS.find((x) => x.name === name) : undefined
   if (sub === 'get' && s && !rest.length) return getSee(s)
-  print(`usage: model list | model get <${[...TOOL_MODELS, ...SEE_MODELS].map((x) => x.name).join('|')}>`)
+  const tr = name ? trackerModel(name) : undefined
+  if (sub === 'get' && tr && !rest.length) return getTracker(tr)
+  print(`usage: model list | model get <${[...TOOL_MODELS, ...TRACKER_MODELS, ...SEE_MODELS].map((x) => x.name).join('|')}>`)
   return false
 }
