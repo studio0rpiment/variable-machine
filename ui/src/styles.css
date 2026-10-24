@@ -754,7 +754,9 @@ a.text-button { text-decoration: none; }
 .dock { min-height: 7.5rem; }
 .terminal__size { margin-left: auto; color: var(--muted); }
 .terminal__size:hover { color: var(--line); }
+/* on: terminal green, like everything that is live; off: grey */
 .flags-toggle { color: var(--muted); }
+.flags-toggle[aria-pressed="true"] { color: var(--act); }
 .flags-toggle:hover { color: var(--line); }
 
 /* ---- Look: photos, the tools' pictures, clicked points ---- */
