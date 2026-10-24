@@ -6,7 +6,8 @@ import { print } from './hub.ts'
 import { status } from './status.ts'
 import { formatBytes, setRunning, write } from './run.ts'
 import { ollamaPost } from './ollama.ts'
-import { estimatePrefTokens, estimateTokens, problemFor, rowProblem, type ChatRow, type DataFormat, type PrefRow } from './shared/chatRow.ts'
+import { PICTURE_TOKENS, estimatePrefTokens, estimateTokens, problemFor, rowProblem, type ChatRow, type DataFormat, type PictureRow, type PrefRow } from './shared/chatRow.ts'
+import { IMAGE_EXT } from './shared/kinds.ts'
 import { identifyLicense } from './shared/licenses.ts'
 import type { DataSource, DatasetManifest } from './shared/manifest.ts'
 import { DATA_SOURCES, OASST1, SMOLTALK } from './shared/library.ts'
@@ -24,7 +25,8 @@ export const DATASET_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const dir = (name: string) => path.join(WORKSPACE, 'data', name)
 const rel = (p: string) => path.relative(path.dirname(WORKSPACE), p)
 
-const HELP = `data new <name> [--format chat|preference]
+const HELP = `data new <name> [--format chat|preference|picture]
+data picture <name> images/<set>/<photo> --question "<q>" --answer "<a>"   (a row about a photo; the photo is copied in)
 data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
 data import oasst1 <name> [--limit 300]
 data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rewrite|smol-summarize [--limit 300] [--seed 0]
@@ -326,6 +328,8 @@ async function importExample(example: string, name: string, line: string): Promi
   }
   await fs.mkdir(dir(name), { recursive: true })
   for (const f of ['train.jsonl', 'valid.jsonl']) await fs.copyFile(path.join(from, f), path.join(dir(name), f))
+  // a picture dataset's photos live in its folder
+  if (src.format === 'picture') await fs.cp(path.join(from, 'images'), path.join(dir(name), 'images'), { recursive: true })
   const m: DatasetManifest = {
     ...src,
     name,
@@ -634,17 +638,19 @@ async function validate(name: string, line: string): Promise<boolean> {
   let ok = true
   for (const [label, part] of [['train', train], ['valid', valid]] as const) {
     const problems = [...part.bad]
-    part.rows.forEach((r, i) => {
-      const p = problem(r)
+    for (const [i, r] of part.rows.entries()) {
+      let p = problem(r)
+      // a picture row's photo has to be there, in the dataset folder, for mlx-vlm to read it
+      if (!p && m.format === 'picture' && !(await exists(path.join(dir(name), (r as PictureRow).images[0])))) p = `${(r as PictureRow).images[0]} is not in workspace/data/${name}`
       if (p) problems.push({ line: part.lines[i], reason: p })
-    })
-    print(`${label}.jsonl  ${part.rows.length + part.bad.length} rows · ${problems.length ? `${problems.length} problems` : `all valid ${m.format === 'preference' ? 'preference pairs' : 'chat rows'}`}`)
+    }
+    print(`${label}.jsonl  ${part.rows.length + part.bad.length} rows · ${problems.length ? `${problems.length} problems` : `all valid ${m.format === 'preference' ? 'preference pairs' : m.format === 'picture' ? 'picture rows' : 'chat rows'}`}`)
     problems.sort((a, b) => a.line - b.line)
     problems.slice(0, 8).forEach((p) => print(`  line ${p.line}: ${p.reason}`))
     if (problems.length > 8) print(`  … and ${problems.length - 8} more`)
     if (problems.length) ok = false
   }
-  if (!valid.rows.length) print(`no valid.jsonl rows yet: ${m.format === 'preference' ? 'the held-out check needs some' : 'mlx-lm needs some'}. run: data split ${name}`)
+  if (!valid.rows.length) print(`no valid.jsonl rows yet: ${m.format === 'preference' ? 'the held-out check needs some' : 'training needs some'}. run: data split ${name}`)
   recordCommand(m, line)
   m.validated = { at: new Date().toISOString(), ok }
   await writeManifest(m)
@@ -684,13 +690,13 @@ async function count(name: string, line: string): Promise<boolean> {
   const limit = status.tier === '16' ? 1024 : 2048
   const problem = problemFor(m.format ?? 'chat')
   const all = [...train.rows, ...valid.rows].filter((r) => !problem(r))
-  const tokens = all.map((r) => (m.format === 'preference' ? estimatePrefTokens(r as PrefRow) : estimateTokens(r as ChatRow)))
+  const tokens = all.map((r) => (m.format === 'preference' ? estimatePrefTokens(r as PrefRow) : estimateTokens(r as ChatRow) + (m.format === 'picture' ? PICTURE_TOKENS : 0)))
   const total = tokens.reduce((a, b) => a + b, 0)
   const max = Math.max(0, ...tokens)
   const over = tokens.filter((t) => t > limit).length
   print(`${all.length} rows · about ${total.toLocaleString('en-US')} tokens · mean ${all.length ? Math.round(total / all.length) : 0} · longest ${max}`)
   print(`${over} rows over ${limit} tokens (the tier ${status.tier} max sequence length; mlx-lm truncates them)`)
-  print('\x1b[2m  an estimate: characters / 3.7 plus the chat template; the base model’s tokenizer decides the real number\x1b[22m')
+  print(`\x1b[2m  an estimate: characters / 3.7 plus the chat template${m.format === 'picture' ? `, plus about ${PICTURE_TOKENS} for each picture` : ''}; the base model’s tokenizer decides the real number\x1b[22m`)
   m.tokens = { total, max, overLimit: over, limit, estimate: true }
   recordCommand(m, line)
   await writeManifest(m)
@@ -755,6 +761,71 @@ async function append(name: string, json: string | undefined, opts: Record<strin
   return true
 }
 
+const exists = (p: string) => fs.access(p).then(() => true, () => false)
+
+/**
+ * `data picture <name> images/<set>/<photo> --question … --answer …`: one row
+ * about a photo. The photo is copied into the dataset folder (as
+ * images/<set>--<photo>), so the dataset is whole on its own: mlx-vlm reads
+ * it from there, and a zip of the folder carries it. The photo's own credit
+ * and license, from its set's manifest, go into the dataset's manifest.
+ */
+async function picture(name: string, photo: string | undefined, opts: Record<string, string>, line: string): Promise<boolean> {
+  const m0 = /^(?:workspace\/)?images\/([a-z0-9][a-z0-9._-]{0,63})\/([\w.-]+)$/.exec(photo ?? '')
+  const question = opts.question?.trim()
+  const answer = opts.answer?.trim()
+  if (!m0 || !IMAGE_EXT.test(m0[2]) || !question || !answer) {
+    print('usage: data picture <name> images/<set>/<photo> --question "<what you ask>" --answer "<what it should say>"')
+    return false
+  }
+  const [, set, file] = m0
+  const from = path.join(WORKSPACE, 'images', set, file)
+  if (!(await exists(from))) {
+    print(`data picture: no photo workspace/images/${set}/${file}`)
+    return false
+  }
+  const existing = await readManifest(name)
+  if (existing && existing.format !== 'picture') {
+    print(`data picture: ${name} is a ${existing.format ?? 'chat'} dataset; picture rows go in a picture dataset (data new <name> --format picture)`)
+    return false
+  }
+  const m = await ensureDataset(name, line, 'picture')
+  const inside = `images/${set}--${file}`
+  if (!(await exists(path.join(dir(name), inside)))) {
+    await fs.mkdir(path.join(dir(name), 'images'), { recursive: true })
+    await fs.copyFile(from, path.join(dir(name), inside))
+    print(`\x1b[2m  copied workspace/images/${set}/${file} → workspace/data/${name}/${inside}\x1b[22m`)
+  }
+  const row: PictureRow = { images: [inside], messages: [{ role: 'user', content: question }, { role: 'assistant', content: answer }] }
+  await fs.appendFile(path.join(dir(name), 'train.jsonl'), JSON.stringify(row) + '\n')
+  m.counts.train += 1
+
+  // Where the photo came from: its set (a source, with the set's license) and its own credit.
+  const setManifest = await readJson<{ license?: string; credits?: { file: string; license: string; author?: string; url?: string }[] }>(path.join(WORKSPACE, 'images', set, 'manifest.json'))
+  const credit = setManifest?.credits?.find((c) => c.file === file)
+  const setId = `images/${set}`
+  if (!m.inputs.includes(`workspace/${setId}`)) m.inputs.push(`workspace/${setId}`)
+  let src = m.sources.find((x) => x.id === setId)
+  if (!src) {
+    src = { id: setId, kind: 'import', license: setManifest?.license ?? 'unknown', licenseChecked: false, rows: 0, about: 'photos' }
+    m.sources.push(src)
+  }
+  src.rows += 1
+  m.photos ??= []
+  if (!m.photos.some((p) => p.file === inside)) m.photos.push({ file: inside, from: `workspace/images/${set}/${file}`, license: credit?.license ?? setManifest?.license ?? 'unknown', ...(credit?.author && { author: credit.author }), ...(credit?.url && { url: credit.url }) })
+  // the questions and answers are typed: yours
+  let typed = m.sources.find((x) => x.id === 'typed')
+  if (!typed) {
+    typed = { id: 'typed', kind: 'typed', license: 'yours', licenseChecked: true, rows: 0, about: 'the questions and answers' }
+    m.sources.push(typed)
+  }
+  typed.rows += 1
+  recordCommand(m, `data picture ${name} images/<set>/<photo> --question '<q>' --answer '<a>'`)
+  await writeManifest(m)
+  print(`  ◂ ${name}/train.jsonl · ${m.counts.train} rows · the photo: ${credit ? `${credit.author ?? '?'}, ${credit.license}` : (setManifest?.license ?? 'license unknown')}`)
+  return true
+}
+
 function missing(name: string) {
   print(`no dataset called ${name}. data new ${name}, or data import dolly ${name}`)
   return false
@@ -776,7 +847,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
   const { pos, opts } = flags(rest)
   if (sub === 'raw') return rawCommand(pos, opts, line)
   const name = sub === 'import' ? (['example', 'hf', 'file'].includes(pos[0]) ? pos[2] : pos[1]) : sub === 'template' ? pos[1] : pos[0]
-  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe', 'template'].includes(sub)) {
+  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe', 'template', 'picture'].includes(sub)) {
     print(HELP)
     return !sub || sub === 'help'
   }
@@ -785,7 +856,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     return false
   }
   for (const k of Object.keys(opts)) {
-    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from'], template: ['question', 'answer', 'limit', 'seed', 'about', 'skip'] }
+    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from'], picture: ['question', 'answer'], template: ['question', 'answer', 'limit', 'seed', 'about', 'skip'] }
     if (!(allowed[sub] ?? []).includes(k)) {
       print(`data ${sub}: unknown option --${k}`)
       return false
@@ -798,8 +869,8 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
         return false
       }
       const format = (opts.format ?? 'chat') as DataFormat
-      if (format !== 'chat' && format !== 'preference') {
-        print('data new: --format is chat or preference')
+      if (format !== 'chat' && format !== 'preference' && format !== 'picture') {
+        print('data new: --format is chat, preference or picture')
         return false
       }
       await ensureDataset(name, line, format)
@@ -829,6 +900,8 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
       return describe(name, pos.slice(1), line)
     case 'template':
       return template(pos[0], name, opts, line)
+    case 'picture':
+      return picture(name, pos[1], opts, line)
   }
   return false
 }

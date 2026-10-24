@@ -1,0 +1,70 @@
+{
+  "name": "classic-cv-labels",
+  "kind": "dataset",
+  "created": "2026-10-24T00:00:00.000Z",
+  "license": "CC0-1.0 (the words) + CC BY 2.0 \u00b7 CC BY-SA 3.0 \u00b7 Public domain (the photos, each in photos)",
+  "inputs": [
+    "workspace/examples/images/classic-cv"
+  ],
+  "command": [
+    "made for Variable Machine: data picture classic-cv-labels images/classic-cv/<photo> --question \u2026 --answer \u2026, four questions per photo; data split --valid 0.25"
+  ],
+  "format": "picture",
+  "counts": {
+    "train": 12,
+    "valid": 4
+  },
+  "split": {
+    "valid": 0.25,
+    "seed": 0
+  },
+  "sources": [
+    {
+      "id": "examples/images/classic-cv",
+      "kind": "import",
+      "license": "CC BY 2.0 \u00b7 CC BY-SA 3.0 \u00b7 Public domain (each photo's in credits)",
+      "licenseChecked": false,
+      "rows": 16,
+      "about": "photos"
+    },
+    {
+      "id": "examples/classic-cv-labels",
+      "kind": "typed",
+      "license": "CC0-1.0",
+      "licenseChecked": true,
+      "rows": 16,
+      "about": "the questions and the labels, written for Variable Machine"
+    }
+  ],
+  "photos": [
+    {
+      "file": "images/classic-cv--utah-teapot.jpg",
+      "from": "workspace/examples/images/classic-cv/utah-teapot.jpg",
+      "license": "CC BY 2.0",
+      "author": "Michael Hicks from Saint Paul, MN, USA",
+      "url": "https://commons.wikimedia.org/wiki/File:Original_Utah_Teapot_-_Computer_History_Museums.jpg"
+    },
+    {
+      "file": "images/classic-cv--rubber-duck.jpg",
+      "from": "workspace/examples/images/classic-cv/rubber-duck.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Tom Morris",
+      "url": "https://commons.wikimedia.org/wiki/File:Rubber_duck_assisting_with_debugging.jpg"
+    },
+    {
+      "file": "images/classic-cv--duck-in-a-bowl.jpg",
+      "from": "workspace/examples/images/classic-cv/duck-in-a-bowl.jpg",
+      "license": "Public domain",
+      "author": "User:Nanda93",
+      "url": "https://commons.wikimedia.org/wiki/File:Rubber_duck_in_glass_bowl_crop.jpg"
+    },
+    {
+      "file": "images/classic-cv--stanford-bunny.jpg",
+      "from": "workspace/examples/images/classic-cv/stanford-bunny.jpg",
+      "license": "CC BY 2.0",
+      "author": "funnypolynomial",
+      "url": "https://commons.wikimedia.org/wiki/File:Stanford_Bunny_Cleaned_up.jpg"
+    }
+  ],
+  "about": "Museum wall labels for four classic computer-science objects: title and date, material, one sentence of why it matters. Four questions per photo, the same label each time."
+}

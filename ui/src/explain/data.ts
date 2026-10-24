@@ -1,15 +1,15 @@
 /**
- * The Data tab's words: what a dataset is, the two kinds, getting one ready,
+ * The Data tab's words: what a dataset is, the three kinds, getting one ready,
  * and the ways to make one. Plain language, for students who have never
  * trained anything.
  */
 
 export const DATA_INTRO = {
   title: 'Examples for a model to learn from',
-  text: 'A dataset is a set of examples. Training changes a model\'s numbers so it behaves more like the examples, which a Modelfile can\'t do. There are two kinds: questions with the answers you want, for Train, and pairs of answers where one is marked better, for Prefer.',
+  text: 'A dataset is a set of examples. Training changes a model\'s numbers so it behaves more like the examples, which a Modelfile can\'t do. There are three kinds: questions with the answers you want, for Train; pairs of answers where one is marked better, for Prefer; and photos with a question and the answer you want, for training a model that sees.',
 }
 
-/** The two kinds, as they appear on a dataset's card. */
+/** The three kinds, as they appear on a dataset's card. */
 export const KINDS = {
   chat: {
     group: 'to imitate',
@@ -20,6 +20,11 @@ export const KINDS = {
     group: 'chosen vs rejected',
     use: 'Prefer',
     about: 'Pairs of answers to the same question, one marked better. Prefer teaches the model to lean toward the better one.',
+  },
+  picture: {
+    group: 'pictures and what they show',
+    use: 'Train',
+    about: 'Photos, each with a question and the answer you want. Train teaches a model that sees (SmolVLM) to talk about pictures like this.',
   },
 } as const
 

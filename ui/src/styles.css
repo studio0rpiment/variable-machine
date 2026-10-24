@@ -248,7 +248,9 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
 .exchange.is-streaming .exchange__answer::after { content: '▍'; color: var(--muted); }
 .exchange.is-error .label { text-decoration: underline dashed; }
 .chat__prompt { display: flex; align-items: end; gap: 0.75rem; }
-/* a picture sent with the prompt, to the models that see */
+/* a picture sent with the prompt, to the models that see; and picture rows on the Data tab */
+.picture-rows { display: flex; flex-direction: column; gap: 0.9rem; max-width: 40rem; }
+.row__picture { max-height: 5rem; width: auto; align-self: flex-start; border: 1px solid var(--line); }
 .picture { display: flex; flex-direction: column; gap: 0.6rem; }
 .picture__row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .picture__chosen { padding: 0; border: 1px solid var(--line); background: none; cursor: pointer; line-height: 0; }

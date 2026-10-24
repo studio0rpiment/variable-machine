@@ -337,6 +337,14 @@ export const EXPLAIN = {
     title: 'Compare all three',
     text: 'Opens Chat with A, B and the blend side by side, so you can hear whether the blend really sits between them.',
   },
+  'data.picture': {
+    title: 'Add the row',
+    text: 'Adds one row: the photo, the question and your answer. The photo is copied into the dataset folder, so the dataset is complete on its own, and its credit and license are written into the dataset\'s record.',
+  },
+  'data.pictureAnswer': {
+    title: 'The answer you want',
+    text: 'What a model that sees should say about this photo. Training learns the way you answer: how long, in what voice, what you notice first. Answer every photo the same way and the model will pick that way up.',
+  },
   /* ---- Chat ---- */
   'chat.model': {
     title: 'Which model',

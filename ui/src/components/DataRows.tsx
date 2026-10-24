@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import { problemFor, type ChatRow, type DataFormat, type PrefRow } from '@shared/chatRow'
+import { problemFor, type ChatRow, type DataFormat, type PictureRow, type PrefRow } from '@shared/chatRow'
 
 interface Props {
   train: string
   valid: string
   format: DataFormat
+  /** the dataset's folder name, for a picture row's photo */
+  dataset?: string
 }
 
 const PAGE = 20
@@ -17,7 +19,7 @@ function parse(text: string, part: 'train' | 'valid', format: DataFormat) {
     .filter((r) => r.raw.trim())
     .map((r) => {
       try {
-        const row = JSON.parse(r.raw) as ChatRow & PrefRow
+        const row = JSON.parse(r.raw) as ChatRow & PrefRow & Partial<PictureRow>
         return { ...r, part, row, problem: rowProblem(row) }
       } catch {
         return { ...r, part, row: null, problem: 'not valid JSON' }
@@ -26,7 +28,7 @@ function parse(text: string, part: 'train' | 'valid', format: DataFormat) {
 }
 
 /** The JSONL, read-only and paged: each row as its turns, with the file and line it lives on and anything wrong with it. */
-export default function DataRows({ train, valid, format }: Props) {
+export default function DataRows({ train, valid, format, dataset }: Props) {
   const rows = useMemo(() => [...parse(train, 'train', format), ...parse(valid, 'valid', format)], [train, valid, format])
   const [page, setPage] = useState(0)
   const [only, setOnly] = useState<'all' | 'train' | 'valid' | 'problems'>('all')
@@ -72,11 +74,16 @@ export default function DataRows({ train, valid, format }: Props) {
                 </p>
               </>
             ) : (
-              r.row?.messages?.map((m, i) => (
+              <>
+                {format === 'picture' && dataset && typeof r.row?.images?.[0] === 'string' && (
+                  <img className="row__picture" src={`/api/workspace/file?path=${encodeURIComponent(`data/${dataset}/${r.row.images[0]}`)}`} alt={r.row.images[0]} />
+                )}
+                {r.row?.messages?.map((m, i) => (
                 <p key={i} className={`row__turn row__turn--${m.role}`}>
                   <span className="label label--muted">{m.role}</span> {m.content}
                 </p>
-              )) ?? <code className="row__raw">{r.raw}</code>
+                )) ?? <code className="row__raw">{r.raw}</code>}
+              </>
             )}
           </li>
         ))}

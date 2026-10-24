@@ -27,8 +27,13 @@ export interface DataSource {
 
 export interface DatasetManifest extends Manifest {
   kind: 'dataset'
-  /** chat: {"messages": […]} rows for SFT. preference: {"prompt", "chosen", "rejected"} rows for DPO. */
-  format: 'chat' | 'preference'
+  /**
+   * chat: {"messages": […]} rows for SFT. preference: {"prompt", "chosen", "rejected"} rows for DPO.
+   * picture: {"images": ["images/<photo>"], "messages": […]} rows for a model that sees (mlx-vlm).
+   */
+  format: 'chat' | 'preference' | 'picture'
+  /** picture sets: each photo copied in, where it came from, and its own license */
+  photos?: { file: string; from: string; license: string; author?: string; url?: string }[]
   counts: { train: number; valid: number }
   split: { valid: number; seed: number } | null
   sources: DataSource[]

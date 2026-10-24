@@ -12,6 +12,7 @@ import DataGenerator from './DataGenerator'
 import ImportCard from './ImportCard'
 import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
+import PictureRows from './PictureRows'
 import { Explained } from '../explain/Explained'
 import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, OPEN, READY } from '../explain/data'
 import { OpenDataCard, TemplateCard } from './OpenData'
@@ -25,7 +26,7 @@ const glide = (id: string) => glideAs('dataset', id)
 const NEW = 'new' // the "make a new one" card; dataset names are checked against NAME, and "new" is kept for this
 
 const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t)
-const kindOf = (s: DatasetManifest) => KINDS[s.format === 'preference' ? 'preference' : 'chat']
+const kindOf = (s: DatasetManifest) => KINDS[s.format ?? 'chat']
 
 /**
  * Data (plan §3.2): datasets in workspace/data, each a train/valid pair of
@@ -112,8 +113,9 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
     [files.train],
   )
 
-  const newCmd = joinWords(['data', 'new', newName, ...(newFormat === 'preference' ? ['--format', 'preference'] : [])])
+  const newCmd = joinWords(['data', 'new', newName, ...(newFormat !== 'chat' ? ['--format', newFormat] : [])])
   const isPref = current?.format === 'preference'
+  const isPicture = current?.format === 'picture'
   const pairs = useMemo(
     () =>
       isPref
@@ -275,14 +277,14 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                 <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{MAKE.empty.title}</h2>
                   <p className="mf-next">{MAKE.empty.when}</p>
-                  <Manifest name="empty dataset" lines={[`chat: ${KINDS.chat.about}`, `preference: ${KINDS.preference.about}`]}>
+                  <Manifest name="empty dataset" lines={[`chat: ${KINDS.chat.about}`, `preference: ${KINDS.preference.about}`, `picture: ${KINDS.picture.about}`]}>
                     <div className="inline-fields">
                       <label className="field">
                         <span className="label label--muted">name</span>
                         <input type="text" value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} spellCheck={false} placeholder="my-set" />
                       </label>
                       <div className="choice" role="radiogroup" aria-label="format">
-                        {(['chat', 'preference'] as DataFormat[]).map((f) => (
+                        {(['chat', 'preference', 'picture'] as DataFormat[]).map((f) => (
                           <button key={f} type="button" role="radio" aria-checked={f === newFormat} className={`text-button ${f === newFormat ? 'is-active' : ''}`.trim()} onClick={() => setNewFormat(f)}>
                             {f}
                           </button>
@@ -361,6 +363,12 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       })}
                     <dt>license</dt>
                     <dd>{current.license}</dd>
+                    {current.photos?.length ? (
+                      <>
+                        <dt>the photos</dt>
+                        <dd>{current.photos.map((p) => `${p.file.replace(/^images\//, '')}: ${p.author ? `${p.author}, ` : ''}${p.license}`).join(' · ')}</dd>
+                      </>
+                    ) : null}
                     {current.tokens && (
                       <>
                         <dt>size</dt>
@@ -442,6 +450,13 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                     </Explained>
                     <PreferenceBuilder dataset={current.name} existing={pairs} />
                   </section>
+                ) : isPicture ? (
+                  <section className="mf-part" aria-label="add pictures">
+                    <Explained id="data.more">
+                      <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>add rows: a photo, a question, and the answer you want</h2>
+                    </Explained>
+                    <PictureRows dataset={current.name} />
+                  </section>
                 ) : (
                   <section className="mf-part" aria-label="write more rows">
                     <Explained id="data.more">
@@ -455,7 +470,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                   <Explained id="data.rows">
                     <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>the rows</h2>
                   </Explained>
-                  <DataRows train={files.train} valid={files.valid} format={current.format ?? 'chat'} />
+                  <DataRows train={files.train} valid={files.valid} format={current.format ?? 'chat'} dataset={current.name} />
                 </section>
               </>
             )}

@@ -61,5 +61,28 @@ export function estimatePrefTokens(row: PrefRow): number {
   return Math.ceil((2 * row.prompt.length + row.chosen.length + row.rejected.length) / 3.7) + 16
 }
 
-export type DataFormat = 'chat' | 'preference'
-export const problemFor = (format: DataFormat) => (format === 'preference' ? prefRowProblem : rowProblem)
+/**
+ * mlx-vlm's format for a model that sees: a chat row plus the picture it is
+ * about, a path inside the dataset folder (mlx-vlm reads it from there):
+ *   {"images":["images/classic-cv--utah-teapot.jpg"],"messages":[…]}
+ */
+export interface PictureRow extends ChatRow {
+  images: string[]
+}
+
+export const PICTURE_PATH = /^images\/[\w.-]+\.(jpe?g|png|webp)$/i
+
+export function pictureRowProblem(row: unknown): string | null {
+  const images = (row as PictureRow | null)?.images
+  if (!Array.isArray(images) || images.length !== 1 || typeof images[0] !== 'string' || !PICTURE_PATH.test(images[0])) return 'needs "images": ["images/<photo>"], one photo inside the dataset folder'
+  return rowProblem(row)
+}
+
+/**
+ * About how many tokens a picture becomes for SmolVLM (measured: 512×512
+ * tiles of 64 tokens each, about 900 for a photo). An estimate, labelled as one.
+ */
+export const PICTURE_TOKENS = 900
+
+export type DataFormat = 'chat' | 'preference' | 'picture'
+export const problemFor = (format: DataFormat) => (format === 'preference' ? prefRowProblem : format === 'picture' ? pictureRowProblem : rowProblem)
