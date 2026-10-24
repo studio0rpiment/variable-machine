@@ -2,6 +2,28 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.1.5: models that see, the Look tab, worked examples (2026-10-23)
+
+If you have v0.1, replace it with this one, then run `npm install && uv sync --project python` again in the folder.
+
+**Models that see** (new: a picture in, words about it out)
+- **Models:** SmolVLM 256M and 500M (Apache 2.0). They aren't in Ollama's library, so *get* (`model get smolvlm-256m`) downloads their two files and makes `smolvlm:256m` with `ollama create`.
+- **Chat:** *add a picture* sends a photo from an image set to the models that see; models that only write get the words, and say so. The terminal shows it as `ollama run-once … --image images/<set>/<photo>`.
+- **Data:** picture datasets: a photo, a question and the answer you want, one row at a time (`data picture`). Each photo keeps its own credit and license. Example: `classic-cv-labels`, museum wall labels for four classic computer-science objects.
+- **Train:** a picture dataset trains SmolVLM with mlx-vlm (LoRA, about 4.5GB). The extra packages, about 800MB, install the first time you train one. **Adapters** exports it into Ollama next to the original, and *try it* shows the photo too.
+- Not yet: Merge and Prefer don't take picture adapters.
+
+**Look tab** (new): ready-made image tools that run in the page: cut something out, the distance between blobs (a depth map), select a blob. Example photos: `look example classic-cv`.
+
+**Changing models**
+- **Merge** blends exactly (1 − t)·A + t·B, and a Prefer adapter can blend with a trained one.
+- **Prefer** `--sft` keeps the writing whole while the preference moves.
+- **Data:** `data raw jsonl` brings in a table written as JSON lines.
+
+**Worked examples:** four models made each way, with their commands, records and loss numbers, in [docs/examples](examples/README.md), and animated on the [site](https://variablemachine.orpiment.studio/examples/).
+
+**Interface:** the Start map has Look in its own band and the sees wire into Data; the flags toggle is green when on.
+
 ## v0.1: fixes after the first class (2026-10-21)
 
 Fixes after the first class with v0. If you have v0, replace it with this one.
