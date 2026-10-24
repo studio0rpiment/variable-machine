@@ -6,7 +6,7 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
 
-const KINDS = ['data', 'adapters', 'merges', 'runs', 'fused'] as const
+const KINDS = ['data', 'adapters', 'merges', 'runs', 'fused', 'images', 'audio', 'gestures'] as const
 type Kind = (typeof KINDS)[number]
 
 interface Artifact {

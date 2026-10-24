@@ -4,6 +4,7 @@ import path from 'node:path'
 import { print } from './hub.ts'
 import type http from 'node:http'
 import { WORKSPACE } from './config.ts'
+import { readAudioSet, writeAudioSet } from './voice.ts'
 
 /**
  * Read-only access to workspace/ for the UI, which renders from these files:
@@ -15,6 +16,7 @@ import { WORKSPACE } from './config.ts'
  *   POST /api/workspace/upload?name=x.csv      → a .csv, .jsonl or .json into workspace/uploads (for data import file)
  *   POST /api/workspace/upload?name=x.jpg&set=s → a photo into workspace/images/<set>/ (the set's manifest lists it)
  *   POST /api/workspace/output?path=outputs/s/x.png → a picture a page run made (look …); the run records it
+ *   POST /api/workspace/upload?name=x.wav&audio=s → a recording from the page into workspace/audio/<set>/ (the set's manifest lists it)
  * Every other write is a command, so it shows in the terminal; an upload is
  * announced there too, and unpacking it is the `unzip` command.
  */
@@ -40,6 +42,7 @@ const TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
+  '.wav': 'audio/wav',
   '.onnx': 'application/octet-stream',
   '.json': 'application/json',
 }
@@ -122,7 +125,29 @@ async function uploadOutput(req: http.IncomingMessage, res: http.ServerResponse,
   if (await receive(req, res, path.join(WORKSPACE, ...parts))) json(res, 200, { path: rel })
 }
 
-async function upload(req: http.IncomingMessage, res: http.ServerResponse, name: string | null, set: string | null, license: string | null) {
+/** A recording from the page's microphone, as WAV, into audio/<set>/. Its manifest entry says it was recorded, and whose voice it is. */
+async function uploadAudio(req: http.IncomingMessage, res: http.ServerResponse, name: string, set: string, license: string) {
+  if (!SET.test(set) || !/^[\w.-]+\.wav$/i.test(name)) return json(res, 400, { error: 'POST a .wav with ?name=<file>.wav&audio=<set>' })
+  const folder = path.join(WORKSPACE, 'audio', set)
+  await fs.mkdir(folder, { recursive: true })
+  const dest = path.join(folder, name)
+  try {
+    await fs.access(dest)
+    return json(res, 409, { error: `workspace/audio/${set}/${name} exists` })
+  } catch {
+    // free
+  }
+  if (!(await receive(req, res, dest))) return
+  const m = await readAudioSet(set)
+  if (!m.command.length) m.command.push('recorded in the browser (Voice tab)')
+  m.files[name] = { made: 'recorded', license }
+  await writeAudioSet(m)
+  print(`▸ received workspace/audio/${set}/${name} (recorded in the browser · ${license})`)
+  json(res, 200, { path: `audio/${set}/${name}` })
+}
+
+async function upload(req: http.IncomingMessage, res: http.ServerResponse, name: string | null, set: string | null, license: string | null, audio?: string | null) {
+  if (req.method === 'POST' && name && audio) return uploadAudio(req, res, name, audio, license?.trim() || 'your own voice')
   if (req.method === 'POST' && name && set && PHOTO.test(name)) {
     if (!SET.test(set)) return json(res, 400, { error: 'a set name is lowercase letters, digits, . _ -' })
     return uploadPhoto(req, res, name, set, license?.trim() || 'your own work')
@@ -147,7 +172,7 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
   const url = new URL(req.url ?? '/', 'http://x')
   const what = url.pathname.replace('/api/workspace/', '')
   const fail = (err: Error) => json(res, 500, { error: err.message })
-  if (what === 'upload') return upload(req, res, url.searchParams.get('name'), url.searchParams.get('set'), url.searchParams.get('license')).catch(fail)
+  if (what === 'upload') return upload(req, res, url.searchParams.get('name'), url.searchParams.get('set'), url.searchParams.get('license'), url.searchParams.get('audio')).catch(fail)
   if (what === 'output') return uploadOutput(req, res, url.searchParams.get('path')).catch(fail)
   const target = inside(url.searchParams.get(what === 'file' ? 'path' : 'dir') ?? '')
   if (!target) return json(res, 403, { error: 'outside workspace/' })

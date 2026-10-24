@@ -384,6 +384,22 @@ export const EXPLAIN = {
     text: 'Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card.',
   },
   /* ---- Look ---- */
+  'panel.voice': {
+    title: 'Voice',
+    text: 'Two kinds of model, used as they are: one that speaks (text in, a voice out) and one that listens (a recording in, what was said out). Type something and Soprano reads it aloud; record your voice and Qwen3-ASR writes down what it heard, in 52 languages and dialects. Both run on this computer, and the first use of each downloads it. Every sound is a WAV file in workspace/audio, with a record of where it came from and what was heard in it.',
+  },
+  'voice.speak': {
+    title: 'Speak',
+    text: 'Soprano reads the text aloud and saves it as a WAV file in workspace/audio/spoken. It has one voice, on purpose: it can\'t copy anyone\'s. Press listen on the result to hear what the listening model makes of it: a round trip from text to voice and back.',
+  },
+  'voice.record': {
+    title: 'Record',
+    text: 'Records your microphone in this page until you press again, then saves it as a WAV file in workspace/audio/recorded and has the listening model (Qwen3-ASR) write down what it heard straight away. The browser asks first. Nothing is sent anywhere.',
+  },
+  'voice.listen': {
+    title: 'Listen',
+    text: 'Qwen3-ASR writes down what it hears in this sound, in whichever language it hears. What it heard is saved next to the sound, and in the set\'s record.',
+  },
   'panel.look': {
     title: 'Look',
     text: 'Image tools, the kind of model that looks: cut something out, the distance between blobs, select a blob. A blob is early computer vision\'s word for a region of a picture that stands out from what surrounds it: an object, as the computer finds it. The tools are ready-made models you download once; you don\'t train them. They run inside this page, on your computer, and nothing is sent anywhere. Bring your photos into a set, pick one, and run a tool. What it makes is saved in workspace/outputs with a record of which photo and which model made it.',

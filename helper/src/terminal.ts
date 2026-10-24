@@ -14,6 +14,7 @@ import { formatChecks, runDoctor } from './doctor.ts'
 import { unzipCommand, zipCommand } from './share.ts'
 import { modelCommand } from './tools.ts'
 import { lookCommand } from './pagerun.ts'
+import { voiceCommand } from './voice.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -32,9 +33,9 @@ const HELP = `commands
   ollama run-once <model> [--system "<text>"] [--image images/<set>/<photo>] [--no-think] [--format json|<schema>] <prompt…>
   data new [--format chat|preference] | import dolly | validate | split | count | append <name>   (data help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
-  zip <data|adapters|merges|runs|fused>/<name>     share an artifact: workspace/shared/<kind>-<name>.zip
+  zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -49,6 +50,9 @@ const HELP = `commands
   model get <smolvlm-256m|smolvlm-500m>           a model that sees: its GGUFs into workspace/tools/, then ollama create
   look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/
   look example classic-cv                         the example photos: duck, teapot, bunny
+
+  speak <name> "<text>" [--set spoken]             a model reads it aloud: workspace/audio/<set>/<name>.wav
+  listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
 `
 
 
@@ -124,6 +128,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (['train', 'fuse', 'register', 'export', 'merge', 'prefer'].includes(cmd)) return recipeCommand(cmd, args, line)
   if (cmd === 'model') return modelCommand(args)
   if (cmd === 'look') return lookCommand(args, line)
+  if (cmd === 'speak' || cmd === 'listen') return voiceCommand(cmd, args, line)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)

@@ -26,8 +26,8 @@ export const KINDS: Record<KindId, KindInfo> = {
   sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'data', 'train'] },
   looks: { id: 'looks', what: 'image tools: cut something out, distance between blobs, select a blob', io: 'a photo in, a picture made from it out', tabs: ['look'] },
   moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['move'], soon: true },
-  speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['voice'], soon: true },
-  listens: { id: 'listens', what: 'speech to text', io: 'a recording in, a transcript out', tabs: ['voice'], soon: true },
+  speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['voice'] },
+  listens: { id: 'listens', what: 'speech to text', io: 'a recording in, a transcript out', tabs: ['voice'] },
 }
 
 export type LookTask = 'cutout' | 'depth' | 'select'
@@ -203,3 +203,57 @@ export function seeModelfile(o: { gguf: string; mmproj: string; license: string;
     '',
   ].join('\n')
 }
+
+/**
+ * The voice models (the speaks and listens kinds), run by mlx-audio in the
+ * python project's `voice` extra. Checked 2026-10-24 with mlx-audio 0.6.1:
+ * - Kokoro-82M (the first choice to speak) needs misaki's English, which falls
+ *   back to espeak-ng (GPL-3.0) through espeakng-loader, whose Mac wheel looks
+ *   for its data where it was built and fails. Soprano-1.1-80M needs neither.
+ * - Whisper (the first choice to listen), as mlx-audio runs it, invents words
+ *   after a short clip or repeats the clip over and over, whatever the settings.
+ *   Qwen3-ASR-0.6B transcribed the same clips exactly, with punctuation, in a
+ *   few seconds, and it knows 52 languages and dialects.
+ * - Both read WAV without ffmpeg, so the page records WAV.
+ * They download from Hugging Face into workspace/hf the first time they run.
+ */
+export interface VoiceModel {
+  name: string
+  kind: 'speaks' | 'listens'
+  repo: string
+  /** where the weights come from, when the repo is a conversion */
+  original: string
+  license: string
+  maker: string
+  builtFor: string
+  /** about how much it downloads */
+  mb: number
+}
+
+export const VOICE_MODELS: VoiceModel[] = [
+  {
+    name: 'soprano',
+    kind: 'speaks',
+    repo: 'mlx-community/Soprano-1.1-80M-bf16',
+    original: 'ekwek/Soprano-1.1-80M',
+    license: 'Apache 2.0',
+    maker: 'Eugene Kwek (Soprano), 2025',
+    builtFor: 'Reads English text aloud in one clear voice. Small (80M) and quick: a sentence takes a second or two once it is loaded. It has one voice on purpose: no copying of anyone else\'s.',
+    mb: 284,
+  },
+  {
+    name: 'qwen3-asr',
+    kind: 'listens',
+    repo: 'mlx-community/Qwen3-ASR-0.6B-8bit',
+    original: 'Qwen/Qwen3-ASR-0.6B',
+    license: 'Apache 2.0',
+    maker: 'Alibaba (Qwen team), 2026',
+    builtFor: 'Writes down what it hears, with punctuation, in 52 languages and dialects. A small speech model (0.6B), here in 8-bit so it loads quickly on a laptop.',
+    mb: 1011,
+  },
+]
+
+export const voiceModel = (kind: 'speaks' | 'listens') => VOICE_MODELS.find((v) => v.kind === kind)!
+
+/** What a recording may be: WAV, which the models read without ffmpeg. */
+export const AUDIO_EXT = /\.wav$/i
