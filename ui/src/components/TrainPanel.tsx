@@ -5,7 +5,8 @@ import { runCommand, sendEvent } from '../lib/helper'
 import { readLossPoints, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
-import { PY_ENV, TIER_DEFAULTS, trainArgs, trainLine, type FineTune, type TrainParams, parseTrainLine } from '@shared/recipes'
+import { PY_ENV, SEES_DEFAULTS, TIER_DEFAULTS, seesTrainArgs, seesTrainLine, trainArgs, trainLine, type FineTune, type TrainParams, parseTrainLine } from '@shared/recipes'
+import { SEE_MODELS, seeModel } from '@shared/kinds'
 import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
 import LossChart, { type LossPoint } from './LossChart'
@@ -66,8 +67,6 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   const current = pipe && pipe.runId !== putAway ? pipe : null
   const top = useRef<HTMLElement>(null)
 
-  // Tier defaults arrive with the first status event.
-  useEffect(() => setP((x) => ({ ...x, ...defaults })), [defaults])
 
   const loadSets = useCallback(() => void readManifests<DatasetManifest>('data').then(setSets), [])
   const loadRuns = useCallback(() => void readManifests<RunManifest & { recipe?: string }>('runs').then((r) => setRuns(r.filter((x) => x.recipe !== 'prefer').sort((a, b) => b.folder.localeCompare(a.folder)))), [])
@@ -92,18 +91,24 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   useEffect(() => {
     if (withData) setP((x) => ({ ...x, data: withData.data }))
   }, [withData])
-  const base = HF_BASES.find((b) => b.id === p.base)
+  // A picture dataset trains a model that sees (mlx-vlm), with its own bases and defaults.
+  // Tier defaults arrive with the first status event.
+  const sees = sets.find((s) => s.name === p.data)?.format === 'picture'
+  useEffect(() => setP((x) => ({ ...x, ...(sees ? SEES_DEFAULTS : defaults) })), [sees, defaults])
+  const see = sees ? seeModel(p.base) : undefined
+  const base = sees ? (see && { params: see.params, license: see.license, architecture: 'vision-language, llama decoder', loraGB: see.loraGB, layers: see.layers }) : HF_BASES.find((b) => b.id === p.base)
   useEffect(() => {
     if (!touchedName && p.data && base && !running) setP((x) => ({ ...x, name: free(`${p.data}-${base.params.toLowerCase()}`) }))
-  }, [p.data, base, touchedName, free, running])
+  }, [p.data, base?.params, touchedName, free, running])
 
   // A model has only so many layers: choosing the smaller model brings the choice down with it.
   useEffect(() => {
     if (base && p.layers > base.layers) setP((x) => ({ ...x, layers: base.layers }))
   }, [base, p.layers])
   /** What these settings will likely do, before they run; and the way back to settings that work for this Mac. */
-  const advice = adviseBefore(p, tier, 'train')
-  const recommended = () => setP((x) => ({ ...x, ...defaults }))
+  // the advice is measured on the text bases; a model that sees has its own measured defaults
+  const advice = sees ? [] : adviseBefore(p, tier, 'train')
+  const recommended = () => setP((x) => ({ ...x, ...(sees ? SEES_DEFAULTS : defaults) }))
   // The run that just finished, by its adapter name: its folder holds the log that says why it failed.
   const lastRun = current && runs.find((r) => r.params?.name === (current.params as TrainParams).name)
 
@@ -115,8 +120,8 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   // the run in progress has already written its manifest; it doesn't count as taking its own name
   const taken = runs.some((r) => r.params?.name === p.name) && !(running && (pipe?.params as TrainParams | undefined)?.name === p.name)
   const valid = NAME.test(p.name) && !!p.data && !taken && !advice.some((a) => a.level === 'stop')
-  const line = joinWords(trainLine(p))
-  const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...trainArgs(p, 'workspace/runs/<time>-' + p.name)])
+  const line = joinWords(sees ? seesTrainLine(p) : trainLine(p))
+  const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...(sees ? seesTrainArgs(p) : trainArgs(p, 'workspace/runs/<time>-' + p.name))])
   const set = <K extends keyof TrainParams>(k: K) => (v: TrainParams[K]) => setP((x) => ({ ...x, [k]: v }))
   const heavy = tier === '16' && p.base.includes('1.7B')
 
@@ -128,9 +133,9 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
             <span className="label label--muted">base · trains on</span>
             <Explained id="train.base">
               <select value={p.base} onChange={(e) => set('base')(e.target.value)}>
-                {HF_BASES.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.id.split('/')[1]}
+                {(sees ? SEE_MODELS.map((x) => x.hf) : HF_BASES.map((b) => b.id)).map((id) => (
+                  <option key={id} value={id}>
+                    {id.split('/')[1]}
                   </option>
                 ))}
               </select>
@@ -139,6 +144,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
           {base && (
             <span className="label label--muted">
               {base.license} · {base.architecture} · about {base.loraGB}GB during LoRA{heavy ? ' · on 16GB use batch 1' : ''}
+              {sees ? ' · sees: trained with mlx-vlm on your pictures' : ''}
             </span>
           )}
           <label className="field">
@@ -162,21 +168,25 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         </div>
         <div className="train-form__col">
           <Explained id="train.type">
-            <Choice label="type" value={p.type} options={['lora', 'dora', 'full'] as FineTune[]} onChange={set('type')} />
+            <Choice label="type" value={p.type} options={(sees ? ['lora'] : ['lora', 'dora', 'full']) as FineTune[]} onChange={set('type')} />
           </Explained>
           <Explained id="train.rank">
             <Steps label="rank" value={p.rank} options={[4, 8, 16, 32, 64]} onChange={set('rank')} />
           </Explained>
-          <Explained id="train.layers">
-            <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32].filter((n) => !base || n <= base.layers)} onChange={set('layers')} />
-          </Explained>
+          {sees ? (
+            <span className="label label--muted">layers · all {base?.layers ?? ''} of the language half (mlx-vlm)</span>
+          ) : (
+            <Explained id="train.layers">
+              <Steps label="layers" value={p.layers} options={[4, 8, 12, 16, 24, 32].filter((n) => !base || n <= base.layers)} onChange={set('layers')} />
+            </Explained>
+          )}
           <Explained id="train.lr">
             <Steps label="learning rate" value={p.lr} options={[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4]} onChange={set('lr')} format={(v) => v.toExponential(0)} />
           </Explained>
         </div>
         <div className="train-form__col">
           <Explained id="train.iters">
-            <Steps label="iterations" value={p.iters} options={[50, 100, 200, 300, 500, 1000]} onChange={set('iters')} />
+            <Steps label="iterations" value={p.iters} options={sees ? [20, 40, 60, 100, 200, 300] : [50, 100, 200, 300, 500, 1000]} onChange={set('iters')} />
           </Explained>
           <Explained id="train.batch">
             <Choice label="batch" value={p.batch} options={[1, 2, 4, 8]} onChange={set('batch')} />
@@ -185,7 +195,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
             <Choice label="max seq" value={p.maxSeq} options={[512, 1024, 2048]} onChange={set('maxSeq')} />
           </Explained>
           <Explained id="train.evalEvery">
-            <Choice label="eval every" value={p.evalEvery} options={[25, 50, 100]} onChange={set('evalEvery')} />
+            <Choice label="eval every" value={p.evalEvery} options={sees ? [10, 20, 50] : [25, 50, 100]} onChange={set('evalEvery')} />
           </Explained>
         </div>
       </div>

@@ -7,10 +7,13 @@ import { OLLAMA_URL } from './config.ts'
 import { ollamaPost } from './ollama.ts'
 import { runRecipe, type Step } from './pipeline.ts'
 import { HF_BASES } from './shared/library.ts'
+import { SEE_MODELS, seeModel } from './shared/kinds.ts'
 import type { DatasetManifest, Manifest } from './shared/manifest.ts'
 import {
   PY_ENV,
+  SEES_DEFAULTS,
   TIER_DEFAULTS,
+  seesTrainArgs,
   createArgs,
   fuseArgs,
   mergeArgs,
@@ -82,14 +85,21 @@ const unloadStep: Step = {
 
 /** Licenses of a trained artifact: the base's and the data's, both carried along. */
 const licenseOf = (base: string, data: DatasetManifest | null) =>
-  `${HF_BASES.find((b) => b.id === base)?.license ?? 'unknown'} (base ${base}) + ${data?.license ?? 'unknown'} (data ${data?.name ?? '?'})`
+  `${HF_BASES.find((b) => b.id === base)?.license ?? seeModel(base)?.license ?? 'unknown'} (base ${base}) + ${data?.license ?? 'unknown'} (data ${data?.name ?? '?'})`
 
 /* ---------- train ---------- */
 
 async function train(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
   if (!only(opts, ['base', 'data', 'type', 'rank', 'layers', 'lr', 'iters', 'batch', 'max-seq', 'eval-every'], 'train')) return false
-  const d = TIER_DEFAULTS[status.tier]
+  // A picture dataset trains a model that sees, with mlx-vlm and its own defaults.
+  const early = opts.data ? await readJson<DatasetManifest>(ws('data', opts.data, 'manifest.json')) : null
+  const sees = early?.format === 'picture'
+  if (sees && (opts.layers || (opts.type && opts.type !== 'lora'))) {
+    print('train: a picture dataset trains with LoRA on every layer of the language half (mlx-vlm), so it takes no --layers, and --type is lora (export writes LoRA back into the model Ollama runs)')
+    return false
+  }
+  const d = sees ? SEES_DEFAULTS : TIER_DEFAULTS[status.tier]
   const p: TrainParams = {
     name: pos[0] ?? '',
     base: opts.base ?? d.base,
@@ -115,6 +125,9 @@ async function train(args: string[], line: string): Promise<boolean> {
     print('train: --base is a Hugging Face model id, like HuggingFaceTB/SmolLM2-360M-Instruct')
     return false
   }
+  const see = seeModel(p.base)
+  if (sees && !see) return print(`train: a picture dataset needs a model that sees: --base ${SEE_MODELS.map((x) => x.hf).join(' or ')}`), false
+  if (!sees && see) return print(`train: ${p.base} sees pictures; train it on a picture dataset (data new <name> --format picture)`), false
   // mlx-lm refuses more layers than the model has, after loading it; say so before starting.
   const known = HF_BASES.find((b) => b.id === p.base)
   if (known && p.layers > known.layers) {
@@ -144,7 +157,8 @@ async function train(args: string[], line: string): Promise<boolean> {
   const runName = `${stamp}-${p.name}`
   const runDir = ws('runs', runName)
   const runRel = `workspace/runs/${runName}`
-  const argv = trainArgs(p, runRel)
+  const argv = sees ? seesTrainArgs(p) : trainArgs(p, runRel)
+  const lossState = { iter: 0 }
   const started = Date.now()
   const losses: { iter: number; trainLoss?: number; valLoss?: number; tokensPerSec?: number }[] = []
   await fs.mkdir(runDir, { recursive: true })
@@ -175,9 +189,9 @@ async function train(args: string[], line: string): Promise<boolean> {
       unloadStep,
       {
         kind: 'do',
-        display: `write ${runRel}/config.yaml, command.txt, manifest.json`,
+        display: `write ${runRel}/${sees ? '' : 'config.yaml, '}command.txt, manifest.json`,
         run: async () => {
-          await fs.writeFile(path.join(runDir, 'config.yaml'), runConfigYaml(p))
+          if (!sees) await fs.writeFile(path.join(runDir, 'config.yaml'), runConfigYaml(p))
           await fs.writeFile(path.join(runDir, 'command.txt'), [line, '', [...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...argv].join(' '), ''].join('\n'))
           await writeJson(path.join(runDir, 'manifest.json'), manifest(null))
         },
@@ -187,7 +201,7 @@ async function train(args: string[], line: string): Promise<boolean> {
         argv,
         env: PY_ENV,
         onLine: (l, runId) => {
-          const m = parseTrainLine(l)
+          const m = parseTrainLine(l, lossState)
           if (!m) return
           losses.push(m)
           void fs.appendFile(lossFile, JSON.stringify(m) + '\n')
@@ -198,6 +212,8 @@ async function train(args: string[], line: string): Promise<boolean> {
         kind: 'do',
         display: `write manifests: workspace/adapters/${p.name}, workspace/hf/${p.base.replace('/', '--')}`,
         run: async () => {
+          // mlx-vlm writes its own scale into adapter_config.json; mlx-lm's is the 20 in config.yaml
+          const vlmConfig = sees ? await readJson<{ lora_parameters?: { scale?: number } }>(ws('adapters', p.name, 'adapter_config.json')) : null
           const adapter: Manifest = {
             name: p.name,
             kind: 'adapter',
@@ -210,10 +226,11 @@ async function train(args: string[], line: string): Promise<boolean> {
             data: p.data,
             run: runName,
             rank: p.rank,
-            layers: p.layers,
-            scale: 20,
+            layers: sees ? see!.layers : p.layers,
+            scale: vlmConfig?.lora_parameters?.scale ?? 20,
             iters: p.iters,
             final: manifest(true).final,
+            ...(sees && { sees: see!.name, trainedWith: 'mlx-vlm' }),
           }
           await writeJson(ws('adapters', p.name, 'manifest.json'), adapter)
           await writeBaseManifest(p.base, argv)

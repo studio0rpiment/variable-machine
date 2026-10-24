@@ -40,6 +40,43 @@ export const TIER_DEFAULTS: Record<Tier, Omit<TrainParams, 'name' | 'data'>> = {
 /** Every Python command runs in the python/ project, with Hugging Face downloads landing in the workspace. */
 export const PY_ENV = { HF_HOME: 'workspace/hf' }
 export const UV = ['uv', 'run', '--project', 'python']
+/** The same, with the extra packages for models that see (mlx-vlm, gguf); uv installs them on first use. */
+export const UV_SEES = [...UV, '--extra', 'sees']
+
+/**
+ * Training a model that sees on a picture dataset (mlx-vlm 0.7.10), checked
+ * on SmolVLM-256M, 2026-10-23: LoRA on the language half, about 4.4GB at
+ * batch 1, about 2.4s a step on an M1 Pro. With --train-on-completions (only
+ * the answers are learned, like mlx-lm's --mask-prompt) the 16-row museum
+ * label example learns its style in about 20 steps at 1e-4. A picture is
+ * about 900 tokens, so max seq stays at 2048. mlx-vlm adapts every layer of
+ * the language half; there is no layers setting.
+ */
+export const SEES_DEFAULTS: Omit<TrainParams, 'name' | 'data'> = { base: 'HuggingFaceTB/SmolVLM-256M-Instruct', type: 'lora', rank: 8, layers: 30, lr: 1e-4, iters: 60, batch: 1, maxSeq: 2048, evalEvery: 20 }
+
+export function seesTrainArgs(p: TrainParams): string[] {
+  return [
+    ...UV_SEES,
+    'python', '-m', 'mlx_vlm.train',
+    '--model', p.base,
+    '--data', `workspace/data/${p.data}`,
+    '--train-type', p.type,
+    '--lora-rank', String(p.rank),
+    '--iters', String(p.iters),
+    '--learning-rate', String(p.lr),
+    '--batch-size', String(p.batch),
+    '--max-seq-length', String(p.maxSeq),
+    '--steps-per-report', '5',
+    '--steps-per-eval', String(p.evalEvery),
+    '--train-on-completions',
+    '--output-path', `workspace/adapters/${p.name}`,
+  ]
+}
+
+/** The `train` line for a picture dataset: the same command, without the settings mlx-vlm doesn't take. */
+export function seesTrainLine(p: TrainParams): string[] {
+  return ['train', p.name, '--base', p.base, '--data', p.data, '--rank', String(p.rank), '--lr', String(p.lr), '--iters', String(p.iters), '--batch', String(p.batch), '--max-seq', String(p.maxSeq), '--eval-every', String(p.evalEvery)]
+}
 
 export const runConfigYaml = (p: TrainParams) =>
   `# mlx-lm config for this run; command-line flags fill everything else\nlora_parameters:\n  rank: ${p.rank}\n  scale: 20.0\n  dropout: 0.0\n`
@@ -130,12 +167,29 @@ export const createArgs = (model: string, quantize: Quantize) => ['ollama', 'cre
  *    iter   train_loss     tok/s     tokens
  *       5    2.621 ▼        214       1.6k
  *      10    val 2.199    2.92s
+ * mlx-vlm 0.7.10 prints blocks of key=value lines under a heading:
+ *    Training (iteration 40):
+ *    optimizer_step=40, train_loss=0.395, train_nll=0.395, …
+ *    tokens_per_second=414.93, …
+ *    Validation (iteration 40):
+ *    val_loss=0.28669, …
+ * Its validation line doesn't repeat the iteration, so `state` carries the
+ * last heading's along (a run passes one; a stray line without it reads as 0).
  * Returns what a line says, or null.
  */
-export function parseTrainLine(line: string): { iter: number; trainLoss?: number; valLoss?: number; tokensPerSec?: number } | null {
+export function parseTrainLine(line: string, state?: { iter: number }): { iter: number; trainLoss?: number; valLoss?: number; tokensPerSec?: number } | null {
   // mlx-lm can draw a progress bar and then rewrite the line (\r, erase-line) with the report:
   // keep only what is left after the last carriage return, without any terminal codes.
   const plain = (line.split('\r').pop() ?? '').replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
+  const heading = /^(?:Training|Validation) \(iteration (\d+)\):/.exec(plain)
+  if (heading) {
+    if (state) state.iter = Number(heading[1])
+    return null
+  }
+  const vlmTrain = /\boptimizer_step=(\d+), train_loss=([\d.eE+-]+)/.exec(plain)
+  if (vlmTrain) return { iter: Number(vlmTrain[1]), trainLoss: Number(vlmTrain[2]) }
+  const vlmVal = /^val_loss=([\d.eE+-]+)/.exec(plain)
+  if (vlmVal) return { iter: state?.iter ?? 0, valLoss: Number(vlmVal[1]) }
   const val = /^\s*(\d+)\s+val\s+([\d.]+)/.exec(plain)
   if (val) return { iter: Number(val[1]), valLoss: Number(val[2]) }
   const train = /^\s*(\d+)\s+([\d.]+)\s*[▼▲=•-]?\s+([\d.]+)(k?)\s+[\d.,]+k?\s*$/.exec(plain)
