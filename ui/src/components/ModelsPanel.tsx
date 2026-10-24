@@ -493,7 +493,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
         ))}
       </div>
 
-      <h2 className="panel__title label">trackers · run in the page, on the move tab</h2>
+      <h2 className="panel__title label">trackers · run in the page, on the gesture tab</h2>
       <p className="models-intro">
         <KindLine kind="moves" />
       </p>
@@ -503,7 +503,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
         ))}
       </div>
 
-      <h2 className="panel__title label">voices · on the voice tab</h2>
+      <h2 className="panel__title label">voices · on the speech tab</h2>
       <p className="models-intro">
         <KindLine kind="speaks" />
       </p>

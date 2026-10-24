@@ -30,7 +30,7 @@ Training data is a pile of examples: a question, and the answer you would like t
 ### Start
 `panel.start`
 
-A map of the whole app. Each box is a tab and each line is what one passes to the next: a model, your words, examples, an adapter. Click a box to open that tab. Start here if you are new.
+A map of the whole app, read from left to right: what you bring, preparing it, how a model learns, making it a model, using it. The top band is the language models, the ones you change. Below, one row for each other kind: image segmentation and speech, whose makers trained them, and gesture, which you train yourself in seconds. Each line is what one step passes to the next. Click a box to open its tab. Start here if you are new.
 
 ### About the process
 `panel.about`
@@ -66,6 +66,43 @@ Type one question and two to four models answer it at the same time, side by sid
 `panel.share`
 
 Everything you make here is a folder: a dataset, an adapter, a training run. Sharing means zipping that folder so someone else can open exactly what you made, along with its record of where it came from. Download a zip to send it, or add a zip someone sent you and it goes back to where it belongs.
+
+## The Start map
+
+### Your words
+`map.words`
+
+What you bring to a language model: questions with the answers you want, written by you or brought in from a table, a book or a public collection. On the Data tab they become rows, the examples Train learns from.
+
+### Photos + words
+`map.pictures`
+
+Photos, each with a question and the answer you want: what it shows, said your way. On the Data tab they become picture rows, and Train teaches a model that sees (SmolVLM) to talk about pictures like that.
+
+### Your photos
+`map.photos`
+
+An image set: your photos, with whose they are. Image segmentation finds the regions in them (the object that stands out, how far away each part is, the blob you click); the same photos can also become picture rows on the Data tab.
+
+### Words, voice
+`map.voice`
+
+Text you want read aloud, or a recording of your voice. One model speaks the text; another writes down what it hears in the recording.
+
+### Your movements
+`map.movements`
+
+Your hand or your body in front of the camera. Only the points the tracker finds are kept, never the picture: a few seconds of each gesture you want it to know.
+
+### Made by others
+`map.made`
+
+A model you use as it is: its makers trained it, on their own photos or recordings, and you download it from the Models tab. Its card there says who made it, what it was trained on and its license. You don't change it; you use it on your own material.
+
+### Train a gesture model
+`map.gestureTrain`
+
+Training in seconds: your recorded examples are kept, and a new pose is named by the examples nearest to it (k-nearest neighbours). What it learns is exactly what you showed it, and nothing else.
 
 ## Models
 
@@ -456,7 +493,7 @@ Sends a picture with your question, from the photos in your image sets. Models t
 ### Add a photo
 `chat.pictureAdd`
 
-Copies a photo from your computer into the chosen image set (or a new one called chat-photos), so the Look tab and the Data tab can use it too. JPEG, PNG or WebP.
+Copies a photo from your computer into the chosen image set (or a new one called chat-photos), so the image segmentation tab and the Data tab can use it too. JPEG, PNG or WebP.
 
 ### Ask
 `chat.send`
@@ -485,12 +522,12 @@ Unpacks a zip someone sent you and puts it back where it belongs. It checks the 
 
 Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card.
 
-## Look
+## Image segmentation, speech, gesture
 
-### Move
-`panel.move`
+### Gesture
+`panel.gesture`
 
-The kind of model that moves: a tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.
+Gesture recognition. A tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.
 
 ### Download the tracker
 `move.get`
@@ -527,10 +564,10 @@ Names your gesture as you make it, and shows how many of the nearest examples ag
 
 While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture's name and how sure it is (0 to 1). In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer.
 
-### Voice
-`panel.voice`
+### Speech
+`panel.speech`
 
-Two kinds of model, used as they are: one that speaks (text in, a voice out) and one that listens (a recording in, what was said out). Type something and Soprano reads it aloud; record your voice and Qwen3-ASR writes down what it heard, in 52 languages and dialects. Both run on this computer, and the first use of each downloads it. Every sound is a WAV file in workspace/audio, with a record of where it came from and what was heard in it.
+Speech synthesis and speech recognition: two kinds of model, used as they are: one that speaks (text in, a voice out) and one that listens (a recording in, what was said out). Type something and Soprano reads it aloud; record your voice and Qwen3-ASR writes down what it heard, in 52 languages and dialects. Both run on this computer, and the first use of each downloads it. Every sound is a WAV file in workspace/audio, with a record of where it came from and what was heard in it.
 
 ### Speak
 `voice.speak`
@@ -547,10 +584,10 @@ Records your microphone in this page until you press again, then saves it as a W
 
 Qwen3-ASR writes down what it hears in this sound, in whichever language it hears. What it heard is saved next to the sound, and in the set's record.
 
-### Look
-`panel.look`
+### Image segmentation
+`panel.segmentation`
 
-Image tools, the kind of model that looks: cut something out, the distance between blobs, select a blob. A blob is early computer vision's word for a region of a picture that stands out from what surrounds it: an object, as the computer finds it. The tools are ready-made models you download once; you don't train them. They run inside this page, on your computer, and nothing is sent anywhere. Bring your photos into a set, pick one, and run a tool. What it makes is saved in workspace/outputs with a record of which photo and which model made it.
+Image segmentation: finding the regions of a picture. Cut something out, the distance between blobs, select a blob. A blob is early computer vision's word for a region of a picture that stands out from what surrounds it: an object, as the computer finds it. The tools are ready-made models you download once; you don't train them. They run inside this page, on your computer, and nothing is sent anywhere. Bring your photos into a set, pick one, and run a tool. What it makes is saved in workspace/outputs with a record of which photo and which model made it.
 
 ### Download this tool
 `look.get`

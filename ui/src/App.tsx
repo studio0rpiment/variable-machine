@@ -26,9 +26,9 @@ import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark,
  * The tabs, in the order you'd use them, grouped: the map; what to start from;
  * what to show it; the three ways to change it (imitate, prefer, blend); then
  * making it a model, comparing, sharing. Then the tabs for the other kinds of
- * model, used as they are (Look: image tools; Voice: speaking and listening; Move: your gestures). The Start panel tells the same story.
+ * model: image segmentation, speech, and gesture. The Start panel tells the same story.
  */
-const GROUPS = [['start', 'about'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share'], ['look', 'voice', 'move']] as const
+const GROUPS = [['start', 'about'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share'], ['segmentation', 'speech', 'gesture']] as const
 const PANELS = GROUPS.flat()
 type Panel = (typeof GROUPS)[number][number]
 const MARKS: Record<Panel, ReactNode> = {
@@ -43,10 +43,16 @@ const MARKS: Record<Panel, ReactNode> = {
   adapters: <AdaptersMark size={0.9} />,
   merge: <MergeMark size={0.9} />,
   chat: <ChatMark size={0.9} />,
-  look: <LookMark size={0.9} />,
-  voice: <VoiceMark size={0.9} />,
-  move: <MoveMark size={0.9} />,
+  segmentation: <LookMark size={0.9} />,
+  speech: <VoiceMark size={0.9} />,
+  gesture: <MoveMark size={0.9} />,
 }
+
+/** A tab's name in the top bar, where it isn't just its id: named for what it does, as the field names it. */
+const LABEL: Partial<Record<Panel, string>> = { segmentation: 'image segmentation' }
+
+/** Tabs that were renamed, so old links still land: look, voice and move became segmentation, speech and gesture. */
+const RENAMED: Record<string, Panel> = { look: 'segmentation', voice: 'speech', move: 'gesture' }
 
 /**
  * The path through the tabs, numbered: look at models, change one with words, gather
@@ -58,6 +64,7 @@ const STEP: Partial<Record<Panel, number>> = { models: 1, modelfile: 2, data: 3,
 /** The panel lives in the hash so a reload stays put (it's navigation, not saved state). */
 function panelFromHash(): Panel {
   const h = location.hash.slice(1)
+  if (RENAMED[h]) return RENAMED[h]
   return (PANELS as readonly string[]).includes(h) ? (h as Panel) : 'start'
 }
 
@@ -115,7 +122,7 @@ export default function App() {
                   <a href={`#${p}`} className={`nav-link label ${p === panel ? 'is-active' : ''}`.trim()} aria-current={p === panel ? 'page' : undefined}>
                     {STEP[p] && <span className="nav-step">{STEP[p]}</span>}
                     {MARKS[p]}
-                    {p}
+                    {LABEL[p] ?? p}
                   </a>
                 </Explained>
               ))}
@@ -160,13 +167,13 @@ export default function App() {
         <div className="panel-slot" hidden={panel !== 'share'}>
           <SharePanel />
         </div>
-        <div className="panel-slot" hidden={panel !== 'move'}>
-          <MovePanel active={panel === 'move'} />
+        <div className="panel-slot" hidden={panel !== 'gesture'}>
+          <MovePanel active={panel === 'gesture'} />
         </div>
-        <div className="panel-slot" hidden={panel !== 'voice'}>
+        <div className="panel-slot" hidden={panel !== 'speech'}>
           <VoicePanel />
         </div>
-        <div className="panel-slot" hidden={panel !== 'look'}>
+        <div className="panel-slot" hidden={panel !== 'segmentation'}>
           <LookPanel />
         </div>
       </main>

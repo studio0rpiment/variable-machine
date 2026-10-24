@@ -12,7 +12,7 @@ import type { ExplainId } from '../explain/text'
 
 const W = 150 // node width
 /** Everything drawn, in the SVG's units: what "fit" shows. */
-const CONTENT = { x: 40, y: 30, w: 1070, h: 965 } // the bottom 70 are room for the echo
+const CONTENT = { x: 40, y: 20, w: 1156, h: 830 } // the bottom 70 are room for the echo
 const MIN_W = 360 // closest zoom, in units across
 const MAX_W = 4000 // furthest
 const H = 44 // node height
@@ -23,24 +23,55 @@ interface Node {
   x: number
   y: number
   caption: string
-  /** where everything is used: drawn solid and doubled, with its own label */
+  /** shown in the box, when it isn't the id */
+  name?: string
+  /** the tab it opens, when it isn't a tab itself */
+  to?: string
+  /** its flag, when it isn't the tab's (panel.<id>) */
+  flag?: ExplainId
+  /**
+   * input: what you bring (your words, photos, movements): plain, muted.
+   * made: a model its makers trained, used as it is: dotted.
+   * use: where a model is used: an outer outline round the box.
+   * Chat is a use too, doubled: two models side by side.
+   */
+  kind?: 'input' | 'made' | 'use'
   dest?: boolean
 }
 
+/**
+ * Five columns, left to right: what you bring, preparing it, how a model
+ * learns, making it a model, using it. The language models fill the top band
+ * (the change loop); each other kind is one row below, which skips the columns
+ * it doesn't need: segmentation and speech are used as their makers trained
+ * them, and a gesture model is trained from your own examples in seconds.
+ */
+const COLUMNS: [number, string][] = [[60, 'bring'], [300, 'prepare'], [590, 'how it learns'], [820, 'make it a model'], [1000, 'use it']]
+
 const NODES: Node[] = [
-  { id: 'models', n: '1', x: 60, y: 140, caption: 'what you start from' },
-  { id: 'modelfile', n: '2', x: 330, y: 50, caption: 'change it with words' },
-  { id: 'data', n: '3', x: 60, y: 420, caption: 'examples to learn from' },
-  { id: 'train', n: '4', x: 360, y: 276, caption: 'imitate' },
-  { id: 'prefer', n: '4', x: 360, y: 376, caption: 'lean toward the better' },
-  { id: 'merge', n: '4', x: 360, y: 476, caption: 'blend two' },
-  { id: 'adapters', n: '5', x: 650, y: 330, caption: 'make them models' },
-  { id: 'chat', x: 910, y: 150, caption: 'hear the difference', dest: true },
-  { id: 'share', x: 910, y: 466, caption: 'pass it on' },
-  // apart from the change loop: ready-made tools, used as they are
-  { id: 'look', x: 360, y: 650, caption: 'ready-made image tools' },
-  { id: 'voice', x: 360, y: 740, caption: 'it speaks, it listens' },
-  { id: 'move', x: 360, y: 830, caption: 'your gestures, named' },
+  { id: 'models', n: '1', x: 60, y: 80, caption: 'every kind starts here' },
+  { id: 'words', name: 'your words', x: 60, y: 190, caption: 'questions and answers', kind: 'input', to: 'data', flag: 'map.words' },
+  { id: 'pictures', name: 'photos + words', x: 60, y: 300, caption: 'what each photo shows', kind: 'input', to: 'data', flag: 'map.pictures' },
+  { id: 'modelfile', n: '2', x: 300, y: 80, caption: 'change it with words' },
+  { id: 'data', n: '3', x: 300, y: 240, caption: 'what it learns from' },
+  { id: 'train', n: '4', x: 590, y: 190, caption: 'imitate' },
+  { id: 'prefer', n: '4', x: 590, y: 270, caption: 'lean toward the better' },
+  { id: 'merge', n: '4', x: 590, y: 350, caption: 'blend two' },
+  { id: 'adapters', n: '5', x: 820, y: 270, caption: 'changes become models' },
+  { id: 'chat', x: 1000, y: 80, caption: 'language models', dest: true },
+  { id: 'share', x: 1000, y: 330, caption: 'pass it on' },
+  // image segmentation: your photos, a model its makers trained
+  { id: 'photos', name: 'your photos', x: 60, y: 510, caption: 'an image set', kind: 'input', to: 'segmentation', flag: 'map.photos' },
+  { id: 'made-images', name: 'ready-made', x: 590, y: 510, caption: 'trained by its makers, on their photos', kind: 'made', to: 'models', flag: 'map.made' },
+  { id: 'segmentation', name: 'segmentation', x: 1000, y: 510, caption: 'cut-outs, depth, outlines', kind: 'use' },
+  // speech: your words or your voice, models their makers trained
+  { id: 'voice-in', name: 'words, voice', x: 60, y: 600, caption: 'text, or a recording', kind: 'input', to: 'speech', flag: 'map.voice' },
+  { id: 'made-speech', name: 'ready-made', x: 590, y: 600, caption: 'trained by their makers, on recordings', kind: 'made', to: 'models', flag: 'map.made' },
+  { id: 'speech', x: 1000, y: 600, caption: 'sounds, and what was heard', kind: 'use' },
+  // gesture: your movements, a model you train in seconds
+  { id: 'movements', name: 'movements', x: 60, y: 690, caption: 'points, never video', kind: 'input', to: 'gesture', flag: 'map.movements' },
+  { id: 'gesture-train', name: 'train', x: 590, y: 690, caption: 'a gesture model, in seconds', to: 'gesture', flag: 'map.gestureTrain' },
+  { id: 'gesture', x: 1000, y: 690, caption: 'gesture names, sent as OSC', kind: 'use' },
 ]
 
 type P = [number, number]
@@ -75,35 +106,36 @@ interface Wire {
 }
 
 const WIRES: Wire[] = [
-  { from: 'models', to: 'chat', label: 'talk to it as it is', points: route([210, 160], [904, 160]), at: [640, 152] },
-  { from: 'models', to: 'modelfile', label: 'a model', points: route([210, 160], [330, 72]), at: [232, 104], anchor: 'start' },
-  { from: 'modelfile', to: 'chat', label: 'a variant: the model plus your words', points: route([480, 72], [904, 172]), at: [560, 64], anchor: 'start' },
-  { from: 'models', to: 'train', label: 'a model to start from', points: route([210, 162], [330, 250]), at: [222, 214], anchor: 'start' },
-  { from: 'data', to: 'train', label: 'rows to imitate', points: route([210, 438], [360, 302]), at: [216, 398], anchor: 'start' },
-  { from: 'data', to: 'prefer', label: 'chosen vs rejected', points: route([210, 446], [360, 402]), at: [216, 470], anchor: 'start' },
-  { from: 'train', to: 'adapters', label: 'an adapter', points: route([510, 298], [650, 346]), at: [560, 290], anchor: 'start' },
-  { from: 'prefer', to: 'adapters', label: 'an adapter', points: route([510, 398], [650, 358]), at: [560, 412], anchor: 'start' },
-  { from: 'adapters', to: 'merge', label: 'two adapters', points: [[700, 374], [700, 440], [656, 484], [510, 484]], at: [604, 476], anchor: 'middle' },
-  { from: 'merge', to: 'adapters', label: 'a blend', points: [[510, 504], [710, 504], [750, 464], [750, 374]], at: [604, 520], anchor: 'middle' },
-  { from: 'adapters', to: 'chat', label: 'export: a model of your own', points: [[725, 330], [725, 270], [809, 184], [904, 184]], at: [733, 296], anchor: 'start' },
-  { from: 'adapters', to: 'share', label: 'zip', points: [[800, 352], [840, 352], [840, 448], [880, 488], [910, 488]], at: [848, 400], anchor: 'start' },
+  // the language models: the change loop
+  { from: 'models', to: 'chat', label: 'use it as it is', points: [[135, 80], [135, 62], [1075, 62], [1075, 72]], at: [605, 56], anchor: 'middle' },
+  { from: 'models', to: 'modelfile', label: 'a model', points: [[210, 102], [300, 102]], at: [218, 96], anchor: 'start' },
+  { from: 'modelfile', to: 'chat', label: 'a variant: the model plus your words', points: [[450, 102], [994, 102]], at: [580, 96], anchor: 'start' },
+  { from: 'models', to: 'train', label: 'a model to start from', points: [[210, 114], [255, 114], [255, 206], [590, 206]], at: [263, 200], anchor: 'start' },
+  { from: 'words', to: 'data', label: 'rows', points: route([210, 212], [300, 256]), at: [216, 206], anchor: 'start' },
+  { from: 'pictures', to: 'data', label: 'picture rows', points: route([210, 322], [300, 270]), at: [216, 316], anchor: 'start' },
+  { from: 'data', to: 'train', label: 'rows to imitate', points: [[450, 250], [574, 250], [574, 222], [590, 222]], at: [456, 244], anchor: 'start' },
+  { from: 'data', to: 'prefer', label: 'chosen vs rejected', points: [[450, 268], [574, 268], [574, 292], [590, 292]], at: [452, 284], anchor: 'start' },
+  { from: 'train', to: 'adapters', label: 'an adapter', points: route([740, 212], [820, 286]), at: [746, 206], anchor: 'start' },
+  { from: 'prefer', to: 'adapters', label: 'an adapter', points: route([740, 292], [820, 298]), at: [746, 316], anchor: 'start' },
+  { from: 'merge', to: 'adapters', label: 'a blend', points: [[740, 364], [875, 364], [875, 316]], at: [807, 358], anchor: 'middle' },
+  { from: 'adapters', to: 'merge', label: 'two adapters', points: [[895, 314], [895, 384], [742, 384]], at: [817, 400], anchor: 'middle' },
+  { from: 'adapters', to: 'chat', label: 'export: a model of your own', points: [[970, 286], [988, 286], [988, 124], [994, 124]], at: [980, 176], anchor: 'end' },
+  { from: 'adapters', to: 'share', label: 'zip', points: [[970, 298], [996, 298], [996, 352], [1000, 352]], at: [1000, 322], anchor: 'start' },
   {
     from: 'chat',
     to: 'data',
     label: 'your chat log: two answers become a pair for Prefer',
-    points: [[1066, 172], [1090, 172], [1090, 590], [160, 590], [135, 565], [135, 464]],
-    at: [600, 582],
+    points: [[1156, 102], [1172, 102], [1172, 450], [440, 450], [440, 286]],
+    at: [728, 444],
     anchor: 'middle',
   },
-  // the sees kind: photos with what they show, as rows Train teaches a model that sees (SmolVLM)
-  { from: 'pictures', to: 'data', label: 'your photos + what they show', points: [[90, 612], [90, 464]], at: [60, 630], anchor: 'start' },
-  { from: 'models', to: 'look', label: 'a ready-made tool', points: [[60, 162], [44, 162], [44, 664], [360, 664]], at: [52, 656], anchor: 'start' },
-  { from: 'images', to: 'look', label: 'your photos', points: [[220, 682], [360, 682]], at: [220, 700], anchor: 'start' },
-  { from: 'look', to: 'outputs', label: 'a picture + its record', points: [[510, 672], [650, 672]], at: [518, 664], anchor: 'start' },
-  { from: 'words', to: 'voice', label: 'your words or your voice', points: [[200, 762], [360, 762]], at: [322, 780], anchor: 'end' },
-  { from: 'voice', to: 'audio', label: 'a sound + what was heard', points: [[510, 762], [650, 762]], at: [518, 754], anchor: 'start' },
-  { from: 'camera', to: 'move', label: 'the camera, as points', points: [[200, 852], [360, 852]], at: [322, 870], anchor: 'end' },
-  { from: 'move', to: 'osc', label: 'a gesture + how sure, as OSC', points: [[510, 852], [650, 852]], at: [518, 844], anchor: 'start' },
+  // the other kinds, one row each
+  { from: 'photos', to: 'made-images', label: 'your photos', points: [[210, 532], [590, 532]], at: [216, 526], anchor: 'start' },
+  { from: 'made-images', to: 'segmentation', label: 'a ready-made model, used as it is', points: [[740, 532], [994, 532]], at: [746, 526], anchor: 'start' },
+  { from: 'voice-in', to: 'made-speech', label: 'your words, or your voice', points: [[210, 622], [590, 622]], at: [216, 616], anchor: 'start' },
+  { from: 'made-speech', to: 'speech', label: 'one model speaks, one listens', points: [[740, 622], [994, 622]], at: [746, 616], anchor: 'start' },
+  { from: 'movements', to: 'gesture-train', label: 'the camera, as points', points: [[210, 712], [590, 712]], at: [216, 706], anchor: 'start' },
+  { from: 'gesture-train', to: 'gesture', label: 'your gesture model', points: [[740, 712], [994, 712]], at: [746, 706], anchor: 'start' },
 ]
 
 /** What each tab runs, for the corner echo when you point at it. */
@@ -117,9 +149,17 @@ const RUNS: Record<string, string[]> = {
   adapters: ['export dolly-300-360m --quantize int8', '  fuse · ollama create … -q int8'],
   chat: ['ollama run-once smollm2:360m "…"', 'ollama run-once smolvlm:256m --image images/classic-cv/utah-teapot.jpg "What is this?"'],
   share: ['zip adapters/dolly-300-360m', 'unzip adapters-dolly-300-360m.zip'],
-  look: ['model get depth', 'look cutout images/studio/chair.jpg', 'look select images/studio/chair.jpg --point 320,240'],
-  voice: ['speak teapot-label "Utah teapot, 1974."', 'listen audio/recorded/rec-2026-10-24.wav'],
-  move: ['model get hands', 'gesture train studio-hands', 'gesture send studio-hands --port 9000'],
+  segmentation: ['look cutout images/studio/chair.jpg', 'look depth images/studio/chair.jpg', 'look select images/studio/chair.jpg --point 320,240'],
+  speech: ['speak teapot-label "Utah teapot, 1974."', 'listen audio/recorded/rec-2026-10-24.wav'],
+  gesture: ['gesture new studio-hands --tracker hands', 'gesture train studio-hands', 'gesture send studio-hands --port 9000'],
+  words: ['data import file uploads/my-rows.csv my-rows', 'data append my-rows \'{"messages": […]}\''],
+  pictures: ['data picture my-labels images/studio/vase.jpg --question "What is this?" --answer "…"'],
+  photos: ['look example classic-cv', '(or add photos on the image segmentation tab)'],
+  'voice-in': ['speak label-1 "Your words, read aloud."', '(or record your voice on the speech tab)'],
+  movements: ['(hold to record on the gesture tab: points only)'],
+  'made-images': ['model get cutout', 'model get depth', 'model get select'],
+  'made-speech': ['speak …   Soprano-1.1-80M, Apache 2.0', 'listen …  Qwen3-ASR-0.6B, Apache 2.0'],
+  'gesture-train': ['model get hands', 'gesture train studio-hands'],
 }
 
 interface Props {
@@ -269,26 +309,21 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           </marker>
         </defs>
 
+        {/* the columns, left to right */}
+        {COLUMNS.map(([x, label]) => (
+          <text key={label} x={x} y={36} className="flow__column">
+            {label}
+          </text>
+        ))}
+
         {/* the three ways: one box, one step number */}
-        <rect x={330} y={240} width={210} height={300} className="flow__group" />
-        <text x={330} y={232} className="flow__group-label">
+        <rect x={580} y={170} width={170} height={250} className="flow__group" />
+        <text x={580} y={162} className="flow__group-label">
           4 · three ways to change the numbers
         </text>
 
-        {/* set apart: tools used as they are, outside the loop that changes numbers */}
-        <rect x={330} y={630} width={400} height={280} className="flow__group" />
-        <text x={330} y={622} className="flow__group-label">
-          use it as it is · nothing changes
-        </text>
-        <text x={656} y={676} className="flow__label">
-          outputs
-        </text>
-        <text x={656} y={766} className="flow__label">
-          audio
-        </text>
-        <text x={656} y={856} className="flow__label">
-          TouchDesigner, Max…
-        </text>
+        {/* the other kinds, one row each, below the change loop */}
+        <line x1={40} y1={478} x2={1172} y2={478} className="flow__rule" />
 
         {WIRES.map((w) => (
           <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${w.soon ? 'is-soon' : ''} ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>
@@ -299,58 +334,58 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           </g>
         ))}
 
-        {NODES.map((n) => (
-          // the same flag as the tab's name in the top bar; it points out of the map, toward its nearest edge, beside the node
-          <Explained key={n.id} id={`panel.${n.id}` as ExplainId} svg module=".flow">
-          <a
-            href={linkTo(n.id)}
-            className={`flow__node ${hot === n.id ? 'is-hot' : ''}`.trim()}
-            onPointerEnter={() => setHot(n.id)}
-            onPointerLeave={() => setHot(null)}
-            onFocus={() => setHot(n.id)}
-            onBlur={() => setHot(null)}
-            aria-label={`${n.id}: ${n.caption}`}
-          >
-            {n.dest ? (
-              <>
-                {/* the destination: an outer outline (dashed like the others until you point at it), and inside it
-                    two windows side by side, as Chat puts two models side by side */}
-                <rect x={n.x - 6} y={n.y - 6} width={W + 12} height={H + 12} className="flow__dest" />
-                <text x={n.x - 6} y={n.y - 14} className="flow__dest-label">
-                  use it here
+        {NODES.map((n) => {
+          // a use and Chat have an outer outline; their wires plug into it
+          const out = n.dest || n.kind === 'use' ? 6 : 0
+          const box = n.kind === 'input' ? 'flow__box flow__box--input' : n.kind === 'made' ? 'flow__box flow__box--made' : 'flow__box'
+          return (
+            // the same flag as the tab's name in the top bar (or the node's own); it points out of the map, toward its nearest edge
+            <Explained key={n.id} id={n.flag ?? (`panel.${n.id}` as ExplainId)} svg module=".flow">
+              <a
+                href={linkTo(n.to ?? n.id)}
+                className={`flow__node ${n.kind ? `flow__node--${n.kind}` : ''} ${hot === n.id ? 'is-hot' : ''}`.trim()}
+                onPointerEnter={() => setHot(n.id)}
+                onPointerLeave={() => setHot(null)}
+                onFocus={() => setHot(n.id)}
+                onBlur={() => setHot(null)}
+                aria-label={`${n.name ?? n.id}: ${n.caption}`}
+              >
+                {out > 0 && <rect x={n.x - out} y={n.y - out} width={W + out * 2} height={H + out * 2} className="flow__dest" />}
+                {n.dest ? (
+                  <>
+                    {/* Chat: two windows side by side, as it puts two models side by side */}
+                    <rect x={n.x} y={n.y} width={W / 2 - 3} height={H} className="flow__box" />
+                    <rect x={n.x + W / 2 + 3} y={n.y} width={W / 2 - 3} height={H} className="flow__box" />
+                  </>
+                ) : (
+                  <rect x={n.x} y={n.y} width={W} height={H} className={box} />
+                )}
+                {/* ports: where wires plug in and out */}
+                <rect x={n.x - out - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
+                <rect x={n.x + W + out - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
+                {n.n && (
+                  <text x={n.x + 12} y={n.y + H / 2 + 5} className="flow__num">
+                    {n.n}
+                  </text>
+                )}
+                {n.dest ? (
+                  [0, 1].map((k) => (
+                    <text key={k} x={n.x + (W / 2 + 3) * k + (W / 2 - 3) / 2} y={n.y + H / 2 + 5} textAnchor="middle" className="flow__name">
+                      {n.id}
+                    </text>
+                  ))
+                ) : (
+                  <text x={n.x + (n.n ? 28 : 14)} y={n.y + H / 2 + 5} className={n.kind === 'input' ? 'flow__name flow__name--input' : 'flow__name'}>
+                    {n.name ?? n.id}
+                  </text>
+                )}
+                <text x={n.x - out} y={n.y + H + out + 18} className="flow__caption">
+                  {n.caption}
                 </text>
-                <rect x={n.x} y={n.y} width={W / 2 - 3} height={H} className="flow__box" />
-                <rect x={n.x + W / 2 + 3} y={n.y} width={W / 2 - 3} height={H} className="flow__box" />
-              </>
-            ) : (
-              <rect x={n.x} y={n.y} width={W} height={H} className="flow__box" />
-            )}
-            {/* ports: where wires plug in and out */}
-            {/* the destination's wires plug into its outer outline */}
-            <rect x={n.x - (n.dest ? 6 : 0) - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
-            <rect x={n.x + W + (n.dest ? 6 : 0) - 3} y={n.y + H / 2 - 3} width={6} height={6} className="flow__port" />
-            {n.n && (
-              <text x={n.x + 12} y={n.y + H / 2 + 5} className="flow__num">
-                {n.n}
-              </text>
-            )}
-            {n.dest ? (
-              [0, 1].map((k) => (
-                <text key={k} x={n.x + (W / 2 + 3) * k + (W / 2 - 3) / 2} y={n.y + H / 2 + 5} textAnchor="middle" className="flow__name">
-                  {n.id}
-                </text>
-              ))
-            ) : (
-              <text x={n.x + (n.n ? 28 : 14)} y={n.y + H / 2 + 5} className="flow__name">
-                {n.id}
-              </text>
-            )}
-            <text x={n.x} y={n.y + H + 18} className="flow__caption">
-              {n.caption}
-            </text>
-          </a>
-          </Explained>
-        ))}
+              </a>
+            </Explained>
+          )
+        })}
       </svg>
       <div className="flow__tools" role="group" aria-label="view">
         <button type="button" className="text-button" onClick={fit} aria-label="fit the whole map to the space">

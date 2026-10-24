@@ -4,7 +4,7 @@ A localhost instrument for changing small language models on an Apple Silicon Ma
 
 **[variablemachine.orpiment.studio](https://variablemachine.orpiment.studio)** · download, and how to start.
 
-![The Start page: every tab as a box, with lines for what each passes to the next, from Models and Data through the three ways to change the numbers to Adapters, Chat and Share](docs/images/start-map.png)
+![The Start page: a map in five columns, from what you bring through preparing it, how a model learns and making it a model to using it; the language models' tabs in a band across the top, and a row each below for image segmentation, speech and gesture](docs/images/start-map.png)
 
 ## Start here
 
@@ -40,7 +40,7 @@ It starts Ollama if it isn't running and opens http://localhost:4817 in your bro
 
 **4. Your first ten minutes:**
 
-1. **Start** shows a map of every tab and what flows between them. Click a box to open it; **about** has the same in words.
+1. **Start** shows a map of every tab and what flows between them, left to right: what you bring, preparing it, how a model learns, making it a model, using it. Click a box to open it; **about** has the same in words.
 2. **Models:** press `ollama pull smollm2:360m` on its card (about 700MB). With no models yet, the four starters and a library to pull from are listed here.
 3. **Modelfile:** choose a preset, press make variant, and ask both the original and your variant the same question.
 4. **Data → Train:** choose a dataset, split it, open Train with it, and train. When it finishes, the next step exports your model and opens **Chat** with it.
@@ -67,7 +67,7 @@ It shows what each step removes and its size, and asks before each one; anything
 
 The tabs run left to right in the order you'd use them, in groups; the ones on the path carry a step number (the three ways share 4).
 
-1. **Start** and **about.** Start is a map: every tab as a node, with wires labelled with what one passes to the next (a model, a variant, rows to imitate, an adapter, a blend, the chat log back to Data). Click a node to open its tab; point at one to light its wires and see the commands it runs in the green echo, which otherwise shows the terminal live. Drag to move, pinch or ⌘ + scroll to zoom, *fit* to see it all. Chat is marked as where everything is used. **about** says the same in words: every tab with what it does, takes, gives and leads to.
+1. **Start** and **about.** Start is a map in five columns, read left to right: *bring*, *prepare*, *how it learns*, *make it a model*, *use it*. The top band is the language models, the ones you change: Models, Modelfile, Data, the three ways, Adapters, Chat and Share, with wires labelled with what one passes to the next (a model, a variant, rows to imitate, an adapter, a blend, the chat log back to Data); your words and your photos with what they show come in as rows and picture rows. Below it, one row for each other kind: your photos and a ready-made model (trained by its makers, dotted) give image segmentation; your words or voice give speech; your movements train a gesture model in seconds. Click a box to open its tab; point at one to light its wires and see the commands it runs in the green echo, which otherwise shows the terminal live. Drag to move, pinch or ⌘ + scroll to zoom, *fit* to see it all. **about** says the same in words: every tab with what it does, takes, gives and leads to.
 2. **Models.** The page opens with **four starters**, chosen to be as different from each other as possible:
    - **smollm2:360m:** tiny, and the one you change.
    - **qwen3:4b:** thinks before answering, works in many languages, writes training data here.
@@ -99,11 +99,11 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
 7. **Chat.** Two to four models side by side, one prompt, every answer streaming. *Add a picture* sends a photo from an image set to the models that see (`--image` in the echo); the others get the words only, and say so. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
 8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
-**Use it as it is:** three tabs for the other kinds of model, which you use rather than change. Nothing leaves the computer.
+**The other kinds:** three tabs, named for what their models do. Nothing leaves the computer.
 
-- **Look.** Ready-made image tools that run in the page (onnxruntime-web): cut something out (ormbg), the distance between blobs (Depth Anything V2 Small), select a blob you click (SlimSAM). Outputs land in `workspace/outputs` with a record of which photo and model made them.
-- **Voice.** *Speak*: Soprano-1.1-80M (Apache 2.0) reads your text aloud. *Listen*: record your voice in the page (as WAV) and Qwen3-ASR-0.6B (Apache 2.0, 52 languages and dialects) writes down what it heard. Both run through mlx-audio in the python project's `voice` extra, installed on first use; sounds and transcripts live in `workspace/audio/<set>/`.
-- **Move.** MediaPipe's hand (21 points) and body (33 points) trackers run in the page, on the camera or a photo. Hold a button to record examples of your own gestures (only the points, measured from the wrist or hips, never pictures), train a k-nearest-neighbours model on them in TypeScript (`gesture train`, checked on every fifth example, with a confusion grid), test it live, and send each guess as OSC to TouchDesigner, Max or Pure Data on this computer (`gesture send <set> --port 9000`). The camera is on only while the tab is open.
+- **Image segmentation** (was Look). Ready-made image tools that run in the page (onnxruntime-web): cut something out (ormbg), the distance between blobs (Depth Anything V2 Small), select a blob you click (SlimSAM). Outputs land in `workspace/outputs` with a record of which photo and model made them.
+- **Speech** (was Voice). *Speak*: Soprano-1.1-80M (Apache 2.0) reads your text aloud. *Listen*: record your voice in the page (as WAV) and Qwen3-ASR-0.6B (Apache 2.0, 52 languages and dialects) writes down what it heard. Both run through mlx-audio in the python project's `voice` extra, installed on first use; sounds and transcripts live in `workspace/audio/<set>/`.
+- **Gesture** (was Move). MediaPipe's hand (21 points) and body (33 points) trackers run in the page, on the camera or a photo. Hold a button to record examples of your own gestures (only the points, measured from the wrist or hips, never pictures), train a k-nearest-neighbours model on them in TypeScript (`gesture train`, checked on every fifth example, with a confusion grid), test it live, and send each guess as OSC to TouchDesigner, Max or Pure Data on this computer (`gesture send <set> --port 9000`). The camera is on only while the tab is open.
 
 **The explanation layer.** Things you can click are green. *flags on/off* in the top bar turns the flags off for those who know their way around; the terminal's *taller ▴* lifts it from a strip to half the window. Both are remembered in the browser. Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. A flag hangs outside the group of controls its control belongs to, and outlines that group while it's open. The words are all in [`ui/src/explain/flags.md`](ui/src/explain/flags.md), one entry per flag (a title, the flag's name, its text), kept apart from the code so they're easy to edit; every build turns it into `ui/src/explain/text.ts`, so `npm run dev` shows an edit on the next reload (`npm run flags` does it once). Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
 
@@ -147,14 +147,14 @@ register <fused> [--name <model>] [--quantize int8|int4|none]
 export <adapter|merge> [--name <model>] [--quantize int8|int4|none]      fuse + register in one go
 zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>
 unzip <file.zip>
-model get cutout|depth|select|hands|body             ready-made models for Look and Move, into workspace/tools
+model get cutout|depth|select|hands|body             ready-made models for image segmentation and gesture, into workspace/tools
 look cutout|depth|select images/<set>/<photo> [--point x,y]…
 speak <name> "<text>" [--set spoken]                 Soprano reads it aloud: workspace/audio/<set>/<name>.wav
 listen audio/<set>/<file>.wav [--language English]  Qwen3-ASR writes down what it hears
 gesture new <name> --tracker hands|body
 gesture train <name> [--k 5]
 gesture clear <name> <gesture>
-gesture send <name> --port 9000 [--address /vm/<name>] | --stop     OSC to 127.0.0.1 while the Move tab tests
+gesture send <name> --port 9000 [--address /vm/<name>] | --stop     OSC to 127.0.0.1 while the gesture tab tests
 osc send <port> <address> [values…]
 ls | cat | head | tail | wc <path>        inside workspace/ only
 status   doctor   help   clear            ctrl-c stops what is running
