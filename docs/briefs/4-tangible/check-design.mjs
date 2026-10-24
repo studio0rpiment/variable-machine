@@ -20,4 +20,4 @@ export async function check(code) {
   const fits = size[0] <= BED.x && size[1] <= BED.y && size[2] <= BED.z
   return { renders: true, fits, size, triangles: v.length / 3, problems: fits ? [] : [`${size.join(' x ')} mm is bigger than the bed`] }
 }
-if (process.argv[1]?.endsWith('check.mjs') && process.argv[2]) check(fs.readFileSync(process.argv[2], 'utf8')).then((r) => console.log(JSON.stringify(r)))
+if (process.argv[1]?.endsWith('check-design.mjs') && process.argv[2]) check(fs.readFileSync(process.argv[2], 'utf8')).then((r) => console.log(JSON.stringify(r)))

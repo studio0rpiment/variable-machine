@@ -114,6 +114,83 @@ The brief's step 6 (Prefer on chart-writer, scored by design rules) doesn't fit 
 - Prefer trains a SmolLM2 base from Hugging Face, not a Modelfile variant, so `chart-writer` has to *be* SmolLM2 to be preferred.
 - With the schema, every chart already passes the design rules, so a rule-based scorer has nothing to reject. What's left to prefer is *meaning* (did it chart the right thing), which a person judges by looking.
 
+## Reproduce it
+
+Everything above, in order, with the results to expect. Lines in `VM ›` boxes go in Variable Machine's terminal (or are what the Data, Train and Adapters tabs run when you press their buttons); lines in `$` boxes go in the Mac's Terminal, in the variable-machine folder. Trained results can differ by a row or two on another Mac; model answers marked "about" vary a little from run to run.
+
+**Once:** the chart checker's two packages.
+
+```
+$ cd docs/briefs/1-public-data && npm install && cd ../../..
+```
+
+**1. The table** (Data → public data → search DC Open Data for "campaign contributions" → *Campaign Financial Contributions* → bring it in). About 20 seconds; 87,000 rows, 20 columns.
+
+```
+VM › data raw arcgis https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Public_Service_WebMercator/MapServer/34 dc-contributions --license "CC BY 4.0"
+```
+
+**2–3. The cleaned names** (your own work; here, ours). Put the spreadsheet where the Data tab's *your own file* puts it, then bring it in and split it.
+
+```
+$ cp docs/briefs/1-public-data/dc-employers-cleaned.csv workspace/uploads/
+VM › data import file uploads/dc-employers-cleaned.csv dc-employers --license "CC BY 4.0 (employer names from DC Office of Campaign Finance) + the clean names are mine"
+VM › data split dc-employers --valid 0.1
+```
+
+Expect: 260 rows → 234 train · 26 valid.
+
+**4. Words first.**
+
+```
+$ cp docs/briefs/1-public-data/name-cleaner-words.Modelfile workspace/modelfiles/
+VM › ollama create name-cleaner-words -f workspace/modelfiles/name-cleaner-words.Modelfile
+$ python3 docs/briefs/1-public-data/clean-column.py name-cleaner-words docs/briefs/1-public-data/employers-test.csv input /tmp/words.csv
+$ python3 docs/briefs/1-public-data/score.py /tmp/words.csv input_CLEAN expected
+```
+
+Expect about 9 of 26. The untouched model (`smollm2:360m` in place of `name-cleaner-words`) gets 0.
+
+**5–6. Train, export, test.** About a minute.
+
+```
+VM › train dc-employers-360m --data dc-employers --base HuggingFaceTB/SmolLM2-360M-Instruct --type lora --rank 8 --layers 8 --lr 1e-4 --iters 200 --batch 4 --max-seq 1024 --eval-every 50
+VM › export dc-employers-360m --name name-cleaner --quantize int8
+$ python3 docs/briefs/1-public-data/clean-column.py name-cleaner docs/briefs/1-public-data/employers-test.csv input /tmp/trained.csv
+$ python3 docs/briefs/1-public-data/score.py /tmp/trained.csv input_CLEAN expected
+```
+
+Expect: set-aside loss from about 4.0 to about 0.1; **17 of 26**, the misses listed (Retired Teacher, Long and Foster, Coldwell Bank, the hospitals…). On a 32GB Mac the Train tab offers the 1.7B and other settings: type the line as it is here, so it matches a 16GB laptop.
+
+**7. Add rows of the kinds it got wrong, train again.**
+
+```
+$ cp docs/briefs/1-public-data/extra-rows.csv workspace/uploads/
+VM › data import file uploads/extra-rows.csv dc-employers --license "CC BY 4.0 (employer names from DC Office of Campaign Finance) + the clean names are mine"
+VM › train dc-employers-360m-2 --data dc-employers --base HuggingFaceTB/SmolLM2-360M-Instruct --type lora --rank 8 --layers 8 --lr 1e-4 --iters 200 --batch 4 --max-seq 1024 --eval-every 50
+VM › export dc-employers-360m-2 --name name-cleaner-2 --quantize int8
+$ python3 docs/briefs/1-public-data/clean-column.py name-cleaner-2 docs/briefs/1-public-data/employers-test.csv input /tmp/trained-2.csv
+$ python3 docs/briefs/1-public-data/score.py /tmp/trained-2.csv input_CLEAN expected
+```
+
+Expect **21 of 26**; the 5 left are Retired Teacher, Coldwell Bank, and the hospitals and the law school.
+
+**8. The whole column** (optional: about 2.3 hours for all 16,708 employers).
+
+```
+$ python3 docs/briefs/1-public-data/clean-column.py name-cleaner-2 workspace/raw/dc-contributions/source.csv EMPLOYER contributions-clean.csv
+```
+
+**9. Charts.** About 4 seconds a chart; qwen3:4b must be pulled (Models tab).
+
+```
+$ cp docs/briefs/1-public-data/chart-writer-qwen3-4b.Modelfile workspace/modelfiles/
+VM › ollama create chart-writer-qwen3-4b -f workspace/modelfiles/chart-writer-qwen3-4b.Modelfile
+$ node docs/briefs/1-public-data/ask-charts.mjs chart-writer-qwen3-4b
+```
+
+Expect 12 of 12 to compile and keep the rules. Read them (or paste them into the [Vega editor](https://vega.github.io/editor/)) to judge whether each answers its question: about 8 of 12 do.
+
 ## The real instructions (rewritten from what happened)
 
 1. **Data → public data:** search, bring in the table. Look at its columns and pick the messy one.

@@ -1,0 +1,10 @@
+{
+  "name": "brief-1-public-data-tools",
+  "private": true,
+  "type": "module",
+  "description": "Checks for brief 1's charts: Vega-Lite compiles each answer. Run npm install here once.",
+  "dependencies": {
+    "vega": "6.4.0",
+    "vega-lite": "6.5.0"
+  }
+}

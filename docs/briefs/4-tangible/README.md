@@ -55,6 +55,57 @@ What the trained model does with a new encoding: it picks the nearest of its fou
 
 The brief's step 4 (pairs scored by whether they render and fit) has little to work with here: on the library's own encodings 15 of 16 designs already render and fit. Where it fails (new encodings), the problem is the form, which the checker can't see; a person looking at the render can.
 
+## Reproduce it
+
+`VM ›` lines go in Variable Machine's terminal; `$` lines in a Terminal window in the `variable-machine` folder. About 10 minutes, half of it the shop helper thinking.
+
+**Starting over** (only if you've run this before):
+
+```
+VM › trash data/scad-library
+VM › trash adapters/data-to-shape-360m
+VM › trash fused/data-to-shape-360m
+```
+
+**1. The shop helper.**
+
+```
+$ cp docs/briefs/4-tangible/shop-helper.Modelfile workspace/modelfiles/
+VM › ollama create shop-helper -f workspace/modelfiles/shop-helper.Modelfile
+$ python3 docs/briefs/4-tangible/ask-shop.py shop-helper
+```
+
+Expect: **10 of 10 right**, in about 2 minutes (each answer thinks first).
+
+**2–3. The class library, and data-to-shape.** [make-library.py](make-library.py) writes the library from its four templates; the same seed writes the same 160 rows as [scad-library.csv](scad-library.csv).
+
+```
+$ python3 docs/briefs/4-tangible/make-library.py workspace/uploads/scad-library.csv
+VM › data import file uploads/scad-library.csv scad-library --license "CC0 (class design library)"
+VM › data split scad-library --valid 0.1
+VM › train data-to-shape-360m --data scad-library --base HuggingFaceTB/SmolLM2-360M-Instruct --type lora --rank 8 --layers 8 --lr 1e-4 --iters 200 --batch 4
+VM › export data-to-shape-360m --name data-to-shape --quantize int8
+```
+
+Expect: **144 train · 16 valid**; the set-aside line **1.88 → 0.011 (step 50)**, then flat at about 0.01: the library is very regular, so it learns it in one pass. About 2 minutes.
+
+**4. Ask for 16 new designs, and check them.** [design-requests.jsonl](design-requests.jsonl) holds the 16 requests (12 in the library's encodings with new tables, 4 new encodings).
+
+```
+$ npm install --prefix docs/briefs/4-tangible
+$ node docs/briefs/4-tangible/ask-designs.mjs data-to-shape
+```
+
+Expect, the same every time: **renders 16 of 16**, **fits the printer 15** (the "ring of towers" comes out 356 mm wide), **12 keep the request's numbers**, in about 40 seconds. 10 of the 12 library requests keep their numbers; the 4 new encodings come back as the nearest template (the 120 mm ribbon as a 14 mm wall, the hollow box as one 10 mm wall). Open a few answers from `workspace/outputs/designs-data-to-shape.json` in OpenSCAD and look: whether the form is right is for a person to judge.
+
+To see the untrained comparison (25 minutes, and it never finishes the code):
+
+```
+$ cp docs/briefs/4-tangible/shape-writer-qwen.Modelfile workspace/modelfiles/
+VM › ollama create shape-writer-qwen -f workspace/modelfiles/shape-writer-qwen.Modelfile
+$ node docs/briefs/4-tangible/ask-designs.mjs shape-writer-qwen
+```
+
 ## The real instructions (rewritten from what happened)
 
 1. **Shop helper:** a Modelfile on **qwen3:4b** with your shop's machines, sizes, materials and rules, one per line. Ask it in Chat. It's right but slow (10–15 s an answer); the smaller models agree with whatever you ask.

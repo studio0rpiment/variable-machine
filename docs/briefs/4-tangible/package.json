@@ -1,0 +1,9 @@
+{
+  "name": "brief-4-tangible-tools",
+  "private": true,
+  "type": "module",
+  "description": "Checks for brief 4's designs: OpenSCAD's WebAssembly build renders each answer and measures it. Run npm install here once.",
+  "dependencies": {
+    "openscad-wasm-prebuilt": "1.2.0"
+  }
+}

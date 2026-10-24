@@ -97,6 +97,8 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
   height: 100vh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) var(--terminal-height);
+  /* never wider than the window: a long strip of photos scrolls inside itself */
+  grid-template-columns: minmax(0, 1fr);
 }
 .shell__top {
   display: flex;

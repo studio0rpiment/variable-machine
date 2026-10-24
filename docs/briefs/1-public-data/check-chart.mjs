@@ -18,4 +18,4 @@ export function check(text) {
   out.ok = out.json && out.compiles && out.title && out.zero && out.fields
   return out
 }
-if (process.argv[1]?.endsWith('check.mjs') && process.argv[2]) console.log(JSON.stringify(check(fs.readFileSync(process.argv[2], 'utf8'))))
+if (process.argv[1]?.endsWith('check-chart.mjs') && process.argv[2]) console.log(JSON.stringify(check(fs.readFileSync(process.argv[2], 'utf8'))))
