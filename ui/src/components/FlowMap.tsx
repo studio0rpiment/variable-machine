@@ -68,6 +68,8 @@ interface Wire {
   /** where the label sits */
   at: P
   anchor?: 'start' | 'middle' | 'end'
+  /** planned, not built yet: drawn dashed */
+  soon?: boolean
 }
 
 const WIRES: Wire[] = [
@@ -91,6 +93,8 @@ const WIRES: Wire[] = [
     at: [600, 582],
     anchor: 'middle',
   },
+  // the sees kind (soon): pictures with what they show, as rows for Train
+  { from: 'pictures', to: 'data', label: 'soon: pictures + what they show', points: [[90, 612], [90, 464]], at: [60, 630], anchor: 'start', soon: true },
   { from: 'models', to: 'look', label: 'a ready-made tool', points: [[60, 162], [44, 162], [44, 664], [360, 664]], at: [52, 656], anchor: 'start' },
   { from: 'images', to: 'look', label: 'your photos', points: [[220, 682], [360, 682]], at: [220, 700], anchor: 'start' },
   { from: 'look', to: 'outputs', label: 'a picture + its record', points: [[510, 672], [650, 672]], at: [518, 664], anchor: 'start' },
@@ -273,7 +277,7 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
         </text>
 
         {WIRES.map((w) => (
-          <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>
+          <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${w.soon ? 'is-soon' : ''} ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>
             <polyline points={w.points.map((p) => p.join(',')).join(' ')} markerEnd="url(#flow-end)" />
             <text x={w.at[0]} y={w.at[1]} textAnchor={w.anchor ?? 'start'} className="flow__label">
               {w.label}
