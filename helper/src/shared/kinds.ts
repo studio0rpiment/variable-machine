@@ -23,7 +23,7 @@ export interface KindInfo {
 
 export const KINDS: Record<KindId, KindInfo> = {
   writes: { id: 'writes', what: 'text generation', io: 'text in, text out', tabs: ['modelfile', 'train', 'prefer', 'merge', 'chat'] },
-  sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'train'], soon: true },
+  sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'data', 'train'] },
   looks: { id: 'looks', what: 'image tools: cut something out, distance between blobs, select a blob', io: 'a photo in, a picture made from it out', tabs: ['look'] },
   moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['move'], soon: true },
   speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['voice'], soon: true },

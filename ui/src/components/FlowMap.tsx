@@ -93,8 +93,8 @@ const WIRES: Wire[] = [
     at: [600, 582],
     anchor: 'middle',
   },
-  // the sees kind (soon): pictures with what they show, as rows for Train
-  { from: 'pictures', to: 'data', label: 'soon: pictures + what they show', points: [[90, 612], [90, 464]], at: [60, 630], anchor: 'start', soon: true },
+  // the sees kind: photos with what they show, as rows Train teaches a model that sees (SmolVLM)
+  { from: 'pictures', to: 'data', label: 'your photos + what they show', points: [[90, 612], [90, 464]], at: [60, 630], anchor: 'start' },
   { from: 'models', to: 'look', label: 'a ready-made tool', points: [[60, 162], [44, 162], [44, 664], [360, 664]], at: [52, 656], anchor: 'start' },
   { from: 'images', to: 'look', label: 'your photos', points: [[220, 682], [360, 682]], at: [220, 700], anchor: 'start' },
   { from: 'look', to: 'outputs', label: 'a picture + its record', points: [[510, 672], [650, 672]], at: [518, 664], anchor: 'start' },
@@ -102,14 +102,14 @@ const WIRES: Wire[] = [
 
 /** What each tab runs, for the corner echo when you point at it. */
 const RUNS: Record<string, string[]> = {
-  models: ['ollama list', 'ollama pull qwen3:4b', 'ollama show smollm2:360m'],
+  models: ['ollama list', 'ollama pull qwen3:4b', 'model get smolvlm-256m'],
   modelfile: ['ollama create qwen3-4b-haiku -f workspace/modelfiles/qwen3-4b-haiku.Modelfile', 'ollama run-once qwen3:4b "How do bees make honey?"'],
-  data: ['data import hf databricks/databricks-dolly-15k dolly-300 --limit 300', 'data template raw/urban-forestry-street-trees dc-street-trees …', 'data split dolly-300 --valid 0.10'],
-  train: ['train dolly-300-360m --data dolly-300 --base HuggingFaceTB/SmolLM2-360M-Instruct'],
+  data: ['data import hf databricks/databricks-dolly-15k dolly-300 --limit 300', 'data picture classic-cv-labels images/classic-cv/utah-teapot.jpg --question … --answer …', 'data split dolly-300 --valid 0.10'],
+  train: ['train dolly-300-360m --data dolly-300 --base HuggingFaceTB/SmolLM2-360M-Instruct', 'train classic-cv-labels-256m --data classic-cv-labels   (pictures: mlx-vlm on SmolVLM)'],
   prefer: ['prefer concise-prefs-dpo --data concise-prefs --beta 0.1'],
   merge: ['merge blend --a dolly-300-360m --b dolly-creative-360m --t 0.5'],
   adapters: ['export dolly-300-360m --quantize int8', '  fuse · ollama create … -q int8'],
-  chat: ['ollama run-once smollm2:360m "…"', 'ollama run-once dolly-300-360m "…"'],
+  chat: ['ollama run-once smollm2:360m "…"', 'ollama run-once smolvlm:256m --image images/classic-cv/utah-teapot.jpg "What is this?"'],
   share: ['zip adapters/dolly-300-360m', 'unzip adapters-dolly-300-360m.zip'],
   look: ['model get depth', 'look cutout images/studio/chair.jpg', 'look select images/studio/chair.jpg --point 320,240'],
 }

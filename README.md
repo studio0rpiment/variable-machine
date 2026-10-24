@@ -74,7 +74,7 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
    - **olmo2:7b:** fully open, with its training data published.
    - **llama3.2:3b:** free to download but not open-license.
 
-   The rest of the curated library sits below under "pull to use", then the trains-on bases. Each card says in a plain sentence what the model was built for and who made it, what it can do, how much text it holds, and its license as read from Ollama. Anything made from a model is listed inside that model's card as a folded list of **variations**: a Modelfile variant, a trained, preference-tuned or blended model, or the same file under a second name. Two folded sections, "Understanding the model card labels" and "What kinds of models are there?", explain the words on the cards and **what kinds of models there are**, by what goes in and out, where computer vision fits, and by job, with computer vision as the way into hybrid models. Their text is in `ui/src/explain/kinds.ts`. The four starters are the `featured` entries in `helper/src/shared/library.ts`.
+   The rest of the curated library sits below under "pull to use", then **models that see** (SmolVLM 256M and 500M, Apache 2.0: a picture in, words about it out; `model get smolvlm-256m` makes `smolvlm:256m` in Ollama), then the trains-on bases. Each card says in a plain sentence what the model was built for and who made it, what it can do, how much text it holds, and its license as read from Ollama. Anything made from a model is listed inside that model's card as a folded list of **variations**: a Modelfile variant, a trained, preference-tuned or blended model, or the same file under a second name. Two folded sections, "Understanding the model card labels" and "What kinds of models are there?", explain the words on the cards and **what kinds of models there are**, by what goes in and out, where computer vision fits, and by job, with computer vision as the way into hybrid models. Their text is in `ui/src/explain/kinds.ts`. The four starters are the `featured` entries in `helper/src/shared/library.ts`.
 3. **Modelfile.** Change how a model behaves with words only: no training, the same weights. It's a form, not a file editor:
    - **instructions:** the SYSTEM line;
    - **how adventurous:** PARAMETER temperature, plus a switch to let it pick from any word (top_k 0, top_p 1), without which high temperatures look tame;
@@ -87,15 +87,16 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
    - adding one of the datasets that come with the app, shown on the tab's first screen: DC street trees (CC BY 4.0), art history from the Art Institute of Chicago (CC BY 4.0), customer-discovery interview coaching (CC0), Dolly creative writing (CC BY-SA 3.0) and two small starters;
    - importing Dolly, OpenAssistant (oasst1) or the Apache-2.0 subsets of SmolTalk;
    - fetching raw material (a Project Gutenberg book, or a CSV or TXT) and having a model write rows from it, keeping, editing or rejecting each;
-   - building preference sets from the chat log.
+   - building preference sets from the chat log;
+   - a **picture dataset** for a model that sees: a photo from an image set, a question and the answer you want, one row at a time (`data picture`). The photo is copied into the dataset folder, with its own credit and license in the manifest. The example `classic-cv-labels` gives the four classic-cv photos museum wall labels.
 
    A guide on the tab says where to look, what makes a good dataset, and what the licenses mean.
 5. **The three ways to change the numbers** (plan §2), outlined together in the tab row. Each leaves an adapter:
-   - **Train: imitate.** LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live. Before it starts, a *before you train* note warns in plain words when the settings will likely fall apart (learning rate too high), run out of memory, or crawl, with one press back to the recommended settings; a failed run says why, read from its log. Under the chart, the run is read in plain words (learning, memorising, flat) with what loss, train and valid mean. When it finishes, the next step exports it into Ollama and opens Chat.
+   - **Train: imitate.** On a picture dataset it trains SmolVLM instead, with `mlx_vlm.train` (LoRA on its language half; the extra packages install on first use with `uv run --extra sees`), and export puts it in Ollama next to the base. Otherwise: LoRA, DoRA or full fine-tuning on a Hugging Face base, with tier defaults (§11), the exact `mlx_lm.lora` command, and loss plotted live. Before it starts, a *before you train* note warns in plain words when the settings will likely fall apart (learning rate too high), run out of memory, or crawl, with one press back to the recommended settings; a failed run says why, read from its log. Under the chart, the run is read in plain words (learning, memorising, flat) with what loss, train and valid mean. When it finishes, the next step exports it into Ollama and opens Chat.
    - **Prefer: prefer.** DPO on a base or a fused model, from a preference set. It shows the loss and a held-out before/after check.
    - **Merge: blend.** Blend two compatible adapters: out = (1 − t)·A + t·B.
 6. **Adapters.** Everything the three ways made: trained adapters, preference adapters and blends. Training leaves the original model untouched and learns an adapter; export joins the two into one model and imports it into Ollama. *Try it* asks the original and the trained model questions from the rows set aside at the split, next to the answer in the data. *Remove* moves an adapter to the Trash.
-7. **Chat.** Two to four models side by side, one prompt, every answer streaming. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
+7. **Chat.** Two to four models side by side, one prompt, every answer streaming. *Add a picture* sends a photo from an image set to the models that see (`--image` in the echo); the others get the words only, and say so. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
 8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
 
 **The explanation layer.** Things you can click are green. *flags on/off* in the top bar turns the flags off for those who know their way around; the terminal's *taller ▴* lifts it from a strip to half the window. Both are remembered in the browser. Hover over a panel's name or one of its main controls (the command lines, sliders, choices and buttons), or tab to it, and a flag explains in plain language what it does. Esc puts it away. A flag hangs outside the group of controls its control belongs to, and outlines that group while it's open. The words are all in `ui/src/explain/text.ts`, kept apart from the code so they're easy to edit. Controls that can't run yet still show their flag: they're marked `aria-disabled` rather than `disabled`, because browsers send no pointer events to disabled buttons.
@@ -119,8 +120,10 @@ It isn't a shell and it isn't a pty. The helper splits each line into words, che
 ```
 ollama list | show | pull | rm <model>
 ollama create <name> -f workspace/modelfiles/<name>.Modelfile [-q int8]
-ollama run-once <model> [--system "<text>"] [--no-think] [--format json|<schema>] <prompt…>
-data new <name> [--format chat|preference]
+ollama run-once <model> [--system "<text>"] [--image images/<set>/<photo>] [--no-think] [--format json|<schema>] <prompt…>
+model get smolvlm-256m|smolvlm-500m                    a model that sees: two GGUFs, then ollama create
+data new <name> [--format chat|preference|picture]
+data picture <name> images/<set>/<photo> --question "…" --answer "…"
 data import dolly|oasst1 <name> [--limit 300]
 data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rewrite|smol-summarize
 data import example <example> <name>
@@ -190,6 +193,11 @@ Each of these was checked against the installed tools (plan §13) on 2026-10-18 
 - **A pull doesn't stop when the page stops listening.** Ollama finishes the download on its own, and the terminal says so.
 - **What a linear merge averages.** LoRA stores each weight change as a product of two small matrices. Averaging the two factors separately isn't the same as averaging the weight changes: the product picks up cross terms neither adapter learned. So merge stacks the two adapters side by side (rank r + r) with their factors weighted by 1 − t and t, and the result is exactly (1 − t)·A + t·B. A merged adapter has twice the rank and twice the size.
 - **`pipeline.run` isn't used.** The page sends recipes as command lines (`train …`, `export …`), so typed and clicked runs are literally the same thing.
+- **Models that see (SmolVLM), checked 2026-10-23 with Ollama 0.40.6 and mlx-vlm 0.7.10:**
+  - SmolVLM isn't in Ollama's library. ggml-org publishes it as two GGUFs (the language model and the projector), and a Modelfile with two FROM lines runs it, pictures included.
+  - Ollama refuses a Modelfile that mixes a safetensors folder with a GGUF, and a safetensors import alone loses the projector. So `export` writes the trained weights into a copy of the base GGUF (`python/variable_machine/vlm_export.py`) and keeps the base projector.
+  - mlx-vlm's trainer gives SmolVLM the padding mask where it expects an attention mask, which replaces the causal mask: every token can see the answer ahead of it. Loss falls to 0.001 and the adapter answers worse than the base. `python/variable_machine/vlm_train.py` runs `mlx_vlm.train` with the causal mask kept; the museum-label example then goes from loss 5.1 to 0.01 in 60 steps and answers with its labels.
+  - Merge and Prefer don't take picture adapters yet.
 - **Native code:** there are no node-gyp modules. Vite 8 (rolldown) and tsx (esbuild) ship prebuilt platform binaries, and TypeScript 7 is the native tsc.
 
 ## Licenses
