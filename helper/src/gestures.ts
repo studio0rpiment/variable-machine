@@ -125,13 +125,16 @@ async function create(name: string, tracker: string, line: string) {
 async function trainSet(name: string, kText: string | undefined, line: string) {
   const m = await readManifest(name)
   if (!m) return print(`gesture: no set ${name}`), false
-  const k = Number(kText ?? 5)
-  if (!Number.isInteger(k) || k < 1 || k > 50) return print('gesture train: --k is a whole number from 1 to 50'), false
   const examples = await readExamples(name)
   const labels = Object.keys(m.counts).filter((l) => m.counts[l] > 0)
   if (labels.length < 2) return print('gesture train: record at least two gestures first (it tells gestures apart)'), false
   const few = labels.filter((l) => m.counts[l] < 5)
   if (few.length) return print(`gesture train: record at least 5 examples of ${few.join(', ')}`), false
+  // Unless told, k is 5, or less when a gesture has few examples: the nearest k should be able to
+  // come from one gesture (with 5 each, 4 are kept after the check, so k = 3).
+  const kept = Math.min(...labels.map((l) => m.counts[l] - Math.floor(m.counts[l] / 5)))
+  const k = kText === undefined ? Math.max(1, Math.min(5, kept % 2 ? kept : kept - 1)) : Number(kText)
+  if (!Number.isInteger(k) || k < 1 || k > 50) return print('gesture train: --k is a whole number from 1 to 50'), false
   const { model, check } = train(name, m.tracker, examples, k)
   await fs.writeFile(path.join(dir(name), 'model.json'), JSON.stringify(model) + '\n')
   // the confusion grid, made gesture down the side, named gesture across the top

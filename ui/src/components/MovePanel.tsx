@@ -197,6 +197,14 @@ export default function MovePanel({ active }: { active: boolean }) {
   }
   useEffect(() => void (source === 'photo' && photo && img.current?.complete && onPhoto()), [tracker, testing]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** A new photo: forget the last one's points at once, so "add this photo" can't save them under the new one while it is still being tracked. */
+  const choosePhoto = (p: string) => {
+    latest.current = null
+    setFound(false)
+    if (canvas.current) draw(canvas.current, 1, 1, null, tracker)
+    setPhoto(p)
+  }
+
   const save = async (lbl: string, vectors: number[][]) => {
     if (!vectors.length) return setNote('nothing was found to record: get your whole hand (or body) in the picture')
     const res = await fetch(`/api/workspace/gesture?name=${encodeURIComponent(name)}&label=${encodeURIComponent(lbl)}`, { method: 'POST', body: JSON.stringify({ vectors }) })
@@ -275,7 +283,7 @@ export default function MovePanel({ active }: { active: boolean }) {
               </button>
             ))}
           </div>
-          {source === 'photo' && <PicturePicker value={photo} onChange={setPhoto} />}
+          {source === 'photo' && <PicturePicker value={photo} onChange={choosePhoto} />}
           {!here[tracker] && <p className="label">download the {tracker} tracker above first</p>}
 
           <div className="move-work">
