@@ -7,6 +7,7 @@ import { startRecording, type Recording } from '../lib/record'
 import { useHelperEvent } from '../hooks/useHelper'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
+import AudioPlayer from './AudioPlayer'
 import { KindLine } from './ToolCard'
 import { Explained } from '../explain/Explained'
 
@@ -175,7 +176,7 @@ export default function VoicePanel() {
                 return (
                   <li key={file} className="voice-file">
                     <span className="label">{file}</span>
-                    <audio controls preload="none" src={fileUrl(rel)} />
+                    <AudioPlayer src={fileUrl(rel)} label={file} />
                     {f.made === 'spoken' ? (
                       <p className="voice-heard">
                         <span className="label label--muted">spoken by {f.model?.split('/')[1]}</span> {f.text}
