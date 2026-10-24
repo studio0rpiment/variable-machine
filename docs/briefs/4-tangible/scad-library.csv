@@ -1,0 +1,2189 @@
+input,output
+"Data (ward, trees):
+W1, 10
+W2, 38
+W3, 70
+W4, 67
+W5, 56
+W6, 43
+Encoding: Columns on a grid, 3 per row, 15 mm square, height = trees (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [10, 38, 70, 67, 56, 43];
+tallest = 40;  // mm
+s = 15; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (line, riders):
+Red, 17
+Blue, 84
+Green, 37
+Encoding: Stacked layers, one per line, bottom first. Each layer is a 80 mm disc, 2 mm thick, and its diameter shrinks with riders.
+Write the OpenSCAD.","// riders by line: one layer per line, bottom first; diameter = riders
+values = [17, 84, 37];
+biggest = 80;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 65
+9am, 76
+12pm, 17
+3pm, 50
+6pm, 60
+Encoding: Spokes around a centre, one for each hour; the longer the spoke, the more noise. Longest 60 mm.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [65, 76, 17, 50, 60];
+longest = 60;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 38
+W2, 12
+W3, 75
+W4, 6
+W5, 16
+W6, 56
+W7, 95
+Encoding: Bars side by side, height = trees, 12 mm wide, 3 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [38, 12, 75, 6, 16, 56, 95];
+tallest = 80;  // mm
+w = 12; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (hour, noise):
+6am, 95
+9am, 13
+12pm, 29
+3pm, 77
+6pm, 33
+Encoding: A stack of 4 mm plates, one for each hour; plate diameter = noise (biggest 60 mm).
+Write the OpenSCAD.","// noise by hour: one layer per hour, bottom first; diameter = noise
+values = [95, 13, 29, 77, 33];
+biggest = 60;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (year, rent):
+2019, 45
+2020, 70
+2021, 67
+Encoding: Bars side by side, height = rent, 10 mm wide, 4 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// rent by year: one bar per year, height = rent
+values = [45, 70, 67];
+tallest = 80;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 74
+Tue, 31
+Wed, 82
+Thu, 75
+Fri, 80
+Encoding: Spokes around a centre, one for each day; the longer the spoke, the more visitors. Longest 50 mm.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [74, 31, 82, 75, 80];
+longest = 50;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 35
+Blue, 42
+Green, 28
+Orange, 29
+Silver, 28
+Encoding: One bar per line. Height shows riders (tallest bar 80 mm). Bars 12 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [35, 42, 28, 29, 28];
+tallest = 80;  // mm
+w = 12; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 91
+2020, 21
+2021, 24
+Encoding: One bar per year. Height shows rent (tallest bar 100 mm). Bars 8 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// rent by year: one bar per year, height = rent
+values = [91, 21, 24];
+tallest = 100;  // mm
+w = 8; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (hour, noise):
+6am, 71
+9am, 35
+12pm, 32
+3pm, 91
+6pm, 80
+Encoding: A grid of square columns (12 mm), 4 to a row, standing on a thin base; height shows noise, tallest 60 mm.
+Write the OpenSCAD.","// noise by hour: square columns on a grid, height = noise
+values = [71, 35, 32, 91, 80];
+tallest = 60;  // mm
+s = 12; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 15
+9am, 46
+12pm, 83
+3pm, 19
+6pm, 67
+Encoding: Spokes around a centre, one for each hour; the longer the spoke, the more noise. Longest 40 mm.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [15, 46, 83, 19, 67];
+longest = 40;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (year, rent):
+2019, 52
+2020, 26
+2021, 47
+2022, 59
+Encoding: Bars side by side, height = rent, 8 mm wide, 2 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// rent by year: one bar per year, height = rent
+values = [52, 26, 47, 59];
+tallest = 100;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 8
+2020, 20
+2021, 86
+Encoding: Stacked layers, one per year, bottom first. Each layer is a 100 mm disc, 4 mm thick, and its diameter shrinks with rent.
+Write the OpenSCAD.","// rent by year: one layer per year, bottom first; diameter = rent
+values = [8, 20, 86];
+biggest = 100;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 52
+W2, 19
+W3, 9
+Encoding: Bars side by side, height = trees, 8 mm wide, 2 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [52, 19, 9];
+tallest = 100;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (ward, trees):
+W1, 12
+W2, 91
+W3, 7
+W4, 74
+Encoding: Columns on a grid, 4 per row, 10 mm square, height = trees (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [12, 91, 7, 74];
+tallest = 60;  // mm
+s = 10; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (month, rainfall):
+Jan, 87
+Feb, 43
+Mar, 49
+Encoding: A grid of square columns (10 mm), 2 to a row, standing on a thin base; height shows rainfall, tallest 80 mm.
+Write the OpenSCAD.","// rainfall by month: square columns on a grid, height = rainfall
+values = [87, 43, 49];
+tallest = 80;  // mm
+s = 10; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 94
+2020, 55
+2021, 30
+Encoding: A radial chart: one spoke per year, spoke length = rent (longest 50 mm), 6 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [94, 55, 30];
+longest = 50;  // mm
+w = 6; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 12
+9am, 91
+12pm, 25
+3pm, 25
+Encoding: Spokes around a centre, one for each hour; the longer the spoke, the more noise. Longest 60 mm.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [12, 91, 25, 25];
+longest = 60;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 6
+9am, 65
+12pm, 92
+3pm, 57
+Encoding: Spokes around a centre, one for each hour; the longer the spoke, the more noise. Longest 60 mm.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [6, 65, 92, 57];
+longest = 60;  // mm
+w = 5; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 93
+Feb, 6
+Mar, 63
+Apr, 15
+May, 47
+Jun, 10
+Jul, 74
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 40 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [93, 6, 63, 15, 47, 10, 74];
+longest = 40;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (day, visitors):
+Mon, 91
+Tue, 50
+Wed, 80
+Thu, 86
+Fri, 84
+Encoding: A stack of 3 mm plates, one for each day; plate diameter = visitors (biggest 100 mm).
+Write the OpenSCAD.","// visitors by day: one layer per day, bottom first; diameter = visitors
+values = [91, 50, 80, 86, 84];
+biggest = 100;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 88
+9am, 15
+12pm, 5
+3pm, 81
+6pm, 29
+9pm, 94
+Encoding: Spokes around a centre, one for each hour; the longer the spoke, the more noise. Longest 40 mm.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [88, 15, 5, 81, 29, 94];
+longest = 40;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 91
+W2, 77
+W3, 58
+W4, 9
+W5, 56
+W6, 94
+W7, 77
+W8, 58
+Encoding: One bar per ward. Height shows trees (tallest bar 60 mm). Bars 8 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [91, 77, 58, 9, 56, 94, 77, 58];
+tallest = 60;  // mm
+w = 8; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (hour, noise):
+6am, 62
+9am, 72
+12pm, 67
+3pm, 76
+Encoding: One bar per hour. Height shows noise (tallest bar 80 mm). Bars 8 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [62, 72, 67, 76];
+tallest = 80;  // mm
+w = 8; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (ward, trees):
+W1, 58
+W2, 29
+W3, 75
+Encoding: One bar per ward. Height shows trees (tallest bar 60 mm). Bars 12 mm wide with 2 mm gaps.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [58, 29, 75];
+tallest = 60;  // mm
+w = 12; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (hour, noise):
+6am, 45
+9am, 5
+12pm, 32
+3pm, 6
+6pm, 5
+9pm, 91
+Encoding: Bars side by side, height = noise, 8 mm wide, 2 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [45, 5, 32, 6, 5, 91];
+tallest = 100;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 93
+Blue, 28
+Green, 17
+Orange, 65
+Encoding: A grid of square columns (10 mm), 4 to a row, standing on a thin base; height shows riders, tallest 40 mm.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [93, 28, 17, 65];
+tallest = 40;  // mm
+s = 10; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 37
+W2, 22
+W3, 88
+Encoding: A radial chart: one spoke per ward, spoke length = trees (longest 40 mm), 5 mm wide and 4 mm tall, around a centre.
+Write the OpenSCAD.","// trees by ward: one spoke per ward, length = trees
+values = [37, 22, 88];
+longest = 40;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (year, rent):
+2019, 31
+2020, 92
+2021, 38
+Encoding: Spokes around a centre, one for each year; the longer the spoke, the more rent. Longest 50 mm.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [31, 92, 38];
+longest = 50;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 86
+9am, 60
+12pm, 52
+3pm, 73
+6pm, 27
+9pm, 31
+Encoding: Columns on a grid, 4 per row, 12 mm square, height = noise (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// noise by hour: square columns on a grid, height = noise
+values = [86, 60, 52, 73, 27, 31];
+tallest = 40;  // mm
+s = 12; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (month, rainfall):
+Jan, 47
+Feb, 48
+Mar, 52
+Apr, 16
+May, 48
+Encoding: Bars side by side, height = rainfall, 8 mm wide, 3 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// rainfall by month: one bar per month, height = rainfall
+values = [47, 48, 52, 16, 48];
+tallest = 60;  // mm
+w = 8; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 51
+Tue, 55
+Wed, 75
+Thu, 21
+Fri, 42
+Encoding: Bars side by side, height = visitors, 10 mm wide, 4 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [51, 55, 75, 21, 42];
+tallest = 60;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 71
+Blue, 14
+Green, 43
+Encoding: Columns on a grid, 3 per row, 12 mm square, height = riders (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [71, 14, 43];
+tallest = 60;  // mm
+s = 12; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 65
+2020, 48
+2021, 48
+2022, 20
+2023, 66
+2024, 19
+Encoding: A grid of square columns (10 mm), 3 to a row, standing on a thin base; height shows rent, tallest 60 mm.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [65, 48, 48, 20, 66, 19];
+tallest = 60;  // mm
+s = 10; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 26
+9am, 85
+12pm, 77
+3pm, 53
+Encoding: Bars side by side, height = noise, 8 mm wide, 2 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [26, 85, 77, 53];
+tallest = 60;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 6
+2020, 17
+2021, 55
+2022, 76
+2023, 71
+2024, 42
+Encoding: Columns on a grid, 3 per row, 15 mm square, height = rent (tallest 80 mm), on a 2 mm base.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [6, 17, 55, 76, 71, 42];
+tallest = 80;  // mm
+s = 15; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 52
+W2, 33
+W3, 38
+Encoding: A stack of 2 mm plates, one for each ward; plate diameter = trees (biggest 80 mm).
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [52, 33, 38];
+biggest = 80;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (year, rent):
+2019, 94
+2020, 8
+2021, 72
+Encoding: A grid of square columns (10 mm), 4 to a row, standing on a thin base; height shows rent, tallest 40 mm.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [94, 8, 72];
+tallest = 40;  // mm
+s = 10; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 31
+W2, 87
+W3, 10
+W4, 32
+W5, 84
+Encoding: A stack of 2 mm plates, one for each ward; plate diameter = trees (biggest 60 mm).
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [31, 87, 10, 32, 84];
+biggest = 60;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 74
+W2, 24
+W3, 18
+W4, 81
+W5, 67
+Encoding: A stack of 3 mm plates, one for each ward; plate diameter = trees (biggest 100 mm).
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [74, 24, 18, 81, 67];
+biggest = 100;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (day, visitors):
+Mon, 91
+Tue, 46
+Wed, 68
+Thu, 68
+Fri, 86
+Sat, 90
+Encoding: Stacked layers, one per day, bottom first. Each layer is a 100 mm disc, 4 mm thick, and its diameter shrinks with visitors.
+Write the OpenSCAD.","// visitors by day: one layer per day, bottom first; diameter = visitors
+values = [91, 46, 68, 68, 86, 90];
+biggest = 100;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (year, rent):
+2019, 95
+2020, 45
+2021, 46
+2022, 9
+2023, 72
+Encoding: Stacked layers, one per year, bottom first. Each layer is a 80 mm disc, 4 mm thick, and its diameter shrinks with rent.
+Write the OpenSCAD.","// rent by year: one layer per year, bottom first; diameter = rent
+values = [95, 45, 46, 9, 72];
+biggest = 80;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 42
+W2, 95
+W3, 65
+W4, 13
+W5, 15
+W6, 71
+W7, 10
+Encoding: One bar per ward. Height shows trees (tallest bar 60 mm). Bars 8 mm wide with 2 mm gaps.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [42, 95, 65, 13, 15, 71, 10];
+tallest = 60;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 47
+2020, 25
+2021, 24
+2022, 88
+2023, 63
+2024, 52
+Encoding: Columns on a grid, 4 per row, 15 mm square, height = rent (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [47, 25, 24, 88, 63, 52];
+tallest = 40;  // mm
+s = 15; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 59
+9am, 31
+12pm, 42
+Encoding: Columns on a grid, 3 per row, 12 mm square, height = noise (tallest 80 mm), on a 2 mm base.
+Write the OpenSCAD.","// noise by hour: square columns on a grid, height = noise
+values = [59, 31, 42];
+tallest = 80;  // mm
+s = 12; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 28
+2020, 43
+2021, 69
+Encoding: Spokes around a centre, one for each year; the longer the spoke, the more rent. Longest 50 mm.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [28, 43, 69];
+longest = 50;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 54
+Blue, 54
+Green, 12
+Orange, 25
+Encoding: A stack of 3 mm plates, one for each line; plate diameter = riders (biggest 60 mm).
+Write the OpenSCAD.","// riders by line: one layer per line, bottom first; diameter = riders
+values = [54, 54, 12, 25];
+biggest = 60;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (year, rent):
+2019, 66
+2020, 58
+2021, 23
+Encoding: Columns on a grid, 4 per row, 15 mm square, height = rent (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [66, 58, 23];
+tallest = 40;  // mm
+s = 15; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (line, riders):
+Red, 9
+Blue, 83
+Green, 64
+Orange, 54
+Encoding: Columns on a grid, 2 per row, 10 mm square, height = riders (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [9, 83, 64, 54];
+tallest = 60;  // mm
+s = 10; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 81
+2020, 84
+2021, 21
+Encoding: Spokes around a centre, one for each year; the longer the spoke, the more rent. Longest 40 mm.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [81, 84, 21];
+longest = 40;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 12
+W2, 83
+W3, 94
+Encoding: Columns on a grid, 4 per row, 15 mm square, height = trees (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [12, 83, 94];
+tallest = 60;  // mm
+s = 15; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 21
+9am, 54
+12pm, 42
+3pm, 92
+6pm, 20
+Encoding: A stack of 3 mm plates, one for each hour; plate diameter = noise (biggest 60 mm).
+Write the OpenSCAD.","// noise by hour: one layer per hour, bottom first; diameter = noise
+values = [21, 54, 42, 92, 20];
+biggest = 60;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 63
+Blue, 50
+Green, 85
+Encoding: One bar per line. Height shows riders (tallest bar 80 mm). Bars 8 mm wide with 2 mm gaps.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [63, 50, 85];
+tallest = 80;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 34
+2020, 16
+2021, 85
+2022, 69
+Encoding: Columns on a grid, 4 per row, 12 mm square, height = rent (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [34, 16, 85, 69];
+tallest = 40;  // mm
+s = 12; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 59
+W2, 15
+W3, 18
+W4, 58
+W5, 13
+W6, 17
+W7, 58
+Encoding: A stack of 2 mm plates, one for each ward; plate diameter = trees (biggest 100 mm).
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [59, 15, 18, 58, 13, 17, 58];
+biggest = 100;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 58
+W2, 8
+W3, 68
+W4, 46
+W5, 37
+W6, 15
+W7, 50
+W8, 14
+Encoding: One bar per ward. Height shows trees (tallest bar 60 mm). Bars 10 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [58, 8, 68, 46, 37, 15, 50, 14];
+tallest = 60;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 6
+Blue, 34
+Green, 51
+Encoding: Bars side by side, height = riders, 12 mm wide, 2 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [6, 34, 51];
+tallest = 60;  // mm
+w = 12; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 91
+Feb, 20
+Mar, 5
+Apr, 42
+May, 52
+Jun, 93
+Jul, 8
+Aug, 82
+Encoding: A stack of 2 mm plates, one for each month; plate diameter = rainfall (biggest 60 mm).
+Write the OpenSCAD.","// rainfall by month: one layer per month, bottom first; diameter = rainfall
+values = [91, 20, 5, 42, 52, 93, 8, 82];
+biggest = 60;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (year, rent):
+2019, 49
+2020, 95
+2021, 38
+2022, 21
+2023, 8
+2024, 31
+Encoding: Spokes around a centre, one for each year; the longer the spoke, the more rent. Longest 50 mm.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [49, 95, 38, 21, 8, 31];
+longest = 50;  // mm
+w = 5; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (day, visitors):
+Mon, 28
+Tue, 80
+Wed, 15
+Thu, 18
+Fri, 73
+Encoding: A radial chart: one spoke per day, spoke length = visitors (longest 40 mm), 4 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [28, 80, 15, 18, 73];
+longest = 40;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 70
+Feb, 36
+Mar, 35
+Apr, 28
+May, 42
+Encoding: A radial chart: one spoke per month, spoke length = rainfall (longest 50 mm), 4 mm wide and 4 mm tall, around a centre.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [70, 36, 35, 28, 42];
+longest = 50;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 94
+W2, 14
+W3, 21
+Encoding: Columns on a grid, 3 per row, 15 mm square, height = trees (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [94, 14, 21];
+tallest = 60;  // mm
+s = 15; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (day, visitors):
+Mon, 43
+Tue, 86
+Wed, 50
+Thu, 15
+Fri, 36
+Sat, 61
+Encoding: Spokes around a centre, one for each day; the longer the spoke, the more visitors. Longest 60 mm.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [43, 86, 50, 15, 36, 61];
+longest = 60;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (year, rent):
+2019, 46
+2020, 61
+2021, 31
+2022, 52
+2023, 42
+2024, 65
+Encoding: Bars side by side, height = rent, 8 mm wide, 2 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// rent by year: one bar per year, height = rent
+values = [46, 61, 31, 52, 42, 65];
+tallest = 80;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 93
+Tue, 24
+Wed, 94
+Thu, 62
+Fri, 56
+Sat, 28
+Sun, 58
+Encoding: A grid of square columns (10 mm), 2 to a row, standing on a thin base; height shows visitors, tallest 60 mm.
+Write the OpenSCAD.","// visitors by day: square columns on a grid, height = visitors
+values = [93, 24, 94, 62, 56, 28, 58];
+tallest = 60;  // mm
+s = 10; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (day, visitors):
+Mon, 50
+Tue, 64
+Wed, 85
+Thu, 86
+Encoding: Bars side by side, height = visitors, 10 mm wide, 2 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [50, 64, 85, 86];
+tallest = 80;  // mm
+w = 10; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (hour, noise):
+6am, 84
+9am, 64
+12pm, 5
+3pm, 32
+6pm, 43
+9pm, 19
+Encoding: Spokes around a centre, one for each hour; the longer the spoke, the more noise. Longest 60 mm.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [84, 64, 5, 32, 43, 19];
+longest = 60;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (year, rent):
+2019, 34
+2020, 74
+2021, 56
+2022, 40
+2023, 85
+2024, 7
+Encoding: Bars side by side, height = rent, 10 mm wide, 4 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// rent by year: one bar per year, height = rent
+values = [34, 74, 56, 40, 85, 7];
+tallest = 60;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 72
+Blue, 79
+Green, 95
+Orange, 55
+Encoding: A grid of square columns (15 mm), 2 to a row, standing on a thin base; height shows riders, tallest 60 mm.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [72, 79, 95, 55];
+tallest = 60;  // mm
+s = 15; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (line, riders):
+Red, 30
+Blue, 81
+Green, 15
+Orange, 9
+Silver, 14
+Encoding: A radial chart: one spoke per line, spoke length = riders (longest 50 mm), 4 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// riders by line: one spoke per line, length = riders
+values = [30, 81, 15, 9, 14];
+longest = 50;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 58
+Feb, 42
+Mar, 41
+Encoding: Stacked layers, one per month, bottom first. Each layer is a 100 mm disc, 4 mm thick, and its diameter shrinks with rainfall.
+Write the OpenSCAD.","// rainfall by month: one layer per month, bottom first; diameter = rainfall
+values = [58, 42, 41];
+biggest = 100;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (day, visitors):
+Mon, 57
+Tue, 86
+Wed, 74
+Encoding: A grid of square columns (12 mm), 4 to a row, standing on a thin base; height shows visitors, tallest 60 mm.
+Write the OpenSCAD.","// visitors by day: square columns on a grid, height = visitors
+values = [57, 86, 74];
+tallest = 60;  // mm
+s = 12; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (line, riders):
+Red, 85
+Blue, 22
+Green, 25
+Orange, 20
+Silver, 94
+Encoding: One bar per line. Height shows riders (tallest bar 100 mm). Bars 10 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [85, 22, 25, 20, 94];
+tallest = 100;  // mm
+w = 10; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 90
+Feb, 43
+Mar, 50
+Apr, 85
+May, 65
+Jun, 58
+Jul, 32
+Encoding: A grid of square columns (15 mm), 3 to a row, standing on a thin base; height shows rainfall, tallest 80 mm.
+Write the OpenSCAD.","// rainfall by month: square columns on a grid, height = rainfall
+values = [90, 43, 50, 85, 65, 58, 32];
+tallest = 80;  // mm
+s = 15; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 12
+W2, 61
+W3, 43
+W4, 23
+W5, 68
+W6, 11
+W7, 84
+W8, 32
+Encoding: Bars side by side, height = trees, 10 mm wide, 3 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [12, 61, 43, 23, 68, 11, 84, 32];
+tallest = 80;  // mm
+w = 10; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 92
+Tue, 15
+Wed, 92
+Encoding: Columns on a grid, 2 per row, 12 mm square, height = visitors (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// visitors by day: square columns on a grid, height = visitors
+values = [92, 15, 92];
+tallest = 40;  // mm
+s = 12; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (day, visitors):
+Mon, 39
+Tue, 86
+Wed, 94
+Encoding: Spokes around a centre, one for each day; the longer the spoke, the more visitors. Longest 60 mm.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [39, 86, 94];
+longest = 60;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 60
+Feb, 63
+Mar, 47
+Encoding: A grid of square columns (12 mm), 2 to a row, standing on a thin base; height shows rainfall, tallest 60 mm.
+Write the OpenSCAD.","// rainfall by month: square columns on a grid, height = rainfall
+values = [60, 63, 47];
+tallest = 60;  // mm
+s = 12; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (month, rainfall):
+Jan, 95
+Feb, 23
+Mar, 72
+Apr, 45
+May, 21
+Jun, 31
+Encoding: A stack of 3 mm plates, one for each month; plate diameter = rainfall (biggest 80 mm).
+Write the OpenSCAD.","// rainfall by month: one layer per month, bottom first; diameter = rainfall
+values = [95, 23, 72, 45, 21, 31];
+biggest = 80;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 54
+W2, 33
+W3, 30
+W4, 61
+W5, 31
+W6, 80
+Encoding: Bars side by side, height = trees, 10 mm wide, 2 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [54, 33, 30, 61, 31, 80];
+tallest = 60;  // mm
+w = 10; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 12
+Feb, 86
+Mar, 91
+Apr, 27
+May, 34
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 60 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [12, 86, 91, 27, 34];
+longest = 60;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 63
+Blue, 11
+Green, 85
+Orange, 94
+Encoding: A grid of square columns (12 mm), 4 to a row, standing on a thin base; height shows riders, tallest 60 mm.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [63, 11, 85, 94];
+tallest = 60;  // mm
+s = 12; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 32
+9am, 48
+12pm, 39
+3pm, 10
+6pm, 10
+9pm, 11
+Encoding: A stack of 2 mm plates, one for each hour; plate diameter = noise (biggest 80 mm).
+Write the OpenSCAD.","// noise by hour: one layer per hour, bottom first; diameter = noise
+values = [32, 48, 39, 10, 10, 11];
+biggest = 80;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 22
+9am, 13
+12pm, 59
+Encoding: Stacked layers, one per hour, bottom first. Each layer is a 100 mm disc, 3 mm thick, and its diameter shrinks with noise.
+Write the OpenSCAD.","// noise by hour: one layer per hour, bottom first; diameter = noise
+values = [22, 13, 59];
+biggest = 100;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 48
+W2, 82
+W3, 18
+W4, 82
+Encoding: One bar per ward. Height shows trees (tallest bar 100 mm). Bars 10 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [48, 82, 18, 82];
+tallest = 100;  // mm
+w = 10; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 8
+Blue, 71
+Green, 10
+Orange, 29
+Encoding: Spokes around a centre, one for each line; the longer the spoke, the more riders. Longest 40 mm.
+Write the OpenSCAD.","// riders by line: one spoke per line, length = riders
+values = [8, 71, 10, 29];
+longest = 40;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 37
+Feb, 91
+Mar, 43
+Apr, 44
+Encoding: Columns on a grid, 3 per row, 12 mm square, height = rainfall (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// rainfall by month: square columns on a grid, height = rainfall
+values = [37, 91, 43, 44];
+tallest = 60;  // mm
+s = 12; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 75
+2020, 14
+2021, 6
+2022, 63
+2023, 68
+Encoding: A grid of square columns (12 mm), 2 to a row, standing on a thin base; height shows rent, tallest 60 mm.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [75, 14, 6, 63, 68];
+tallest = 60;  // mm
+s = 12; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 15
+W2, 15
+W3, 35
+Encoding: One bar per ward. Height shows trees (tallest bar 60 mm). Bars 8 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [15, 15, 35];
+tallest = 60;  // mm
+w = 8; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 59
+Tue, 76
+Wed, 55
+Encoding: Bars side by side, height = visitors, 8 mm wide, 2 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [59, 76, 55];
+tallest = 80;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 50
+Feb, 45
+Mar, 60
+Apr, 18
+May, 76
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 60 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [50, 45, 60, 18, 76];
+longest = 60;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 82
+W2, 64
+W3, 73
+W4, 86
+W5, 38
+W6, 39
+W7, 34
+Encoding: Bars side by side, height = trees, 8 mm wide, 4 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// trees by ward: one bar per ward, height = trees
+values = [82, 64, 73, 86, 38, 39, 34];
+tallest = 100;  // mm
+w = 8; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 58
+Feb, 36
+Mar, 32
+Apr, 41
+May, 89
+Jun, 5
+Jul, 73
+Aug, 70
+Encoding: A grid of square columns (10 mm), 2 to a row, standing on a thin base; height shows rainfall, tallest 60 mm.
+Write the OpenSCAD.","// rainfall by month: square columns on a grid, height = rainfall
+values = [58, 36, 32, 41, 89, 5, 73, 70];
+tallest = 60;  // mm
+s = 10; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 34
+2020, 91
+2021, 95
+2022, 74
+2023, 89
+Encoding: Spokes around a centre, one for each year; the longer the spoke, the more rent. Longest 40 mm.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [34, 91, 95, 74, 89];
+longest = 40;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 34
+9am, 52
+12pm, 85
+3pm, 66
+6pm, 41
+Encoding: A stack of 2 mm plates, one for each hour; plate diameter = noise (biggest 60 mm).
+Write the OpenSCAD.","// noise by hour: one layer per hour, bottom first; diameter = noise
+values = [34, 52, 85, 66, 41];
+biggest = 60;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 86
+Blue, 8
+Green, 21
+Orange, 55
+Silver, 24
+Encoding: Stacked layers, one per line, bottom first. Each layer is a 100 mm disc, 2 mm thick, and its diameter shrinks with riders.
+Write the OpenSCAD.","// riders by line: one layer per line, bottom first; diameter = riders
+values = [86, 8, 21, 55, 24];
+biggest = 100;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (month, rainfall):
+Jan, 77
+Feb, 94
+Mar, 32
+Apr, 35
+May, 21
+Jun, 34
+Encoding: Columns on a grid, 3 per row, 15 mm square, height = rainfall (tallest 80 mm), on a 2 mm base.
+Write the OpenSCAD.","// rainfall by month: square columns on a grid, height = rainfall
+values = [77, 94, 32, 35, 21, 34];
+tallest = 80;  // mm
+s = 15; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 18
+9am, 83
+12pm, 8
+3pm, 72
+6pm, 81
+9pm, 50
+Encoding: Columns on a grid, 3 per row, 12 mm square, height = noise (tallest 40 mm), on a 2 mm base.
+Write the OpenSCAD.","// noise by hour: square columns on a grid, height = noise
+values = [18, 83, 8, 72, 81, 50];
+tallest = 40;  // mm
+s = 12; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (day, visitors):
+Mon, 89
+Tue, 68
+Wed, 66
+Thu, 74
+Encoding: A radial chart: one spoke per day, spoke length = visitors (longest 60 mm), 5 mm wide and 4 mm tall, around a centre.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [89, 68, 66, 74];
+longest = 60;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (day, visitors):
+Mon, 95
+Tue, 29
+Wed, 45
+Thu, 42
+Fri, 54
+Sat, 12
+Encoding: Stacked layers, one per day, bottom first. Each layer is a 60 mm disc, 3 mm thick, and its diameter shrinks with visitors.
+Write the OpenSCAD.","// visitors by day: one layer per day, bottom first; diameter = visitors
+values = [95, 29, 45, 42, 54, 12];
+biggest = 60;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 90
+Blue, 89
+Green, 89
+Orange, 33
+Encoding: A radial chart: one spoke per line, spoke length = riders (longest 50 mm), 5 mm wide and 4 mm tall, around a centre.
+Write the OpenSCAD.","// riders by line: one spoke per line, length = riders
+values = [90, 89, 89, 33];
+longest = 50;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 74
+Blue, 12
+Green, 85
+Orange, 24
+Silver, 50
+Encoding: Bars side by side, height = riders, 10 mm wide, 4 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [74, 12, 85, 24, 50];
+tallest = 60;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 6
+Feb, 33
+Mar, 88
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 40 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [6, 33, 88];
+longest = 40;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 62
+Feb, 60
+Mar, 23
+Apr, 50
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 40 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [62, 60, 23, 50];
+longest = 40;  // mm
+w = 6; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 57
+W2, 38
+W3, 73
+Encoding: A grid of square columns (15 mm), 2 to a row, standing on a thin base; height shows trees, tallest 40 mm.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [57, 38, 73];
+tallest = 40;  // mm
+s = 15; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 5
+W2, 69
+W3, 22
+W4, 84
+Encoding: Stacked layers, one per ward, bottom first. Each layer is a 60 mm disc, 3 mm thick, and its diameter shrinks with trees.
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [5, 69, 22, 84];
+biggest = 60;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (month, rainfall):
+Jan, 7
+Feb, 26
+Mar, 92
+Apr, 76
+Encoding: A stack of 2 mm plates, one for each month; plate diameter = rainfall (biggest 100 mm).
+Write the OpenSCAD.","// rainfall by month: one layer per month, bottom first; diameter = rainfall
+values = [7, 26, 92, 76];
+biggest = 100;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (day, visitors):
+Mon, 84
+Tue, 85
+Wed, 63
+Encoding: Stacked layers, one per day, bottom first. Each layer is a 100 mm disc, 4 mm thick, and its diameter shrinks with visitors.
+Write the OpenSCAD.","// visitors by day: one layer per day, bottom first; diameter = visitors
+values = [84, 85, 63];
+biggest = 100;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 53
+Blue, 8
+Green, 85
+Orange, 9
+Encoding: Columns on a grid, 2 per row, 12 mm square, height = riders (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [53, 8, 85, 9];
+tallest = 60;  // mm
+s = 12; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 69
+W2, 50
+W3, 25
+W4, 56
+Encoding: A radial chart: one spoke per ward, spoke length = trees (longest 50 mm), 5 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// trees by ward: one spoke per ward, length = trees
+values = [69, 50, 25, 56];
+longest = 50;  // mm
+w = 5; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 41
+Blue, 75
+Green, 65
+Orange, 9
+Silver, 73
+Encoding: Spokes around a centre, one for each line; the longer the spoke, the more riders. Longest 60 mm.
+Write the OpenSCAD.","// riders by line: one spoke per line, length = riders
+values = [41, 75, 65, 9, 73];
+longest = 60;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 56
+9am, 49
+12pm, 68
+Encoding: Bars side by side, height = noise, 8 mm wide, 3 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [56, 49, 68];
+tallest = 100;  // mm
+w = 8; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 92
+Blue, 79
+Green, 94
+Orange, 42
+Silver, 92
+Encoding: A stack of 4 mm plates, one for each line; plate diameter = riders (biggest 100 mm).
+Write the OpenSCAD.","// riders by line: one layer per line, bottom first; diameter = riders
+values = [92, 79, 94, 42, 92];
+biggest = 100;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 31
+W2, 19
+W3, 77
+W4, 47
+W5, 36
+Encoding: A radial chart: one spoke per ward, spoke length = trees (longest 40 mm), 5 mm wide and 4 mm tall, around a centre.
+Write the OpenSCAD.","// trees by ward: one spoke per ward, length = trees
+values = [31, 19, 77, 47, 36];
+longest = 40;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (day, visitors):
+Mon, 77
+Tue, 24
+Wed, 49
+Encoding: Spokes around a centre, one for each day; the longer the spoke, the more visitors. Longest 50 mm.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [77, 24, 49];
+longest = 50;  // mm
+w = 5; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 60
+W2, 26
+W3, 5
+W4, 23
+W5, 77
+W6, 10
+W7, 61
+Encoding: A stack of 2 mm plates, one for each ward; plate diameter = trees (biggest 80 mm).
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [60, 26, 5, 23, 77, 10, 61];
+biggest = 80;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 83
+9am, 29
+12pm, 13
+3pm, 75
+6pm, 59
+Encoding: A radial chart: one spoke per hour, spoke length = noise (longest 40 mm), 4 mm wide and 4 mm tall, around a centre.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [83, 29, 13, 75, 59];
+longest = 40;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (day, visitors):
+Mon, 69
+Tue, 85
+Wed, 74
+Encoding: A grid of square columns (12 mm), 3 to a row, standing on a thin base; height shows visitors, tallest 60 mm.
+Write the OpenSCAD.","// visitors by day: square columns on a grid, height = visitors
+values = [69, 85, 74];
+tallest = 60;  // mm
+s = 12; per_row = 3; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (year, rent):
+2019, 40
+2020, 38
+2021, 73
+2022, 72
+2023, 75
+2024, 45
+Encoding: A radial chart: one spoke per year, spoke length = rent (longest 40 mm), 4 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [40, 38, 73, 72, 75, 45];
+longest = 40;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (day, visitors):
+Mon, 89
+Tue, 94
+Wed, 77
+Thu, 54
+Encoding: Spokes around a centre, one for each day; the longer the spoke, the more visitors. Longest 50 mm.
+Write the OpenSCAD.","// visitors by day: one spoke per day, length = visitors
+values = [89, 94, 77, 54];
+longest = 50;  // mm
+w = 6; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 7
+9am, 51
+12pm, 72
+3pm, 25
+Encoding: A stack of 3 mm plates, one for each hour; plate diameter = noise (biggest 100 mm).
+Write the OpenSCAD.","// noise by hour: one layer per hour, bottom first; diameter = noise
+values = [7, 51, 72, 25];
+biggest = 100;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (year, rent):
+2019, 78
+2020, 35
+2021, 40
+2022, 28
+Encoding: Columns on a grid, 2 per row, 15 mm square, height = rent (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// rent by year: square columns on a grid, height = rent
+values = [78, 35, 40, 28];
+tallest = 60;  // mm
+s = 15; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (hour, noise):
+6am, 70
+9am, 95
+12pm, 17
+3pm, 29
+6pm, 26
+9pm, 61
+Encoding: One bar per hour. Height shows noise (tallest bar 80 mm). Bars 10 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [70, 95, 17, 29, 26, 61];
+tallest = 80;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 50
+Blue, 83
+Green, 46
+Orange, 16
+Encoding: Spokes around a centre, one for each line; the longer the spoke, the more riders. Longest 40 mm.
+Write the OpenSCAD.","// riders by line: one spoke per line, length = riders
+values = [50, 83, 46, 16];
+longest = 40;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 54
+Feb, 60
+Mar, 86
+Apr, 85
+May, 91
+Jun, 54
+Encoding: Bars side by side, height = rainfall, 12 mm wide, 3 mm apart, tallest 80 mm.
+Write the OpenSCAD.","// rainfall by month: one bar per month, height = rainfall
+values = [54, 60, 86, 85, 91, 54];
+tallest = 80;  // mm
+w = 12; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 46
+Tue, 8
+Wed, 55
+Thu, 65
+Fri, 71
+Encoding: A stack of 2 mm plates, one for each day; plate diameter = visitors (biggest 60 mm).
+Write the OpenSCAD.","// visitors by day: one layer per day, bottom first; diameter = visitors
+values = [46, 8, 55, 65, 71];
+biggest = 60;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 13
+Blue, 29
+Green, 19
+Encoding: A grid of square columns (12 mm), 2 to a row, standing on a thin base; height shows riders, tallest 40 mm.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [13, 29, 19];
+tallest = 40;  // mm
+s = 12; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (ward, trees):
+W1, 86
+W2, 40
+W3, 57
+W4, 90
+Encoding: A stack of 2 mm plates, one for each ward; plate diameter = trees (biggest 100 mm).
+Write the OpenSCAD.","// trees by ward: one layer per ward, bottom first; diameter = trees
+values = [86, 40, 57, 90];
+biggest = 100;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 12
+Blue, 25
+Green, 21
+Orange, 22
+Silver, 66
+Encoding: One bar per line. Height shows riders (tallest bar 60 mm). Bars 12 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [12, 25, 21, 22, 66];
+tallest = 60;  // mm
+w = 12; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 79
+Feb, 15
+Mar, 15
+Apr, 76
+May, 27
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 40 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [79, 15, 15, 76, 27];
+longest = 40;  // mm
+w = 5; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 63
+Blue, 24
+Green, 62
+Orange, 75
+Silver, 24
+Encoding: Bars side by side, height = riders, 12 mm wide, 4 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [63, 24, 62, 75, 24];
+tallest = 60;  // mm
+w = 12; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (line, riders):
+Red, 29
+Blue, 87
+Green, 63
+Encoding: Stacked layers, one per line, bottom first. Each layer is a 80 mm disc, 4 mm thick, and its diameter shrinks with riders.
+Write the OpenSCAD.","// riders by line: one layer per line, bottom first; diameter = riders
+values = [29, 87, 63];
+biggest = 80;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 88
+9am, 22
+12pm, 65
+3pm, 76
+6pm, 12
+Encoding: Bars side by side, height = noise, 12 mm wide, 3 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [88, 22, 65, 76, 12];
+tallest = 60;  // mm
+w = 12; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 82
+2020, 50
+2021, 77
+2022, 62
+2023, 47
+2024, 53
+Encoding: Spokes around a centre, one for each year; the longer the spoke, the more rent. Longest 60 mm.
+Write the OpenSCAD.","// rent by year: one spoke per year, length = rent
+values = [82, 50, 77, 62, 47, 53];
+longest = 60;  // mm
+w = 4; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (year, rent):
+2019, 21
+2020, 7
+2021, 48
+2022, 82
+Encoding: Stacked layers, one per year, bottom first. Each layer is a 60 mm disc, 3 mm thick, and its diameter shrinks with rent.
+Write the OpenSCAD.","// rent by year: one layer per year, bottom first; diameter = rent
+values = [21, 7, 48, 82];
+biggest = 60;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 54
+9am, 11
+12pm, 81
+3pm, 26
+6pm, 50
+Encoding: One bar per hour. Height shows noise (tallest bar 80 mm). Bars 10 mm wide with 2 mm gaps.
+Write the OpenSCAD.","// noise by hour: one bar per hour, height = noise
+values = [54, 11, 81, 26, 50];
+tallest = 80;  // mm
+w = 10; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 37
+Tue, 91
+Wed, 44
+Thu, 77
+Fri, 63
+Sat, 57
+Sun, 28
+Encoding: One bar per day. Height shows visitors (tallest bar 60 mm). Bars 10 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [37, 91, 44, 77, 63, 57, 28];
+tallest = 60;  // mm
+w = 10; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 17
+2020, 20
+2021, 8
+2022, 49
+2023, 7
+Encoding: Stacked layers, one per year, bottom first. Each layer is a 80 mm disc, 4 mm thick, and its diameter shrinks with rent.
+Write the OpenSCAD.","// rent by year: one layer per year, bottom first; diameter = rent
+values = [17, 20, 8, 49, 7];
+biggest = 80;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (line, riders):
+Red, 75
+Blue, 93
+Green, 68
+Orange, 65
+Encoding: One bar per line. Height shows riders (tallest bar 80 mm). Bars 8 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// riders by line: one bar per line, height = riders
+values = [75, 93, 68, 65];
+tallest = 80;  // mm
+w = 8; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 15
+2020, 47
+2021, 50
+Encoding: One bar per year. Height shows rent (tallest bar 60 mm). Bars 10 mm wide with 2 mm gaps.
+Write the OpenSCAD.","// rent by year: one bar per year, height = rent
+values = [15, 47, 50];
+tallest = 60;  // mm
+w = 10; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 53
+2020, 48
+2021, 25
+Encoding: Stacked layers, one per year, bottom first. Each layer is a 60 mm disc, 2 mm thick, and its diameter shrinks with rent.
+Write the OpenSCAD.","// rent by year: one layer per year, bottom first; diameter = rent
+values = [53, 48, 25];
+biggest = 60;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (hour, noise):
+6am, 84
+9am, 47
+12pm, 8
+3pm, 66
+Encoding: A grid of square columns (10 mm), 2 to a row, standing on a thin base; height shows noise, tallest 40 mm.
+Write the OpenSCAD.","// noise by hour: square columns on a grid, height = noise
+values = [84, 47, 8, 66];
+tallest = 40;  // mm
+s = 10; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (line, riders):
+Red, 35
+Blue, 50
+Green, 33
+Encoding: A stack of 3 mm plates, one for each line; plate diameter = riders (biggest 80 mm).
+Write the OpenSCAD.","// riders by line: one layer per line, bottom first; diameter = riders
+values = [35, 50, 33];
+biggest = 80;  // mm
+t = 3;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (day, visitors):
+Mon, 54
+Tue, 77
+Wed, 6
+Thu, 25
+Encoding: Bars side by side, height = visitors, 12 mm wide, 3 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [54, 77, 6, 25];
+tallest = 100;  // mm
+w = 12; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 8
+Feb, 46
+Mar, 70
+Encoding: Bars side by side, height = rainfall, 8 mm wide, 2 mm apart, tallest 60 mm.
+Write the OpenSCAD.","// rainfall by month: one bar per month, height = rainfall
+values = [8, 46, 70];
+tallest = 60;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (month, rainfall):
+Jan, 53
+Feb, 8
+Mar, 58
+Apr, 60
+May, 77
+Jun, 92
+Jul, 47
+Aug, 36
+Encoding: Stacked layers, one per month, bottom first. Each layer is a 80 mm disc, 4 mm thick, and its diameter shrinks with rainfall.
+Write the OpenSCAD.","// rainfall by month: one layer per month, bottom first; diameter = rainfall
+values = [53, 8, 58, 60, 77, 92, 47, 36];
+biggest = 80;  // mm
+t = 4;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (day, visitors):
+Mon, 14
+Tue, 21
+Wed, 57
+Thu, 77
+Fri, 89
+Sat, 49
+Encoding: One bar per day. Height shows visitors (tallest bar 60 mm). Bars 10 mm wide with 3 mm gaps.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [14, 21, 57, 77, 89, 49];
+tallest = 60;  // mm
+w = 10; gap = 3;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (ward, trees):
+W1, 55
+W2, 35
+W3, 87
+W4, 66
+Encoding: A grid of square columns (10 mm), 4 to a row, standing on a thin base; height shows trees, tallest 60 mm.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [55, 35, 87, 66];
+tallest = 60;  // mm
+s = 10; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (day, visitors):
+Mon, 74
+Tue, 7
+Wed, 82
+Thu, 83
+Fri, 65
+Encoding: A stack of 2 mm plates, one for each day; plate diameter = visitors (biggest 80 mm).
+Write the OpenSCAD.","// visitors by day: one layer per day, bottom first; diameter = visitors
+values = [74, 7, 82, 83, 65];
+biggest = 80;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (ward, trees):
+W1, 18
+W2, 73
+W3, 11
+W4, 23
+W5, 55
+W6, 8
+W7, 58
+W8, 55
+Encoding: A grid of square columns (15 mm), 2 to a row, standing on a thin base; height shows trees, tallest 60 mm.
+Write the OpenSCAD.","// trees by ward: square columns on a grid, height = trees
+values = [18, 73, 11, 23, 55, 8, 58, 55];
+tallest = 60;  // mm
+s = 15; per_row = 2; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (month, rainfall):
+Jan, 48
+Feb, 65
+Mar, 57
+Apr, 25
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 60 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [48, 65, 57, 25];
+longest = 60;  // mm
+w = 5; h = 4;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 50
+Feb, 65
+Mar, 85
+Apr, 71
+May, 11
+Jun, 30
+Jul, 37
+Aug, 27
+Encoding: A radial chart: one spoke per month, spoke length = rainfall (longest 50 mm), 6 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [50, 65, 85, 71, 11, 30, 37, 27];
+longest = 50;  // mm
+w = 6; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (line, riders):
+Red, 60
+Blue, 9
+Green, 92
+Orange, 57
+Silver, 39
+Encoding: Columns on a grid, 4 per row, 10 mm square, height = riders (tallest 60 mm), on a 2 mm base.
+Write the OpenSCAD.","// riders by line: square columns on a grid, height = riders
+values = [60, 9, 92, 57, 39];
+tallest = 60;  // mm
+s = 10; per_row = 4; base = 2;
+rows = ceil(len(values) / per_row);
+cube([per_row * s, rows * s, base]);
+for (i = [0 : len(values) - 1])
+  translate([(i % per_row) * s, floor(i / per_row) * s, base]) cube([s - 1, s - 1, values[i] * tallest / max(values)]);"
+"Data (month, rainfall):
+Jan, 83
+Feb, 50
+Mar, 26
+Encoding: One bar per month. Height shows rainfall (tallest bar 80 mm). Bars 10 mm wide with 4 mm gaps.
+Write the OpenSCAD.","// rainfall by month: one bar per month, height = rainfall
+values = [83, 50, 26];
+tallest = 80;  // mm
+w = 10; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (year, rent):
+2019, 59
+2020, 74
+2021, 75
+Encoding: Stacked layers, one per year, bottom first. Each layer is a 60 mm disc, 2 mm thick, and its diameter shrinks with rent.
+Write the OpenSCAD.","// rent by year: one layer per year, bottom first; diameter = rent
+values = [59, 74, 75];
+biggest = 60;  // mm
+t = 2;  // layer thickness, mm
+for (i = [0 : len(values) - 1])
+  translate([0, 0, i * t]) cylinder(h = t, d = biggest * values[i] / max(values), $fn = 64);"
+"Data (month, rainfall):
+Jan, 8
+Feb, 72
+Mar, 22
+Apr, 68
+Encoding: Spokes around a centre, one for each month; the longer the spoke, the more rainfall. Longest 60 mm.
+Write the OpenSCAD.","// rainfall by month: one spoke per month, length = rainfall
+values = [8, 72, 22, 68];
+longest = 60;  // mm
+w = 6; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (hour, noise):
+6am, 57
+9am, 38
+12pm, 25
+Encoding: A radial chart: one spoke per hour, spoke length = noise (longest 60 mm), 6 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// noise by hour: one spoke per hour, length = noise
+values = [57, 38, 25];
+longest = 60;  // mm
+w = 6; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (ward, trees):
+W1, 76
+W2, 44
+W3, 35
+W4, 53
+W5, 49
+W6, 54
+W7, 65
+W8, 70
+Encoding: A radial chart: one spoke per ward, spoke length = trees (longest 50 mm), 4 mm wide and 6 mm tall, around a centre.
+Write the OpenSCAD.","// trees by ward: one spoke per ward, length = trees
+values = [76, 44, 35, 53, 49, 54, 65, 70];
+longest = 50;  // mm
+w = 4; h = 6;
+cylinder(h = h, d = w * 2, $fn = 32);
+for (i = [0 : len(values) - 1])
+  rotate([0, 0, i * 360 / len(values)]) translate([0, -w / 2, 0]) cube([longest * values[i] / max(values), w, h]);"
+"Data (month, rainfall):
+Jan, 79
+Feb, 81
+Mar, 86
+Encoding: Bars side by side, height = rainfall, 12 mm wide, 4 mm apart, tallest 100 mm.
+Write the OpenSCAD.","// rainfall by month: one bar per month, height = rainfall
+values = [79, 81, 86];
+tallest = 100;  // mm
+w = 12; gap = 4;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
+"Data (day, visitors):
+Mon, 70
+Tue, 19
+Wed, 39
+Thu, 93
+Fri, 83
+Sat, 26
+Sun, 53
+Encoding: One bar per day. Height shows visitors (tallest bar 60 mm). Bars 8 mm wide with 2 mm gaps.
+Write the OpenSCAD.","// visitors by day: one bar per day, height = visitors
+values = [70, 19, 39, 93, 83, 26, 53];
+tallest = 60;  // mm
+w = 8; gap = 2;
+scale_h = tallest / max(values);
+for (i = [0 : len(values) - 1])
+  translate([i * (w + gap), 0, 0]) cube([w, w, values[i] * scale_h]);"
