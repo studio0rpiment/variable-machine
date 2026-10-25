@@ -69,15 +69,6 @@ Every member cleans, records or writes some of the examples: that is where the m
 
 Say on the card who did what.
 
-## What to look for (for the class discussion, or grading)
-
-- **It trains, and you can show what training changed:** the same test before and after, with numbers.
-- **The why is clear:** each choice on the card has a reason, and the reasons come from what you saw happen.
-- **Use, steer and train are kept apart:** the card says which parts of the project are which.
-- **Honest notes:** where it fails, invents, or learned something you didn't mean. A clear account of a failure is worth as much as a success.
-- **Data handled with care:** every source and license is on the card; no one's private information; anyone recorded agreed.
-- **The larger project is real:** someone could build it, and the model is a working part of it, not a decoration.
-
 ## Notes for the teacher
 
 - Before class, run each demo's **Reproduce it** on a class Mac: it downloads everything, and the numbers show the Mac is set up. A checklist is at the end of [`briefs/README.md`](briefs/README.md).
