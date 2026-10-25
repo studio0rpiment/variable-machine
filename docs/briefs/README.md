@@ -1,6 +1,6 @@
 # The four "How might we" briefs, tried
 
-Each brief was worked through on 2026-10-24 with Variable Machine v0.2, as a student would: the app's real commands, real public data, timings, what broke, and what we changed because of it. Each folder has the record, the files it made, **the real instructions**, rewritten from what happened rather than from the plan, and a **Reproduce it** section: every command in order, with the numbers you should see. All four were run again from scratch from those sections on 2026-10-24 and gave the same numbers (training is repeatable to three decimals); the one exception is noted below.
+Each brief was worked through on 2026-10-24 with Variable Machine v0.2, as a student would: the app's real commands, real public data, timings, what broke, and what we changed because of it. Each folder has the record, the files it made, **the real instructions**, rewritten from what happened rather than from the plan, and a **Reproduce it** section: every command in order, with the numbers you should see. All four were run again from scratch from those sections on 2026-10-24 and gave the same numbers (training is repeatable to three decimals); the only snag was a full disk, noted below.
 
 | | brief | what worked | what didn't, or isn't in the app yet |
 |---|---|---|---|
@@ -31,6 +31,6 @@ Run on the demo Mac the day before, so nothing downloads in front of the room.
 | brief | run again from *Reproduce it* | same as the first time? |
 |---|---|---|
 | 1 | words 9 of 26 · trained 17 of 26 · with extra rows 21 of 26 · charts 12 of 12 | yes |
-| 2 | facts only: 33 names it invented over 18 works · facts + notes: 14 · picture model answers the bunny's label word for word · recording 11.2 s, three runs alike | yes, except the 1.7B export (disk full); its 14 is from the earlier export of the same training, whose losses matched to three decimals |
+| 2 | facts only: 33 names it invented over 18 works · facts + notes: 14 · picture model answers the bunny's label word for word · recording 11.2 s, three runs alike | yes (the 1.7B export first stopped on a full disk; run again with 18GB free, it gave 14, and the same 18 drafts twice) |
 | 3 | hands found in 11 of 14 photos · k = 3, 0 of 2 · the unseen thumbs-up named "thumbs up" 100%, received as OSC | yes |
 | 4 | shop helper 10 of 10 · designs: 16 render, 15 fit, 12 keep the numbers | yes, once `ask-designs.mjs` asked at temperature 0 (before, three answers changed from run to run) |
