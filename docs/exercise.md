@@ -1,157 +1,87 @@
-# The Variable Machine exercise: five stages, one model of your own
+# The Variable Machine project: a model of your own, for a project of your own
 
-You will take one small model and change it three ways:
+In a group of three, choose one of the four demos below, make it work, then **make it yours**: change it with your own data until it does a job for a project you care about. You hand in **the model you made**, and **a card** that says what you did, why, and the larger project the model is for.
 
-- **with words** (a Modelfile: instructions placed in front of it);
-- **with examples** (Train: it imitates rows you give it);
-- **with taste** (Prefer: it leans toward the answers you mark better).
+The point is not a perfect model. The point is to make something real, small and your own, and to know exactly what you changed, how you can tell, and where it still fails.
 
-Then you will **combine** them and hand in a model of your own, with a card that shows what each change did.
+## Use, steer, train
 
-The point is not a good model. The point is to hear what each kind of change does, where it fails, and what happens when you stack them.
+Keep these three apart, in your work and on your card:
 
-**Time:** about three class sessions, or one long workshop. Each stage says roughly how long it takes.
-**Model:** `smollm2:360m` for everything you train (it trains in about three minutes). Use `qwen3:4b` or `llama3.2:3b` where a stage asks for a bigger model to compare with.
-**Disk:** keep 6GB free. Remove what you don't need on Adapters as you go.
+- **Use:** your input goes through a ready-made model and nothing in it changes. Cutting out a photo, reading a label aloud, finding the points on a hand.
+- **Steer:** your input points the model at the outcome you want, this time: instructions in a Modelfile, a schema it must answer in, the examples you put in front of it. Take them away and it is the model it was.
+- **Train:** your examples change the model. The change stays, it can be exported, and someone else can use it.
 
-Before you start: Start → Models, pull `smollm2:360m` and `qwen3:4b`.
+Every demo uses and steers. **Your hand-in must train**: the model you hand in is one your examples changed.
 
----
+## 1 · Choose a demo (as a group)
 
-## Stage 1 · Pick a concept and listen to the original (30 min)
+Each demo has a folder in [`briefs/`](briefs/README.md) with what happened when we tried it, the instructions rewritten from that, and a **Reproduce it** section: every command in order and the numbers you should see.
 
-**Choose a concept:** a model with one clear character or job that a small model doesn't already have. It should be something you can hear in a single answer. Ideas:
+| | demo | the model you train | you bring | trains in | ends up in |
+|---|---|---|---|---|---|
+| 1 | [**Public data**](briefs/1-public-data/README.md): finding, cleaning and charting a public table | a cleaner: messy values in one column → the clean name | a table from an open-data portal, and 150–300 values you clean by hand | 1 minute | a cleaned table, a chart, a map, a story |
+| 2 | [**Gallery**](briefs/2-gallery/README.md): documenting work and guiding a show | a label writer: facts + your notes → a label in your voice | 40+ works (yours, or a collection you care about), each with facts, notes and a label you wrote | 1–2 minutes | wall labels, an audio guide, a show's website |
+| 3 | [**Gesture**](briefs/3-gesture/README.md): gesture recognition for camera projects | a gesture namer: points on a hand or body → the gesture's name | your own hands (or bodies) in front of the camera: 3+ gestures and a "nothing" | seconds | a TouchDesigner, Max or Pure Data patch, a performance, an installation |
+| 4 | [**Tangible**](briefs/4-tangible/README.md): making information you can touch | data-to-shape: a small table + an encoding → OpenSCAD you can print or cut | a design library: at least one template of your own and 20+ rows of it | 2 minutes | a printed or laser-cut object, a series of them |
 
-- a guide to the trees on your street (the DC street-trees example is ready to use);
-- a sports commentator for chamber music;
-- a museum label writer for everyday objects;
-- a model that answers only in questions, like a Socratic tutor;
-- a weather report for feelings;
-- a recipe writer that only knows what grows in your city;
-- your own.
+Choose by the project you want at the end, not by the tool.
 
-**Write five probe questions:** five questions you will ask every version of your model, from now to the end. Make them different:
+## 2 · Make it work as it is (first session)
 
-- one the concept is made for;
-- one a little off to the side;
-- one about something it can't know;
-- one that invites a long answer;
-- one strange one.
+Run the demo's **Reproduce it** section on one group member's Mac, command by command, and check each number against its *Expect* line. If yours are far off, something differs on that Mac: find out before you change anything.
 
-Write them down. They are the same five every time, so the versions can be compared fairly.
+- **Disk:** keep 8GB free (the gallery demo's bigger model needs it while it exports).
+- **Browser:** Chrome. The gesture demo needs the camera, and the speech tab the microphone: allow them when Chrome asks.
+- **Time:** 5 to 15 minutes, most of it the first downloads.
 
-**Listen to the original:** in **Chat**, put `smollm2:360m` and `qwen3:4b` side by side and ask both your five questions. Everything you ask is saved in the chat log, which you will use in stage 4.
+Write down the numbers you got. They are your **before**.
 
-**Note:** in one sentence each, how the small model answers and how the bigger one does.
+## 3 · Make it yours
 
----
+Swap the demo's data for yours. What that means for each:
 
-## Stage 2 · Change it with words (30 min)
+1. **Public data.** Find your own table and your own question. Pick the one messy column that stands between you and the answer. Clean 150–300 of its values by hand in a spreadsheet: the rule you clean by is what the model learns, so write it down. Train, test on values it hasn't seen, and add rows of the kinds it gets wrong. Then run it over the whole column.
+2. **Gallery.** Your own works, or a collection you care about. For each work: the facts, **three or four notes in your own words about what to say**, and the label you wrote. Without the notes it invents (the brief shows how much). Train on SmolLM2-1.7B. Then, if you like, photos (cut-out, depth), a picture model, and the labels spoken.
+3. **Gesture.** Choose gestures that mean something in your piece. Record each with the camera, 3–5 seconds while moving a little, with the hand, distance and angle you'll use in the piece; add a "nothing". Train, test it live, and send it as OSC into the patch you'll perform with. Then try it on someone else's hand, and record theirs too (with their agreement) if it fails.
+4. **Tangible.** Write at least one OpenSCAD template of your own (an encoding the class library doesn't have), check that it renders and fits your machine, and add 20+ rows of it to the library with different tables and differently worded encodings. Train, ask for designs, render and measure every one. Print or cut the best.
 
-**Modelfile** tab.
+All four: **test on things it hasn't seen**, read every answer, and **fix mistakes by adding rows of the kind it gets wrong**, not by training longer. Keep each version (every run keeps its own name); the numbers from each are what your card compares.
 
-1. Start from a preset close to your concept, or choose *write your own*.
-2. In *3 · change what the preset adds*, write the **instructions** (the SYSTEM line) for your concept. Set the **temperature**, and give one **example** question and answer (the MESSAGE lines) in the voice you want.
-3. Make the variant from `smollm2:360m`. Ask both the original and the variant your first probe question.
-4. Make the same variant from `qwen3:4b` (change "start from") and ask again.
-5. Press **keep it** on the version you want to bring forward, or it is cleared when the app stops.
+## 4 · Hand it in
 
-**Note:**
-- What did words alone change?
-- What did they not change?
-- Did the small model follow your instructions as well as the big one? (Usually not: that is the reason for the next stages.)
+Three things, from the group:
 
-**Try one extreme:** the same variant at temperature 0.1 and at 1.5, with *let it pick from any word* on. Keep one surprising answer for your card.
+1. **The model**, as zips from **Share** (each carries its record: where its data came from, its license, and the commands that made it):
+   - demos 1, 2, 4: your dataset (`zip data/<name>`) and your adapter (`zip adapters/<name>`). Anyone can unzip them and run `export` to have your model in their own Ollama.
+   - demo 3: your gesture set (`zip gestures/<name>`): the examples and the trained model in one.
+   - and the model's name in Ollama, so we can ask it in Chat.
+2. **The card**, filled in from [`model-card-template.md`](model-card-template.md): what you did, **why** (the choices: which data, which rule, which model, when you stopped), the numbers before and after, one honest failure, and **the larger project**: who it is for, where this model will live (a local web app, a patch, a printer, a gallery wall), what it does there, and what a person still has to check.
+3. **A three-minute demo:** the model working, live, on something it hasn't seen. Show the before next to the after, and say what your examples changed.
 
----
+## Working as three
 
-## Stage 3 · Change it with examples (45 min)
+Every member cleans, records or writes some of the examples: that is where the model's character comes from, and everyone should feel it. Beyond that, one way to share the rest:
 
-**Data** tab, then **Train**.
+- **data:** finding the source, its license, the rule you clean or label by, the spreadsheet;
+- **training and testing:** the runs, the checks, the numbers, the next set of rows;
+- **project:** the larger idea, the card, the demo.
 
-**Make a dataset of 40 to 150 rows** that sound like your concept. Pick one way:
-
-- **From a table:** *make a new one* → *public data*. Search DC Open Data or data.gov, bring a table in, and write a template ("What kind of tree stands at {VICINITY}?" → "{CMMN_NM}, in {CONDITION} condition.").
-- **Written by a model, chosen by you:** start an empty dataset, open it, and under *write more rows* put `qwen3:4b` as the writer. In the *task* box, describe your concept, for example "Write questions a visitor might ask about a city tree, answered in the voice of a slightly vain tree." Or choose a book you brought in as material. **Keep only the rows that sound right**: your choices are what the model learns. Once you have kept a few, it writes more in their style.
-- **From a collection:** import from Hugging Face by name, or use Dolly with one category, and keep the rows that fit.
-- **Your own:** a spreadsheet with a question column and an answer column, uploaded as .csv.
-
-Then:
-
-1. **Get it ready:** check it, count it, and split it with 10–20% set aside.
-2. **Open Train with it.** Base: SmolLM2-360M-Instruct. Keep the defaults (LoRA, rank 8, 200 iterations). Train. It takes about three minutes.
-3. **Read the chart:** the sentence under the loss chart says whether it learned, memorised, or hardly moved. If it memorised, train again with fewer iterations (the run gets a new name; both stay).
-4. **Next step → export, import, chat.** Ask your trained model the five probe questions.
-5. **On Adapters, *try it*:** read three set-aside questions next to the answer in the data.
-
-**Note:**
-- What did it learn: the form of the answers, the facts, or both?
-- Find one answer that has the right shape and the wrong fact.
-- What does the loss reading say, and does it match what you hear?
-
----
-
-## Stage 4 · Change it with taste (40 min)
-
-**Chat**, then **Data**, then **Prefer**.
-
-1. **In Chat**, put two different versions side by side: your trained model and your words variant, or the original and the trained one. Ask them 20 or more questions in the spirit of your concept (your probes count). Every pair of answers is now in the chat log.
-2. **Data → make a new one → start an empty dataset**, format *preference*. Open it, and under *add pairs from the chat log*, mark the better answer *chosen* and the worse *rejected* for each prompt. You can also set a rule ("prefer model A over model B") for every prompt both answered. **Aim for 20+ pairs.** Your taste is the data here, so be consistent about what "better" means for your concept: shorter, warmer, stranger, more exact…
-3. **Split it**, then **open the Prefer tab with it**. Base: SmolLM2-360M-Instruct. Train with the defaults (about 1½ minutes).
-4. **Read the chart:** it starts near 0.69 (no preference). Lower means it leans toward your chosen answers.
-5. **Next step → export, import, chat.** Ask the five probes.
-
-**Note:**
-- What is different from the trained model?
-- Did it pick up your taste, or something you didn't mean, like always being short because your chosen answers happened to be short?
-
----
-
-## Stage 5 · Combine, and hand it in (45 min)
-
-Now make combinations and keep the most interesting one.
-
-**Blend (Merge):** your examples adapter (stage 3) and your taste adapter (stage 4) were both trained on SmolLM2-360M, so they can be blended.
-
-1. Make three blends: t = 0.25, 0.5, 0.75.
-2. Export each.
-3. Put them side by side in Chat (up to four columns) and ask one probe. Where does the character of one turn into the other?
-
-**Stack (words on training):** on Modelfile, set *start from* to one of your exported models (trained, preferred or blended), and add your stage 2 instructions on top. Words and training combine.
-
-**Combinations worth trying:**
-- your trained model with a preset that fights it (Always French on a tree guide; Haiku only on a commentator);
-- the blend at t = 0.5 at temperature 1.3 with open choice;
-- someone else's adapter: unzip it on Share, and blend it with yours if it is on the same base;
-- a taste trained on the opposite of what you want, blended in at t = 0.25.
-
-**Choose your final model:** the one you would want someone else to hear.
-
-### The deliverable
-
-Hand in three things:
-
-1. **A model card**, filled in from [`model-card-template.md`](model-card-template.md): your concept, the recipe for each stage (copied from the terminal), your five probes answered by every version, the loss readings, and the combination you chose and why.
-2. **Your work as zips** from **Share**:
-   - your dataset (`zip data/<name>`);
-   - your adapters (`zip adapters/<name>`);
-   - your final blend, if you made one (`zip merges/<name>`).
-
-   Anyone can unzip them into their own Variable Machine and hear your model. Each zip carries its record of where its data came from and its license.
-3. **A one-minute demo:** one question, asked live in Chat, to the original and your final model side by side. Say what you changed and what you hear.
-
----
+Say on the card who did what.
 
 ## What to look for (for the class discussion, or grading)
 
-- **Each approach was used and compared on the same probes:** words, examples and taste, plus at least one combination.
-- **Honest notes:** where a change failed, memorised, or did something unintended. A clear account of a failure is worth as much as a success.
-- **Data handled with care:** the source and license of every dataset are on the card, and no private information was used.
-- **The final model has a character you can hear,** and the card explains which stage put it there.
+- **It trains, and you can show what training changed:** the same test before and after, with numbers.
+- **The why is clear:** each choice on the card has a reason, and the reasons come from what you saw happen.
+- **Use, steer and train are kept apart:** the card says which parts of the project are which.
+- **Honest notes:** where it fails, invents, or learned something you didn't mean. A clear account of a failure is worth as much as a success.
+- **Data handled with care:** every source and license is on the card; no one's private information; anyone recorded agreed.
+- **The larger project is real:** someone could build it, and the model is a working part of it, not a decoration.
 
 ## Notes for the teacher
 
-- Stages 3 and 4 need Python (`uv sync --project python` from the README). Check every Mac with `npm run doctor` before class.
-- On a 16GB Mac, Chat and training don't run at the same time: training stops the Ollama models to free memory, and Chat loads them again after.
-- Exporting a 360M model takes a minute and about 1GB: a full-size copy in `workspace/fused`, plus Ollama's own smaller one. Remove old exports on Adapters between stages if disks are tight.
-- The DC street-trees example (*import a public collection → example → dc-street-trees*) lets a student skip straight to stage 3 if stage 1 runs long.
+- Before class, run each demo's **Reproduce it** on a class Mac: it downloads everything, and the numbers show the Mac is set up. A checklist is at the end of [`briefs/README.md`](briefs/README.md).
+- Check every Mac with `npm run doctor`. Training needs Python (`uv sync --project python`, from the README).
+- On a 16GB Mac, Chat and training don't run at the same time: training stops the Ollama models to free memory, and Chat loads them again after. The gallery demo trains SmolLM2-1.7B at batch 1 for this reason.
+- Exporting a 360M model takes about 1GB, a 1.7B model about 5GB while it works. Remove old exports on Adapters between runs if disks are tight; `trash` moves things to the Trash, so empty it too.
+- The camera and microphone were not tried with real devices when the demos were tested: check them in Chrome on the class Macs first.

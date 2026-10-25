@@ -14,9 +14,9 @@ export default function AboutPanel() {
         <p className="start__text">
           For a class:{' '}
           <a className="text-link" href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/exercise.md" target="_blank" rel="noopener noreferrer">
-            the five-stage exercise
+            the group project
           </a>{' '}
-          uses all of this to make a model of your own, with a{' '}
+          starts from one of four worked demos and retrains it on your own data for a larger project, with a{' '}
           <a className="text-link" href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/model-card-template.md" target="_blank" rel="noopener noreferrer">
             model card
           </a>{' '}

@@ -1,72 +1,75 @@
 # Model card: <your model's name>
 
-**By:** <name> · **Date:** <date> · **Final model in Ollama:** `<name>` · **Base:** SmolLM2-360M-Instruct
+**Group:** <three names> · **Date:** <date> · **Demo:** <1 public data · 2 gallery · 3 gesture · 4 tangible>
+**The model:** `<name in Ollama>` (or gesture set `<name>`) · **Base:** <SmolLM2-360M-Instruct, SmolLM2-1.7B-Instruct, the hand tracker…>
+**Zips:** `data-<name>.zip` · `adapters-<name>.zip` (or `gestures-<name>.zip`)
 
-## The concept
+## In one sentence
 
-<One or two sentences: what character or job your model has, and how you would know it in one answer.>
+<What your model does: what goes in, what comes out.>
 
-## The five probes
+## The larger project
 
-1. <the one the concept is made for>
-2. <a little off to the side>
-3. <something it can't know>
-4. <one that invites a long answer>
-5. <a strange one>
+- **What it is:** <the project this model is a part of, in two or three sentences>
+- **Who it is for:** <…>
+- **Where the model lives:** <a local web app, a patch in TouchDesigner/Max/Pure Data, a printer, a gallery wall, a notebook…>
+- **What it does there:** <the model's job inside the project>
+- **What a person still has to check:** <what it gets wrong, and who catches it>
 
-## Stage 2 · Words (Modelfile)
+## Use, steer, train
 
-- **Variant:** `<name>` from `smollm2:360m` (and `<name>` from `qwen3:4b`)
-- **Instructions (SYSTEM):** "<…>"
-- **Temperature:** <…> · open choice: <on/off> · **example:** "<question>" → "<answer>"
-- **What words changed:** <…>
-- **What they didn't:** <…>
-- **Small model vs big model:** <…>
+| | in this project |
+|---|---|
+| **use** (ready-made, nothing changes) | <…> |
+| **steer** (instructions, a schema, examples in front of it) | <…> |
+| **train** (your examples changed it) | <…> |
 
-## Stage 3 · Examples (Train)
+## What we did
 
-- **Dataset:** `<name>` · <rows> rows, <n> set aside · **from:** <source> · **license:** <license>
-- **Command** (from the terminal): `train <…>`
-- **Loss reading** (the sentence under the chart): "<…>" · train <a → b>, valid <a → b>
-- **What it learned:** <form, facts, both?>
-- **An answer with the right shape and the wrong fact:** "<…>"
+The commands, in order, copied from the terminal (every run also keeps its own record in `workspace/runs/`).
 
-## Stage 4 · Taste (Prefer)
+```
+<data import …>
+<data split …>
+<train …>
+<export …>
+```
 
-- **Preference set:** `<name>` · <pairs> pairs · **"better" meant:** <…>
-- **Command:** `prefer <…>`
-- **Loss reading:** "<…>" (it starts near 0.69: no preference)
-- **What changed compared with the trained model:** <…>
-- **Anything it picked up that you didn't mean:** <…>
+## Why
 
-## Stage 5 · Combination
+The choices, and what made you choose them.
 
-- **Blends:** `<name>` at t = 0.25 / 0.5 / 0.75 · `merge <…>`
-- **Stack:** <Modelfile on top of which model, with which instructions>
-- **The one you chose, and why:** <…>
+- **The data:** <where it came from, and why this source>
+- **The rule** you cleaned, labelled or recorded by: <…>
+- **How many examples, and which kinds you added** after the first test: <…>
+- **The model you started from, and when you stopped training:** <…>
 
-## The five probes, every version
+## Before and after
 
-Paste short answers (the first line or two is enough).
+The same test, before you trained and after: the check script's numbers, the gesture grid, the renders that fit, or your own test.
 
-| probe | original | words | trained | preferred | final |
-|---|---|---|---|---|---|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
+| | before | after | after the added rows |
+|---|---|---|---|
+| <what you measured> | | | |
 
-## What surprised you
+Three answers on things it hadn't seen:
 
-<One thing each approach did that you didn't expect. A clear failure counts.>
+| input | before | after |
+|---|---|---|
+| | | |
+| | | |
+| | | |
+
+## One honest failure
+
+<Where it fails, invents, or learned something you didn't mean, and what you think causes it.>
 
 ## Data and licenses
 
-<Every dataset you used: where it came from and its license, as Variable Machine recorded it. Anything someone should know before using your model.>
+<Every source you used: where it came from and its license, as Variable Machine recorded it. Anyone whose hands, voice or work is in it, and that they agreed.>
 
-## Files handed in
+## Who did what
 
-- `data-<name>.zip`
-- `adapters-<name>.zip` (trained) and `adapters-<name>.zip` (preferred)
-- `merges-<name>.zip` (if you blended)
+- <name>: <…>
+- <name>: <…>
+- <name>: <…>

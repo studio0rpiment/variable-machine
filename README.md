@@ -45,7 +45,7 @@ It starts Ollama if it isn't running and opens http://localhost:4817 in your bro
 3. **Modelfile:** choose a preset, press make variant, and ask both the original and your variant the same question.
 4. **Data → Train:** choose a dataset, split it, open Train with it, and train. When it finishes, the next step exports your model and opens **Chat** with it.
 
-**The class exercise:** [docs/exercise.md](docs/exercise.md) takes students through five stages: a concept and five probe questions, then words (Modelfile), examples (Train) and taste (Prefer), then combinations (Merge, and words on top of training). They hand in a model of their own with a [model card](docs/model-card-template.md), their work as zips, and a one-minute demo.
+**The class project:** [docs/exercise.md](docs/exercise.md): in groups of three, students choose one of the [four demos](docs/briefs/README.md) (public data, gallery, gesture, tangible), make it work, then retrain it on data of their own for a larger project. They hand in the model they made, as zips, with a [model card](docs/model-card-template.md) that says what they did, why, and what the larger project is, and show it in a three-minute demo.
 
 **Four worked examples:** [docs/examples](docs/examples/README.md) has one model made each way (studio crit by words, colour → hex by examples, haiku that keep 5-7-5 by taste, and a blend of the last two), with the commands, manifests, loss numbers and before/after answers, including what went wrong first.
 
