@@ -820,8 +820,6 @@ a.text-button { text-decoration: none; }
 
 /* ---- Move: the picture with its points, recording, the check grid ---- */
 .move-source { margin: 0.5rem 0 1rem; }
-.move-work { display: grid; grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr); gap: 2rem; align-items: start; margin-top: 1rem; }
-@media (max-width: 56rem) { .move-work { grid-template-columns: 1fr; } }
 .move-view { position: relative; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .move-view__picture { width: 100%; height: auto; display: block; border: 1px solid var(--line); transform: scaleX(-1); }
 img.move-view__picture { transform: none; }
@@ -868,3 +866,18 @@ img.move-view__picture { transform: none; }
 .move-start .field { flex: none; width: 100%; max-width: 20rem; }
 .move-help { margin: 0; max-width: 40rem; line-height: 1.5; font-size: 0.75rem; letter-spacing: 0.02em; }
 .move-help li { margin-bottom: 0.25rem; }
+
+/* the gesture tab in two columns: setting up on the left; the camera, examples, training and testing on the right, kept in view while the left scrolls */
+.move-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); gap: 2.5rem; align-items: start; }
+.move-setup { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.move-setup .cards { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+.move-studio { position: sticky; top: 0; display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; max-height: calc(100vh - var(--terminal-height) - 7rem); overflow-y: auto; padding: 0.5rem 0.25rem 1rem 0; }
+.move-studio .move-source { margin: 0; }
+.move-studio__empty { border: 1px dashed var(--muted); padding: 2rem 1rem; margin: 0; line-height: 1.5; }
+.move-test { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; border: 1px dashed var(--muted); padding: 0.75rem 1rem 1rem; margin-top: 0.5rem; }
+.move-test h3 { margin: 0; }
+@media (max-width: 60rem) {
+  .move-layout { grid-template-columns: minmax(0, 1fr); }
+  .move-studio { position: static; max-height: none; overflow: visible; }
+}
+.move-test .move-guess { align-self: stretch; }

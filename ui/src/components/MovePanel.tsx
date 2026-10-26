@@ -15,6 +15,14 @@ import Loading, { DownloadWait } from './Loading'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const LABEL = /^[\w .-]{1,40}$/
+/** A set's name as it is typed: small letters, spaces turned into hyphens, anything a folder name can't hold left out. */
+const asName = (typed: string) =>
+  typed
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/^[._-]+/, '')
+    .slice(0, 64)
 /** examples recorded while a record button is held: at most this many a second, so a few seconds make a good handful */
 const PER_SECOND = 10
 
@@ -315,6 +323,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
   const what = tracker === 'hands' ? 'hand' : 'body'
   const trackerInfo = TRACKER_MODELS.find((t) => t.name === tracker)!
+  const taken = sets.some((x) => x.folder === newName)
   const getTracker = () => void run(`get ${tracker}`, `model get ${tracker}`)
 
   const steps = [
@@ -346,213 +355,223 @@ export default function MovePanel({ active }: { active: boolean }) {
 
   return (
     <section className="panel" aria-label="move">
-      <h2 className="panel__title label">steps · from your {what} to a gesture in your patch</h2>
-      <Steps steps={steps} />
+      <div className="move-layout">
+        <div className="move-setup">
+          <h2 className="panel__title label">steps · from your {what} to a gesture in your patch</h2>
+          <Steps steps={steps} />
 
-      <h2 className="panel__title label">trackers · run in the page</h2>
-      <p className="models-intro">
-        <KindLine kind="moves" />
-      </p>
-      <div className="cards">
-        {TRACKER_MODELS.map((t) => (
-          <TrackerCard key={t.name} t={t} here={!!here[t.name]} busy={busy === `get ${t.name}`} onGet={() => void run(`get ${t.name}`, `model get ${t.name}`)} />
-        ))}
-      </div>
+          <h2 className="panel__title label">your gestures · workspace/gestures</h2>
+          <div className="look-sets">
+            <Explained id="move.set">
+              <label className="field">
+                <span className="label label--muted">gesture set</span>
+                <select value={name} onChange={(e) => setName(e.target.value)}>
+                  {sets.map((s) => (
+                    <option key={s.folder} value={s.folder}>
+                      {s.folder} · {s.tracker}
+                    </option>
+                  ))}
+                  <option value="">a new set…</option>
+                </select>
+              </label>
+            </Explained>
+            {!name && (
+              <div className="move-start">
+                <label className="field">
+                  <span className="label label--muted">name</span>
+                  <input type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder="studio-hands" spellCheck={false} />
+                </label>
+                <div className="field">
+                  <span className="label label--muted">its tracker</span>
+                  <div className="choice" role="radiogroup" aria-label="its tracker">
+                    {(['hands', 'body'] as Tracker[]).map((t) => (
+                      <button key={t} type="button" role="radio" aria-checked={t === newTracker} className={`text-button ${t === newTracker ? 'is-active' : ''}`.trim()} onClick={() => setNewTracker(t)}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="label label--muted">this picks what the set follows; it doesn't download anything</span>
+                </div>
+                {offerTracker}
+                <Explained id="move.new">
+                  <button
+                    type="button"
+                    className="act-button"
+                    disabled={!NAME.test(newName) || taken || busy === 'new'}
+                    onClick={() => void run('new', newLine).then((ok) => ok && setName(newName))}
+                  >
+                    {busy === 'new' ? 'making the set…' : 'make the set'}
+                  </button>
+                </Explained>
+                {!newName && <span className="label label--muted">name it first</span>}
+                {taken && <span className="label">there is already a set called {newName}: choose it above, or give this one another name</span>}
+                <CommandPreview command={newLine} onRun={() => void run('new', newLine).then((ok) => ok && setName(newName))} disabled={!NAME.test(newName) || taken} running={busy === 'new'} label="make the set" />
+              </div>
+            )}
+          </div>
 
-      <h2 className="panel__title label">your gestures · workspace/gestures</h2>
-      <div className="look-sets">
-        <Explained id="move.set">
-          <label className="field">
-            <span className="label label--muted">gesture set</span>
-            <select value={name} onChange={(e) => setName(e.target.value)}>
-              {sets.map((s) => (
-                <option key={s.folder} value={s.folder}>
-                  {s.folder} · {s.tracker}
-                </option>
-              ))}
-              <option value="">a new set…</option>
-            </select>
-          </label>
-        </Explained>
-        {!name && (
-          <div className="move-start">
-            <label className="field">
-              <span className="label label--muted">name</span>
-              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} placeholder="studio-hands" spellCheck={false} />
-            </label>
-            <div className="field">
-              <span className="label label--muted">its tracker</span>
-              <div className="choice" role="radiogroup" aria-label="its tracker">
-                {(['hands', 'body'] as Tracker[]).map((t) => (
-                  <button key={t} type="button" role="radio" aria-checked={t === newTracker} className={`text-button ${t === newTracker ? 'is-active' : ''}`.trim()} onClick={() => setNewTracker(t)}>
-                    {t}
+          <h2 className="panel__title label">trackers · run in the page</h2>
+          <p className="models-intro">
+            <KindLine kind="moves" />
+          </p>
+          <div className="cards">
+            {TRACKER_MODELS.map((t) => (
+              <TrackerCard key={t.name} t={t} here={!!here[t.name]} busy={busy === `get ${t.name}`} onGet={() => void run(`get ${t.name}`, `model get ${t.name}`)} />
+            ))}
+          </div>
+
+        </div>
+
+        <div className="move-studio" aria-label="camera, examples and training">
+          {set ? (
+            <>
+              <div className="choice move-source" role="radiogroup" aria-label="source">
+                {(['camera', 'photo'] as const).map((s) => (
+                  <button key={s} type="button" role="radio" aria-checked={s === source} className={`text-button ${s === source ? 'is-active' : ''}`.trim()} onClick={() => (setSource(s), setNote(''))}>
+                    {s === 'camera' ? 'the camera' : 'a photo'}
                   </button>
                 ))}
               </div>
-              <span className="label label--muted">this picks what the set follows; it doesn't download anything</span>
-            </div>
-            {offerTracker}
-            <Explained id="move.new">
-              <button
-                type="button"
-                className="act-button"
-                disabled={!NAME.test(newName) || busy === 'new'}
-                onClick={() => void run('new', newLine).then((ok) => ok && setName(newName))}
-              >
-                {busy === 'new' ? 'making the set…' : 'make the set'}
-              </button>
-            </Explained>
-            {!NAME.test(newName) && <span className="label label--muted">name it first: small letters, numbers, - or _</span>}
-            <CommandPreview command={newLine} onRun={() => void run('new', newLine).then((ok) => ok && setName(newName))} disabled={!NAME.test(newName)} running={busy === 'new'} label="make the set" />
-          </div>
-        )}
-      </div>
-
-      {set && (
-        <>
-          <div className="choice move-source" role="radiogroup" aria-label="source">
-            {(['camera', 'photo'] as const).map((s) => (
-              <button key={s} type="button" role="radio" aria-checked={s === source} className={`text-button ${s === source ? 'is-active' : ''}`.trim()} onClick={() => (setSource(s), setNote(''))}>
-                {s === 'camera' ? 'the camera' : 'a photo'}
-              </button>
-            ))}
-          </div>
-          {source === 'photo' && <PicturePicker value={photo} onChange={choosePhoto} />}
-          {offerTracker}
-          {source === 'camera' && trackerHere && camera !== 'on' && (
-            <div className="move-start">
-              {camera === 'starting' ? (
-                <Loading label="waiting for the camera: allow it if the browser asks" />
-              ) : (
-                <Explained id="move.camera">
-                  <button type="button" className="act-button" onClick={() => void startCamera()}>
-                    start the camera
-                  </button>
-                </Explained>
-              )}
-              <CameraHelp camera={camera} message={cameraMessage} />
-            </div>
-          )}
-          {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
-
-          <div className="move-work">
-            <figure className="move-view">
-              {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
-              <canvas ref={canvas} className="move-view__points" />
-              <figcaption className="label label--muted">
-                {found ? `${tracker === 'hands' ? 'a hand' : 'a body'}: ${tracker === 'hands' ? 21 : 33} points` : `no ${tracker === 'hands' ? 'hand' : 'body'} found yet`}
-                {' · only the points are kept, never the picture'}
-              </figcaption>
-            </figure>
-
-            <div className="move-side">
-              <h3 className="label">1 · record examples</h3>
-              {labels.map((l) => (
-                <div key={l} className="move-label">
-                  <span className="move-label__name">{l}</span>
-                  <span className="label label--muted">{set.counts[l]} examples</span>
-                  {source === 'camera' ? (
-                    <Explained id="move.record">
-                      <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onPointerDown={() => startRecording(l)} onPointerUp={stopRecording} onPointerLeave={stopRecording}>
-                        {recording === l ? 'recording…' : 'hold to record'}
+              {source === 'photo' && <PicturePicker value={photo} onChange={choosePhoto} />}
+              {offerTracker}
+              {source === 'camera' && trackerHere && camera !== 'on' && (
+                <div className="move-start">
+                  {camera === 'starting' ? (
+                    <Loading label="waiting for the camera: allow it if the browser asks" />
+                  ) : (
+                    <Explained id="move.camera">
+                      <button type="button" className="act-button" onClick={() => void startCamera()}>
+                        start the camera
                       </button>
                     </Explained>
+                  )}
+                  <CameraHelp camera={camera} message={cameraMessage} />
+                </div>
+              )}
+              {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
+
+              <figure className="move-view">
+                {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
+                <canvas ref={canvas} className="move-view__points" />
+                <figcaption className="label label--muted">
+                  {found ? `${tracker === 'hands' ? 'a hand' : 'a body'}: ${tracker === 'hands' ? 21 : 33} points` : `no ${tracker === 'hands' ? 'hand' : 'body'} found yet`}
+                  {' · only the points are kept, never the picture'}
+                </figcaption>
+              </figure>
+
+              <div className="move-side">
+                <h3 className="label">1 · record examples</h3>
+                {labels.map((l) => (
+                  <div key={l} className="move-label">
+                    <span className="move-label__name">{l}</span>
+                    <span className="label label--muted">{set.counts[l]} examples</span>
+                    {source === 'camera' ? (
+                      <Explained id="move.record">
+                        <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onPointerDown={() => startRecording(l)} onPointerUp={stopRecording} onPointerLeave={stopRecording}>
+                          {recording === l ? 'recording…' : 'hold to record'}
+                        </button>
+                      </Explained>
+                    ) : (
+                      <button type="button" className="text-button" disabled={!found} onClick={() => latest.current && void save(l, [normalize(latest.current, tracker)])}>
+                        add this photo
+                      </button>
+                    )}
+                    <button type="button" className="text-button" onClick={() => void run(`clear ${l}`, joinWords(['gesture', 'clear', name, l]))}>
+                      forget
+                    </button>
+                  </div>
+                ))}
+                <div className="move-label">
+                  <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
+                  {source === 'camera' ? (
+                    <button
+                      type="button"
+                      className={`text-button ${recording === label.trim() && label ? 'is-active' : ''}`.trim()}
+                      disabled={!LABEL.test(label.trim())}
+                      onPointerDown={() => startRecording(label.trim())}
+                      onPointerUp={() => (stopRecording(), setLabel(''))}
+                      onPointerLeave={stopRecording}
+                    >
+                      hold to record
+                    </button>
                   ) : (
-                    <button type="button" className="text-button" disabled={!found} onClick={() => latest.current && void save(l, [normalize(latest.current, tracker)])}>
+                    <button type="button" className="text-button" disabled={!found || !LABEL.test(label.trim())} onClick={() => latest.current && void save(label.trim(), [normalize(latest.current, tracker)]).then(() => setLabel(''))}>
                       add this photo
                     </button>
                   )}
-                  <button type="button" className="text-button" onClick={() => void run(`clear ${l}`, joinWords(['gesture', 'clear', name, l]))}>
-                    forget
-                  </button>
                 </div>
-              ))}
-              <div className="move-label">
-                <input className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
-                {source === 'camera' ? (
-                  <button
-                    type="button"
-                    className={`text-button ${recording === label.trim() && label ? 'is-active' : ''}`.trim()}
-                    disabled={!LABEL.test(label.trim())}
-                    onPointerDown={() => startRecording(label.trim())}
-                    onPointerUp={() => (stopRecording(), setLabel(''))}
-                    onPointerLeave={stopRecording}
-                  >
-                    hold to record
-                  </button>
-                ) : (
-                  <button type="button" className="text-button" disabled={!found || !LABEL.test(label.trim())} onClick={() => latest.current && void save(label.trim(), [normalize(latest.current, tracker)]).then(() => setLabel(''))}>
-                    add this photo
-                  </button>
-                )}
-              </div>
-              {note && <p className="label">{note}</p>}
+                {note && <p className="label">{note}</p>}
 
-              <h3 className="label">2 · train</h3>
-              <Explained id="move.train">
-                <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={labels.length < 2} running={busy === 'train'} label="train" />
-              </Explained>
-              {set.trained && (
-                <>
-                  <p className="label label--muted">
-                    {set.trained.examples} examples, k = {set.trained.k} · {set.trained.check.correct} of {set.trained.check.heldOut} set aside named right
-                  </p>
-                  <table className="move-grid">
-                    <thead>
-                      <tr>
-                        <th className="label label--muted">made \ named</th>
-                        {Object.keys(set.trained.check.confusion).map((l) => (
-                          <th key={l} className="label">
-                            {l}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(set.trained.check.confusion).map(([a, row]) => (
-                        <tr key={a}>
-                          <th className="label">{a}</th>
-                          {Object.entries(row).map(([b, n]) => (
-                            <td key={b} className={a === b ? 'is-right' : n ? 'is-wrong' : ''}>
-                              {n}
-                            </td>
+                <h3 className="label">2 · train</h3>
+                <Explained id="move.train">
+                  <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={labels.length < 2} running={busy === 'train'} label="train" />
+                </Explained>
+                {set.trained && (
+                  <>
+                    <p className="label label--muted">
+                      {set.trained.examples} examples, k = {set.trained.k} · {set.trained.check.correct} of {set.trained.check.heldOut} set aside named right
+                    </p>
+                    <table className="move-grid">
+                      <thead>
+                        <tr>
+                          <th className="label label--muted">made \ named</th>
+                          {Object.keys(set.trained.check.confusion).map((l) => (
+                            <th key={l} className="label">
+                              {l}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              )}
+                      </thead>
+                      <tbody>
+                        {Object.entries(set.trained.check.confusion).map(([a, row]) => (
+                          <tr key={a}>
+                            <th className="label">{a}</th>
+                            {Object.entries(row).map(([b, n]) => (
+                              <td key={b} className={a === b ? 'is-right' : n ? 'is-wrong' : ''}>
+                                {n}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
 
-              <h3 className="label">3 · test it, and send it on</h3>
-              <Explained id="move.test">
-                <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => (setTesting((t) => !t), setGuess(null))} aria-pressed={testing}>
-                  {testing ? 'stop testing' : 'test it live'}
-                </button>
-              </Explained>
-              {testing && guess && (
-                <p className="move-guess">
-                  <span className="move-guess__label">{guess.label}</span>
-                  <span className="move-guess__bar" style={{ width: `${guess.confidence * 100}%` }} aria-hidden="true" />
-                  <span className="label label--muted">{Math.round(guess.confidence * 100)}% of the {set.trained?.k} nearest agree</span>
-                </p>
-              )}
-              <div className="inline-fields">
-                <label className="field move-port">
-                  <span className="label label--muted">OSC port</span>
-                  <input value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
-                </label>
-                <Explained id="move.send">
-                  <CommandPreview command={sendLine} onRun={() => void run('send', sendLine).then((ok) => ok && setSending(true))} disabled={!set.trained || !port} running={busy === 'send'} label="send" />
-                </Explained>
-                <button type="button" className="text-button" onClick={() => void run('stop', `gesture send ${name} --stop`).then(() => setSending(false))}>
-                  stop sending
-                </button>
+                <div className="move-test">
+                  <h3 className="label">3 · test it, and send it on</h3>
+                  <Explained id="move.test">
+                    <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => (setTesting((t) => !t), setGuess(null))} aria-pressed={testing}>
+                      {testing ? 'stop testing' : 'test it live'}
+                    </button>
+                  </Explained>
+                  {testing && guess && (
+                    <p className="move-guess">
+                      <span className="move-guess__label">{guess.label}</span>
+                      <span className="move-guess__bar" style={{ width: `${guess.confidence * 100}%` }} aria-hidden="true" />
+                      <span className="label label--muted">{Math.round(guess.confidence * 100)}% of the {set.trained?.k} nearest agree</span>
+                    </p>
+                  )}
+                  <div className="inline-fields">
+                    <label className="field move-port">
+                      <span className="label label--muted">OSC port</span>
+                      <input type="text" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
+                    </label>
+                    <Explained id="move.send">
+                      <CommandPreview command={sendLine} onRun={() => void run('send', sendLine).then((ok) => ok && setSending(true))} disabled={!set.trained || !port} running={busy === 'send'} label="send" />
+                    </Explained>
+                    <button type="button" className="text-button" onClick={() => void run('stop', `gesture send ${name} --stop`).then(() => setSending(false))}>
+                      stop sending
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          ) : (
+            <p className="move-studio__empty label label--muted">your camera, your gestures and training appear here once there is a set: make one on the left</p>
+          )}
+        </div>
+      </div>
     </section>
   )
 }
