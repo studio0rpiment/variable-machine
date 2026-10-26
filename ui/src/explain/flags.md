@@ -539,6 +539,11 @@ The way from nothing to a gesture your patch can hear, in order. Each step says 
 
 Opens your camera in this page. The browser asks you once, when you press it; nothing is recorded or saved but the points the tracker finds, and the camera turns off when you leave this tab. If it is blocked, the message under this button says where to allow it.
 
+### Use it in your patch
+`move.use`
+
+Where a gesture goes once you send it: an OSC message to this computer, on the port you chose, for as long as this tab tests it live. TouchDesigner, Max and Pure Data each pick it up with one or two objects, listed here. The set itself travels as a zip from Share.
+
 ### Download the tracker
 `move.get`
 
@@ -547,7 +552,7 @@ Downloads the tracker, one small file from Google's MediaPipe, into workspace/to
 ### Gesture set
 `move.set`
 
-A set of your gestures, with the examples you recorded and the model trained on them, in workspace/gestures. A set follows hands or a body, not both.
+A set is a few gestures, the examples recorded of each, and the model trained on them, in workspace/gestures. Start with the example: three hand gestures recorded for you, ready to train, so you can see it work (and fail) with your own hand. Then make your own. A set follows hands or a body, not both.
 
 ### Make a set
 `move.new`

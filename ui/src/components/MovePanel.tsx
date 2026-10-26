@@ -50,6 +50,50 @@ function CameraHelp({ camera, message }: { camera: Camera; message: string }) {
   return null
 }
 
+/**
+ * Where a gesture goes once it is sent, and how to pick it up: the OSC message,
+ * and the few objects that receive it in TouchDesigner, Max and Pure Data.
+ */
+function UseIt({ name, port, sending }: { name: string; port: string; sending: boolean }) {
+  const address = `/vm/${name}`
+  return (
+    <Explained id="move.use">
+      <div className="move-test move-use">
+        <h3 className="label">4 · use it in your patch</h3>
+        <p className="move-help">
+          With <i>test it live</i> and <i>send</i> on{sending ? ' (sending now)' : ''}, every guess goes to this computer, port {port}, as an OSC message: the address, the gesture's name, and how many of the nearest examples agree (0 to 1).
+        </p>
+        <code className="move-use__msg">
+          {address} "fist" 0.92
+        </code>
+        <p className="move-help">Keep this tab open while you play: Variable Machine does the seeing, your patch does the rest.</p>
+        <dl className="move-use__list">
+          <dt>TouchDesigner</dt>
+          <dd>
+            an <b>OSC In DAT</b>, Network Port {port}. Each guess arrives as a row: the address, then the gesture and the confidence. Act on it with a DAT Execute, or pick the gesture out with a Select DAT.
+          </dd>
+          <dt>Max</dt>
+          <dd>
+            <code>[udpreceive {port}]</code> → <code>[route {address}]</code> → <code>[unpack s f]</code>: the gesture out of the left, the confidence out of the right.
+          </dd>
+          <dt>Pure Data</dt>
+          <dd>
+            <code>[netreceive -u -b {port}]</code> → <code>[oscparse]</code> → <code>[list trim]</code> → <code>[route vm]</code> → <code>[route {name}]</code>: the gesture and the confidence.
+          </dd>
+          <dt>Check it arrives</dt>
+          <dd>
+            in a Terminal, in the variable-machine folder: <code>node docs/briefs/3-gesture/osc-listen.mjs {port}</code> prints each message.
+          </dd>
+          <dt>Take the set with you</dt>
+          <dd>
+            Share → <code>zip gestures/{name}</code>: the examples and the trained model, to unzip into anyone's Variable Machine.
+          </dd>
+        </dl>
+      </div>
+    </Explained>
+  )
+}
+
 /** The steps from nothing to a gesture in TouchDesigner, each done, now, or waiting. */
 function Steps({ steps }: { steps: { name: string; how: string; done: boolean }[] }) {
   const now = steps.findIndex((x) => !x.done)
@@ -138,6 +182,7 @@ function draw(canvas: HTMLCanvasElement, w: number, h: number, points: Point[] |
 export default function MovePanel({ active }: { active: boolean }) {
   const [here, setHere] = useState<Record<string, boolean>>({})
   const [sets, setSets] = useState<GestureSet[]>([])
+  const [examples, setExamples] = useState<(GestureSet & { about?: string })[]>([])
   const [name, setName] = useState('')
   const [newName, setNewName] = useState('')
   const [newTracker, setNewTracker] = useState<Tracker>('hands')
@@ -176,6 +221,7 @@ export default function MovePanel({ active }: { active: boolean }) {
     setHere(Object.fromEntries(TRACKER_MODELS.map((t) => [t.name, tools.some((x) => x.folder === t.name)])))
     const g = await readManifests<GestureSet>('gestures')
     setSets(g)
+    setExamples(await readManifests<GestureSet & { about?: string }>('examples/gestures'))
     // the first set is chosen once, on opening; after that "a new set…" stays chosen while files change
     if (!picked.current) setName((n) => n || g[0]?.folder || '')
     picked.current = true
@@ -328,11 +374,11 @@ export default function MovePanel({ active }: { active: boolean }) {
 
   const steps = [
     { name: 'get the tracker', how: `download the ${tracker} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
-    { name: 'make a set', how: 'give it a name, choose hands or body, and press make the set', done: hasSet },
+    { name: 'choose a set', how: 'start with the example set, or make your own: give it a name, choose hands or body, and press make the set', done: hasSet },
     { name: 'start the camera', how: 'press start the camera, and allow it when the browser asks (or use a photo)', done: camera === 'on' || (source === 'photo' && !!photo) },
     { name: 'record two or more gestures', how: 'name a gesture, then hold to record for 3–5 seconds while you make it; then another', done: labels.length >= 2 },
     { name: 'train', how: 'press train: it takes a second, and shows which gestures it mixes up', done: !!set?.trained },
-    { name: 'test it, and send it on', how: 'test it live, then send it to TouchDesigner, Max or Pure Data as OSC', done: testing || sending },
+    { name: 'test it, and send it on', how: 'test it live, then send it on as OSC; "use it in your patch" on the right says what to put in TouchDesigner, Max or Pure Data', done: testing || sending },
   ]
 
   /** The tracker, offered right where it is needed: a button, or its download as it happens. */
@@ -360,20 +406,40 @@ export default function MovePanel({ active }: { active: boolean }) {
           <h2 className="panel__title label">steps · from your {what} to a gesture in your patch</h2>
           <Steps steps={steps} />
 
-          <h2 className="panel__title label">your gestures · workspace/gestures</h2>
+          <h2 className="panel__title label">gesture sets · start with the example, then make your own</h2>
           <div className="look-sets">
             <Explained id="move.set">
-              <label className="field">
-                <span className="label label--muted">gesture set</span>
-                <select value={name} onChange={(e) => setName(e.target.value)}>
-                  {sets.map((s) => (
-                    <option key={s.folder} value={s.folder}>
-                      {s.folder} · {s.tracker}
-                    </option>
+              <div className="move-sets" role="radiogroup" aria-label="gesture sets">
+                {examples
+                  .filter((x) => !sets.some((s) => s.folder === x.folder))
+                  .map((x) => (
+                    <button key={x.folder} type="button" role="radio" aria-checked={false} className="move-set move-set--example" disabled={busy === `example ${x.folder}`} onClick={() => void run(`example ${x.folder}`, `gesture example ${x.folder}`).then((ok) => ok && setName(x.folder))}>
+                      <span className="move-set__name">{x.folder}</span>
+                      <span className="label label--muted">
+                        the example · {Object.keys(x.counts).join(', ')} · {Object.values(x.counts).reduce((a, b) => a + b, 0)} examples
+                      </span>
+                      <span className="label">{busy === `example ${x.folder}` ? 'copying it in…' : 'start here: copy it in'}</span>
+                    </button>
                   ))}
-                  <option value="">a new set…</option>
-                </select>
-              </label>
+                {sets.map((x) => {
+                  const n = Object.values(x.counts).reduce((a, b) => a + b, 0)
+                  const isExample = examples.some((e) => e.folder === x.folder)
+                  return (
+                    <button key={x.folder} type="button" role="radio" aria-checked={x.folder === name} className={`move-set ${x.folder === name ? 'is-active' : ''}`.trim()} onClick={() => setName(x.folder)}>
+                      <span className="move-set__name">{x.folder}</span>
+                      <span className="label label--muted">
+                        {isExample ? 'the example · ' : ''}
+                        {x.tracker} · {Object.keys(x.counts).filter((l) => x.counts[l] > 0).length} gestures · {n} examples
+                      </span>
+                      <span className="label label--muted">{x.trained ? 'trained' : 'not trained yet'}</span>
+                    </button>
+                  )
+                })}
+                <button type="button" role="radio" aria-checked={!name} className={`move-set move-set--new ${!name ? 'is-active' : ''}`.trim()} onClick={() => setName('')}>
+                  <span className="move-set__name">+ make your own</span>
+                  <span className="label label--muted">your gestures, your hand, your camera</span>
+                </button>
+              </div>
             </Explained>
             {!name && (
               <div className="move-start">
@@ -565,6 +631,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                     </button>
                   </div>
                 </div>
+                {set.trained && <UseIt name={name} port={port || '9000'} sending={sending} />}
               </div>
             </>
           ) : (

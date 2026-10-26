@@ -881,3 +881,18 @@ img.move-view__picture { transform: none; }
   .move-studio { position: static; max-height: none; overflow: visible; }
 }
 .move-test .move-guess { align-self: stretch; }
+
+/* the gesture sets as choices you can see: the example, yours, and a new one */
+.move-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 0.75rem; width: 100%; }
+.move-set { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; text-align: left; padding: 0.7rem 0.8rem; border: 1px dashed var(--muted); }
+.move-set__name { color: var(--act); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.8rem; overflow-wrap: anywhere; }
+.move-set:hover:not(:disabled), .move-set:focus-visible { border-color: var(--act); background: var(--act-wash); }
+.move-set.is-active { border-style: solid; border-color: var(--act); }
+.move-set--example { border-color: var(--act); }
+.move-set--new .move-set__name { text-transform: none; }
+.look-sets .move-sets { flex-basis: 100%; }
+.move-use__msg { display: block; padding: 0.4rem 0.6rem; border-left: 1px solid var(--act); color: var(--line); }
+.move-use__list { margin: 0; display: grid; grid-template-columns: 1fr; gap: 0.2rem; font-size: 0.75rem; line-height: 1.5; }
+.move-use__list dt { color: var(--line); margin-top: 0.5rem; }
+.move-use__list dd { margin: 0; color: var(--muted); }
+.move-use__list code { color: var(--line); }

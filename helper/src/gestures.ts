@@ -122,6 +122,25 @@ async function create(name: string, tracker: string, line: string) {
   return true
 }
 
+const EXAMPLES = path.join(WORKSPACE, 'examples', 'gestures')
+
+/**
+ * `gesture example <set>`: copy a gesture set that comes with the app
+ * (workspace/examples/gestures/<set>/) into workspace/gestures/, untrained,
+ * so training it is the first thing you do with it.
+ */
+async function example(set: string) {
+  const sets = await fs.readdir(EXAMPLES).catch(() => [] as string[])
+  if (!sets.includes(set)) return print(`usage: gesture example <${sets.join('|') || 'set'}>   (gesture sets that come with Variable Machine)`), false
+  if (await readManifest(set)) return print(`workspace/gestures/${set} is already here`), false
+  await fs.cp(path.join(EXAMPLES, set), dir(set), { recursive: true })
+  const m = await readManifest(set)
+  if (m) print(`  ${Object.entries(m.counts).map(([l, n]) => `${l} ${n}`).join(' · ')} · ${m.license}`)
+  print(`  ◂ workspace/gestures/${set}/ · ${m?.tracker}: train it, then test it live with your own ${m?.tracker === 'body' ? 'body' : 'hand'}`)
+  broadcast({ type: 'workspace.changed', path: `gestures/${set}/manifest.json`, kind: 'add' })
+  return true
+}
+
 async function trainSet(name: string, kText: string | undefined, line: string) {
   const m = await readManifest(name)
   if (!m) return print(`gesture: no set ${name}`), false
@@ -184,10 +203,11 @@ export async function gestureCommand(args: string[], line: string): Promise<bool
   const { pos, opts } = flags(rest)
   const name = pos[0] ?? ''
   if (sub === 'new') return create(name, opts.tracker ?? '', line)
+  if (sub === 'example') return example(name)
   if (sub === 'train') return trainSet(name, opts.k, line)
   if (sub === 'clear') return clear(name, pos.slice(1).join(' '), line)
   if (sub === 'send') return send(name, opts)
-  print('usage: gesture new <name> --tracker hands|body | gesture train <name> [--k 5] | gesture clear <name> <gesture> | gesture send <name> --port 9000 | gesture send <name> --stop')
+  print('usage: gesture new <name> --tracker hands|body | gesture example example-hands | gesture train <name> [--k 5] | gesture clear <name> <gesture> | gesture send <name> --port 9000 | gesture send <name> --stop')
   return false
 }
 

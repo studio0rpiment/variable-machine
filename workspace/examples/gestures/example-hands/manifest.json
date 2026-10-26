@@ -1,0 +1,19 @@
+{
+  "name": "example-hands",
+  "kind": "gesture",
+  "created": "2026-10-26T00:00:00.000Z",
+  "license": "CC0 (recorded for Variable Machine)",
+  "about": "Three hand gestures recorded with a laptop camera, a few seconds each: an open hand, a fist and a thumbs up. Points only (21 per hand, measured from the wrist), no pictures. Train it, test it live with your own hand, and see where it fails before you record your own set.",
+  "inputs": [
+    "workspace/gestures/example-hands/examples.jsonl"
+  ],
+  "command": [
+    "gesture example example-hands"
+  ],
+  "tracker": "hands",
+  "counts": {
+    "thumbs up": 36,
+    "fist": 31,
+    "open hand": 46
+  }
+}

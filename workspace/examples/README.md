@@ -11,4 +11,6 @@ Small datasets written for Variable Machine, released under CC0 (public domain),
 
 - `images/classic-cv`: four photos of classic computer-science subjects for the Look tab (the debugging rubber duck, a duck in a glass bowl, the Utah teapot, the Stanford bunny), each with its author and license in the manifest. Copy them in with `look example classic-cv`, or "add the example photos" on the Look tab.
 
+- `gestures/example-hands`: 113 examples of three hand gestures (open hand, fist, thumbs up), recorded with a laptop camera, a few seconds each: points only, no pictures. Copy it in with `gesture example example-hands`, or "start here" on the gesture tab, then train it and test it live with your own hand.
+
 Copy one into your workspace with `data import example <name> <as>`, or from the Data panel.
