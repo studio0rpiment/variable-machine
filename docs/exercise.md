@@ -72,7 +72,7 @@ Say on the card who did what.
 ## Notes for the teacher
 
 - Before class, run each demo's **Reproduce it** on a class Mac: it downloads everything, and the numbers show the Mac is set up. A checklist is at the end of [`briefs/README.md`](briefs/README.md).
-- Check every Mac with `npm run doctor`. Training needs Python (`uv sync --project python`, from the README).
+- Check every Mac with `npm run doctor`. Training needs Python: Variable Machine.command installs it the first time (or `uv sync --project python` by hand).
 - On a 16GB Mac, Chat and training don't run at the same time: training stops the Ollama models to free memory, and Chat loads them again after. The gallery demo trains SmolLM2-1.7B at batch 1 for this reason.
 - Exporting a 360M model takes about 1GB, a 1.7B model about 5GB while it works. Remove old exports on Adapters between runs if disks are tight; `trash` moves things to the Trash, so empty it too.
 - The camera and microphone were not tried with real devices when the demos were tested: check them in Chrome on the class Macs first.

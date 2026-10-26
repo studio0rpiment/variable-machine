@@ -100,25 +100,20 @@
 
   <ol class="steps">
     <li><div>
-      <strong>Install three things</strong> <span class="muted">(once)</span>
+      <strong>Install two things</strong> <span class="muted">(once)</span>
       <ul>
-        <li><strong>Ollama</strong>, which runs the models: download it from <a href="https://ollama.com">ollama.com</a> and install it. You don't need to open it.</li>
-        <li><strong>Node 22 or newer</strong>, which runs the app: download the LTS installer from <a href="https://nodejs.org">nodejs.org</a>.</li>
-        <li><strong>uv</strong>, which runs training: open Terminal and paste</li>
+        <li><strong>Ollama</strong>, which runs the models: download it from <a href="https://ollama.com/download">ollama.com</a> and install it. You don't need to open it.</li>
+        <li><strong>Node 22 or newer</strong>, which runs the app: download the LTS installer from <a href="https://nodejs.org">nodejs.org</a> and open it.</li>
       </ul>
-      <div class="cmd"><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code><button class="copy" type="button">copy</button></div>
     </div></li>
     <li><div>
-      <strong>Get Variable Machine</strong> <span class="muted">(once)</span>
-      <p>Download the zip above and unzip it, or clone it:</p>
+      <strong>Download, unzip, double-click</strong>
+      <p>Download the zip above, unzip it (double-click it in Downloads), and in the folder double-click <strong>Variable Machine.command</strong>.</p>
+      <p>It opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens <code>http://localhost:4817</code> in your browser. Every command it runs is shown with ▸ in front.</p>
+      <p><strong>The first time only, macOS blocks it</strong> ("Apple could not verify …"), because the file comes from the internet and isn't signed by Apple: click <strong>Done</strong>, open <strong>System Settings → Privacy &amp; Security</strong>, scroll down to "Variable Machine.command was blocked", click <strong>Open Anyway</strong> and enter your Mac password, then double-click the file again and click <strong>Open</strong>. On macOS 14 you can instead right-click the file and choose <strong>Open</strong>.</p>
+      <p><strong>To stop it,</strong> close the Terminal window. To start again, double-click <strong>Variable Machine.command</strong>.</p>
+      <p class="muted">Working on the code? Clone it and use <code>npm run dev</code>, which rebuilds on every save:</p>
       <div class="cmd"><code>git clone https://github.com/studio0rpiment/variable-machine</code><button class="copy" type="button">copy</button></div>
-      <p>In Terminal, go into the folder (type <code>cd </code>, then drag the folder onto the Terminal window and press Return) and install what it uses:</p>
-      <div class="cmd"><code>npm install &amp;&amp; uv sync --project python</code><button class="copy" type="button">copy</button></div>
-    </div></li>
-    <li><div>
-      <strong>Start it</strong> <span class="muted">(every time)</span>
-      <div class="cmd"><code>npm run dev</code><button class="copy" type="button">copy</button></div>
-      <p>It starts Ollama if it isn't running and opens <code>http://localhost:4817</code> in your browser. To stop it, press ctrl-C in that Terminal window.</p>
     </div></li>
     <li><div>
       <strong>Your first ten minutes</strong>

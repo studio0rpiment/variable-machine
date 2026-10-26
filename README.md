@@ -10,35 +10,37 @@ A localhost instrument for changing small language models on an Apple Silicon Ma
 
 **You need:** a Mac with Apple Silicon (M1 or later) and 16GB of memory or more, macOS 14 or later, and about 10GB of free disk.
 
-**1. Install three things** (once):
+**1. Install two things** (once):
 
-- **Ollama**, which runs the models: download it from [ollama.com](https://ollama.com) and install it. You don't need to open it.
-- **Node 22 or newer**, which runs the app: download the LTS installer from [nodejs.org](https://nodejs.org).
-- **uv**, which runs training: open Terminal and paste
-  ```bash
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  ```
+- **Ollama**, which runs the models: download it from [ollama.com](https://ollama.com/download) and install it. You don't need to open it.
+- **Node 22 or newer**, which runs the app: download the LTS installer from [nodejs.org](https://nodejs.org) and open it.
 
-**2. Get Variable Machine** (once):
+**2. Download, unzip, double-click:**
 
-- Download the zip from the [latest release](https://github.com/studio0rpiment/variable-machine/releases) (what changed in each: [docs/releases.md](docs/releases.md)) and unzip it, or clone it:
-  ```bash
-  git clone https://github.com/studio0rpiment/variable-machine
-  ```
-- In Terminal, go into the folder (type `cd `, then drag the folder onto the Terminal window and press Return) and install what it uses:
-  ```bash
-  npm install && uv sync --project python
-  ```
+1. Download the zip from the [latest release](https://github.com/studio0rpiment/variable-machine/releases) (what changed in each: [docs/releases.md](docs/releases.md)).
+2. Unzip it: double-click the zip in Downloads (Safari may already have done this).
+3. In the folder, double-click **Variable Machine.command**.
 
-**3. Start it** (every time):
+It opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens http://localhost:4817 in your browser. Every command it runs is shown with ▸ in front.
+
+**The first time only, macOS blocks it** ("Apple could not verify …"), because the file comes from the internet and isn't signed by Apple:
+
+- click **Done**;
+- open **System Settings → Privacy & Security**, scroll down to "Variable Machine.command was blocked", click **Open Anyway** and enter your Mac password;
+- double-click **Variable Machine.command** again and click **Open**.
+
+(On macOS 14 you can instead right-click the file, choose **Open**, then **Open**.)
+
+**To stop it,** close the Terminal window (or press ctrl-C in it). Variants you made on the Modelfile tab and didn't keep are cleared away when it stops. To start again, double-click **Variable Machine.command**; after the first time it starts in seconds.
+
+**Working on the code?** Clone the repository and use `npm run dev` instead: it rebuilds the page on every save and restarts the helper.
 
 ```bash
-npm run dev
+git clone https://github.com/studio0rpiment/variable-machine
+cd variable-machine && npm install && uv sync --project python && npm run dev
 ```
 
-It starts Ollama if it isn't running and opens http://localhost:4817 in your browser. To stop it, press ctrl-C in that Terminal window. Variants you made on the Modelfile tab and didn't keep are cleared away when it stops.
-
-**4. Your first ten minutes:**
+**3. Your first ten minutes:**
 
 1. **Start** shows a map of every tab and what flows between them, left to right: what you bring, preparing it, how a model learns, making it a model, using it. Click a box to open it; **about** has the same in words.
 2. **Models:** press `ollama pull smollm2:360m` on its card (about 700MB). With no models yet, the four starters and a library to pull from are listed here.
