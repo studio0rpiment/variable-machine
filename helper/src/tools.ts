@@ -25,6 +25,37 @@ export async function toolPresent(t: ToolModel) {
   return exists(path.join(dir(t), 'manifest.json'))
 }
 
+/** The size a server says a file is, following redirects; undefined when it won't say. */
+async function sizeOf(url: string): Promise<number | undefined> {
+  try {
+    const n = Number((await fetch(url, { method: 'HEAD', redirect: 'follow' })).headers.get('content-length'))
+    return n > 0 ? n : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * curl a file to <dest>.part, telling the page how far it has got (the .part
+ * file's size, four times a second), so a download can show bytes, speed and
+ * time left rather than only curl's bar in the terminal.
+ */
+async function curl(name: string, url: string, dest: string): Promise<boolean> {
+  const file = path.basename(dest)
+  const total = await sizeOf(url)
+  const part = `${dest}.part`
+  const tell = async (done?: boolean) => {
+    const completed = await fs.stat(part).then((s) => s.size, () => (done ? (total ?? 0) : 0))
+    broadcast({ type: 'download.progress', name, file, completed, total, done })
+  }
+  void tell()
+  const timer = setInterval(() => void tell(), 250)
+  const ok = await spawnStreamed('curl', ['-fL', '--progress-bar', '--create-dirs', '-o', part, url])
+  clearInterval(timer)
+  await tell(true)
+  return ok
+}
+
 async function hubLicense(repo: string): Promise<string | null> {
   try {
     const j = (await (await fetch(`https://huggingface.co/api/models/${repo}`)).json()) as { cardData?: { license?: string } }
@@ -43,7 +74,7 @@ async function fetchFiles(t: { name: string; repo: string }, files: string[]): P
     const url = `https://huggingface.co/${t.repo}/resolve/main/${f}`
     // curl writes to .part and the file is renamed only once complete, so a stopped download never looks finished
     print(`▸ curl -fL --create-dirs -o ${rel}.part ${url}`)
-    const ok = await spawnStreamed('curl', ['-fL', '--progress-bar', '--create-dirs', '-o', `${dest}.part`, url])
+    const ok = await curl(t.name, url, dest)
     if (!ok) {
       print(`  ${f} didn't download; run model get ${t.name} again to carry on`)
       return false
@@ -127,7 +158,7 @@ async function getTracker(t: TrackerModel): Promise<boolean> {
   print(`  ${t.name}: ${t.file} · ${t.license} · about ${t.mb} MB · ${KINDS.moves.id} (${KINDS.moves.what})`)
   const dest = path.join(dir(t), t.file)
   print(`▸ curl -fL --create-dirs -o ${path.relative(path.dirname(WORKSPACE), dest)}.part ${t.url}`)
-  if (!(await spawnStreamed('curl', ['-fL', '--progress-bar', '--create-dirs', '-o', `${dest}.part`, t.url]))) {
+  if (!(await curl(t.name, t.url, dest))) {
     print(`  ${t.file} didn't download; run model get ${t.name} again`)
     return false
   }

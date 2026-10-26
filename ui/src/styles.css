@@ -840,3 +840,31 @@ img.move-view__picture { transform: none; }
 .move-guess__label { font-size: 1.6rem; }
 .move-guess__bar { display: block; height: 1px; background: var(--line); }
 .move-port { max-width: 7rem; }
+
+/* ---- a wait: the spiral turns while it lasts (components/Loading.tsx) ---- */
+.loading { display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 1rem; border: 1px dashed var(--muted); width: fit-content; max-width: 100%; }
+.loading__spiral { color: var(--act); flex: none; animation: loading-turn 1.6s linear infinite; }
+.loading__text { display: flex; flex-direction: column; gap: 0.2rem; }
+.loading__label { font-size: 0.8rem; }
+@keyframes loading-turn { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .loading__spiral { animation-duration: 6s; } }
+
+/* ---- an action that has to read as pressable: an outlined button in the click colour ---- */
+.act-button { font-size: 0.75rem; letter-spacing: 0.06em; color: var(--act); border: 1px solid var(--act); padding: 0.45rem 0.8rem; width: fit-content; }
+.act-button:hover:not(:disabled), .act-button:focus-visible { background: var(--act-wash); }
+.act-button:disabled { opacity: 0.35; cursor: default; }
+
+/* ---- the gesture tab's steps: done, now, or waiting ---- */
+.move-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; counter-reset: step; }
+.move-step { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.75rem; align-items: baseline; color: var(--muted); }
+.move-step__state { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: lowercase; }
+.move-step__name { color: var(--line); }
+.move-step.is-done .move-step__name { text-decoration: line-through; text-decoration-color: var(--muted); color: var(--muted); }
+.move-step.is-now .move-step__state, .move-step.is-now .move-step__name { color: var(--act); }
+.move-step__how { display: block; color: var(--muted); }
+.move-step.is-now .move-step__how { color: var(--line); }
+.move-start { display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+.look-sets .move-start { flex-basis: 100%; }
+.move-start .field { flex: none; width: 100%; max-width: 20rem; }
+.move-help { margin: 0; max-width: 40rem; line-height: 1.5; font-size: 0.75rem; letter-spacing: 0.02em; }
+.move-help li { margin-bottom: 0.25rem; }

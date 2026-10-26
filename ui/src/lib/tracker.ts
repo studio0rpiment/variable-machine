@@ -30,6 +30,14 @@ async function landmarker(tracker: Tracker, mode: 'VIDEO' | 'IMAGE'): Promise<La
   return p
 }
 
+/** Load a tracker before its first frame, so the page can show the wait. */
+export async function prepareTracker(tracker: Tracker, mode: 'VIDEO' | 'IMAGE') {
+  await landmarker(tracker, mode)
+}
+
+/** Whether a tracker has loaded already (or is loading), so a wait is only shown the first time. */
+export const trackerLoaded = (tracker: Tracker, mode: 'VIDEO' | 'IMAGE') => made.has(`${tracker}:${mode}`)
+
 /** Points on the first hand or body found in a video frame, or null. x and y are 0–1 across the picture. */
 export async function trackVideo(tracker: Tracker, video: HTMLVideoElement, at: number): Promise<Point[] | null> {
   const lm = await landmarker(tracker, 'VIDEO')

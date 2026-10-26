@@ -16,6 +16,7 @@ import { KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, VOICE_MODELS } from '@s
 import { TrackerCard } from './MovePanel'
 import { VoiceCard } from './VoicePanel'
 import ToolCard, { KindLine } from './ToolCard'
+import Loading, { DownloadWait } from './Loading'
 
 interface Progress {
   status: string
@@ -311,7 +312,6 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
   const card = (l: LibraryModel) => {
     const m = installed(l.tag)
     const p = progress[l.tag]
-    const pct = p?.total ? Math.floor(((p.completed ?? 0) / p.total) * 100) : null
     const heavy = l.heavy && status?.tier === '16'
     const vars = variationsOf(l.tag)
     const d = m?.details ?? {}
@@ -351,14 +351,9 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
               </Explained>
             </>
           ) : p ? (
-            <span className="pull-progress">
-              <span className="label">
-                {p.status}
-                {pct !== null ? ` · ${pct}% · ${mb(p.completed ?? 0)} / ${mb(p.total!)}` : ''}
-              </span>
-              {/* a rule that grows, not a filled bar: outlines only */}
-              <span className="pull-progress__rule" style={{ width: `${pct ?? 0}%` }} />
-            </span>
+            <Loading label={`pulling ${l.tag}: ${p.status}`} done={p.total ? (p.completed ?? 0) : undefined} total={p.total} />
+          ) : l.get && getting === l.get ? (
+            <DownloadWait name={l.get} label={`downloading ${l.get}`} />
           ) : l.get ? (
             <Explained id="models.get">
               <CommandPreview command={`model get ${l.get}`} onRun={() => void getTool(l.get!)} running={getting === l.get} label="get" />

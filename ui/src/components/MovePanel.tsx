@@ -4,18 +4,68 @@ import { classify, normalize, type GestureModel, type Point, type Tracker } from
 import { joinWords } from '@shared/quote'
 import { runCommand, sendEvent } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
-import { BONES, trackImage, trackVideo } from '../lib/tracker'
+import { BONES, prepareTracker, trackImage, trackVideo, trackerLoaded } from '../lib/tracker'
 import { useHelperEvent } from '../hooks/useHelper'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import PicturePicker from './PicturePicker'
 import { KindLine } from './ToolCard'
 import { Explained } from '../explain/Explained'
+import Loading, { DownloadWait } from './Loading'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const LABEL = /^[\w .-]{1,40}$/
 /** examples recorded while a record button is held: at most this many a second, so a few seconds make a good handful */
 const PER_SECOND = 10
+
+type Camera = 'off' | 'starting' | 'on' | 'denied' | 'none' | 'busy' | 'unavailable' | 'error'
+
+/** What to do when the camera won't open, in plain words. */
+function CameraHelp({ camera, message }: { camera: Camera; message: string }) {
+  if (camera === 'denied')
+    return (
+      <div className="move-help">
+        <p>The camera is blocked, so the browser didn't ask. To allow it:</p>
+        <ul>
+          <li>Chrome: click the icon at the left of the address bar (a camera, or two sliders), set Camera to Allow, then reload this page.</li>
+          <li>Safari: Safari › Settings for this website (or Settings › Websites › Camera), set Camera to Allow, then reload.</li>
+          <li>Still blocked? The Mac is blocking the browser: System Settings › Privacy & Security › Camera, turn your browser on, then quit the browser and open it again.</li>
+        </ul>
+        <p>Or use a photo instead.</p>
+      </div>
+    )
+  if (camera === 'none') return <p className="move-help">No camera was found. Connect one and press start the camera again, or use a photo instead.</p>
+  if (camera === 'busy') return <p className="move-help">Another app is using the camera (FaceTime, Zoom, Photo Booth…). Close it, then press start the camera again.</p>
+  if (camera === 'unavailable')
+    return <p className="move-help">This browser can't open a camera from this page. Open Variable Machine at http://localhost:4817 in Chrome or Safari.</p>
+  if (camera === 'error') return <p className="move-help">The camera didn't start: {message}. Press start the camera again, or use a photo instead.</p>
+  return null
+}
+
+/** The steps from nothing to a gesture in TouchDesigner, each done, now, or waiting. */
+function Steps({ steps }: { steps: { name: string; how: string; done: boolean }[] }) {
+  const now = steps.findIndex((x) => !x.done)
+  return (
+    <Explained id="move.steps">
+      <ol className="move-steps" aria-label="steps">
+        {steps.map((x, i) => {
+          const state = x.done ? 'done' : i === now ? 'now' : 'waiting'
+          return (
+            <li key={x.name} className={`move-step is-${state}`} aria-current={i === now ? 'step' : undefined}>
+              <span className="move-step__state">
+                {i + 1} · {state}
+              </span>
+              <span>
+                <span className="move-step__name">{x.name}</span>
+                {i === now && <span className="move-step__how">{x.how}</span>}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </Explained>
+  )
+}
 
 interface GestureSet {
   folder: string
@@ -32,11 +82,14 @@ export function TrackerCard({ t, here, busy, onGet }: { t: TrackerModel; here: b
       badges={<Badge>{t.kind}</Badge>}
       lines={[`${t.maker} · ${t.license}`, `${t.file} · about ${t.mb} MB · ${here ? 'in workspace/tools' : 'not downloaded yet'}`]}
       actions={
-        !here && (
+        !here &&
+        (busy ? (
+          <DownloadWait name={t.name} label={`downloading the ${t.name} tracker`} />
+        ) : (
           <Explained id="move.get">
             <CommandPreview command={`model get ${t.name}`} onRun={onGet} running={busy} label={`download ${t.name}`} />
           </Explained>
-        )
+        ))
       }
     >
       <p className="model-about">{t.builtFor}</p>
@@ -90,6 +143,14 @@ export default function MovePanel({ active }: { active: boolean }) {
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
   const [found, setFound] = useState(false)
+  const [camera, setCamera] = useState<Camera>('off')
+  const [cameraMessage, setCameraMessage] = useState('')
+  const [loadingTracker, setLoadingTracker] = useState(false)
+  const [sending, setSending] = useState(false)
+  const stream = useRef<MediaStream | null>(null)
+  const loop = useRef(0)
+  const attempt = useRef(0)
+  const picked = useRef(false)
   const video = useRef<HTMLVideoElement>(null)
   const img = useRef<HTMLImageElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -107,7 +168,9 @@ export default function MovePanel({ active }: { active: boolean }) {
     setHere(Object.fromEntries(TRACKER_MODELS.map((t) => [t.name, tools.some((x) => x.folder === t.name)])))
     const g = await readManifests<GestureSet>('gestures')
     setSets(g)
-    setName((n) => n || g[0]?.folder || '')
+    // the first set is chosen once, on opening; after that "a new set…" stays chosen while files change
+    if (!picked.current) setName((n) => n || g[0]?.folder || '')
+    picked.current = true
   }, [])
   useEffect(() => void load(), [load])
   useHelperEvent(
@@ -155,44 +218,68 @@ export default function MovePanel({ active }: { active: boolean }) {
   pointsTo.current = onPoints
   const trackerHere = !!here[tracker]
 
-  // the camera: one frame at a time, as the browser hands them over
+  /** Stop the camera (leaving the tab, another set, or the photo route): its light goes off at once. */
+  const stopCamera = useCallback(() => {
+    attempt.current++
+    cancelAnimationFrame(loop.current)
+    stream.current?.getTracks().forEach((t) => t.stop())
+    stream.current = null
+    if (video.current) video.current.srcObject = null
+    setCamera((c) => (c === 'on' || c === 'starting' ? 'off' : c))
+  }, [])
   useEffect(() => {
-    if (!active || !hasSet || source !== 'camera' || !trackerHere) return
-    let stream: MediaStream | null = null
-    let stop = false
-    let frame = 0
-    void navigator.mediaDevices
-      ?.getUserMedia({ video: { width: { ideal: 1280 } }, audio: false })
-      .then(async (s) => {
-        stream = s
-        const v = video.current
-        if (!v || stop) return
-        v.srcObject = s
-        await v.play()
-        setNote('')
-        const tick = async () => {
-          if (stop) return
-          if (v.readyState >= 2) pointsTo.current(await trackVideo(tracker, v, performance.now()), v.videoWidth, v.videoHeight)
-          frame = requestAnimationFrame(() => void tick())
-        }
-        void tick()
-      })
-      .catch((e: Error) => setNote(`no camera: ${e.message}. Use a photo instead.`))
-    return () => {
-      stop = true
-      cancelAnimationFrame(frame)
-      stream?.getTracks().forEach((t) => t.stop())
+    if (!active || source !== 'camera') stopCamera()
+  }, [active, source, stopCamera])
+  useEffect(() => stopCamera, [stopCamera])
+  useEffect(() => stopCamera(), [name, stopCamera])
+
+  /** The camera opens only when you press start: the browser asks once, on that click. Then one frame at a time, as it hands them over. */
+  const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return setCamera('unavailable')
+    const mine = ++attempt.current
+    setCamera('starting')
+    setNote('')
+    let s: MediaStream
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 } }, audio: false })
+    } catch (e) {
+      const err = e as DOMException
+      setCameraMessage(err.message)
+      return setCamera(
+        err.name === 'NotAllowedError' || err.name === 'SecurityError' ? 'denied' : err.name === 'NotFoundError' || err.name === 'OverconstrainedError' ? 'none' : err.name === 'NotReadableError' ? 'busy' : 'error',
+      )
     }
-  }, [active, hasSet, source, tracker, trackerHere])
+    const v = video.current
+    if (mine !== attempt.current || !v) return s.getTracks().forEach((t) => t.stop())
+    stream.current = s
+    v.srcObject = s
+    await v.play().catch(() => {})
+    setCamera('on')
+    if (!trackerLoaded(tracker, 'VIDEO')) {
+      setLoadingTracker(true)
+      await prepareTracker(tracker, 'VIDEO').catch((e: Error) => setNote(e.message))
+      setLoadingTracker(false)
+    }
+    const tick = async () => {
+      if (mine !== attempt.current) return
+      if (v.readyState >= 2) pointsTo.current(await trackVideo(tracker, v, performance.now()), v.videoWidth, v.videoHeight)
+      if (mine === attempt.current) loop.current = requestAnimationFrame(() => void tick())
+    }
+    void tick()
+  }
 
   // a still photo: points once, when it has loaded
   const onPhoto = async () => {
     const i = img.current
     if (!i || !here[tracker]) return
+    const first = !trackerLoaded(tracker, 'IMAGE')
+    if (first) setLoadingTracker(true)
     try {
       onPoints(await trackImage(tracker, i), i.naturalWidth, i.naturalHeight)
     } catch (e) {
       setNote((e as Error).message)
+    } finally {
+      if (first) setLoadingTracker(false)
     }
   }
   useEffect(() => void (source === 'photo' && photo && img.current?.complete && onPhoto()), [tracker, testing]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -226,9 +313,42 @@ export default function MovePanel({ active }: { active: boolean }) {
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
+  const what = tracker === 'hands' ? 'hand' : 'body'
+  const trackerInfo = TRACKER_MODELS.find((t) => t.name === tracker)!
+  const getTracker = () => void run(`get ${tracker}`, `model get ${tracker}`)
+
+  const steps = [
+    { name: 'get the tracker', how: `download the ${tracker} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
+    { name: 'make a set', how: 'give it a name, choose hands or body, and press make the set', done: hasSet },
+    { name: 'start the camera', how: 'press start the camera, and allow it when the browser asks (or use a photo)', done: camera === 'on' || (source === 'photo' && !!photo) },
+    { name: 'record two or more gestures', how: 'name a gesture, then hold to record for 3–5 seconds while you make it; then another', done: labels.length >= 2 },
+    { name: 'train', how: 'press train: it takes a second, and shows which gestures it mixes up', done: !!set?.trained },
+    { name: 'test it, and send it on', how: 'test it live, then send it to TouchDesigner, Max or Pure Data as OSC', done: testing || sending },
+  ]
+
+  /** The tracker, offered right where it is needed: a button, or its download as it happens. */
+  const offerTracker = !trackerHere && (
+    <div className="move-start">
+      {busy === `get ${tracker}` ? (
+        <DownloadWait name={tracker} label={`downloading the ${tracker} tracker`} />
+      ) : (
+        <>
+          <Explained id="move.get">
+            <button type="button" className="act-button" onClick={getTracker}>
+              download the {tracker} tracker ({trackerInfo.mb} MB)
+            </button>
+          </Explained>
+          <CommandPreview command={`model get ${tracker}`} onRun={getTracker} label={`download the ${tracker} tracker`} />
+        </>
+      )}
+    </div>
+  )
 
   return (
     <section className="panel" aria-label="move">
+      <h2 className="panel__title label">steps · from your {what} to a gesture in your patch</h2>
+      <Steps steps={steps} />
+
       <h2 className="panel__title label">trackers · run in the page</h2>
       <p className="models-intro">
         <KindLine kind="moves" />
@@ -255,22 +375,36 @@ export default function MovePanel({ active }: { active: boolean }) {
           </label>
         </Explained>
         {!name && (
-          <>
+          <div className="move-start">
             <label className="field">
               <span className="label label--muted">name</span>
-              <input value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} placeholder="studio-hands" spellCheck={false} />
+              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} placeholder="studio-hands" spellCheck={false} />
             </label>
-            <div className="choice" role="radiogroup" aria-label="tracker">
-              {(['hands', 'body'] as Tracker[]).map((t) => (
-                <button key={t} type="button" role="radio" aria-checked={t === newTracker} className={`text-button ${t === newTracker ? 'is-active' : ''}`.trim()} onClick={() => setNewTracker(t)}>
-                  {t}
-                </button>
-              ))}
+            <div className="field">
+              <span className="label label--muted">its tracker</span>
+              <div className="choice" role="radiogroup" aria-label="its tracker">
+                {(['hands', 'body'] as Tracker[]).map((t) => (
+                  <button key={t} type="button" role="radio" aria-checked={t === newTracker} className={`text-button ${t === newTracker ? 'is-active' : ''}`.trim()} onClick={() => setNewTracker(t)}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <span className="label label--muted">this picks what the set follows; it doesn't download anything</span>
             </div>
+            {offerTracker}
             <Explained id="move.new">
-              <CommandPreview command={newLine} onRun={() => void run('new', newLine).then((ok) => ok && setName(newName))} disabled={!NAME.test(newName)} running={busy === 'new'} label="make the set" />
+              <button
+                type="button"
+                className="act-button"
+                disabled={!NAME.test(newName) || busy === 'new'}
+                onClick={() => void run('new', newLine).then((ok) => ok && setName(newName))}
+              >
+                {busy === 'new' ? 'making the set…' : 'make the set'}
+              </button>
             </Explained>
-          </>
+            {!NAME.test(newName) && <span className="label label--muted">name it first: small letters, numbers, - or _</span>}
+            <CommandPreview command={newLine} onRun={() => void run('new', newLine).then((ok) => ok && setName(newName))} disabled={!NAME.test(newName)} running={busy === 'new'} label="make the set" />
+          </div>
         )}
       </div>
 
@@ -284,7 +418,22 @@ export default function MovePanel({ active }: { active: boolean }) {
             ))}
           </div>
           {source === 'photo' && <PicturePicker value={photo} onChange={choosePhoto} />}
-          {!here[tracker] && <p className="label">download the {tracker} tracker above first</p>}
+          {offerTracker}
+          {source === 'camera' && trackerHere && camera !== 'on' && (
+            <div className="move-start">
+              {camera === 'starting' ? (
+                <Loading label="waiting for the camera: allow it if the browser asks" />
+              ) : (
+                <Explained id="move.camera">
+                  <button type="button" className="act-button" onClick={() => void startCamera()}>
+                    start the camera
+                  </button>
+                </Explained>
+              )}
+              <CameraHelp camera={camera} message={cameraMessage} />
+            </div>
+          )}
+          {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
 
           <div className="move-work">
             <figure className="move-view">
@@ -394,9 +543,9 @@ export default function MovePanel({ active }: { active: boolean }) {
                   <input value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
                 </label>
                 <Explained id="move.send">
-                  <CommandPreview command={sendLine} onRun={() => void run('send', sendLine)} disabled={!set.trained || !port} running={busy === 'send'} label="send" />
+                  <CommandPreview command={sendLine} onRun={() => void run('send', sendLine).then((ok) => ok && setSending(true))} disabled={!set.trained || !port} running={busy === 'send'} label="send" />
                 </Explained>
-                <button type="button" className="text-button" onClick={() => void run('stop', `gesture send ${name} --stop`)}>
+                <button type="button" className="text-button" onClick={() => void run('stop', `gesture send ${name} --stop`).then(() => setSending(false))}>
                   stop sending
                 </button>
               </div>

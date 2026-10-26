@@ -1,6 +1,7 @@
 import { KINDS, type KindId, type ToolModel } from '@shared/kinds'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
+import { DownloadWait } from './Loading'
 import { Explained } from '../explain/Explained'
 
 /** "looks · image tools: cut-outs, depth, selecting · on the image segmentation tab": a kind's word, what it does, and where you use it. */
@@ -21,11 +22,14 @@ export default function ToolCard({ tool, here, busy, onGet }: { tool: ToolModel;
       badges={<Badge>{tool.kind}</Badge>}
       lines={[`look ${tool.name} · ${tool.maker} · ${tool.license}`, `${tool.repo} · about ${tool.mb} MB${tool.needs === 'webgpu' ? ' · needs WebGPU' : ''}`, here ? 'in workspace/tools' : 'not downloaded yet']}
       actions={
-        !here && (
+        !here &&
+        (busy ? (
+          <DownloadWait name={tool.name} label={`downloading ${tool.name}`} />
+        ) : (
           <Explained id="look.get">
             <CommandPreview command={`model get ${tool.name}`} onRun={onGet} running={busy} label={`download ${tool.name}`} />
           </Explained>
-        )
+        ))
       }
     >
       <p className="model-about">{tool.builtFor}</p>

@@ -28,6 +28,8 @@ export type ServerEvent =
   /** Ollama's model list changed (pull, rm, create): re-read /api/tags. */
   | { type: 'ollama.changed'; model: string; change: 'pulled' | 'removed' | 'created' }
   | { type: 'ollama.progress'; model: string; status: string; completed?: number; total?: number }
+  /** `model get` downloading a file: bytes so far, and the total when the server says it. done: finished (or stopped). */
+  | { type: 'download.progress'; name: string; file: string; completed: number; total?: number; done?: boolean }
   | { type: 'pipeline.started'; runId: string; recipe: string; params: unknown; commands: string[] }
   | { type: 'pipeline.step'; runId: string; index: number; command: string }
   | { type: 'pipeline.line'; runId: string; stream: 'stdout' | 'stderr'; text: string }

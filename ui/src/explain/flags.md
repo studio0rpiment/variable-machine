@@ -529,6 +529,16 @@ Choose a zip someone sent you. It goes into the shared folder, and you unzip it 
 
 Gesture recognition. A tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.
 
+### Steps
+`move.steps`
+
+The way from nothing to a gesture your patch can hear, in order. Each step says whether it is done, the one to do now, or waiting, and the step to do now says how. They tick themselves off as you go.
+
+### Start the camera
+`move.camera`
+
+Opens your camera in this page. The browser asks you once, when you press it; nothing is recorded or saved but the points the tracker finds, and the camera turns off when you leave this tab. If it is blocked, the message under this button says where to allow it.
+
 ### Download the tracker
 `move.get`
 
