@@ -9,7 +9,6 @@ import { useHelperEvent } from '../hooks/useHelper'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import PicturePicker from './PicturePicker'
-import { KindLine } from './ToolCard'
 import { Explained } from '../explain/Explained'
 import Loading, { DownloadWait } from './Loading'
 
@@ -476,9 +475,9 @@ export default function MovePanel({ active }: { active: boolean }) {
             )}
           </div>
 
-          <h2 className="panel__title label">trackers · run in the page</h2>
+          <h2 className="panel__title label">choose a model</h2>
           <p className="models-intro">
-            <KindLine kind="moves" />
+            The model that finds the points: on a hand (21) or on a whole body (33). It is ready-made and you don't train it: it runs in this page and turns each camera frame into points. Your gestures then train the small model that names them. A set uses one or the other.
           </p>
           <div className="cards">
             {TRACKER_MODELS.map((t) => (

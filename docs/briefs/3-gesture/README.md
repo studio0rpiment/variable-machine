@@ -127,6 +127,7 @@ The points are measured from the wrist and scaled by the hand's size, but **not 
 - **The photo strip** grew past the window's edge with more than about ten photos, so the last ones couldn't be reached; fixed (it scrolls).
 - **One port:** the page's *osc port* box doesn't show a port set from the terminal.
 - **A clear message** when *add this photo* or *hold to record* finds no hand, instead of a silent disabled button.
+- **A face model**, for later: a third choice beside hands and body (MediaPipe's face landmarker, 478 points), for expressions as gestures.
 - **More than one hand**: the tracker follows one hand; two-handed gestures need both.
 - **Numbers, not only names**: a slider-style output (how open the hand is, 0–1), for sound and light that change smoothly. The brief asked for it; only names are sent.
 - **MIDI and serial (Arduino)** out, besides OSC.
