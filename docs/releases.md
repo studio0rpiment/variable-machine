@@ -2,6 +2,16 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.4: double-click to start; the gesture tab from a standing start (2026-10-26)
+
+- **Starting it:** download the zip, unzip it, and double-click **Variable Machine.command** in the folder. The first time, it installs what it needs and opens the page; after that it starts in seconds. macOS asks once (System Settings → Privacy & Security → Open Anyway), as the README and the download page explain.
+- **Gesture tab, step by step:** a checklist of the six steps, each marked done, now or waiting, with how to do it. The tracker is offered where it is needed, *make the set* is a clear button, and the camera starts only when you click *start the camera*, with plain directions when it is blocked, missing or busy.
+- **An example set to start from:** three hand gestures, 113 examples, ready to train (`gesture example example-hands`). The sets show as cards: the example first, then your own, then *make your own*. A set's name takes what you type (spaces become hyphens, capitals small) and says when the name is taken.
+- **Layout:** setting up on the left; the camera (smaller), examples, training and testing in a column on the right that stays in view. Testing sits in a dashed box. The trackers are under *choose a model*, with what each does and doesn't do.
+- **Use it in your patch:** under testing, the OSC message a trained set sends, what receives it in TouchDesigner, Max and Pure Data, how to check it arrives, and how to take the set with you.
+- **Waits you can read:** the hand-drawn spiral turns while something loads, with what can honestly be said: downloads in size, speed and time left; training in steps and time left; a tracker loading as an estimate.
+- **Fixed:** choosing a new set no longer snaps back to the first set when files change.
+
 ## v0.2.3: the Start map, redrawn; tabs named for what their models do (2026-10-24)
 
 - **Start map:** five columns read left to right: what you bring, preparing it, how a model learns, making it a model, using it. The language models' tabs fill a band across the top, with your words and your photos (and what they show) coming in as rows and picture rows. Below, one row for each other kind: image segmentation and speech, whose models their makers trained (drawn dotted), and gesture, which you train yourself in seconds. Every box opens its tab, lights its wires and shows its commands.
