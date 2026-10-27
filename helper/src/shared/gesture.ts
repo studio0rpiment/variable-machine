@@ -1,5 +1,5 @@
 /**
- * Gestures (the moves kind): points the camera finds on a hand or a body,
+ * Gestures (the moves kind): points the camera finds on hands or a body,
  * turned into numbers that say the shape, and a k-nearest-neighbours model
  * that names the shape from your own recorded examples. Plain TypeScript,
  * shared by the page (live test) and the helper (`gesture train`), so the
@@ -10,7 +10,17 @@
  * is keeping the examples (instant); what it learns is exactly what you showed.
  */
 
-export type Tracker = 'hands' | 'body'
+/**
+ * What a set follows. hands: one hand. two-hands: either hand or both, so one
+ * set can hold one-handed gestures and two-handed ones. body: a whole body.
+ * hands and two-hands use the same downloaded model (the hands tracker), told
+ * to look for one hand or two.
+ */
+export type Tracker = 'hands' | 'two-hands' | 'body'
+export const TRACKERS: Tracker[] = ['hands', 'two-hands', 'body']
+/** the downloaded tracker each one runs on (model get <it>) */
+export const TRACKER_TOOL: Record<Tracker, 'hands' | 'body'> = { hands: 'hands', 'two-hands': 'hands', body: 'body' }
+
 export interface Point {
   x: number
   y: number
@@ -18,21 +28,55 @@ export interface Point {
 }
 
 /**
+ * What the tracker found in one picture: the points of each hand, or of the
+ * body. For two-hands, always [the left hand, the right hand], with [] for a
+ * hand that isn't in the picture.
+ */
+export type Found = Point[][]
+
+const mid = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 })
+const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)
+
+/** One hand's shape: its 21 points from the wrist (0), by wrist to middle knuckle (9). */
+function handShape(points: Point[]): number[] {
+  const scale = dist(points[0], points[9]) || 1
+  return points.flatMap((p) => [(p.x - points[0].x) / scale, (p.y - points[0].y) / scale, (p.z - points[0].z) / scale])
+}
+
+/**
  * The shape, not the place: points relative to a centre, scaled by a body
  * length, so the same gesture made nearer the camera or further left reads
  * the same. Hands: from the wrist (point 0), by wrist to middle knuckle (9).
  * Body: from the middle of the hips (23, 24), by shoulder width (11, 12).
- * Hands are 21 points, a body 33; each gives x, y and z.
+ * Two hands: each hand's shape (0s for a hand that isn't there), then whether
+ * each hand is there (1 or 0, counted three times over, so one hand and two
+ * never pass for each other), then where the right wrist is from the left, in
+ * hand lengths (0s unless both are there): hands together and hands apart differ.
  */
-export function normalize(points: Point[], tracker: Tracker): number[] {
-  const mid = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 })
-  const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)
-  const centre = tracker === 'hands' ? points[0] : mid(points[23], points[24])
-  const scale = (tracker === 'hands' ? dist(points[0], points[9]) : dist(points[11], points[12])) || 1
+export function normalize(found: Found, tracker: Tracker): number[] {
+  if (tracker === 'hands') return handShape(found[0])
+  if (tracker === 'two-hands') {
+    const [left, right] = found
+    const both = left.length && right.length
+    const scale = both ? (dist(left[0], left[9]) + dist(right[0], right[9])) / 2 || 1 : 1
+    return [
+      ...(left.length ? handShape(left) : Array(63).fill(0)),
+      ...(right.length ? handShape(right) : Array(63).fill(0)),
+      left.length ? 3 : 0,
+      right.length ? 3 : 0,
+      ...(both ? [(right[0].x - left[0].x) / scale, (right[0].y - left[0].y) / scale, (right[0].z - left[0].z) / scale] : [0, 0, 0]),
+    ]
+  }
+  const points = found[0]
+  const centre = mid(points[23], points[24])
+  const scale = dist(points[11], points[12]) || 1
   return points.flatMap((p) => [(p.x - centre.x) / scale, (p.y - centre.y) / scale, (p.z - centre.z) / scale])
 }
 
-export const POINTS: Record<Tracker, number> = { hands: 21, body: 33 }
+/** points on one hand or one body */
+export const POINTS: Record<Tracker, number> = { hands: 21, 'two-hands': 42, body: 33 }
+/** how many numbers normalize makes: x, y, z of each point; for two hands, 5 more (which hands are there, and the right wrist from the left) */
+export const SIZE: Record<Tracker, number> = { hands: 63, 'two-hands': 131, body: 99 }
 
 export interface Example {
   label: string

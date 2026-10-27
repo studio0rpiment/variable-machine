@@ -562,7 +562,7 @@ Choose a zip someone sent you. It goes into the shared folder, and you unzip it 
 ### Gesture
 `panel.gesture`
 
-Gesture recognition. A tracker finds points on your hand (21) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.
+Gesture recognition. A tracker finds points on your hands (21 on each, up to two) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.
 
 ### Steps
 `move.steps`
@@ -587,12 +587,12 @@ Downloads the tracker, one small file from Google's MediaPipe, into workspace/to
 ### Gesture set
 `move.set`
 
-A set is a few gestures, the examples recorded of each, and the model trained on them, in workspace/gestures. Start with the example: three hand gestures recorded for you, ready to train, so you can see it work (and fail) with your own hand. Then make your own. A set follows hands or a body, not both.
+A set is a few gestures, the examples recorded of each, and the model trained on them, in workspace/gestures. Start with the example: three hand gestures recorded for you, ready to train, so you can see it work (and fail) with your own hand. Then make your own. A set follows one hand, two hands or a body. A two-hands set takes either hand or both, so it can hold one-handed gestures and two-handed ones: it keeps which hand is which and where the hands are from each other.
 
 ### Make a set
 `move.new`
 
-Starts a new gesture set for hands or for a body. Then name a gesture and record some examples of it.
+Starts a new gesture set for one hand, two hands or a body. One hand and two hands use the same hands tracker. Then name a gesture and record some examples of it.
 
 ### Hold to record
 `move.record`

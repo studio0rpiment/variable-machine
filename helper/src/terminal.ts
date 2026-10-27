@@ -63,7 +63,8 @@ const HELP = `commands
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
 
   model get hands | model get body                the trackers that find points on a hand or a body (gesture tab)
-  gesture new <name> --tracker hands|body          a set of your gestures: workspace/gestures/<name>/
+  gesture new <name> --tracker hands|two-hands|body   a set of your gestures: workspace/gestures/<name>/
+                                                   (two-hands: either hand or both, on the hands tracker)
   gesture example example-hands                    a set that comes with the app: three hand gestures, ready to train
   gesture train <name> [--k 5]                     k-nearest neighbours: check on every fifth example, keep them all
   gesture clear <name> <gesture>                   forget one gesture's examples

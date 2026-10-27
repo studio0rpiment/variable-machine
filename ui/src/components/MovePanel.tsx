@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TRACKER_MODELS, type TrackerModel } from '@shared/kinds'
-import { classify, NONE, normalize, reachOf, type GestureModel, type Point, type Tracker } from '@shared/gesture'
+import { classify, NONE, normalize, reachOf, TRACKER_TOOL, TRACKERS, type Found, type GestureModel, type Tracker } from '@shared/gesture'
 import { joinWords } from '@shared/quote'
 import { runCommand, sendEvent } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
@@ -157,26 +157,41 @@ export function TrackerCard({ t, here, busy, onGet }: { t: TrackerModel; here: b
   )
 }
 
+/** What each tracker is called on the page. */
+const TRACKER_NAMES: Record<Tracker, string> = { hands: 'one hand', 'two-hands': 'two hands', body: 'a body' }
+
+/** What was found, in words: "a hand: 21 points", "two hands: 42 points", "the left hand: 21 points". */
+function foundWords(found: Found | null, tracker: Tracker) {
+  if (tracker === 'body') return found ? 'a body: 33 points' : 'no body found yet'
+  if (!found) return tracker === 'hands' ? 'no hand found yet' : 'no hands found yet'
+  if (tracker === 'hands') return 'a hand: 21 points'
+  const [left, right] = found
+  return left.length && right.length ? 'two hands: 42 points' : `the ${left.length ? 'left' : 'right'} hand: 21 points`
+}
+
 /** Draw the points and the bones between them over the picture, in the line colour: outlines only. */
-function draw(canvas: HTMLCanvasElement, w: number, h: number, points: Point[] | null, tracker: Tracker) {
+function draw(canvas: HTMLCanvasElement, w: number, h: number, found: Found | null, tracker: Tracker) {
   canvas.width = w
   canvas.height = h
   const g = canvas.getContext('2d')!
   g.clearRect(0, 0, w, h)
-  if (!points) return
+  if (!found) return
   const line = getComputedStyle(canvas).color
   g.strokeStyle = line
   g.lineWidth = Math.max(1, w / 400)
-  for (const [a, b] of BONES[tracker]) {
-    g.beginPath()
-    g.moveTo(points[a].x * w, points[a].y * h)
-    g.lineTo(points[b].x * w, points[b].y * h)
-    g.stroke()
-  }
-  for (const p of points) {
-    g.beginPath()
-    g.arc(p.x * w, p.y * h, Math.max(2, w / 160), 0, Math.PI * 2)
-    g.stroke()
+  for (const points of found) {
+    if (!points.length) continue
+    for (const [a, b] of BONES[tracker]) {
+      g.beginPath()
+      g.moveTo(points[a].x * w, points[a].y * h)
+      g.lineTo(points[b].x * w, points[b].y * h)
+      g.stroke()
+    }
+    for (const p of points) {
+      g.beginPath()
+      g.arc(p.x * w, p.y * h, Math.max(2, w / 160), 0, Math.PI * 2)
+      g.stroke()
+    }
   }
 }
 
@@ -212,6 +227,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
   const [found, setFound] = useState(false)
+  const [foundText, setFoundText] = useState('')
   const [camera, setCamera] = useState<Camera>('off')
   const [cameraMessage, setCameraMessage] = useState('')
   const [loadingTracker, setLoadingTracker] = useState(false)
@@ -223,7 +239,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   const video = useRef<HTMLVideoElement>(null)
   const img = useRef<HTMLImageElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
-  const latest = useRef<Point[] | null>(null)
+  const latest = useRef<Found | null>(null)
   const buffer = useRef<number[][]>([])
   const lastTake = useRef(0)
   const model = useRef<GestureModel | null>(null)
@@ -231,6 +247,9 @@ export default function MovePanel({ active }: { active: boolean }) {
   const set = sets.find((s) => s.folder === name)
   const hasSet = !!set
   const tracker = set?.tracker ?? newTracker
+  /** the downloaded tracker it runs on: one hand and two hands both run on hands */
+  const tool = TRACKER_TOOL[tracker]
+  useEffect(() => setFoundText(''), [tracker])
 
   const load = useCallback(async () => {
     const tools = await readManifests<{ name: string }>('tools')
@@ -269,9 +288,10 @@ export default function MovePanel({ active }: { active: boolean }) {
 
   /** What to do with the points of each frame: draw them, keep them while recording, name them while testing. */
   const onPoints = useCallback(
-    (points: Point[] | null, w: number, h: number) => {
+    (points: Found | null, w: number, h: number) => {
       latest.current = points
       setFound(!!points)
+      setFoundText(foundWords(points, tracker))
       if (canvas.current) draw(canvas.current, w, h, points, tracker)
       if (!points) {
         // nothing in the picture is an answer too: none
@@ -298,7 +318,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   // the camera loop reads the latest handler, so starting to record or test doesn't restart the camera
   const pointsTo = useRef(onPoints)
   pointsTo.current = onPoints
-  const trackerHere = !!here[tracker]
+  const trackerHere = !!here[tool]
 
   /** Stop the camera (leaving the tab, another set, or the photo route): its light goes off at once. */
   const stopCamera = useCallback(() => {
@@ -367,7 +387,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   // a still photo: points once, when it has loaded
   const onPhoto = async () => {
     const i = img.current
-    if (!i || !here[tracker]) return
+    if (!i || !here[tool]) return
     const first = !trackerLoaded(tracker, 'IMAGE')
     if (first) setLoadingTracker(true)
     try {
@@ -384,6 +404,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   const choosePhoto = (p: string) => {
     latest.current = null
     setFound(false)
+    setFoundText('')
     if (canvas.current) draw(canvas.current, 1, 1, null, tracker)
     setPhoto(p)
   }
@@ -425,14 +446,14 @@ export default function MovePanel({ active }: { active: boolean }) {
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
-  const what = tracker === 'hands' ? 'hand' : 'body'
-  const trackerInfo = TRACKER_MODELS.find((t) => t.name === tracker)!
+  const what = tracker === 'hands' ? 'hand' : tracker === 'two-hands' ? 'hands' : 'body'
+  const trackerInfo = TRACKER_MODELS.find((t) => t.name === tool)!
   const taken = sets.some((x) => x.folder === newName)
-  const getTracker = () => void run(`get ${tracker}`, `model get ${tracker}`)
+  const getTracker = () => void run(`get ${tool}`, `model get ${tool}`)
 
   const steps = [
-    { name: 'get the tracker', how: `download the ${tracker} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
-    { name: 'choose a set', how: 'start with the example set, or make your own: give it a name, choose hands or body, and press make the set', done: hasSet },
+    { name: 'get the tracker', how: `download the ${tool} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
+    { name: 'choose a set', how: 'start with the example set, or make your own: give it a name, choose one hand, two hands or a body, and press make the set', done: hasSet },
     { name: 'start the camera', how: 'press start the camera, and allow it when the browser asks (or use a photo)', done: camera === 'on' || (source === 'photo' && !!photo) },
     { name: 'record two or more gestures', how: 'name a gesture, then hold to record for 3–5 seconds while you make it (at least 5 examples of each); then another', done: trainable },
     { name: 'train', how: 'press train: it takes a second, and shows which gestures it mixes up', done: !!set?.trained },
@@ -445,16 +466,16 @@ export default function MovePanel({ active }: { active: boolean }) {
   const offerTracker = !trackerHere && (
     <Next on={now === 0}>
     <div className="move-start">
-      {busy === `get ${tracker}` ? (
-        <DownloadWait name={tracker} label={`downloading the ${tracker} tracker`} />
+      {busy === `get ${tool}` ? (
+        <DownloadWait name={tool} label={`downloading the ${tool} tracker`} />
       ) : (
         <>
           <Explained id="move.get">
             <button type="button" className="act-button" onClick={getTracker}>
-              download the {tracker} tracker ({trackerInfo.mb} MB)
+              download the {tool} tracker ({trackerInfo.mb} MB)
             </button>
           </Explained>
-          <CommandPreview command={`model get ${tracker}`} onRun={getTracker} label={`download the ${tracker} tracker`} />
+          <CommandPreview command={`model get ${tool}`} onRun={getTracker} label={`download the ${tool} tracker`} />
         </>
       )}
     </div>
@@ -517,13 +538,15 @@ export default function MovePanel({ active }: { active: boolean }) {
                 <div className="field">
                   <span className="label label--muted">its tracker</span>
                   <div className="choice" role="radiogroup" aria-label="its tracker">
-                    {(['hands', 'body'] as Tracker[]).map((t) => (
+                    {TRACKERS.map((t) => (
                       <button key={t} type="button" role="radio" aria-checked={t === newTracker} className={`text-button ${t === newTracker ? 'is-active' : ''}`.trim()} onClick={() => setNewTracker(t)}>
-                        {t}
+                        {TRACKER_NAMES[t]}
                       </button>
                     ))}
                   </div>
-                  <span className="label label--muted">this picks what the set follows; it doesn't download anything</span>
+                  <span className="label label--muted">
+                    {newTracker === 'two-hands' ? 'either hand or both: one set can hold one-handed gestures and two-handed ones. ' : ''}this picks what the set follows; it doesn't download anything
+                  </span>
                 </div>
                 {offerTracker}
                 <Explained id="move.new">
@@ -545,7 +568,7 @@ export default function MovePanel({ active }: { active: boolean }) {
 
           <h2 className="panel__title label">choose a model</h2>
           <p className="models-intro">
-            The model that finds the points: on a hand (21) or on a whole body (33). It is ready-made and you don't train it: it runs in this page and turns each camera frame into points. Your gestures then train the small model that names them. A set uses one or the other.
+            The model that finds the points: on a hand (21) or on a whole body (33). It is ready-made and you don't train it: it runs in this page and turns each camera frame into points. Your gestures then train the small model that names them. A set uses one or the other: a set for one hand or for two hands uses the hands tracker, told to find one hand or up to two.
           </p>
           <div className="cards">
             {TRACKER_MODELS.map((t) => (
@@ -603,13 +626,13 @@ export default function MovePanel({ active }: { active: boolean }) {
                 </div>
                 </Next>
               )}
-              {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
+              {loadingTracker && <Loading label={`loading the ${tool} tracker`} about={2 + trackerInfo.mb * 0.15} />}
 
               <figure className="move-view">
                 {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
                 <canvas ref={canvas} className="move-view__points" />
                 <figcaption className="label label--muted">
-                  {found ? `${tracker === 'hands' ? 'a hand' : 'a body'}: ${tracker === 'hands' ? 21 : 33} points` : `no ${tracker === 'hands' ? 'hand' : 'body'} found yet`}
+                  {foundText || foundWords(null, tracker)}
                   {' · only the points are kept, never the picture'}
                 </figcaption>
               </figure>
