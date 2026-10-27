@@ -94,6 +94,14 @@ function UseIt({ name, port, sending }: { name: string; port: string; sending: b
 }
 
 /** The steps from nothing to a gesture in TouchDesigner, each done, now, or waiting. */
+/**
+ * Room for a dashed box around one step's controls. The box shows when that step
+ * is the next one to do: it flashes as it arrives there, then stays until it is done.
+ */
+function Next({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return <div className={`move-next ${on ? 'is-next' : ''}`.trim()}>{children}</div>
+}
+
 function Steps({ steps }: { steps: { name: string; how: string; done: boolean }[] }) {
   const now = steps.findIndex((x) => !x.done)
   return (
@@ -367,6 +375,8 @@ export default function MovePanel({ active }: { active: boolean }) {
   }
 
   const labels = Object.keys(set?.counts ?? {}).filter((l) => (set?.counts[l] ?? 0) > 0)
+  /** training needs two gestures or more, with at least 5 examples of each (as `gesture train` checks) */
+  const trainable = labels.length >= 2 && labels.every((l) => (set?.counts[l] ?? 0) >= 5)
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
@@ -379,13 +389,16 @@ export default function MovePanel({ active }: { active: boolean }) {
     { name: 'get the tracker', how: `download the ${tracker} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
     { name: 'choose a set', how: 'start with the example set, or make your own: give it a name, choose hands or body, and press make the set', done: hasSet },
     { name: 'start the camera', how: 'press start the camera, and allow it when the browser asks (or use a photo)', done: camera === 'on' || (source === 'photo' && !!photo) },
-    { name: 'record two or more gestures', how: 'name a gesture, then hold to record for 3–5 seconds while you make it; then another', done: labels.length >= 2 },
+    { name: 'record two or more gestures', how: 'name a gesture, then hold to record for 3–5 seconds while you make it (at least 5 examples of each); then another', done: trainable },
     { name: 'train', how: 'press train: it takes a second, and shows which gestures it mixes up', done: !!set?.trained },
     { name: 'test it, and send it on', how: 'test it live, then send it on as OSC; "use it in your patch" on the right says what to put in TouchDesigner, Max or Pure Data', done: testing || sending },
   ]
+  /** the next step to do: its controls get the dashed box */
+  const now = steps.findIndex((x) => !x.done)
 
   /** The tracker, offered right where it is needed: a button, or its download as it happens. */
   const offerTracker = !trackerHere && (
+    <Next on={now === 0}>
     <div className="move-start">
       {busy === `get ${tracker}` ? (
         <DownloadWait name={tracker} label={`downloading the ${tracker} tracker`} />
@@ -400,6 +413,7 @@ export default function MovePanel({ active }: { active: boolean }) {
         </>
       )}
     </div>
+    </Next>
   )
 
   return (
@@ -449,10 +463,12 @@ export default function MovePanel({ active }: { active: boolean }) {
             </Explained>
             {!name && (
               <div className="move-start">
-                <label key={flash} className={`field ${flash ? 'is-flashing' : ''}`.trim()}>
-                  <span className="label label--muted">name</span>
-                  <input ref={nameInput} type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder="studio-hands" spellCheck={false} />
-                </label>
+                <Next key={flash} on={now === 1 || flash > 0}>
+                  <label className="field">
+                    <span className="label label--muted">name</span>
+                    <input ref={nameInput} type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder="studio-hands" spellCheck={false} />
+                  </label>
+                </Next>
                 <div className="field">
                   <span className="label label--muted">its tracker</span>
                   <div className="choice" role="radiogroup" aria-label="its tracker">
@@ -504,9 +520,14 @@ export default function MovePanel({ active }: { active: boolean }) {
                   </button>
                 ))}
               </div>
-              {source === 'photo' && <PicturePicker value={photo} onChange={choosePhoto} />}
+              {source === 'photo' && (
+                <Next on={now === 2}>
+                  <PicturePicker value={photo} onChange={choosePhoto} />
+                </Next>
+              )}
               {offerTracker}
               {source === 'camera' && trackerHere && camera !== 'on' && (
+                <Next on={now === 2}>
                 <div className="move-start">
                   {camera === 'starting' ? (
                     <Loading label="waiting for the camera: allow it if the browser asks" />
@@ -519,6 +540,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                   )}
                   <CameraHelp camera={camera} message={cameraMessage} />
                 </div>
+                </Next>
               )}
               {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
 
@@ -532,6 +554,7 @@ export default function MovePanel({ active }: { active: boolean }) {
               </figure>
 
               <div className="move-side">
+                <Next on={now === 3}>
                 <h3 className="label">1 · record examples</h3>
                 {labels.map((l) => (
                   <div key={l} className="move-label">
@@ -573,11 +596,14 @@ export default function MovePanel({ active }: { active: boolean }) {
                   )}
                 </div>
                 {note && <p className="label">{note}</p>}
+                </Next>
 
+                <Next on={now === 4}>
                 <h3 className="label">2 · train</h3>
                 <Explained id="move.train">
-                  <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={labels.length < 2} running={busy === 'train'} label="train" />
+                  <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={!trainable} running={busy === 'train'} label="train" />
                 </Explained>
+                </Next>
                 {set.trained && (
                   <>
                     <p className="label label--muted">
@@ -610,7 +636,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                   </>
                 )}
 
-                <div className="move-test">
+                <div className={`move-test ${now === 5 ? 'is-next' : ''}`.trim()}>
                   <h3 className="label">3 · test it, and send it on</h3>
                   <Explained id="move.test">
                     <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => (setTesting((t) => !t), setGuess(null))} aria-pressed={testing}>

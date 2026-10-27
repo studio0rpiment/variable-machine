@@ -864,10 +864,13 @@ img.move-view__picture { transform: none; }
 .move-start { display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start; }
 .look-sets .move-start { flex-basis: 100%; }
 .move-start .field { flex: none; width: 100%; max-width: 20rem; }
-/* "make your own" was clicked: a dashed box flashes around the name, the next step */
-.move-start .field.is-flashing { outline: 1px dashed transparent; outline-offset: 0.5rem; animation: name-flash 0.6s steps(1, end) 4 both; }
-@keyframes name-flash { 0% { outline-color: var(--line); } 50% { outline-color: transparent; } }
-@media (prefers-reduced-motion: reduce) { .move-start .field.is-flashing { animation: none; outline-color: var(--line); } }
+/* The next step's controls: a dashed box that flashes as it arrives, then stays.
+   The room for it is always there, so nothing moves when it appears. */
+.move-next { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; max-width: 100%; border: 1px dashed transparent; padding: 0.6rem 0.75rem; }
+.move-start .move-next .field { width: 20rem; max-width: 100%; }
+.move-next.is-next, .move-test.is-next { border-color: var(--line); animation: next-flash 0.5s steps(1, end) 4; }
+@keyframes next-flash { 50% { border-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .move-next.is-next, .move-test.is-next { animation: none; } }
 .move-help { margin: 0; max-width: 40rem; line-height: 1.5; font-size: 0.75rem; letter-spacing: 0.02em; }
 .move-help li { margin-bottom: 0.25rem; }
 
