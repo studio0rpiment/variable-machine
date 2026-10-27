@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TRACKER_MODELS, type TrackerModel } from '@shared/kinds'
-import { classify, normalize, type GestureModel, type Point, type Tracker } from '@shared/gesture'
+import { classify, NONE, normalize, reachOf, type GestureModel, type Point, type Tracker } from '@shared/gesture'
 import { joinWords } from '@shared/quote'
 import { runCommand, sendEvent } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
@@ -60,7 +60,7 @@ function UseIt({ name, port, sending }: { name: string; port: string; sending: b
       <div className="move-test move-use">
         <h3 className="label">4 · use it in your patch</h3>
         <p className="move-help">
-          With <i>test it live</i> and <i>send</i> on{sending ? ' (sending now)' : ''}, every guess goes to this computer, port {port}, as an OSC message: the address, the gesture's name, and how many of the nearest examples agree (0 to 1).
+          With <i>test it live</i> and <i>send</i> on{sending ? ' (sending now)' : ''}, every guess goes to this computer, port {port}, as an OSC message: the address, the gesture's name, and how many of the nearest examples agree (0 to 1). When it is none of your gestures, or there is no hand in the picture, the name is <i>none</i> and the number 0.
         </p>
         <code className="move-use__msg">
           {address} "fist" 0.92
@@ -195,6 +195,8 @@ export default function MovePanel({ active }: { active: boolean }) {
   const [newTracker, setNewTracker] = useState<Tracker>('hands')
   /** counts clicks on "make your own": each one flashes a dashed box around the name, the next thing to fill in */
   const [flash, setFlash] = useState(0)
+  /** the lightbox: the camera and the controls for recording, or for testing, gathered in the middle while the rest fades */
+  const [focus, setFocus] = useState<'record' | 'test' | null>(null)
   const nameInput = useRef<HTMLInputElement>(null)
   useEffect(() => void (flash && nameInput.current?.focus()), [flash])
   const [source, setSource] = useState<'camera' | 'photo'>('camera')
@@ -247,7 +249,12 @@ export default function MovePanel({ active }: { active: boolean }) {
   useEffect(() => {
     model.current = null
     if (!set?.trained) return
-    void readFile(`gestures/${set.folder}/model.json`).then((t) => (model.current = t ? (JSON.parse(t) as GestureModel) : null))
+    void readFile(`gestures/${set.folder}/model.json`).then((t) => {
+      const m = t ? (JSON.parse(t) as GestureModel) : null
+      // a model trained before none was there: work out its reach now
+      if (m && m.reach === undefined) m.reach = reachOf(m.examples)
+      model.current = m
+    })
   }, [set?.folder, set?.trained])
 
   const run = async (key: string, line: string) => {
@@ -263,7 +270,14 @@ export default function MovePanel({ active }: { active: boolean }) {
       latest.current = points
       setFound(!!points)
       if (canvas.current) draw(canvas.current, w, h, points, tracker)
-      if (!points) return
+      if (!points) {
+        // nothing in the picture is an answer too: none
+        if (testing && model.current) {
+          setGuess({ label: NONE, confidence: 0 })
+          sendEvent({ type: 'gesture.live', name, label: NONE, confidence: 0 })
+        }
+        return
+      }
       const t = performance.now()
       if (recording && t - lastTake.current > 1000 / PER_SECOND) {
         lastTake.current = t
@@ -297,6 +311,20 @@ export default function MovePanel({ active }: { active: boolean }) {
   }, [active, source, stopCamera])
   useEffect(() => stopCamera, [stopCamera])
   useEffect(() => stopCamera(), [name, stopCamera])
+  useEffect(() => setFocus(null), [name, active])
+  // esc closes the lightbox; closing the testing one stops testing
+  const closeFocus = useCallback(() => {
+    setFocus((f) => {
+      if (f === 'test') setTesting(false)
+      return null
+    })
+  }, [])
+  useEffect(() => {
+    if (!focus) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeFocus()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focus, closeFocus])
 
   /** The camera opens only when you press start: the browser asks once, on that click. Then one frame at a time, as it hands them over. */
   const startCamera = async () => {
@@ -510,9 +538,25 @@ export default function MovePanel({ active }: { active: boolean }) {
 
         </div>
 
-        <div className="move-studio" aria-label="camera, examples and training">
+        {focus && <div className="move-backdrop" onClick={closeFocus} aria-hidden="true" />}
+        <div
+          className={`move-studio ${focus ? `is-focus is-focus--${focus}` : ''}`.trim()}
+          aria-label="camera, examples and training"
+          role={focus ? 'dialog' : undefined}
+          aria-modal={focus ? true : undefined}
+        >
           {set ? (
             <>
+              {focus && (
+                <div className="move-focus-bar">
+                  <h3 className="label">
+                    {focus === 'record' ? 'record examples' : 'test it, and send it on'} · {name}
+                  </h3>
+                  <button type="button" className="text-button" onClick={closeFocus}>
+                    {focus === 'test' ? 'stop testing' : 'done'} (esc)
+                  </button>
+                </div>
+              )}
               <div className="choice move-source" role="radiogroup" aria-label="source">
                 {(['camera', 'photo'] as const).map((s) => (
                   <button key={s} type="button" role="radio" aria-checked={s === source} className={`text-button ${s === source ? 'is-active' : ''}`.trim()} onClick={() => (setSource(s), setNote(''))}>
@@ -552,10 +596,28 @@ export default function MovePanel({ active }: { active: boolean }) {
                   {' · only the points are kept, never the picture'}
                 </figcaption>
               </figure>
+              {source === 'camera' && camera === 'on' && (
+                <button type="button" className="text-button move-camera-off" onClick={stopCamera}>
+                  stop the camera
+                </button>
+              )}
 
               <div className="move-side">
+                <div className="move-part move-part--record">
                 <Next on={now === 3}>
                 <h3 className="label">1 · record examples</h3>
+                {!focus && (
+                  <button
+                    type="button"
+                    className="act-button"
+                    onClick={() => {
+                      setFocus('record')
+                      if (source === 'camera' && trackerHere && camera !== 'on' && camera !== 'starting') void startCamera()
+                    }}
+                  >
+                    open the recorder
+                  </button>
+                )}
                 {labels.map((l) => (
                   <div key={l} className="move-label">
                     <span className="move-label__name">{l}</span>
@@ -597,6 +659,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                 </div>
                 {note && <p className="label">{note}</p>}
                 </Next>
+                </div>
 
                 <Next on={now === 4}>
                 <h3 className="label">2 · train</h3>
@@ -636,10 +699,16 @@ export default function MovePanel({ active }: { active: boolean }) {
                   </>
                 )}
 
-                <div className={`move-test ${now === 5 ? 'is-next' : ''}`.trim()}>
+                <div className={`move-test move-part--test ${now === 5 ? 'is-next' : ''}`.trim()}>
                   <h3 className="label">3 · test it, and send it on</h3>
                   <Explained id="move.test">
-                    <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => (setTesting((t) => !t), setGuess(null))} aria-pressed={testing}>
+                    <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => {
+                        setGuess(null)
+                        if (testing) return closeFocus()
+                        setTesting(true)
+                        setFocus('test')
+                        if (source === 'camera' && trackerHere && camera !== 'on' && camera !== 'starting') void startCamera()
+                      }} aria-pressed={testing}>
                       {testing ? 'stop testing' : 'test it live'}
                     </button>
                   </Explained>
@@ -647,7 +716,9 @@ export default function MovePanel({ active }: { active: boolean }) {
                     <p className="move-guess">
                       <span className="move-guess__label">{guess.label}</span>
                       <span className="move-guess__bar" style={{ width: `${guess.confidence * 100}%` }} aria-hidden="true" />
-                      <span className="label label--muted">{Math.round(guess.confidence * 100)}% of the {set.trained?.k} nearest agree</span>
+                      <span className="label label--muted">
+                        {guess.label === NONE ? (found ? 'none of your gestures: farther than any example' : `no ${what} in the picture`) : `${Math.round(guess.confidence * 100)}% of the ${set.trained?.k} nearest agree`}
+                      </span>
                     </p>
                   )}
                   <div className="inline-fields">

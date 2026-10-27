@@ -4,7 +4,7 @@ import type http from 'node:http'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { OSC_ADDRESS, sendOsc } from './osc.ts'
-import { POINTS, train, type Check, type Example, type Tracker } from './shared/gesture.ts'
+import { NONE, POINTS, train, type Check, type Example, type Tracker } from './shared/gesture.ts'
 
 /**
  * `gesture …` (the gesture tab). A gesture set is workspace/gestures/<name>/:
@@ -162,6 +162,7 @@ async function trainSet(name: string, kText: string | undefined, line: string) {
   print(`  ${'made \\ named'.padEnd(w)}${model.labels.map((l) => l.padStart(w)).join('')}`)
   for (const a of model.labels) print(`  ${a.padEnd(w)}${model.labels.map((b) => String(check.confusion[a][b]).padStart(w)).join('')}`)
   print(`  ${check.correct} of ${check.heldOut} set-aside examples named right${check.heldOut ? ` (${Math.round((check.correct / check.heldOut) * 100)}%)` : ''}`)
+  print(`  a pose farther than ${model.reach!.toFixed(2)} from every example is named ${NONE}: none of these gestures`)
   m.trained = { at: now(), k, examples: examples.length, check }
   m.inputs = [`workspace/gestures/${name}/examples.jsonl`]
   record(m, line)

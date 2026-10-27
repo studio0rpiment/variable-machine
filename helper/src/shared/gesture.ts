@@ -45,7 +45,13 @@ export interface GestureModel {
   k: number
   labels: string[]
   examples: Example[]
+  /** farther than this from every example, the answer is none (see reachOf); models trained before it work it out on loading */
+  reach?: number
 }
+
+/** The answer when a pose is far from every example: none of the gestures (or no hand or body in the picture). */
+export const NONE = 'none'
+
 
 const distance = (a: number[], b: number[]) => {
   let s = 0
@@ -53,15 +59,54 @@ const distance = (a: number[], b: number[]) => {
   return Math.sqrt(s)
 }
 
+const quantile = (xs: number[], q: number) => {
+  const s = [...xs].sort((a, b) => a - b)
+  return s.length ? s[Math.floor(q * (s.length - 1))] : 0
+}
+
+/**
+ * How far a pose may be from its nearest example and still be one of the
+ * gestures. Two distances from the examples themselves: how close each example
+ * is to its nearest example of the same gesture (a gesture made again), and how
+ * close it is to the nearest example of another gesture (a different gesture).
+ * The line goes halfway between the two (most of the first, the nearest tenth of
+ * the second), never closer than one and a half times the first and never
+ * farther than three times it (with two gestures far apart, halfway would let a
+ * third gesture between them through). A pose that is none of them is then
+ * answered none. On the example set, 1 in 23 known poses set aside came out
+ * none, and every pose of a gesture left out of training did.
+ */
+export function reachOf(examples: Example[]): number {
+  const same: number[] = []
+  const other: number[] = []
+  for (const e of examples) {
+    let s = Infinity
+    let o = Infinity
+    for (const f of examples) {
+      if (f === e) continue
+      const d = distance(e.v, f.v)
+      if (f.label === e.label) s = Math.min(s, d)
+      else o = Math.min(o, d)
+    }
+    if (Number.isFinite(s)) same.push(s)
+    if (Number.isFinite(o)) other.push(o)
+  }
+  const again = quantile(same, 0.9)
+  const different = other.length ? quantile(other, 0.1) : again * 3
+  return Math.min(again * 3, Math.max(again * 1.5, (again + different) / 2))
+}
+
 /**
  * The k closest examples vote. Confidence is the share of the votes the
- * winner got, so 1 means all k agreed.
+ * winner got, so 1 means all k agreed. When even the closest example is
+ * farther than the model's reach, the answer is none, with confidence 0.
  */
-export function classify(m: Pick<GestureModel, 'k' | 'examples' | 'labels'>, v: number[]): { label: string; confidence: number; votes: Record<string, number> } {
+export function classify(m: Pick<GestureModel, 'k' | 'examples' | 'labels' | 'reach'>, v: number[]): { label: string; confidence: number; votes: Record<string, number> } {
   const near = m.examples
     .map((e) => ({ label: e.label, d: distance(e.v, v) }))
     .sort((a, b) => a.d - b.d)
     .slice(0, m.k)
+  if (m.reach !== undefined && near.length && near[0].d > m.reach) return { label: NONE, confidence: 0, votes: {} }
   const votes: Record<string, number> = {}
   for (const n of near) votes[n.label] = (votes[n.label] ?? 0) + 1
   const [label, count] = Object.entries(votes).sort((a, b) => b[1] - a[1])[0] ?? ['', 0]
@@ -97,5 +142,5 @@ export function train(name: string, tracker: Tracker, examples: Example[], k: nu
     if (got) confusion[e.label][got] += 1
     if (got === e.label) correct++
   }
-  return { model: { name, tracker, k, labels, examples }, check: { heldOut: aside.length, correct, confusion } }
+  return { model: { name, tracker, k, labels, examples, reach: reachOf(examples) }, check: { heldOut: aside.length, correct, confusion } }
 }

@@ -903,3 +903,27 @@ img.move-view__picture { transform: none; }
 .move-use__list dt { color: var(--line); margin-top: 0.5rem; }
 .move-use__list dd { margin: 0; color: var(--muted); }
 .move-use__list code { color: var(--line); }
+
+/* The lightbox for recording and for testing: the camera and just those
+   controls, gathered in the middle of the page; everything else fades behind.
+   It is the same column, lifted out, so the camera keeps running. */
+.move-backdrop { position: fixed; inset: 0; z-index: 900; background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.move-studio.is-focus {
+  position: fixed; z-index: 901; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(64rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto;
+  display: grid; grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr); align-items: start; gap: 0 2rem;
+  padding: 1.25rem 1.5rem 1.5rem; background: var(--bg); border: 1px solid var(--line);
+}
+.move-studio.is-focus > * { grid-column: 1; margin-bottom: 0.75rem; }
+.move-studio.is-focus > .move-side { grid-column: 2; grid-row: 2 / span 20; }
+.move-studio.is-focus > .move-focus-bar { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.move-focus-bar h3 { margin: 0; }
+.move-studio.is-focus > .move-source { display: none; }
+.move-studio.is-focus--record .move-side > :not(.move-part--record),
+.move-studio.is-focus--test .move-side > :not(.move-part--test) { display: none; }
+.move-studio.is-focus .move-side h3 { margin-top: 0; }
+.move-camera-off { align-self: flex-start; }
+@media (max-width: 50rem) {
+  .move-studio.is-focus { grid-template-columns: minmax(0, 1fr); }
+  .move-studio.is-focus > .move-side { grid-column: 1; grid-row: auto; }
+}

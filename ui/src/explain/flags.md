@@ -572,12 +572,12 @@ k-nearest neighbours: a new pose is compared with every example you recorded, an
 ### Test it live
 `move.test`
 
-Names your gesture as you make it, and shows how many of the nearest examples agree. Try the gestures it mixes up, and record more examples of them.
+Opens the camera with the test in a lightbox. Names your gesture as you make it, and shows how many of the nearest examples agree. A pose farther than any of your examples, or no hand in the picture, is named none. Try the gestures it mixes up, and record more examples of them.
 
 ### Send it on
 `move.send`
 
-While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture's name and how sure it is (0 to 1). In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer.
+While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture's name and how sure it is (0 to 1), or none and 0 when it is none of them. In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer.
 
 ### Speech
 `panel.speech`
