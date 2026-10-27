@@ -5,8 +5,13 @@
 //
 // flags.md: "### Title", then the name in backticks on the next line, then the
 // text (one paragraph). "#" and "##" lines are headings for finding your way.
+//
+// The tabs are moving, one at a time, to a file each in src/text/ that holds all
+// their words, flags included (see text.mjs). text.ts takes the flags from both;
+// once every tab has moved, flags.md is gone.
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { checkFlagNames, tabFiles, tabFlags, writeWords } from './text.mjs'
 
 export const FLAGS_MD = fileURLToPath(new URL('../src/explain/flags.md', import.meta.url))
 const TEXT_TS = fileURLToPath(new URL('../src/explain/text.ts', import.meta.url))
@@ -65,26 +70,48 @@ export function flagsToTs(flags) {
   ].join('\n')
 }
 
-/** Write text.ts from flags.md, only when it would change (so a watch build doesn't loop). */
+/** Write text.ts from flags.md and the tab files' flags, only when it would change (so a watch build doesn't loop). */
 export function writeFlags() {
-  const ts = flagsToTs(parseFlags(fs.readFileSync(FLAGS_MD, 'utf8')))
+  const flags = parseFlags(fs.readFileSync(FLAGS_MD, 'utf8'))
+  for (const f of tabFlags()) {
+    if (flags.some((x) => x.id === f.id)) throw new Error(`${f.id} is in flags.md and in src/text/${f.tab}.md: keep it in ${f.tab}.md only`)
+    flags.push({ id: f.id, title: f.title, text: f.text })
+  }
+  const problems = checkFlagNames(flags.map((f) => f.id))
+  if (problems.length) throw new Error(`The flags don't match the code:\n  ${problems.join('\n  ')}`)
+  const ts = flagsToTs(flags)
   const old = fs.existsSync(TEXT_TS) ? fs.readFileSync(TEXT_TS, 'utf8') : ''
   if (ts !== old) fs.writeFileSync(TEXT_TS, ts)
   return ts !== old
 }
 
-/** Vite plugin: make text.ts at the start of every build, and again whenever flags.md is saved. */
+/** Both: the flags (text.ts) and the tab files' words (src/text/words.ts, checked against the code). */
+export function writeText() {
+  return [writeFlags(), writeWords()]
+}
+
+/** Vite plugin: make text.ts and words.ts at the start of every build, and again whenever flags.md or a tab file is saved. */
 export function flagsPlugin() {
   return {
     name: 'variable-machine-flags',
     buildStart() {
       this.addWatchFile(FLAGS_MD)
-      writeFlags()
+      for (const f of tabFiles()) this.addWatchFile(f)
+      writeText()
     },
     watchChange(id) {
-      if (id === FLAGS_MD) writeFlags()
+      if (id === FLAGS_MD || tabFiles().includes(id)) writeText()
     },
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) console.log(writeFlags() ? 'wrote src/explain/text.ts from flags.md' : 'text.ts already matches flags.md')
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  try {
+    const [flags, words] = writeText()
+    console.log(flags ? 'wrote src/explain/text.ts from flags.md and src/text/*.md' : 'text.ts already matches flags.md and src/text/*.md')
+    console.log(words ? 'wrote src/text/words.ts from src/text/*.md' : 'words.ts already matches src/text/*.md')
+  } catch (e) {
+    console.error(e.message)
+    process.exit(1)
+  }
+}

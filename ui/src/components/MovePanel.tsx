@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { TRACKER_MODELS, type TrackerModel } from '@shared/kinds'
 import { asNow, classify, NONE, normalize, reachOf, trackerOf, TRACKERS, type Found, type GestureModel, type Tracker } from '@shared/gesture'
 import { joinWords } from '@shared/quote'
@@ -12,6 +12,7 @@ import PicturePicker from './PicturePicker'
 import { Explained } from '../explain/Explained'
 import Loading, { DownloadWait } from './Loading'
 import { useSpaceKey } from '../hooks/useSpaceKey'
+import { rich, say } from '../text/say'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const LABEL = /^[\w .-]{1,40}$/
@@ -35,22 +36,30 @@ function CameraHelp({ camera, message }: { camera: Camera; message: string }) {
   if (camera === 'denied')
     return (
       <div className="move-help">
-        <p>The camera is blocked, so the browser didn't ask. To allow it:</p>
+        <p>{say('gesture.camera.denied')}</p>
         <ul>
-          <li>Chrome: click the icon at the left of the address bar (a camera, or two sliders), set Camera to Allow, then reload this page.</li>
-          <li>Safari: Safari › Settings for this website (or Settings › Websites › Camera), set Camera to Allow, then reload.</li>
-          <li>Still blocked? The Mac is blocking the browser: System Settings › Privacy & Security › Camera, turn your browser on, then quit the browser and open it again.</li>
+          <li>{say('gesture.camera.denied.chrome')}</li>
+          <li>{say('gesture.camera.denied.safari')}</li>
+          <li>{say('gesture.camera.denied.mac')}</li>
         </ul>
-        <p>Or use a photo instead.</p>
+        <p>{say('gesture.camera.denied.photo')}</p>
       </div>
     )
-  if (camera === 'none') return <p className="move-help">No camera was found. Connect one and press start the camera again, or use a photo instead.</p>
-  if (camera === 'busy') return <p className="move-help">Another app is using the camera (FaceTime, Zoom, Photo Booth…). Close it, then press start the camera again.</p>
-  if (camera === 'unavailable')
-    return <p className="move-help">This browser can't open a camera from this page. Open Variable Machine at http://localhost:4817 in Chrome or Safari.</p>
-  if (camera === 'error') return <p className="move-help">The camera didn't start: {message}. Press start the camera again, or use a photo instead.</p>
+  if (camera === 'none') return <p className="move-help">{say('gesture.camera.none')}</p>
+  if (camera === 'busy') return <p className="move-help">{say('gesture.camera.busy')}</p>
+  if (camera === 'unavailable') return <p className="move-help">{say('gesture.camera.unavailable', { address: 'http://localhost:4817' })}</p>
+  if (camera === 'error') return <p className="move-help">{say('gesture.camera.error', { message })}</p>
   return null
 }
+
+/** A patch's objects in a row, as they are typed into it: [a] → [b] → [c]. */
+const objects = (list: string[]) =>
+  list.map((o, i) => (
+    <Fragment key={i}>
+      {i > 0 && ' → '}
+      <code>[{o}]</code>
+    </Fragment>
+  ))
 
 /**
  * Where a gesture goes once it is sent, and how to pick it up: the OSC message,
@@ -61,35 +70,23 @@ function UseIt({ name, port, sending }: { name: string; port: string; sending: b
   return (
     <Explained id="move.use">
       <div className="move-test move-use">
-        <h3 className="label">4 · use it in your patch</h3>
-        <p className="move-help">
-          With <i>test it live</i> and <i>send</i> on{sending ? ' (sending now)' : ''}, every guess goes to this computer, port {port}, as an OSC message: the address, the gesture's name, and how many of the nearest examples agree (0 to 1). When it is none of your gestures, or there is no hand in the picture, the name is <i>none</i> and the number 0.
-        </p>
+        <h3 className="label">{say('gesture.use.title')}</h3>
+        <p className="move-help">{rich('gesture.use.how', { sending: sending ? ` ${say('gesture.use.sendingNow')}` : '', port })}</p>
         <code className="move-use__msg">
           {address} "fist" 0.92
         </code>
-        <p className="move-help">Keep this tab open while you play: Variable Machine does the seeing, your patch does the rest.</p>
+        <p className="move-help">{say('gesture.use.keepOpen')}</p>
         <dl className="move-use__list">
-          <dt>TouchDesigner</dt>
-          <dd>
-            an <b>OSC In DAT</b>, Network Port {port}. Each guess arrives as a row: the address, then the gesture and the confidence. Act on it with a DAT Execute, or pick the gesture out with a Select DAT.
-          </dd>
-          <dt>Max</dt>
-          <dd>
-            <code>[udpreceive {port}]</code> → <code>[route {address}]</code> → <code>[unpack s f]</code>: the gesture out of the left, the confidence out of the right.
-          </dd>
-          <dt>Pure Data</dt>
-          <dd>
-            <code>[netreceive -u -b {port}]</code> → <code>[oscparse]</code> → <code>[list trim]</code> → <code>[route vm]</code> → <code>[route {name}]</code>: the gesture and the confidence.
-          </dd>
-          <dt>Check it arrives</dt>
-          <dd>
-            in a Terminal, in the variable-machine folder: <code>node docs/briefs/3-gesture/osc-listen.mjs {port}</code> prints each message.
-          </dd>
-          <dt>Take the set with you</dt>
-          <dd>
-            Share → <code>zip gestures/{name}</code>: the examples and the trained model, to unzip into anyone's Variable Machine.
-          </dd>
+          <dt>{say('gesture.use.td')}</dt>
+          <dd>{rich('gesture.use.td.how', { port })}</dd>
+          <dt>{say('gesture.use.max')}</dt>
+          <dd>{rich('gesture.use.max.how', { objects: objects([`udpreceive ${port}`, `route ${address}`, 'unpack s f']) })}</dd>
+          <dt>{say('gesture.use.pd')}</dt>
+          <dd>{rich('gesture.use.pd.how', { objects: objects([`netreceive -u -b ${port}`, 'oscparse', 'list trim', 'route vm', `route ${name}`]) })}</dd>
+          <dt>{say('gesture.use.check')}</dt>
+          <dd>{rich('gesture.use.check.how', { command: `node docs/briefs/3-gesture/osc-listen.mjs ${port}` })}</dd>
+          <dt>{say('gesture.use.take')}</dt>
+          <dd>{rich('gesture.use.take.how', { command: `zip gestures/${name}` })}</dd>
         </dl>
       </div>
     </Explained>
@@ -105,17 +102,20 @@ function Next({ on, children }: { on: boolean; children: React.ReactNode }) {
   return <div className={`move-next ${on ? 'is-next' : ''}`.trim()}>{children}</div>
 }
 
+/** What a step's state is called on the page. */
+const STATE_WORDS = { done: () => say('gesture.steps.done'), now: () => say('gesture.steps.now'), waiting: () => say('gesture.steps.waiting') }
+
 function Steps({ steps }: { steps: { name: string; how: string; done: boolean }[] }) {
   const now = steps.findIndex((x) => !x.done)
   return (
     <Explained id="move.steps">
-      <ol className="move-steps" aria-label="steps">
+      <ol className="move-steps" aria-label={say('gesture.steps.label')}>
         {steps.map((x, i) => {
           const state = x.done ? 'done' : i === now ? 'now' : 'waiting'
           return (
             <li key={x.name} className={`move-step is-${state}`} aria-current={i === now ? 'step' : undefined}>
               <span className="move-step__state">
-                {i + 1} · {state}
+                {i + 1} · {STATE_WORDS[state]()}
               </span>
               <span>
                 <span className="move-step__name">{x.name}</span>
@@ -142,14 +142,17 @@ export function TrackerCard({ t, here, busy, onGet }: { t: TrackerModel; here: b
     <Manifest
       name={t.name}
       badges={<Badge>{t.kind}</Badge>}
-      lines={[`${t.maker} · ${t.license}`, `${t.file} · about ${t.mb} MB · ${here ? 'in workspace/tools' : 'not downloaded yet'}`]}
+      lines={[
+        `${t.maker} · ${t.license}`,
+        say('gesture.tracker.card.file', { file: t.file, mb: t.mb, where: here ? say('gesture.tracker.card.here', { folder: 'workspace/tools' }) : say('gesture.tracker.card.notHere') }),
+      ]}
       actions={
         !here &&
         (busy ? (
-          <DownloadWait name={t.name} label={`downloading the ${t.name} tracker`} />
+          <DownloadWait name={t.name} label={say('gesture.tracker.downloading', { tracker: t.name })} />
         ) : (
           <Explained id="move.get">
-            <CommandPreview command={`model get ${t.name}`} onRun={onGet} running={busy} label={`download ${t.name}`} />
+            <CommandPreview command={`model get ${t.name}`} onRun={onGet} running={busy} label={say('gesture.tracker.card.download', { tracker: t.name })} />
           </Explained>
         ))
       }
@@ -160,13 +163,13 @@ export function TrackerCard({ t, here, busy, onGet }: { t: TrackerModel; here: b
 }
 
 /** What each tracker is called on the page. */
-const TRACKER_NAMES: Record<Tracker, string> = { hands: 'hands, one or two', body: 'a body' }
+const TRACKER_NAMES: Record<Tracker, () => string> = { hands: () => say('gesture.tracker.hands'), body: () => say('gesture.tracker.body') }
 
 /** What was found, in words: "a hand: 21 points", "two hands: 42 points". */
 function foundWords(found: Found | null, tracker: Tracker) {
-  if (tracker === 'body') return found ? 'a body: 33 points' : 'no body found yet'
-  if (!found) return 'no hands found yet'
-  return found.length > 1 ? 'two hands: 42 points' : 'a hand: 21 points'
+  if (tracker === 'body') return found ? say('gesture.found.body') : say('gesture.found.noBody')
+  if (!found) return say('gesture.found.noHands')
+  return found.length > 1 ? say('gesture.found.twoHands') : say('gesture.found.oneHand')
 }
 
 /** Draw the points and the bones between them over the picture, in the line colour: outlines only. */
@@ -414,10 +417,10 @@ export default function MovePanel({ active }: { active: boolean }) {
   }
 
   const save = async (lbl: string, vectors: number[][]) => {
-    if (!vectors.length) return setNote(`nothing was found to record: get your whole ${tracker === 'hands' ? 'hand or hands' : 'body'} in the picture`)
+    if (!vectors.length) return setNote(tracker === 'hands' ? say('gesture.record.nothing.hands') : say('gesture.record.nothing.body'))
     const res = await fetch(`/api/workspace/gesture?name=${encodeURIComponent(name)}&label=${encodeURIComponent(lbl)}`, { method: 'POST', body: JSON.stringify({ vectors }) })
     const body = (await res.json().catch(() => ({}))) as { error?: string }
-    setNote(res.ok ? '' : (body.error ?? 'recording failed'))
+    setNote(res.ok ? '' : (body.error ?? say('gesture.record.failed')))
   }
   /**
    * Two hands, or a body standing back from the computer, can't also hold a
@@ -467,22 +470,22 @@ export default function MovePanel({ active }: { active: boolean }) {
     },
   )
   /** what a record button says, and while recording, the count to get ready */
-  const recordWords = (on: boolean) => (!on ? 'tap to record' : ready > 0 ? `get ready: ${ready}…` : 'recording… tap to stop')
+  const recordWords = (on: boolean) => (!on ? say('gesture.record.tap') : ready > 0 ? say('gesture.record.getReady', { n: ready }) : say('gesture.record.recording'))
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
-  const what = tracker === 'hands' ? 'hands' : 'body'
+  const what = tracker === 'hands' ? say('gesture.what.hands') : say('gesture.what.body')
   const trackerInfo = TRACKER_MODELS.find((t) => t.name === tracker)!
   const taken = sets.some((x) => x.folder === newName)
   const getTracker = () => void run(`get ${tracker}`, `model get ${tracker}`)
 
   const steps = [
-    { name: 'get the tracker', how: `download the ${tracker} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
-    { name: 'choose a set', how: 'start with the example set, or make your own: give it a name, choose one hand, two hands or a body, and press make the set', done: hasSet },
-    { name: 'start the camera', how: 'press start the camera, and allow it when the browser asks (or use a photo)', done: camera === 'on' || (source === 'photo' && !!photo) },
-    { name: 'record two or more gestures', how: 'name a gesture, tap to record, make it for 3–5 seconds once the count is done, and tap to stop (at least 5 examples of each); then another', done: trainable },
-    { name: 'train', how: 'press train: it takes a second, and shows which gestures it mixes up', done: !!set?.trained },
-    { name: 'test it, and send it on', how: 'test it live, then send it on as OSC; "use it in your patch" on the right says what to put in TouchDesigner, Max or Pure Data', done: testing || sending },
+    { name: say('gesture.step.tracker'), how: say('gesture.step.tracker.how', { tracker, mb: trackerInfo.mb, what }), done: trackerHere },
+    { name: say('gesture.step.set'), how: say('gesture.step.set.how'), done: hasSet },
+    { name: say('gesture.step.camera'), how: say('gesture.step.camera.how'), done: camera === 'on' || (source === 'photo' && !!photo) },
+    { name: say('gesture.step.record'), how: say('gesture.step.record.how'), done: trainable },
+    { name: say('gesture.step.train'), how: say('gesture.step.train.how'), done: !!set?.trained },
+    { name: say('gesture.step.test'), how: say('gesture.step.test.how'), done: testing || sending },
   ]
   /** the next step to do: its controls get the dashed box */
   const now = steps.findIndex((x) => !x.done)
@@ -492,15 +495,15 @@ export default function MovePanel({ active }: { active: boolean }) {
     <Next on={now === 0}>
     <div className="move-start">
       {busy === `get ${tracker}` ? (
-        <DownloadWait name={tracker} label={`downloading the ${tracker} tracker`} />
+        <DownloadWait name={tracker} label={say('gesture.tracker.downloading', { tracker })} />
       ) : (
         <>
           <Explained id="move.get">
             <button type="button" className="act-button" onClick={getTracker}>
-              download the {tracker} tracker ({trackerInfo.mb} MB)
+              {say('gesture.tracker.download', { tracker, mb: trackerInfo.mb })}
             </button>
           </Explained>
-          <CommandPreview command={`model get ${tracker}`} onRun={getTracker} label={`download the ${tracker} tracker`} />
+          <CommandPreview command={`model get ${tracker}`} onRun={getTracker} label={say('gesture.tracker.download.label', { tracker })} />
         </>
       )}
     </div>
@@ -508,38 +511,40 @@ export default function MovePanel({ active }: { active: boolean }) {
   )
 
   return (
-    <section className="panel" aria-label="move">
+    <section className="panel" aria-label={say('gesture.label')}>
       <div className="move-layout">
         <div className="move-setup">
-          <h2 className="panel__title label">steps · from your {what} to a gesture in your patch</h2>
+          <h2 className="panel__title label">{say('gesture.steps.title', { what })}</h2>
           <Steps steps={steps} />
 
-          <h2 className="panel__title label">gesture sets · start with the example, then make your own</h2>
+          <h2 className="panel__title label">{say('gesture.sets.title')}</h2>
           <div className="look-sets">
             <Explained id="move.set">
-              <div className="move-sets" role="radiogroup" aria-label="gesture sets">
+              <div className="move-sets" role="radiogroup" aria-label={say('gesture.sets.label')}>
                 {examples
                   .filter((x) => !sets.some((s) => s.folder === x.folder))
                   .map((x) => (
                     <button key={x.folder} type="button" role="radio" aria-checked={false} className="move-set move-set--example" disabled={busy === `example ${x.folder}`} onClick={() => void run(`example ${x.folder}`, `gesture example ${x.folder}`).then((ok) => ok && setName(x.folder))}>
                       <span className="move-set__name">{x.folder}</span>
                       <span className="label label--muted">
-                        the example · {Object.keys(x.counts).join(', ')} · {Object.values(x.counts).reduce((a, b) => a + b, 0)} examples
+                        {say('gesture.sets.example', { gestures: Object.keys(x.counts).join(', '), n: Object.values(x.counts).reduce((a, b) => a + b, 0) })}
                       </span>
-                      <span className="label">{busy === `example ${x.folder}` ? 'copying it in…' : 'start here: copy it in'}</span>
+                      <span className="label">{busy === `example ${x.folder}` ? say('gesture.sets.example.copying') : say('gesture.sets.example.copy')}</span>
                     </button>
                   ))}
                 {sets.map((x) => {
                   const n = Object.values(x.counts).reduce((a, b) => a + b, 0)
                   const isExample = examples.some((e) => e.folder === x.folder)
+                  const about = { tracker: TRACKER_NAMES[trackerOf(x.tracker)](), gestures: Object.keys(x.counts).filter((l) => x.counts[l] > 0).length, n }
                   return (
                     <button key={x.folder} type="button" role="radio" aria-checked={x.folder === name} className={`move-set ${x.folder === name ? 'is-active' : ''}`.trim()} onClick={() => setName(x.folder)}>
                       <span className="move-set__name">{x.folder}</span>
                       <span className="label label--muted">
-                        {isExample ? 'the example · ' : ''}
-                        {TRACKER_NAMES[trackerOf(x.tracker)]} · {Object.keys(x.counts).filter((l) => x.counts[l] > 0).length} gestures · {n} examples
+                        {isExample
+                          ? say('gesture.sets.set.example', { tracker: about.tracker, gestures: about.gestures, n })
+                          : say('gesture.sets.set', { tracker: about.tracker, gestures: about.gestures, n })}
                       </span>
-                      <span className="label label--muted">{x.trained ? 'trained' : 'not trained yet'}</span>
+                      <span className="label label--muted">{x.trained ? say('gesture.sets.set.trained') : say('gesture.sets.set.untrained')}</span>
                     </button>
                   )
                 })}
@@ -547,8 +552,8 @@ export default function MovePanel({ active }: { active: boolean }) {
                     setName('')
                     setFlash((n) => n + 1)
                   }}>
-                  <span className="move-set__name">+ make your own</span>
-                  <span className="label label--muted">your gestures, your hand, your camera</span>
+                  <span className="move-set__name">{say('gesture.sets.new')}</span>
+                  <span className="label label--muted">{say('gesture.sets.new.about')}</span>
                 </button>
               </div>
             </Explained>
@@ -556,21 +561,22 @@ export default function MovePanel({ active }: { active: boolean }) {
               <div className="move-start">
                 <Next key={flash} on={now === 1 || flash > 0}>
                   <label className="field">
-                    <span className="label label--muted">name</span>
-                    <input ref={nameInput} type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder="studio-hands" spellCheck={false} />
+                    <span className="label label--muted">{say('gesture.new.name')}</span>
+                    <input ref={nameInput} type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder={say('gesture.new.name.placeholder')} spellCheck={false} />
                   </label>
                 </Next>
                 <div className="field">
-                  <span className="label label--muted">its tracker</span>
-                  <div className="choice" role="radiogroup" aria-label="its tracker">
+                  <span className="label label--muted">{say('gesture.new.tracker')}</span>
+                  <div className="choice" role="radiogroup" aria-label={say('gesture.new.tracker')}>
                     {TRACKERS.map((t) => (
                       <button key={t} type="button" role="radio" aria-checked={t === newTracker} className={`text-button ${t === newTracker ? 'is-active' : ''}`.trim()} onClick={() => setNewTracker(t)}>
-                        {TRACKER_NAMES[t]}
+                        {TRACKER_NAMES[t]()}
                       </button>
                     ))}
                   </div>
                   <span className="label label--muted">
-                    {newTracker === 'hands' ? 'either hand or both: one set can hold one-handed gestures and two-handed ones. ' : ''}this picks what the set follows; it doesn't download anything
+                    {newTracker === 'hands' ? `${say('gesture.new.tracker.hands')} ` : ''}
+                    {say('gesture.new.tracker.about')}
                   </span>
                 </div>
                 {offerTracker}
@@ -581,20 +587,18 @@ export default function MovePanel({ active }: { active: boolean }) {
                     disabled={!NAME.test(newName) || taken || busy === 'new'}
                     onClick={() => void run('new', newLine).then((ok) => ok && setName(newName))}
                   >
-                    {busy === 'new' ? 'making the set…' : 'make the set'}
+                    {busy === 'new' ? say('gesture.new.making') : say('gesture.new.make')}
                   </button>
                 </Explained>
-                {!newName && <span className="label label--muted">name it first</span>}
-                {taken && <span className="label">there is already a set called {newName}: choose it above, or give this one another name</span>}
-                <CommandPreview command={newLine} onRun={() => void run('new', newLine).then((ok) => ok && setName(newName))} disabled={!NAME.test(newName) || taken} running={busy === 'new'} label="make the set" />
+                {!newName && <span className="label label--muted">{say('gesture.new.nameFirst')}</span>}
+                {taken && <span className="label">{say('gesture.new.taken', { name: newName })}</span>}
+                <CommandPreview command={newLine} onRun={() => void run('new', newLine).then((ok) => ok && setName(newName))} disabled={!NAME.test(newName) || taken} running={busy === 'new'} label={say('gesture.new.make')} />
               </div>
             )}
           </div>
 
-          <h2 className="panel__title label">choose a model</h2>
-          <p className="models-intro">
-            The model that finds the points: on a hand (21) or on a whole body (33). It is ready-made and you don't train it: it runs in this page and turns each camera frame into points. Your gestures then train the small model that names them. A set uses one or the other: the hands tracker finds one hand or two.
-          </p>
+          <h2 className="panel__title label">{say('gesture.models.title')}</h2>
+          <p className="models-intro">{say('gesture.models.intro')}</p>
           <div className="cards">
             {TRACKER_MODELS.map((t) => (
               <TrackerCard key={t.name} t={t} here={!!here[t.name]} busy={busy === `get ${t.name}`} onGet={() => void run(`get ${t.name}`, `model get ${t.name}`)} />
@@ -606,7 +610,7 @@ export default function MovePanel({ active }: { active: boolean }) {
         {focus && <div className="move-backdrop" onClick={closeFocus} aria-hidden="true" />}
         <div
           className={`move-studio ${focus ? `is-focus is-focus--${focus}` : ''}`.trim()}
-          aria-label="camera, examples and training"
+          aria-label={say('gesture.studio.label')}
           role={focus ? 'dialog' : undefined}
           aria-modal={focus ? true : undefined}
         >
@@ -614,18 +618,16 @@ export default function MovePanel({ active }: { active: boolean }) {
             <>
               {focus && (
                 <div className="move-focus-bar">
-                  <h3 className="label">
-                    {focus === 'record' ? 'record examples' : 'test it, and send it on'} · {name}
-                  </h3>
+                  <h3 className="label">{focus === 'record' ? say('gesture.focus.record', { set: name }) : say('gesture.focus.test', { set: name })}</h3>
                   <button type="button" className="text-button" onClick={closeFocus}>
-                    {focus === 'test' ? 'stop testing' : 'done'} (esc)
+                    {focus === 'test' ? say('gesture.focus.stopTesting') : say('gesture.focus.done')}
                   </button>
                 </div>
               )}
-              <div className="choice move-source" role="radiogroup" aria-label="source">
+              <div className="choice move-source" role="radiogroup" aria-label={say('gesture.source.label')}>
                 {(['camera', 'photo'] as const).map((s) => (
                   <button key={s} type="button" role="radio" aria-checked={s === source} className={`text-button ${s === source ? 'is-active' : ''}`.trim()} onClick={() => (setSource(s), setNote(''))}>
-                    {s === 'camera' ? 'the camera' : 'a photo'}
+                    {s === 'camera' ? say('gesture.source.camera') : say('gesture.source.photo')}
                   </button>
                 ))}
               </div>
@@ -639,11 +641,11 @@ export default function MovePanel({ active }: { active: boolean }) {
                 <Next on={now === 2}>
                 <div className="move-start">
                   {camera === 'starting' ? (
-                    <Loading label="waiting for the camera: allow it if the browser asks" />
+                    <Loading label={say('gesture.camera.waiting')} />
                   ) : (
                     <Explained id="move.camera">
                       <button type="button" className="act-button" onClick={() => void startCamera()}>
-                        start the camera
+                        {say('gesture.camera.start')}
                       </button>
                     </Explained>
                   )}
@@ -651,7 +653,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                 </div>
                 </Next>
               )}
-              {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
+              {loadingTracker && <Loading label={say('gesture.tracker.loading', { tracker })} about={2 + trackerInfo.mb * 0.15} />}
 
               <figure className="move-view">
                 <div className="move-view__frame">
@@ -663,26 +665,26 @@ export default function MovePanel({ active }: { active: boolean }) {
                       {ready > 0 ? (
                         <span className="move-view__number">{ready}</span>
                       ) : (
-                        <span className="label move-view__recording">recording {recording} · tap to stop</span>
+                        <span className="label move-view__recording">{say('gesture.view.recording', { gesture: recording })}</span>
                       )}
                     </div>
                   )}
                 </div>
                 <figcaption className="label label--muted">
                   {foundText || foundWords(null, tracker)}
-                  {' · only the points are kept, never the picture'}
+                  {` · ${say('gesture.view.onlyPoints')}`}
                 </figcaption>
               </figure>
               {source === 'camera' && camera === 'on' && (
                 <button type="button" className="text-button move-camera-off" onClick={stopCamera}>
-                  stop the camera
+                  {say('gesture.camera.stop')}
                 </button>
               )}
 
               <div className="move-side">
                 <div className="move-part move-part--record">
                 <Next on={now === 3}>
-                <h3 className="label">1 · record examples</h3>
+                <h3 className="label">{say('gesture.record.title')}</h3>
                 {!focus && (
                   <button
                     type="button"
@@ -692,13 +694,13 @@ export default function MovePanel({ active }: { active: boolean }) {
                       if (source === 'camera' && trackerHere && camera !== 'on' && camera !== 'starting') void startCamera()
                     }}
                   >
-                    open the recorder
+                    {say('gesture.record.open')}
                   </button>
                 )}
                 {labels.map((l) => (
                   <div key={l} className="move-label">
                     <span className="move-label__name">{l}</span>
-                    <span className="label label--muted">{set.counts[l]} examples</span>
+                    <span className="label label--muted">{say('gesture.record.count', { n: set.counts[l] })}</span>
                     {source === 'camera' ? (
                       <Explained id="move.record">
                         <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onClick={() => tapRecord(l)} aria-pressed={recording === l}>
@@ -707,16 +709,16 @@ export default function MovePanel({ active }: { active: boolean }) {
                       </Explained>
                     ) : (
                       <button type="button" className="text-button" disabled={!found} onClick={() => latest.current && void save(l, [normalize(latest.current, tracker)])}>
-                        add this photo
+                        {say('gesture.record.addPhoto')}
                       </button>
                     )}
                     <button type="button" className="text-button" onClick={() => void run(`clear ${l}`, joinWords(['gesture', 'clear', name, l]))}>
-                      forget
+                      {say('gesture.record.forget')}
                     </button>
                   </div>
                 ))}
                 <div className="move-label">
-                  <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
+                  <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} placeholder={labels.length ? say('gesture.record.another') : say('gesture.record.first')} />
                   {source === 'camera' ? (
                     <button
                       type="button"
@@ -733,7 +735,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                     </button>
                   ) : (
                     <button type="button" className="text-button" disabled={!found || !LABEL.test(label.trim())} onClick={() => latest.current && void save(label.trim(), [normalize(latest.current, tracker)]).then(() => setLabel(''))}>
-                      add this photo
+                      {say('gesture.record.addPhoto')}
                     </button>
                   )}
                 </div>
@@ -741,10 +743,10 @@ export default function MovePanel({ active }: { active: boolean }) {
                   <span className="label label--muted">
                     {recording
                       ? ready > 0
-                        ? `get ready: ${ready}… then make ${recording}`
-                        : `recording ${recording}… tap again (or the space bar) to stop`
-                      : `or press the space bar to start recording ${spaceLabel}, and again to stop`}
-                    {typed && !recording ? ' (press Return first if you are still in the name)' : ''}
+                        ? say('gesture.record.hint.getReady', { n: ready, gesture: recording })
+                        : say('gesture.record.hint.recording', { gesture: recording })
+                      : say('gesture.record.hint.space', { gesture: spaceLabel })}
+                    {typed && !recording ? ` ${say('gesture.record.hint.returnFirst')}` : ''}
                   </span>
                 )}
                 {note && <p className="label">{note}</p>}
@@ -752,20 +754,20 @@ export default function MovePanel({ active }: { active: boolean }) {
                 </div>
 
                 <Next on={now === 4}>
-                <h3 className="label">2 · train</h3>
+                <h3 className="label">{say('gesture.train.title')}</h3>
                 <Explained id="move.train">
-                  <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={!trainable} running={busy === 'train'} label="train" />
+                  <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={!trainable} running={busy === 'train'} label={say('gesture.train.label')} />
                 </Explained>
                 </Next>
                 {set.trained && (
                   <>
                     <p className="label label--muted">
-                      {set.trained.examples} examples, k = {set.trained.k} · {set.trained.check.correct} of {set.trained.check.heldOut} set aside named right
+                      {say('gesture.train.result', { examples: set.trained.examples, k: set.trained.k, correct: set.trained.check.correct, heldOut: set.trained.check.heldOut })}
                     </p>
                     <table className="move-grid">
                       <thead>
                         <tr>
-                          <th className="label label--muted">made \ named</th>
+                          <th className="label label--muted">{say('gesture.train.grid')}</th>
                           {Object.keys(set.trained.check.confusion).map((l) => (
                             <th key={l} className="label">
                               {l}
@@ -790,7 +792,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                 )}
 
                 <div className={`move-test move-part--test ${now === 5 ? 'is-next' : ''}`.trim()}>
-                  <h3 className="label">3 · test it, and send it on</h3>
+                  <h3 className="label">{say('gesture.test.title')}</h3>
                   <Explained id="move.test">
                     <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => {
                         setGuess(null)
@@ -799,7 +801,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                         setFocus('test')
                         if (source === 'camera' && trackerHere && camera !== 'on' && camera !== 'starting') void startCamera()
                       }} aria-pressed={testing}>
-                      {testing ? 'stop testing' : 'test it live'}
+                      {testing ? say('gesture.test.stop') : say('gesture.test.start')}
                     </button>
                   </Explained>
                   {testing && guess && (
@@ -807,20 +809,24 @@ export default function MovePanel({ active }: { active: boolean }) {
                       <span className="move-guess__label">{guess.label}</span>
                       <span className="move-guess__bar" style={{ width: `${guess.confidence * 100}%` }} aria-hidden="true" />
                       <span className="label label--muted">
-                        {guess.label === NONE ? (found ? 'none of your gestures: farther than any example' : `no ${what} in the picture`) : `${Math.round(guess.confidence * 100)}% of the ${set.trained?.k} nearest agree`}
+                        {guess.label === NONE
+                          ? found
+                            ? say('gesture.test.none')
+                            : say('gesture.test.nothing', { what })
+                          : say('gesture.test.agree', { percent: Math.round(guess.confidence * 100), k: String(set.trained?.k) })}
                       </span>
                     </p>
                   )}
                   <div className="inline-fields">
                     <label className="field move-port">
-                      <span className="label label--muted">OSC port</span>
+                      <span className="label label--muted">{say('gesture.test.port')}</span>
                       <input type="text" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
                     </label>
                     <Explained id="move.send">
-                      <CommandPreview command={sendLine} onRun={() => void run('send', sendLine).then((ok) => ok && setSending(true))} disabled={!set.trained || !port} running={busy === 'send'} label="send" />
+                      <CommandPreview command={sendLine} onRun={() => void run('send', sendLine).then((ok) => ok && setSending(true))} disabled={!set.trained || !port} running={busy === 'send'} label={say('gesture.test.send')} />
                     </Explained>
                     <button type="button" className="text-button" onClick={() => void run('stop', `gesture send ${name} --stop`).then(() => setSending(false))}>
-                      stop sending
+                      {say('gesture.test.stopSending')}
                     </button>
                   </div>
                 </div>
@@ -828,7 +834,7 @@ export default function MovePanel({ active }: { active: boolean }) {
               </div>
             </>
           ) : (
-            <p className="move-studio__empty label label--muted">your camera, your gestures and training appear here once there is a set: make one on the left</p>
+            <p className="move-studio__empty label label--muted">{say('gesture.studio.empty')}</p>
           )}
         </div>
       </div>

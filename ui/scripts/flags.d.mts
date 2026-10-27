@@ -9,4 +9,5 @@ export const FLAGS_MD: string
 export function parseFlags(md: string): Flag[]
 export function flagsToTs(flags: Flag[]): string
 export function writeFlags(): boolean
+export function writeText(): [boolean, boolean]
 export function flagsPlugin(): Plugin

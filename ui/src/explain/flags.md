@@ -1,6 +1,6 @@
 # The explanation flags
 
-Every flag that opens when you point at a tab name or a control, in one place. Edit the words here: `npm run dev` rebuilds the page when you save, and you see the change when you reload it. `npm run build` does the same once.
+Every flag that opens when you point at a tab name or a control, in one place, except for the tabs that have moved to a file of their own in src/text/, which holds all of that tab's words, its flags included (so far: gesture.md). Edit the words here: `npm run dev` rebuilds the page when you save, and you see the change when you reload it. `npm run build` does the same once.
 
 Each flag is:
 
@@ -557,62 +557,9 @@ Makes a folder for using the model in another project: the model (with a one-lin
 
 Choose a zip someone sent you. It goes into the shared folder, and you unzip it from its card.
 
-## Image segmentation, speech, gesture
+## Image segmentation, speech
 
-### Gesture
-`panel.gesture`
-
-Gesture recognition. A tracker finds points on your hands (21 on each, up to two) or your body (33) in the camera picture, and a model you train yourself names the gesture they make. Record a few examples of two or more gestures, train (it takes a moment), test it live, and send what it sees as OSC to TouchDesigner, Max, Pure Data or anything else that listens. Everything runs in this page; only the points are kept, never the camera picture.
-
-### Steps
-`move.steps`
-
-The way from nothing to a gesture your patch can hear, in order. Each step says whether it is done, the one to do now, or waiting, and the step to do now says how. They tick themselves off as you go.
-
-### Start the camera
-`move.camera`
-
-Opens your camera in this page. The browser asks you once, when you press it; nothing is recorded or saved but the points the tracker finds, and the camera turns off when you leave this tab. If it is blocked, the message under this button says where to allow it.
-
-### Use it in your patch
-`move.use`
-
-Where a gesture goes once you send it: an OSC message to this computer, on the port you chose, for as long as this tab tests it live. TouchDesigner, Max and Pure Data each pick it up with one or two objects, listed here. The set itself travels as a zip from Share.
-
-### Download the tracker
-`move.get`
-
-Downloads the tracker, one small file from Google's MediaPipe, into workspace/tools. It runs in this page. You don't train it: it finds the points, and your own model names the gesture.
-
-### Gesture set
-`move.set`
-
-A set is a few gestures, the examples recorded of each, and the model trained on them, in workspace/gestures. Start with the example: three hand gestures recorded for you, ready to train, so you can see it work (and fail) with your own hand. Then make your own. A set follows hands or a body. A hands set takes one hand or two, so it can hold one-handed gestures and two-handed ones. One hand reads the same whichever hand it is; with two, it keeps which is which and where they are from each other.
-
-### Make a set
-`move.new`
-
-Starts a new gesture set for hands (one or two) or for a body. Then name a gesture and record some examples of it.
-
-### Tap to record
-`move.record`
-
-Your hands are busy making the gesture, or you are standing back from the computer, so one tap starts recording and the next tap stops it (the space bar works the same way). After the tap you have 3 seconds to get your hands into place (5 to step back, for a body); only then is the shape recorded, ten times a second: the points, measured from each wrist (or the hips), so the same gesture reads the same anywhere in the picture. Move a little while it records, so the examples vary: 20 to 50 of each gesture is plenty.
-
-### Train
-`move.train`
-
-k-nearest neighbours: a new pose is compared with every example you recorded, and the 5 closest vote. Training keeps your examples, after checking it on every fifth one set aside. The grid shows the check: each gesture you made, down the side, and what it was named, across. Mistakes off the diagonal show which gestures look alike to it.
-
-### Test it live
-`move.test`
-
-Opens the camera with the test in a lightbox. Names your gesture as you make it, and shows how many of the nearest examples agree. A pose farther than any of your examples, or no hand in the picture, is named none. Try the gestures it mixes up, and record more examples of them.
-
-### Send it on
-`move.send`
-
-While you test, every guess goes out as an OSC message to this computer on that port: the address /vm/<set>, then the gesture's name and how sure it is (0 to 1), or none and 0 when it is none of them. In TouchDesigner use an OSC In CHAT/DAT, in Max udpreceive, in Pure Data netreceive -u -b. Nothing goes to any other computer.
+The gesture tab's flags are in src/text/gesture.md, with the rest of its words.
 
 ### Speech
 `panel.speech`
