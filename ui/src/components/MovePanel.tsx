@@ -185,6 +185,10 @@ export default function MovePanel({ active }: { active: boolean }) {
   const [name, setName] = useState('')
   const [newName, setNewName] = useState('')
   const [newTracker, setNewTracker] = useState<Tracker>('hands')
+  /** counts clicks on "make your own": each one flashes a dashed box around the name, the next thing to fill in */
+  const [flash, setFlash] = useState(0)
+  const nameInput = useRef<HTMLInputElement>(null)
+  useEffect(() => void (flash && nameInput.current?.focus()), [flash])
   const [source, setSource] = useState<'camera' | 'photo'>('camera')
   const [photo, setPhoto] = useState('')
   const [label, setLabel] = useState('')
@@ -434,7 +438,10 @@ export default function MovePanel({ active }: { active: boolean }) {
                     </button>
                   )
                 })}
-                <button type="button" role="radio" aria-checked={!name} className={`move-set move-set--new ${!name ? 'is-active' : ''}`.trim()} onClick={() => setName('')}>
+                <button type="button" role="radio" aria-checked={!name} className={`move-set move-set--new ${!name ? 'is-active' : ''}`.trim()} onClick={() => {
+                    setName('')
+                    setFlash((n) => n + 1)
+                  }}>
                   <span className="move-set__name">+ make your own</span>
                   <span className="label label--muted">your gestures, your hand, your camera</span>
                 </button>
@@ -442,9 +449,9 @@ export default function MovePanel({ active }: { active: boolean }) {
             </Explained>
             {!name && (
               <div className="move-start">
-                <label className="field">
+                <label key={flash} className={`field ${flash ? 'is-flashing' : ''}`.trim()}>
                   <span className="label label--muted">name</span>
-                  <input type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder="studio-hands" spellCheck={false} />
+                  <input ref={nameInput} type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder="studio-hands" spellCheck={false} />
                 </label>
                 <div className="field">
                   <span className="label label--muted">its tracker</span>
