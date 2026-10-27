@@ -145,13 +145,16 @@ const WORDS: Record<string, string[]> = {
   BURGLARY: ['burglaries', 'break-ins', 'home burglaries'],
   'SEX ABUSE': ['sex abuse cases', 'sexual assaults'],
   ARSON: ['arsons', 'arson fires', 'fires set on purpose'],
-  GUN: ['with a gun', 'with a firearm', 'involving a gun'],
-  KNIFE: ['with a knife', 'involving a knife', 'with a blade'],
+  GUN: ['with a gun', 'with a firearm', 'involving a gun', 'gun …', 'armed …'],
+  KNIFE: ['with a knife', 'involving a knife', 'with a blade', 'knife …'],
   OTHERS: ['with some other weapon or none', 'without a gun or knife'],
   DAY: ['during the day shift', 'in the daytime shift', 'on the day shift'],
   EVENING: ['during the evening shift', 'in the evening', 'on the evening shift'],
   MIDNIGHT: ['during the midnight shift', 'overnight', 'on the overnight shift'],
 }
+
+/** Other words for every row of a table, as questions say them: "how many crimes …". */
+const NOUNS: Record<string, string[]> = { incident: ['crimes', 'offenses', 'reported crimes', 'incidents reported'], tree: ['street trees'], crash: ['collisions', 'accidents'], violation: ['citations'], request: ['311 requests', 'service requests'] }
 
 /** What one row is, guessed from the table's name: an incident, a tree, a crash. */
 export function guessNoun(title = ''): string {
@@ -182,7 +185,7 @@ export function rolesFromProfile(p: TableProfile): Roles {
     label: columnLabel(c.name),
     ...(c.guess === 'where' && { place: c.why === 'latitude' ? 'lat' : c.why === 'longitude' ? 'lon' : c.why === 'blocks of a street' ? 'block' : c.why === 'addresses' ? 'address' : 'area' }),
   }))
-  return { table: p.table, noun, columns, words: wordsFor(p, columns, noun), ...(p.title && { title: p.title }), ...(p.license && { license: p.license }), ...(p.page && { page: p.page }), ...(p.source && { source: p.source }) }
+  return { table: p.table, noun, nouns: NOUNS[noun] ?? [], columns, words: wordsFor(p, columns, noun), ...(p.title && { title: p.title }), ...(p.license && { license: p.license }), ...(p.page && { page: p.page }), ...(p.source && { source: p.source }) }
 }
 
 /** The words a question would use for each value of the what, how and when-by-name columns. */

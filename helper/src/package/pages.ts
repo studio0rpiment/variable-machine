@@ -100,7 +100,7 @@ export function demoHtml(i: PackageInfo): string {
         (a.problem ? '<p class="problem">' + esc(a.answer) + '</p>' : '<p class="answer">' + esc(a.answer) + '</p>') +
         '<p class="muted">the query it wrote<code>' + esc(a.query ? JSON.stringify(a.query) : a.wrote || '(nothing)') + '</code></p>' +
         (parts ? '<ol>' + parts.map((p) => '<li><span>' + esc(p.label) + '</span><span>' + fmt(p.value) + '</span></li>').join('') + '</ol>' : '') +
-        (r ? '<details><summary>the rows behind it (' + fmt(r.matched) + ' match; the first ' + r.rows.length + ')</summary><div class="rows"><table><tr>' + cols.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr>' + r.rows.map((row) => '<tr>' + cols.map((c) => '<td>' + esc(row[c]) + '</td>').join('') + '</tr>').join('') + '</table></div></details>' : '') +
+        (r && r.rows.length ? '<details><summary>the rows behind it (' + fmt(r.matched) + ' match; the first ' + r.rows.length + ')</summary><div class="rows"><table><tr>' + cols.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr>' + r.rows.map((row) => '<tr>' + cols.map((c) => '<td>' + esc(row[c]) + '</td>').join('') + '</tr>').join('') + '</table></div></details>' : '') +
         (a.sql ? '<details><summary>the same query in SQL</summary><pre>' + esc(a.sql) + '</pre></details>' : '')
     } catch (err) {
       out.innerHTML = '<p class="problem">Couldn\\'t reach Ollama: ' + esc(err.message) + '. Is it running, and is the model made (ollama create ${esc(i.model)} -q int8 -f model/Modelfile)? If the page was opened as a file and the browser blocks it, run <code>python3 -m http.server 8000</code> in this folder and open http://localhost:8000/demo.html</p>'

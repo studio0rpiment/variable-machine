@@ -38,6 +38,12 @@ export async function askableTables(): Promise<string[]> {
  * adapter, the adapter names its dataset, and the dataset names its table.
  */
 export async function tableForModel(model: string): Promise<{ table: string; system: string } | null> {
+  const d = await datasetForModel(model)
+  return d?.table && d.ask ? { table: d.table.slice(4), system: d.ask.system } : null
+}
+
+/** The dataset a model made here was trained on: its Modelfile names the adapter, and the adapter its dataset. */
+export async function datasetForModel(model: string): Promise<DatasetManifest | null> {
   const name = model.replace(/:latest$/, '')
   const mf = await readFile(`modelfiles/${name}.Modelfile`)
   const adapter = mf && /made by Variable Machine from adapter (\S+)/.exec(mf)?.[1]
@@ -45,8 +51,7 @@ export async function tableForModel(model: string): Promise<{ table: string; sys
   const am = await readFile(`adapters/${adapter}/manifest.json`)
   const data = am && (JSON.parse(am) as { data?: string }).data
   const dm = data && (await readFile(`data/${data}/manifest.json`))
-  const d = dm ? (JSON.parse(dm) as DatasetManifest) : null
-  return d?.table && d.ask ? { table: d.table.slice(4), system: d.ask.system } : null
+  return dm ? (JSON.parse(dm) as DatasetManifest) : null
 }
 
 export interface Asked {

@@ -977,3 +977,4 @@ img.move-view__picture { transform: none; }
 .asked__rows th, .asked__rows td { text-align: left; padding: 0.15rem 0.5rem 0.15rem 0; white-space: nowrap; border-bottom: 1px dashed color-mix(in srgb, var(--muted) 35%, transparent); }
 .asked__rows th { color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--bg); }
 .asked__sql { margin: 0.3rem 0 0; white-space: pre-wrap; font-size: 0.72rem; color: var(--muted); }
+.chat__invents { margin: 0; padding: 0.35rem 0.5rem; border: 1px solid #e0604a; text-transform: none; line-height: 1.45; }

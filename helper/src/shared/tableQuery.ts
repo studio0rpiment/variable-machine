@@ -52,6 +52,8 @@ export interface Roles {
   table: string
   /** what one row is: "incident", "tree" */
   noun: string
+  /** other words a question uses for all the rows, plural: "crimes", "offenses" */
+  nouns?: string[]
   columns: ColumnRole[]
   /** column → value → the words people use for it ("HOMICIDE": ["homicide", "murder", "killing"]) */
   words: Record<string, Record<string, string[]>>
@@ -226,7 +228,7 @@ export function findValue(p: Prepared, column: string, given: string): string | 
   if (!vals) return given.trim()
   if (vals.has(g)) return vals.get(g)!
   const words = p.roles.words[column] ?? {}
-  for (const [value, ws] of Object.entries(words)) if (ws.some((w) => w.toUpperCase() === g)) return value
+  for (const [value, ws] of Object.entries(words)) if (ws.some((w) => w.replace('…', '').trim().toUpperCase() === g)) return value
   // "ward 6" for 6, "Cluster 25" written "cluster 25"
   const label = p.roles.columns.find((c) => c.name === column)?.label.toUpperCase()
   if (label && g.startsWith(label + ' ') && vals.has(g.slice(label.length + 1))) return vals.get(g.slice(label.length + 1))!
@@ -357,6 +359,9 @@ function compile(p: Prepared, q: Query, notes: string[]): Filter[] {
       if (!ds.some((d) => d?.hour !== null && d?.hour !== undefined)) throw new Error(`when: ${name} has dates without times, so hours can't be told apart`)
       hours = [h[0], h[1]]
     }
+    // a period the table doesn't cover: say so, rather than let "none" read as an answer
+    const range = dateRange(p, name)
+    if (range && (lo >= readDate(range.to)!.t + 86400000 || hi <= readDate(range.from)!.t)) notes.push(`outside the table: it covers ${prettyDate(range.from)} to ${prettyDate(range.to)}, so it can't say what happened ${describeWhen(w)}`)
     tests.push((r) => {
       const d = ds[r]
       if (!d) return false
@@ -549,7 +554,9 @@ const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString('en-US') : n.
 function sayValue(roles: Words, column: string, value: string | string[]): { subject?: string; rest?: string } {
   const c = roles.columns.find((x) => x.name === column)
   const list = Array.isArray(value) ? value : [value]
-  const w = (v: string) => roles.words[column]?.[v]?.[0] ?? roles.words[column]?.[Object.keys(roles.words[column] ?? {}).find((k) => k.toUpperCase() === v.toUpperCase()) ?? '']?.[0]
+  // the first of the words that reads after the thing counted ("with a gun", not "gun …")
+  const first = (ws?: string[]) => ws && (ws.find((x) => !x.includes('…')) ?? ws[0].replace('…', '').trim())
+  const w = (v: string) => first(roles.words[column]?.[v]) ?? first(roles.words[column]?.[Object.keys(roles.words[column] ?? {}).find((k) => k.toUpperCase() === v.toUpperCase()) ?? ''])
   const or = (xs: string[]) => (xs.length > 2 ? `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}` : xs.join(' or '))
   if (c?.role === 'what') return { subject: or(list.map((v) => w(v) ?? `${tidy(v)} ${pluralOf(roles.noun || 'row')}`)) }
   if (c?.role === 'where') return { rest: `in ${or(list.map((v) => areaWords(c.label, v)))}` }
@@ -633,7 +640,7 @@ export function phrase(result: Result, q: Query, roles: Words): string {
         diff = ` The difference: ${fmt(hi.value - lo.value)} more ${hi.label}${lo.value ? ` (${fmt(Math.round(((hi.value - lo.value) / lo.value) * 100))}% more)` : ''}.`
       }
     }
-    return `${cap(what)}${tail}. ${each}.${diff}${span}`
+    return `${cap(what)}${tail}. ${cap(each)}.${diff}${span}`
   }
   if (result.kind === 'groups' && result.groups) {
     const by = roles.columns.find((c) => c.name === q.by)
@@ -644,6 +651,8 @@ export function phrase(result: Result, q: Query, roles: Words): string {
   }
   if (result.measure !== 'count') return `${cap(what)}${tail}: ${amount(result.value)}, from ${fmt(result.matched)} ${result.matched === 1 ? roles.noun : nouns}.${span}`
   const n = result.value
+  const outside = result.notes.find((x) => x.startsWith('outside the table'))
+  if (outside && n === 0) return `No answer: the table is ${outside.slice('outside the table: it '.length).replace(/^covers/, 'from')}.`
   return `There ${n === 1 ? 'was' : 'were'} ${n === 0 ? 'no' : fmt(n)} ${n === 1 ? (subject ? singular(subject) : roles.noun || 'row') : what}${tail}.${span}`
 }
 

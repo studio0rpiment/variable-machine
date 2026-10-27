@@ -56,6 +56,17 @@ export const UV_VOICE = [...UV, '--extra', 'voice']
  * about 900 tokens, so max seq stays at 2048. mlx-vlm adapts every layer of
  * the language half; there is no layers setting.
  */
+/**
+ * A table's questions → queries (data questions), measured on DC crime
+ * incidents 2025, 2026-10-27: 360M, so it trains on an 8GB MacBook Air (about
+ * 0.8GB for the training process at batch 8, rows under 150 tokens). Loss on
+ * the questions set aside fell below 0.01 by step 200; 800 steps took about
+ * 7 minutes on an M1 Pro.
+ */
+export const ASK_DEFAULTS: Omit<TrainParams, 'name' | 'data'> = { base: 'HuggingFaceTB/SmolLM2-360M-Instruct', type: 'lora', rank: 8, layers: 16, lr: 2e-4, iters: 800, batch: 8, maxSeq: 512, evalEvery: 100 }
+/** A table's rows as plain text (data rows): the same small model, fewer steps; it only has to pick up the rows' shape. */
+export const TEXT_DEFAULTS: Omit<TrainParams, 'name' | 'data'> = { base: 'HuggingFaceTB/SmolLM2-360M-Instruct', type: 'lora', rank: 8, layers: 16, lr: 1e-4, iters: 300, batch: 4, maxSeq: 512, evalEvery: 50 }
+
 export const SEES_DEFAULTS: Omit<TrainParams, 'name' | 'data'> = { base: 'HuggingFaceTB/SmolVLM-256M-Instruct', type: 'lora', rank: 8, layers: 30, lr: 1e-4, iters: 60, batch: 1, maxSeq: 2048, evalEvery: 20 }
 
 export function seesTrainArgs(p: TrainParams): string[] {
@@ -86,7 +97,7 @@ export function seesTrainLine(p: TrainParams): string[] {
 export const runConfigYaml = (p: TrainParams) =>
   `# mlx-lm config for this run; command-line flags fill everything else\nlora_parameters:\n  rank: ${p.rank}\n  scale: 20.0\n  dropout: 0.0\n`
 
-export function trainArgs(p: TrainParams, runDir: string): string[] {
+export function trainArgs(p: TrainParams, runDir: string, text = false): string[] {
   return [
     ...UV,
     'mlx_lm.lora',
@@ -102,7 +113,7 @@ export function trainArgs(p: TrainParams, runDir: string): string[] {
     '--steps-per-report', '5',
     '--steps-per-eval', String(p.evalEvery),
     '--adapter-path', `workspace/adapters/${p.name}`,
-    '--mask-prompt',
+    ...(text ? [] : ['--mask-prompt']),
     '--config', `${runDir}/config.yaml`,
   ]
 }
@@ -153,11 +164,13 @@ export const CHATML_TEMPLATE = `{{- if .Messages }}
 {{ end }}<|im_start|>assistant
 {{ end }}{{ .Response }}{{ if .Response }}<|im_end|>{{ end }}`
 
-export function registerModelfile(o: { fused: string; template?: 'chatml'; system?: string; license: string; base: string; adapter: string }) {
+export function registerModelfile(o: { fused: string; template?: 'chatml' | 'raw'; system?: string; license: string; base: string; adapter: string }) {
   return [
     `# made by Variable Machine from adapter ${o.adapter} on ${o.base}`,
     `FROM ../fused/${o.fused}`,
     ...(o.template === 'chatml' ? [`TEMPLATE """${CHATML_TEMPLATE}"""`, 'PARAMETER stop "<|im_start|>"', 'PARAMETER stop "<|im_end|>"'] : []),
+    // trained on rows as plain text (data rows): the prompt is the start of a row, continued as written
+    ...(o.template === 'raw' ? ['TEMPLATE """{{ .Prompt }}"""', 'PARAMETER stop "<|endoftext|>"', 'PARAMETER stop "<|im_end|>"'] : []),
     'PARAMETER temperature 0.7',
     ...(o.system ? [`SYSTEM """${o.system}"""`] : []),
     `LICENSE """${o.license}"""`,

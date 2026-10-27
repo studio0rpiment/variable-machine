@@ -79,7 +79,8 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
    Each field explains itself in plain language, and a note says that small models follow instructions loosely and bigger ones closely. Choosing a preset moves it to the left with the others in a column on the right; step 1 makes the variant (and lists what goes into it), step 2 asks the original and the variant the same question. Variants are temporary until you press *keep it*: unkept ones are removed when the app stops. Twelve presets (one sentence, haiku, only questions, museum label, say "I don't know", always French, careful / surprising / falling apart…) fill the form. Each says which starters follow it well, from the run recorded in `docs/presets-check.md`. "Make variant" saves the Modelfile and runs `ollama create`; then the original and the variant answer one question side by side on the same screen. Folded below: what each Modelfile line means, and the file the form makes, with weights marked. The student's own variants are listed to reopen and change.
 4. **Data.** Datasets live in `workspace/data/<name>/` as train and valid JSONL plus a manifest. Every dataset has a plain description and an example row. Choose one to see what's in it, get it ready (check, count, split) and open Train or Prefer with it. Make a new one by:
    - bringing in any dataset from Hugging Face by its name, or your own .csv / .jsonl / .json file (the columns are read, the license recorded);
-   - searching public data (DC Open Data, data.gov) for a table and turning its rows into questions and answers with a template, such as "What kind of tree stands at {VICINITY}?". DC tables are read straight from the city's map service, so a download the portal is still preparing never stalls it;
+   - searching public data (DC Open Data, data.gov) for a table and turning its rows into questions and answers with a template, such as "What kind of tree stands at {VICINITY}?". DC tables are read straight from the city's map service, so a download the portal is still preparing never stalls it, and dates keep their time of day;
+   - **asking a table:** for a table of facts (DC crime incidents is the worked case), a model learns to turn a question into a query, and the answer is counted from the table, so it is always what the table says. *What's in this table* (open the first time, folded after) shows the rows, the dates, the source and license, and a line per column: its type (text, number, date/time, place-like), how many values, how much is missing, examples, and its **role** in a question, guessed from names and values and changeable: *what* (the kind of thing counted), *where* (a block, a ward, latitude and longitude), *when* (dates, times, a shift), *how much* (a number to add up), *how* (a detail with a few kinds), *id* (left out). A column opens to its values and the everyday words for each ("murders" → HOMICIDE). One button, *make a training set from this table*, runs `data profile`, `data questions` (about 600 questions with the queries that answer them: counts, near a block, periods, two places or periods or kinds compared, day and night, the most, and some whose answer is none), `data split` and `data validate`, each echoed and each in a fold to run again changed. An optional second set teaches a voice for answers (plain, news brief or caption). Smaller, *the rows as they are* (`data rows`) makes a text dataset of the rows, for a model that writes invented records like them;
    - adding one of the datasets that come with the app, shown on the tab's first screen: DC street trees (CC BY 4.0), art history from the Art Institute of Chicago (CC BY 4.0), customer-discovery interview coaching (CC0), Dolly creative writing (CC BY-SA 3.0) and two small starters;
    - importing Dolly, OpenAssistant (oasst1) or the Apache-2.0 subsets of SmolTalk;
    - fetching raw material (a Project Gutenberg book, or a CSV or TXT) and having a model write rows from it, keeping, editing or rejecting each;
@@ -92,8 +93,8 @@ The tabs run left to right in the order you'd use them, in groups; the ones on t
    - **Prefer: prefer.** DPO on a base or a fused model, from a preference set. It shows the loss and a held-out before/after check.
    - **Merge: blend.** Blend two compatible adapters: out = (1 − t)·A + t·B.
 6. **Adapters.** Everything the three ways made: trained adapters, preference adapters and blends. Training leaves the original model untouched and learns an adapter; export joins the two into one model and imports it into Ollama. *Try it* asks the original and the trained model questions from the rows set aside at the split, next to the answer in the data. *Remove* moves an adapter to the Trash.
-7. **Chat.** Two to four models side by side, one prompt, every answer streaming. *Add a picture* sends a photo from an image set to the models that see (`--image` in the echo); the others get the words only, and say so. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
-8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place.
+7. **Chat.** Two to four models side by side, one prompt, every answer streaming. *Ask the table* switches it to asking a table: each model writes a query (temperature 0, JSON only), the page runs it with the same runner as the helper, and each answer shows the query, the counts and the rows behind them, the answer in a sentence, and the same query as SQL. A query that can't run (a column or value the table doesn't have) is said plainly, with no answer rather than a guess; the other columns can hold the base model to compare. A model trained on rows as plain text is marked: what it writes is invented. *Add a picture* sends a photo from an image set to the models that see (`--image` in the echo); the others get the words only, and say so. Each exchange is echoed as `ollama run-once …` and logged to `workspace/chat/<date>.jsonl`, where the Data tab can mine it for preference pairs. You come back here after every step.
+8. **Share.** Zip any artifact's folder, download it, and unzip one someone sent you back into the right place. A model trained to ask a table becomes a **package** (`package <model>`, then `zip packages/<model>`): the model with a one-line `ollama create`, the table as JSON, `roles.json`, `ask.js` (question → Ollama → query → runner → answer, for a web page, Node, the command line, and OSC for TouchDesigner and Max), `demo.html` (a one-page app that needs only Ollama) and a README with the data's license and credit.
 
 **The other kinds:** three tabs, named for what their models do. Nothing leaves the computer.
 
@@ -132,6 +133,15 @@ data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rew
 data import example <example> <name>
 data raw gutenberg <book number> <name>
 data raw csv|txt <url> <name> --license "<what the source states>"
+data template raw/<table> <name> --question "…{column}…" --answer "…{column}…"   one question written once, filled from every row
+data profile raw/<table> [--again]                     what's in a table, and each column's role: profile.json, roles.json
+data role raw/<table> <COLUMN> <role> | --noun <word>   what|where|when|"how much"|how|id|other
+data words raw/<table> <COLUMN> <VALUE> "<word>, <word>"
+data questions raw/<table> <name> [--rows 600] [--seed 0] [--voice plain|news|caption]
+data rows raw/<table> <name> --as csv|sentence [--limit 1000]
+ask <model> raw/<table> "<question>"                   the model writes a query; the table answers it
+ask check <model> <dataset> [--limit 100]              how often its queries give the right answer, on questions set aside
+package <model>                                        an "ask the table" model as a folder for another project
 data validate | count <name>
 data split <name> [--valid 0.1] [--seed 0]
 data append <name> '<row json>' [--source <model>] [--from raw/<name>]
@@ -141,7 +151,7 @@ merge <name> --a <adapter> --b <adapter> [--t 0.5]          exactly (1 − t)·A
 fuse <adapter|merge> [--name <fused>]
 register <fused> [--name <model>] [--quantize int8|int4|none]
 export <adapter|merge> [--name <model>] [--quantize int8|int4|none]      fuse + register in one go
-zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>
+zip <data|adapters|merges|runs|fused|images|audio|gestures|packages>/<name>
 unzip <file.zip>
 model get cutout|depth|select|hands|body             ready-made models for image segmentation and gesture, into workspace/tools
 look cutout|depth|select images/<set>/<photo> [--point x,y]…

@@ -12,7 +12,9 @@ import { modelCommand, seePresent } from './tools.ts'
 import type { DatasetManifest, Manifest } from './shared/manifest.ts'
 import {
   PY_ENV,
+  ASK_DEFAULTS,
   SEES_DEFAULTS,
+  TEXT_DEFAULTS,
   UV_SEES,
   TIER_DEFAULTS,
   seesTrainArgs,
@@ -101,7 +103,8 @@ async function train(args: string[], line: string): Promise<boolean> {
     print('train: a picture dataset trains with LoRA on every layer of the language half (mlx-vlm), so it takes no --layers, and --type is lora (export writes LoRA back into the model Ollama runs)')
     return false
   }
-  const d = sees ? SEES_DEFAULTS : TIER_DEFAULTS[status.tier]
+  // a table's questions or rows have their own measured defaults, for the small model every Mac can train
+  const d = sees ? SEES_DEFAULTS : early?.ask ? ASK_DEFAULTS : early?.format === 'text' ? TEXT_DEFAULTS : TIER_DEFAULTS[status.tier]
   const p: TrainParams = {
     name: pos[0] ?? '',
     base: opts.base ?? d.base,
@@ -159,7 +162,8 @@ async function train(args: string[], line: string): Promise<boolean> {
   const runName = `${stamp}-${p.name}`
   const runDir = ws('runs', runName)
   const runRel = `workspace/runs/${runName}`
-  const argv = sees ? seesTrainArgs(p) : trainArgs(p, runRel)
+  // rows as plain text have no question to leave out of the loss: mlx-lm refuses --mask-prompt for them
+  const argv = sees ? seesTrainArgs(p) : trainArgs(p, runRel, early?.format === 'text')
   const lossState = { iter: 0 }
   const started = Date.now()
   const losses: { iter: number; trainLoss?: number; valLoss?: number; tokensPerSec?: number }[] = []
@@ -518,7 +522,10 @@ function registerSteps(o: { fused: string; model: string; quantize: Quantize; sy
       display: `write workspace/modelfiles/${o.model}.Modelfile`,
       run: async () => {
         await fs.mkdir(ws('modelfiles'), { recursive: true })
-        await fs.writeFile(ws('modelfiles', `${o.model}.Modelfile`), registerModelfile({ ...o, template }))
+        // a model trained on plain text continues what it's given: no chat template around the prompt
+        const data = (await readJson<{ data?: string }>(ws('adapters', o.adapter, 'manifest.json')))?.data
+        const text = data && (await readJson<DatasetManifest>(ws('data', data, 'manifest.json')))?.format === 'text'
+        await fs.writeFile(ws('modelfiles', `${o.model}.Modelfile`), registerModelfile({ ...o, template: text ? 'raw' : template }))
       },
     },
     { kind: 'spawn', argv: createArgs(o.model, o.quantize), env: { OLLAMA_HOST: OLLAMA_URL.origin } },

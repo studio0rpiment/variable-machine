@@ -5,7 +5,7 @@ import { runCommand, sendEvent } from '../lib/helper'
 import { readLossPoints, readManifests } from '../lib/workspace'
 import { joinWords } from '@shared/quote'
 import { HF_BASES } from '@shared/library'
-import { PY_ENV, SEES_DEFAULTS, TIER_DEFAULTS, seesTrainArgs, seesTrainLine, trainArgs, trainLine, type FineTune, type TrainParams, parseTrainLine } from '@shared/recipes'
+import { ASK_DEFAULTS, PY_ENV, SEES_DEFAULTS, TEXT_DEFAULTS, TIER_DEFAULTS, seesTrainArgs, seesTrainLine, trainArgs, trainLine, type FineTune, type TrainParams, parseTrainLine } from '@shared/recipes'
 import { SEE_MODELS, seeModel } from '@shared/kinds'
 import type { DatasetManifest } from '@shared/manifest'
 import CommandPreview from './CommandPreview'
@@ -93,8 +93,12 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   }, [withData])
   // A picture dataset trains a model that sees (mlx-vlm), with its own bases and defaults.
   // Tier defaults arrive with the first status event.
-  const sees = sets.find((s) => s.name === p.data)?.format === 'picture'
-  useEffect(() => setP((x) => ({ ...x, ...(sees ? SEES_DEFAULTS : defaults) })), [sees, defaults])
+  const chosen = sets.find((s) => s.name === p.data)
+  const sees = chosen?.format === 'picture'
+  // a table's questions (or its rows as text) train the small model with their own measured settings
+  const kind = sees ? 'sees' : chosen?.ask ? 'ask' : chosen?.format === 'text' ? 'text' : 'chat'
+  const kindDefaults = kind === 'sees' ? SEES_DEFAULTS : kind === 'ask' ? ASK_DEFAULTS : kind === 'text' ? TEXT_DEFAULTS : defaults
+  useEffect(() => setP((x) => ({ ...x, ...kindDefaults })), [kindDefaults])
   const see = sees ? seeModel(p.base) : undefined
   const base = sees ? (see && { params: see.params, license: see.license, architecture: 'vision-language, llama decoder', loraGB: see.loraGB, layers: see.layers }) : HF_BASES.find((b) => b.id === p.base)
   useEffect(() => {
@@ -108,7 +112,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   /** What these settings will likely do, before they run; and the way back to settings that work for this Mac. */
   // the advice is measured on the text bases; a model that sees has its own measured defaults
   const advice = sees ? [] : adviseBefore(p, tier, 'train')
-  const recommended = () => setP((x) => ({ ...x, ...(sees ? SEES_DEFAULTS : defaults) }))
+  const recommended = () => setP((x) => ({ ...x, ...kindDefaults }))
   // The run that just finished, by its adapter name: its folder holds the log that says why it failed.
   const lastRun = current && runs.find((r) => r.params?.name === (current.params as TrainParams).name)
 
@@ -121,7 +125,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   const taken = runs.some((r) => r.params?.name === p.name) && !(running && (pipe?.params as TrainParams | undefined)?.name === p.name)
   const valid = NAME.test(p.name) && !!p.data && !taken && !advice.some((a) => a.level === 'stop')
   const line = joinWords(sees ? seesTrainLine(p) : trainLine(p))
-  const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...(sees ? seesTrainArgs(p) : trainArgs(p, 'workspace/runs/<time>-' + p.name))])
+  const real = joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...(sees ? seesTrainArgs(p) : trainArgs(p, 'workspace/runs/<time>-' + p.name, kind === 'text'))])
   const set = <K extends keyof TrainParams>(k: K) => (v: TrainParams[K]) => setP((x) => ({ ...x, [k]: v }))
   const heavy = tier === '16' && p.base.includes('1.7B')
 
@@ -145,6 +149,8 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
             <span className="label label--muted">
               {base.license} · {base.architecture} · about {base.loraGB}GB during LoRA{heavy ? ' · on 16GB use batch 1' : ''}
               {sees ? ' · sees: trained with mlx-vlm on your pictures' : ''}
+              {kind === 'ask' ? ' · learns to write queries for a table; settings measured for it, small enough for an 8GB Mac' : ''}
+              {kind === 'text' ? ' · learns to write rows like the table\'s: what it writes are invented records, never real ones' : ''}
             </span>
           )}
           <label className="field">
@@ -186,7 +192,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         </div>
         <div className="train-form__col">
           <Explained id="train.iters">
-            <Steps label="iterations" value={p.iters} options={sees ? [20, 40, 60, 100, 200, 300] : [50, 100, 200, 300, 500, 1000]} onChange={set('iters')} />
+            <Steps label="iterations" value={p.iters} options={sees ? [20, 40, 60, 100, 200, 300] : [50, 100, 200, 300, 500, 800, 1000]} onChange={set('iters')} />
           </Explained>
           <Explained id="train.batch">
             <Choice label="batch" value={p.batch} options={[1, 2, 4, 8]} onChange={set('batch')} />

@@ -5,8 +5,9 @@ import { listDir, readManifests, type Entry } from '../lib/workspace'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
+import { tableForModel } from '../lib/askTable'
 
-const KINDS = ['data', 'adapters', 'merges', 'runs', 'fused', 'images', 'audio', 'gestures'] as const
+const KINDS = ['data', 'adapters', 'merges', 'runs', 'fused', 'images', 'audio', 'gestures', 'packages'] as const
 type Kind = (typeof KINDS)[number]
 
 interface Artifact {
@@ -28,12 +29,17 @@ export default function SharePanel() {
   const [zips, setZips] = useState<Entry[]>([])
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
+  /** models trained to ask a table, by the table they ask: each can become a package */
+  const [askers, setAskers] = useState<{ model: string; table: string }[]>([])
   const file = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const found = await Promise.all(KINDS.map(async (kind) => (await readManifests<Artifact>(kind)).map((m) => ({ ...m, kind, name: m.folder }))))
     setArtifacts(found.flat())
     setZips((await listDir('shared')).filter((e) => e.name.endsWith('.zip')))
+    const mfs = (await listDir('modelfiles')).filter((e) => e.name.endsWith('.Modelfile')).map((e) => e.name.replace(/\.Modelfile$/, ''))
+    const asks = await Promise.all(mfs.map(async (model) => ({ model, t: await tableForModel(model) })))
+    setAskers(asks.flatMap((x) => (x.t ? [{ model: x.model, table: x.t.table }] : [])))
   }, [])
   useEffect(() => void load(), [load])
   useHelperEvent(
@@ -88,6 +94,35 @@ export default function SharePanel() {
           />
         ))}
         {zips.length === 0 && <p className="label label--muted">no zips yet</p>}
+      </div>
+
+      <h2 className="panel__title label">packages · a model that asks a table, to take into another project</h2>
+      <p className="mf-next">The model, the table, its roles, ask.js, a one-page demo and a README (web page, Node, Python, TouchDesigner and Max over OSC), in one folder and then one zip. On another computer it needs only Ollama.</p>
+      <div className="cards">
+        {askers.map((a) => {
+          const made = artifacts.some((x) => x.kind === 'packages' && x.name === a.model)
+          const pack = `package ${a.model}`
+          const zip = `zip packages/${a.model}`
+          return (
+            <Manifest
+              key={a.model}
+              name={a.model}
+              badges={<Badge>asks {a.table}</Badge>}
+              lines={[made ? `workspace/packages/${a.model}: open demo.html in it, or zip it` : 'not packaged yet', 'about 720MB: the model is most of it']}
+              actions={
+                <>
+                  {!made && (
+                    <Explained id="share.package">
+                      <CommandPreview command={pack} onRun={() => void run(pack, pack)} running={busy === pack} label="package" />
+                    </Explained>
+                  )}
+                  {made && <CommandPreview command={zip} onRun={() => void run(zip, zip)} running={busy === zip} label="zip" />}
+                </>
+              }
+            />
+          )
+        })}
+        {askers.length === 0 && <p className="label label--muted">none yet: make a training set from a table (Data), train it, export it, and it appears here</p>}
       </div>
 
       <h2 className="panel__title label">artifacts · what can be shared</h2>

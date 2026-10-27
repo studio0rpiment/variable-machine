@@ -73,16 +73,19 @@ export function makeQuestions(p: Prepared, profile: TableProfile, opts: { rows: 
       const v = valueOf(what.name, rare)
       if (v) return { said: pick(roles.words[what.name]?.[v] ?? [`${tidy(v)} ${nouns}`]), where: { [what.name]: v } }
     }
-    return { said: nouns, where: {} }
+    return { said: chance(0.6) ? nouns : pick([nouns, ...(roles.nouns ?? [])]), where: {} }
   }
   const area = (c = pick(areas), rare = false) => {
     const v = valueOf(c.name, rare)
     return v ? { said: `in ${areaWords(c, v)}`, where: { [c.name]: v }, c, v } : null
   }
+  /** a detail, said after what is counted ("robberies with a gun") or, written "gun …", before it ("gun robberies") */
   const how = () => {
     const c = pick(hows)
     const v = valueOf(c.name)
-    return v ? { said: pick(roles.words[c.name][v]), where: { [c.name]: v } } : null
+    if (!v) return null
+    const w = pick(roles.words[c.name][v] ?? [`with ${c.label} ${tidy(v)}`])
+    return { apply: (s: string) => (w.includes('…') ? w.replace('…', s) : `${s} ${w}`), where: { [c.name]: v } }
   }
   const shiftOf = () => {
     if (!shift) return null
@@ -125,6 +128,18 @@ export function makeQuestions(p: Prepared, profile: TableProfile, opts: { rows: 
       ] as const)
       return { said, when: { last: n === 1 ? u : `${n} ${u}` } }
     }
+    if (k < 0.87 && dateProf?.times && chance(0.5)) {
+      const a = Math.floor(r() * 24)
+      const b = (a + 2 + Math.floor(r() * 8)) % 24
+      const h = (x: number) => (x === 0 ? 'midnight' : x === 12 ? 'noon' : x < 12 ? `${x}${pick(['am', ' am', 'a.m.'])}` : `${x - 12}${pick(['pm', ' pm', 'p.m.'])}`)
+      return { said: pick([`between ${h(a)} and ${h(b)}`, `from ${h(a)} to ${h(b)}`]), when: { hours: [a, b] } }
+    }
+    if (k < 0.87 && years.length) {
+      const y = pick(years)
+      const [name, m1, m2] = pick([['spring', 3, 5], ['summer', 6, 8], ['fall', 9, 11], ['autumn', 9, 11]] as const)
+      const end = new Date(Date.UTC(y, m2, 0)).getUTCDate()
+      return { said: oneYear && chance(0.5) ? pick([`in the ${name}`, `over the ${name}`, `this ${name}`]) : `in the ${name} of ${y}`, when: { from: `${y}-${String(m1).padStart(2, '0')}-01`, to: `${y}-${String(m2).padStart(2, '0')}-${end}` } }
+    }
     if (k < 0.92 && dateProf?.times) {
       const [h, said] = pick([
         [[22, 6], pick(['between 10pm and 6am', 'late at night'])],
@@ -146,8 +161,15 @@ export function makeQuestions(p: Prepared, profile: TableProfile, opts: { rows: 
   const nearOf = () => {
     if (!block) return null
     const v = valueOf(block.name)
-    const b = v ? blockWords(v) : null
-    if (!b) return null
+    const full = v ? blockWords(v) : null
+    if (!full) return null
+    // as people write an address: "1400 U St NW", with or without "block of"
+    const short = full.said.replace(/ Street\b/, ' St').replace(/ Avenue\b/, ' Ave').replace(/ Road\b/, ' Rd').replace(/ Place\b/, ' Pl')
+    const b = { ...full, said: chance(0.3) ? short : full.said }
+    if (chance(0.25)) {
+      const bare = b.said.replace(' block of', '')
+      return chance(0.5) ? { said: pick([`near ${bare}`, `around ${bare}`]), near: { [block.name]: b.query, blocks: 1 } } : { said: pick([`at ${bare}`, `on the ${b.said}`]), near: { [block.name]: b.query, blocks: 0 } }
+    }
     const k = r()
     if (hasLatLon && k < 0.2) {
       const m = pick([100, 200, 250, 300, 400, 500, 800, 1000])
@@ -191,7 +213,7 @@ export function makeQuestions(p: Prepared, profile: TableProfile, opts: { rows: 
       const s = subject()
       const h = how()
       const a = areas.length && chance(0.5) ? area() : null
-      return h && { question: count(`${s.said} ${h.said}${a ? ` ${a.said}` : ''}`), query: { where: { ...s.where, ...h.where, ...a?.where } } }
+      return h && { question: count(`${h.apply(s.said)}${a ? ` ${a.said}` : ''}`), query: { where: { ...s.where, ...h.where, ...a?.where } } }
     }])
   if (shift)
     patterns.push(['count · shift', 1.5, () => {

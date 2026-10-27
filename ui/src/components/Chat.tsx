@@ -7,7 +7,7 @@ import PicturePicker from './PicturePicker'
 import { OLLAMA_LIBRARY } from '@shared/library'
 import { Explained } from '../explain/Explained'
 import AskedAnswer from './AskedAnswer'
-import { askableTables, loadTable, runWritten, systemFor, tableForModel, type Asked } from '../lib/askTable'
+import { askableTables, datasetForModel, loadTable, runWritten, systemFor, tableForModel, type Asked } from '../lib/askTable'
 import type { Prepared } from '@shared/tableQuery'
 
 interface Exchange {
@@ -114,6 +114,13 @@ export default function Chat({ request }: Props) {
     if (askMode) void tableForModel(model).then((t) => t && tables.includes(t.table) && setTable(t.table))
   }
 
+  // models trained on a table's rows as plain text: what they write is made up, and the column says so
+  const [invents, setInvents] = useState<Set<string>>(new Set())
+  const colModels = columns.map((c) => c.model).join('\n')
+  useEffect(() => {
+    void Promise.all(colModels.split('\n').filter(Boolean).map(async (m) => ((await datasetForModel(m))?.format === 'text' ? m : null))).then((ms) => setInvents(new Set(ms.filter((m): m is string => !!m))))
+  }, [colModels])
+
   const patchCol = (key: number, fn: (c: Column) => Column) => setColumns((cs) => cs.map((c) => (c.key === key ? fn(c) : c)))
   const patch = (key: number, id: number, fn: (x: Exchange) => Exchange) => patchCol(key, (c) => ({ ...c, log: c.log.map((x) => (x.id === id ? fn(x) : x)) }))
 
@@ -143,7 +150,7 @@ export default function Chat({ request }: Props) {
       },
       abort.signal,
       // a query: the same every time, and JSON only, as the model was trained and checked
-      p ? { temperature: 0 } : undefined,
+      p ? { temperature: 0, num_predict: 200 } : undefined,
       sees ? image : undefined,
       p ? { system: systemFor(p), format: 'json' } : undefined,
     )
@@ -209,6 +216,7 @@ export default function Chat({ request }: Props) {
                 </button>
               )}
             </div>
+            {invents.has(c.model) && <p className="label chat__invents">trained on a table's rows as they are: it writes invented records that look real, never real ones. Start a row and it carries on.</p>}
             {/* column-reverse keeps the newest answer in view while it streams, without scroll code */}
             <div className="chat__scroll">
               <ol className="chat__log">
