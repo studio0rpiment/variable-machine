@@ -152,13 +152,21 @@ const cell = (v: unknown) => {
 async function fetchArcgis(layer: string, abort: AbortController): Promise<string | null> {
   const base = layer.replace(/\/+$/, '').replace(/\/query$/, '')
   print(`GET ${base}`)
-  const info = (await (await fetch(`${base}?f=json`, { signal: abort.signal })).json()) as { name?: string; fields?: { name: string; type: string }[]; maxRecordCount?: number; error?: { message?: string } }
+  const info = (await (await fetch(`${base}?f=json`, { signal: abort.signal })).json()) as { name?: string; fields?: { name: string; type: string }[]; maxRecordCount?: number; error?: { message?: string }; dateFieldsTimeReference?: { timeZoneIANA?: string } }
   if (!info.fields?.length) {
     print(`not a table: ${info.error?.message ?? 'the address has no fields; give a layer, like …/MapServer/11'}`)
     return null
   }
   const fields = info.fields.filter((f) => !/geometry|blob|raster/i.test(f.type))
   const dates = new Set(fields.filter((f) => /date/i.test(f.type)).map((f) => f.name))
+  // A date with a time keeps its time, in the layer's own time zone (DC's are America/New_York), so hours can be asked about.
+  const zone = info.dateFieldsTimeReference?.timeZoneIANA ?? 'UTC'
+  const local = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const asDate = (ms: number) => {
+    const p = Object.fromEntries(local.formatToParts(new Date(ms)).map((x) => [x.type, x.value]))
+    const time = `${p.hour}:${p.minute}`
+    return time === '00:00' ? `${p.year}-${p.month}-${p.day}` : `${p.year}-${p.month}-${p.day} ${time}`
+  }
   const page = Math.min(info.maxRecordCount ?? 1000, 2000)
   const lines = [fields.map((f) => cell(f.name)).join(',')]
   let size = lines[0].length
@@ -169,7 +177,7 @@ async function fetchArcgis(layer: string, abort: AbortController): Promise<strin
     for (const { attributes: a } of d.features ?? []) {
       const row = fields.map((f) => {
         const v = a[f.name]
-        return cell(dates.has(f.name) && typeof v === 'number' ? new Date(v).toISOString().slice(0, 10) : v)
+        return cell(dates.has(f.name) && typeof v === 'number' ? asDate(v) : v)
       }).join(',')
       lines.push(row)
       size += row.length + 1

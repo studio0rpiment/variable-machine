@@ -84,5 +84,15 @@ export function pictureRowProblem(row: unknown): string | null {
  */
 export const PICTURE_TOKENS = 900
 
-export type DataFormat = 'chat' | 'preference' | 'picture'
-export const problemFor = (format: DataFormat) => (format === 'preference' ? prefRowProblem : format === 'picture' ? pictureRowProblem : rowProblem)
+/** mlx-lm's text format, {"text": "…"}: plain text the model learns to continue, with no question and answer. */
+export interface TextRow {
+  text: string
+}
+
+export function textRowProblem(row: unknown): string | null {
+  const t = (row as TextRow | null)?.text
+  return typeof t === 'string' && t.trim() ? null : 'needs "text": "…", not empty'
+}
+
+export type DataFormat = 'chat' | 'preference' | 'picture' | 'text'
+export const problemFor = (format: DataFormat) => (format === 'preference' ? prefRowProblem : format === 'picture' ? pictureRowProblem : format === 'text' ? textRowProblem : rowProblem)

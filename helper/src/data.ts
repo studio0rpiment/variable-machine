@@ -14,6 +14,7 @@ import { DATA_SOURCES, OASST1, SMOLTALK } from './shared/library.ts'
 import { rawCommand } from './rawsources.ts'
 import { detectShape, parseCsv, SHAPES_HELP } from './shared/rowShapes.ts'
 import { describeDataset } from './shared/datasetAbout.ts'
+import { tableCommand } from './table.ts'
 
 /**
  * `data …` (plan §7). A dataset is workspace/data/<name>/ with train.jsonl,
@@ -34,7 +35,14 @@ data import example <example> <name>   (workspace/examples/data)
 data import hf <owner/name> <name> [--config <c>] [--split train] [--limit 300]   (any dataset on huggingface.co/datasets)
 data import file uploads/<file> <name> --license "<terms>"   (a .csv, .jsonl or .json uploaded on the Data tab)
 data describe <name> <a sentence about it>
-data template raw/<table> <name> --question "…{column}…" --answer "…{column}…" [--skip 0] [--limit 300]   (a table's rows as questions and answers)
+data template raw/<table> <name> --question "…{column}…" --answer "…{column}…" [--skip 0] [--limit 300]
+    (one question and its answer, written once with {column} where each row's value goes: every row of the table becomes one example.
+     The question needs at least one {column}, or every row asks the same thing; the answer usually names the column the question asks about)
+data profile raw/<table> [--again]   (what's in a table: each column's type, values, and role in a question; writes profile.json and roles.json)
+data role raw/<table> <COLUMN> what|where|when|"how much"|how|id|other   ·   data role raw/<table> --noun <word>
+data words raw/<table> <COLUMN> <VALUE> "<word>, <word>"   (what people call a coded value: HOMICIDE → "homicides, murders")
+data questions raw/<table> <name> [--rows 600] [--seed 0] [--voice plain|news|caption]   (questions and the queries that answer them, from the roles)
+data rows raw/<table> <name> --as csv|sentence [--limit 1000]   (the rows as they are, for a model that writes invented ones)
 data raw gutenberg <book number> <name>
 data raw csv|txt <url> <name> --license "<what the source states>"
 data validate <name>
@@ -557,6 +565,10 @@ async function template(rel: string, name: string, opts: Record<string, string>,
   const a = opts.answer?.trim()
   if (!/^raw\/[a-z0-9._-]+$/.test(rel ?? '') || !q || !a) {
     print('usage: data template raw/<table> <dataset> --question "…{column}…" --answer "…{column}…" [--skip 0] [--limit 300] [--seed 0]')
+    print('  --question  what someone would ask, with {COLUMN} where each row\'s value goes: "What kind of tree stands at {VICINITY}?"')
+    print('  --answer    what the model should say back, with the column that answers it: "A {CMMN_NM}."')
+    print('  write column names exactly as the table does (data profile raw/<table> lists them); {COLUMN|round} gives a whole number with commas')
+    print('  for questions a model answers by looking the table up (how many, near, when, compared), use data questions instead')
     return false
   }
   const raw = await readJson<{ license: string; licenseChecked?: boolean; inputs?: string[]; page?: string; about?: string }>(path.join(WORKSPACE, rel, 'manifest.json'))
@@ -644,7 +656,7 @@ async function validate(name: string, line: string): Promise<boolean> {
       if (!p && m.format === 'picture' && !(await exists(path.join(dir(name), (r as PictureRow).images[0])))) p = `${(r as PictureRow).images[0]} is not in workspace/data/${name}`
       if (p) problems.push({ line: part.lines[i], reason: p })
     }
-    print(`${label}.jsonl  ${part.rows.length + part.bad.length} rows · ${problems.length ? `${problems.length} problems` : `all valid ${m.format === 'preference' ? 'preference pairs' : m.format === 'picture' ? 'picture rows' : 'chat rows'}`}`)
+    print(`${label}.jsonl  ${part.rows.length + part.bad.length} rows · ${problems.length ? `${problems.length} problems` : `all valid ${m.format === 'preference' ? 'preference pairs' : m.format === 'picture' ? 'picture rows' : m.format === 'text' ? 'text rows' : 'chat rows'}`}`)
     problems.sort((a, b) => a.line - b.line)
     problems.slice(0, 8).forEach((p) => print(`  line ${p.line}: ${p.reason}`))
     if (problems.length > 8) print(`  … and ${problems.length - 8} more`)
@@ -690,7 +702,7 @@ async function count(name: string, line: string): Promise<boolean> {
   const limit = status.tier === '16' ? 1024 : 2048
   const problem = problemFor(m.format ?? 'chat')
   const all = [...train.rows, ...valid.rows].filter((r) => !problem(r))
-  const tokens = all.map((r) => (m.format === 'preference' ? estimatePrefTokens(r as PrefRow) : estimateTokens(r as ChatRow) + (m.format === 'picture' ? PICTURE_TOKENS : 0)))
+  const tokens = all.map((r) => (m.format === 'preference' ? estimatePrefTokens(r as PrefRow) : m.format === 'text' ? Math.ceil((r as { text: string }).text.length / 3.7) : estimateTokens(r as ChatRow) + (m.format === 'picture' ? PICTURE_TOKENS : 0)))
   const total = tokens.reduce((a, b) => a + b, 0)
   const max = Math.max(0, ...tokens)
   const over = tokens.filter((t) => t > limit).length
@@ -846,6 +858,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
   const [sub, ...rest] = args
   const { pos, opts } = flags(rest)
   if (sub === 'raw') return rawCommand(pos, opts, line)
+  if (['profile', 'role', 'words', 'questions', 'rows'].includes(sub)) return tableCommand(sub, pos, opts, line)
   const name = sub === 'import' ? (['example', 'hf', 'file'].includes(pos[0]) ? pos[2] : pos[1]) : sub === 'template' ? pos[1] : pos[0]
   if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe', 'template', 'picture'].includes(sub)) {
     print(HELP)

@@ -16,6 +16,7 @@ import { modelCommand } from './tools.ts'
 import { lookCommand } from './pagerun.ts'
 import { voiceCommand } from './voice.ts'
 import { gestureCommand, oscCommand } from './gestures.ts'
+import { askCommand } from './table.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -33,6 +34,9 @@ const HELP = `commands
   ollama create <name> -f workspace/modelfiles/<name>.Modelfile [-q q4_K_M]
   ollama run-once <model> [--system "<text>"] [--image images/<set>/<photo>] [--no-think] [--format json|<schema>] <prompt…>
   data new [--format chat|preference] | import dolly | validate | split | count | append <name>   (data help)
+  data profile | questions | rows raw/<table> …       a table: what's in it, questions → queries, or its rows as text   (data help)
+  ask <model> raw/<table> "<question>"             the model writes a query, the table answers it
+  ask check <model> <dataset>                      how often its queries give the right answer, on questions set aside
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
@@ -141,6 +145,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'speak' || cmd === 'listen') return voiceCommand(cmd, args, line)
   if (cmd === 'gesture') return gestureCommand(args, line)
   if (cmd === 'osc') return oscCommand(args)
+  if (cmd === 'ask') return askCommand(args)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)
