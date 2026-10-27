@@ -825,6 +825,11 @@ a.text-button { text-decoration: none; }
 img.move-view__picture { transform: none; }
 .move-view__points { position: absolute; top: 0; left: 0; width: 100%; height: auto; aspect-ratio: auto; pointer-events: none; color: var(--line); }
 .move-view:has(video) .move-view__points { transform: scaleX(-1); }
+.move-view__frame { position: relative; }
+.move-view__count { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; pointer-events: none; color: var(--line); }
+.move-view__number { font-size: 8rem; line-height: 1; padding: 0.5rem 2rem; background: var(--overlay); border: 1px dashed var(--line); font-variant-numeric: tabular-nums; }
+.move-view__count .label { background: var(--overlay); padding: 0.25rem 0.75rem; }
+.move-view__count:has(.move-view__recording) { justify-content: flex-start; padding-top: 1rem; }
 .move-side { display: flex; flex-direction: column; gap: 0.75rem; }
 .move-side h3 { margin: 0.75rem 0 0; }
 .move-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem; }

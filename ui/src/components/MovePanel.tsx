@@ -654,8 +654,23 @@ export default function MovePanel({ active }: { active: boolean }) {
               {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
 
               <figure className="move-view">
-                {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
-                <canvas ref={canvas} className="move-view__points" />
+                <div className="move-view__frame">
+                  {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
+                  <canvas ref={canvas} className="move-view__points" />
+                  {/* the count and the recording, on the picture: where you look when you're standing back from the computer */}
+                  {recording && (
+                    <div className="move-view__count" aria-live="polite">
+                      {ready > 0 ? (
+                        <>
+                          <span className="move-view__number">{ready}</span>
+                          <span className="label">get ready: {recording}</span>
+                        </>
+                      ) : (
+                        <span className="label move-view__recording">recording {recording} · tap to stop</span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <figcaption className="label label--muted">
                   {foundText || foundWords(null, tracker)}
                   {' · only the points are kept, never the picture'}
