@@ -15,23 +15,17 @@ A localhost instrument for changing small language models on an Apple Silicon Ma
 - **Ollama**, which runs the models: download it from [ollama.com](https://ollama.com/download) and install it. You don't need to open it.
 - **Node 22 or newer**, which runs the app: download the LTS installer from [nodejs.org](https://nodejs.org) and open it.
 
-**2. Download, unzip, double-click:**
+**2. Paste one line into Terminal:** open **Terminal** (cmd-space, type *Terminal*, Return), paste this, and press Return:
 
-1. Download the zip from the [latest release](https://github.com/studio0rpiment/variable-machine/releases) (what changed in each: [docs/releases.md](docs/releases.md)).
-2. Unzip it: double-click the zip in Downloads (Safari may already have done this).
-3. In the folder, double-click **Variable Machine.command**.
+```bash
+curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash
+```
 
-It opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens http://localhost:4817 in your browser. Every command it runs is shown with ▸ in front.
+It downloads the newest release into `~/variable-machine`, makes a **Variable Machine** app in the Applications folder in your home folder, and opens it ([the script](site/install.sh)). The app opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens http://localhost:4817 in your browser. Every command it runs is shown with ▸ in front.
 
-**The first time only, macOS blocks it** ("Apple could not verify …"), because the file comes from the internet and isn't signed by Apple:
+**Why not the zip?** macOS won't open a script downloaded in a browser unless Apple has signed it ("Apple could not verify …"; on macOS 26 there is no way past it). curl downloads aren't marked as downloaded, and the app is made on your own Mac, so macOS opens both.
 
-- click **Done**;
-- open **System Settings → Privacy & Security**, scroll down to "Variable Machine.command was blocked", click **Open Anyway** and enter your Mac password;
-- double-click **Variable Machine.command** again and click **Open**.
-
-(On macOS 14 you can instead right-click the file, choose **Open**, then **Open**.)
-
-**To stop it,** close the Terminal window (or press ctrl-C in it). Variants you made on the Modelfile tab and didn't keep are cleared away when it stops. To start again, double-click **Variable Machine.command**; after the first time it starts in seconds.
+**Next time,** open **Variable Machine** like any other app (cmd-space, type *Variable Machine*); you can drag it to the Dock. **To stop it,** close its Terminal window (or press ctrl-C in it). Variants you made on the Modelfile tab and didn't keep are cleared away when it stops. **To update it,** paste the same line again: your workspace (datasets, sets, adapters, models) stays as it is.
 
 **Working on the code?** Clone the repository and use `npm run dev` instead: it rebuilds the page on every save and restarts the helper.
 

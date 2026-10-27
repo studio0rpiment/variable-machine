@@ -88,14 +88,15 @@
   <p class="lead">A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.</p>
 
   <div class="actions">
-    <a class="button button--main" id="download" href="https://github.com/studio0rpiment/variable-machine/archive/refs/tags/v0.2.4.zip">Download <span id="version">v0.2.4</span> (zip)</a>
+    <a class="button button--main" href="#start">Install <span id="version">v0.2.4</span></a>
     <a class="button" href="https://github.com/studio0rpiment/variable-machine">The code on GitHub</a>
+    <a id="download" href="https://github.com/studio0rpiment/variable-machine/archive/refs/tags/v0.2.4.zip">The code as a zip</a>
     <a href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/releases.md">What changed in each release</a>
   </div>
   <p class="note">Free and open source (MIT). It runs entirely on your own Mac: nothing you type or make is sent anywhere.</p>
 
 
-  <h2>Start here</h2>
+  <h2 id="start">Start here</h2>
   <p><strong>You need:</strong> a Mac with Apple Silicon (M1 or later) and 16GB of memory or more, macOS 14 or later, and about 10GB of free disk.</p>
 
   <ol class="steps">
@@ -107,11 +108,12 @@
       </ul>
     </div></li>
     <li><div>
-      <strong>Download, unzip, double-click</strong>
-      <p>Download the zip above, unzip it (double-click it in Downloads), and in the folder double-click <strong>Variable Machine.command</strong>.</p>
-      <p>It opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens <code>http://localhost:4817</code> in your browser. Every command it runs is shown with ▸ in front.</p>
-      <p><strong>The first time only, macOS blocks it</strong> ("Apple could not verify …"), because the file comes from the internet and isn't signed by Apple: click <strong>Done</strong>, open <strong>System Settings → Privacy &amp; Security</strong>, scroll down to "Variable Machine.command was blocked", click <strong>Open Anyway</strong> and enter your Mac password, then double-click the file again and click <strong>Open</strong>. On macOS 14 you can instead right-click the file and choose <strong>Open</strong>.</p>
-      <p><strong>To stop it,</strong> close the Terminal window. To start again, double-click <strong>Variable Machine.command</strong>.</p>
+      <strong>Paste one line into Terminal</strong>
+      <p>Open <strong>Terminal</strong> (press cmd-space, type <em>Terminal</em>, press Return), paste this line, and press Return:</p>
+      <div class="cmd"><code>curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash</code><button class="copy" type="button">copy</button></div>
+      <p>It downloads the newest release into a <code>variable-machine</code> folder in your home folder, makes a <strong>Variable Machine</strong> app, and opens it. The app opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens <code>http://localhost:4817</code> in your browser. Every command it runs is shown with ▸ in front. <a href="install.sh">Read the install script</a>.</p>
+      <p class="muted">Why not the zip? macOS won't open a script downloaded in a browser unless Apple has signed it. The line above downloads with curl, which macOS doesn't block, and makes the app on your own Mac.</p>
+      <p><strong>Next time,</strong> open <strong>Variable Machine</strong> like any other app: cmd-space, type <em>Variable Machine</em>. You can drag it to the Dock. <strong>To stop it,</strong> close its Terminal window. <strong>To update it,</strong> paste the same line again: your workspace stays as it is.</p>
       <p class="muted">Working on the code? Clone it and use <code>npm run dev</code>, which rebuilds on every save:</p>
       <div class="cmd"><code>git clone https://github.com/studio0rpiment/variable-machine</code><button class="copy" type="button">copy</button></div>
     </div></li>
