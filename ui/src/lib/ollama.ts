@@ -49,12 +49,12 @@ export interface ChatDelta {
  * terminal as `ollama run-once …` and, because of the header, logs it to
  * workspace/chat/<date>.jsonl when it finishes.
  */
-export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal, options?: Record<string, number>, image?: string) {
+export async function chatOnce(model: string, prompt: string, onDelta: (d: ChatDelta) => void, signal: AbortSignal, options?: Record<string, number>, image?: string, extra?: { system?: string; format?: string }) {
   const res = await fetch('/ollama/api/chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-variable-machine-source': 'chat' },
     // a picture goes by its workspace path; the helper reads the file in (helper/src/proxy.ts)
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt, ...(image && { images: [image] }) }], stream: true, ...(options && { options }) }),
+    body: JSON.stringify({ model, messages: [...(extra?.system ? [{ role: 'system', content: extra.system }] : []), { role: 'user', content: prompt, ...(image && { images: [image] }) }], stream: true, ...(options && { options }), ...(extra?.format && { format: extra.format }) }),
     signal,
   })
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `ollama: ${res.status}`)

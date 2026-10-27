@@ -17,6 +17,7 @@ import { lookCommand } from './pagerun.ts'
 import { voiceCommand } from './voice.ts'
 import { gestureCommand, oscCommand } from './gestures.ts'
 import { askCommand } from './table.ts'
+import { packageCommand } from './package/index.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -37,10 +38,11 @@ const HELP = `commands
   data profile | questions | rows raw/<table> …       a table: what's in it, questions → queries, or its rows as text   (data help)
   ask <model> raw/<table> "<question>"             the model writes a query, the table answers it
   ask check <model> <dataset>                      how often its queries give the right answer, on questions set aside
+  package <model>                                  an "ask the table" model as a folder for another project: workspace/packages/<model>
   ls | cat | head | tail | wc <path>                   inside workspace/ only
-  zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
+  zip <data|adapters|merges|runs|fused|images|audio|gestures|packages>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -146,6 +148,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'gesture') return gestureCommand(args, line)
   if (cmd === 'osc') return oscCommand(args)
   if (cmd === 'ask') return askCommand(args)
+  if (cmd === 'package') return packageCommand(args, line)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)

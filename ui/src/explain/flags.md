@@ -240,6 +240,26 @@ Searches the portal's catalog for tables. Each result says who published it and 
 
 Fills your question and answer from each row of the table and saves them as a dataset, ready to check, split and train on. Rows with an empty blank (or a 0, if you said so) are left out, and so are repeated questions.
 
+### Read the table
+`table.profile`
+
+Counts what is in every column: its type (text, number, date or time, or a place), how many different values it has, how much is missing, and examples. Then it guesses each column's role in a question. Nothing is changed in the table itself.
+
+### A column's role
+`table.role`
+
+What this column means in a question. What: the kind of thing counted (an offense, a species). Where: a place (a block, a ward, a latitude). When: a date, a time, or a part of the day. How much: a number to add up or average. How: a detail with a few kinds of value (a method). Id: a different value in every row, left out. The questions are made from these, so a wrong role makes wrong questions: change it here.
+
+### Make a training set from this table
+`table.make`
+
+One press runs every step, each as a command you can see in the terminal: it guesses the roles if they aren't set, makes several hundred questions from the table's own values with the query that answers each, sets some aside to test with, and checks them. The model you train on it learns to write queries, not answers: the answers are counted from the table, so they are always what the table says. Open "the commands it runs" to change any step.
+
+### The rows as they are
+`table.rows`
+
+Turns each row into a line of text, as a CSV line or read out as a sentence, for a model that learns to write more rows like them. What that model writes are invented records that look real: never use them as facts.
+
 ### Download the table
 `data.getTable`
 
@@ -495,6 +515,16 @@ Sends a picture with your question, from the photos in your image sets. Models t
 
 Copies a photo from your computer into the chosen image set (or a new one called chat-photos), so the image segmentation tab and the Data tab can use it too. JPEG, PNG or WebP.
 
+### Ask the table
+`chat.askTable`
+
+Switches Chat to asking a table. A model trained on a table's questions writes a query for your question; the runner counts the answer from the table and shows the query, the rows behind it and the answer in a sentence. If the model writes a query that can't run, it says so plainly instead of guessing. The other columns can hold the base model or a variant, to see what they write for the same question.
+
+### Which table
+`chat.table`
+
+The table the query is run against: the one the model was trained on, picked for you when the model's training data says which it was.
+
 ### Ask
 `chat.send`
 
@@ -516,6 +546,11 @@ Saves the zip through your browser, usually into Downloads, ready to send.
 `share.unzip`
 
 Unpacks a zip someone sent you and puts it back where it belongs. It checks the zip first and never overwrites anything you already have.
+
+### Package to take away
+`share.package`
+
+Makes a folder for using the model in another project: the model (with a one-line ollama create), the table ready to query, its roles, ask.js (question → model → query → answer), a one-page demo, and a README for web pages, Node, Python and TouchDesigner or Max over OSC, with the table's license and credit. Then zips it. All it needs on another computer is Ollama.
 
 ### Add a zip
 `share.upload`

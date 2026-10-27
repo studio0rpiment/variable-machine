@@ -6,6 +6,9 @@ import ModelSelect from './ModelSelect'
 import PicturePicker from './PicturePicker'
 import { OLLAMA_LIBRARY } from '@shared/library'
 import { Explained } from '../explain/Explained'
+import AskedAnswer from './AskedAnswer'
+import { askableTables, loadTable, runWritten, systemFor, tableForModel, type Asked } from '../lib/askTable'
+import type { Prepared } from '@shared/tableQuery'
 
 interface Exchange {
   id: number
@@ -18,6 +21,10 @@ interface Exchange {
   thinking: string
   state: 'streaming' | 'done' | 'stopped' | 'error'
   meta?: string
+  /** asked of a table: what the model wrote, run against it */
+  asked?: Asked
+  /** the table it was asked of */
+  table?: string
 }
 
 /** Untouched, open-license defaults that make a good first comparison (plan §8), in order of preference. qwen3:4b leads. */
@@ -61,6 +68,11 @@ export default function Chat({ request }: Props) {
   ])
   const [prompt, setPrompt] = useState('')
   const [picture, setPicture] = useState('')
+  /** ask the table: each model writes a query, the table answers it */
+  const [askMode, setAskMode] = useState(false)
+  const [tables, setTables] = useState<string[]>([])
+  const [table, setTable] = useState('')
+  const [prepared, setPrepared] = useState<Prepared | null>(null)
   const aborts = useRef(new Map<number, AbortController>())
   const streaming = columns.some((c) => c.log.at(-1)?.state === 'streaming')
 
@@ -82,6 +94,26 @@ export default function Chat({ request }: Props) {
     })
   }, [request])
 
+  // Asking a table: list the tables that can be asked, and pick the one the first model was trained on.
+  useEffect(() => {
+    if (!askMode) return
+    void askableTables().then(async (ts) => {
+      setTables(ts)
+      const trained = (await Promise.all(columns.map((c) => (c.model ? tableForModel(c.model) : null)))).find(Boolean)
+      setTable((t) => (trained && ts.includes(trained.table) ? trained.table : t && ts.includes(t) ? t : (ts[0] ?? '')))
+    })
+    // only when switched on; a model chosen later picks its table below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askMode])
+  useEffect(() => {
+    setPrepared(null)
+    if (askMode && table) void loadTable(table).then(setPrepared)
+  }, [askMode, table])
+  const chooseModel = (key: number, model: string) => {
+    patchCol(key, (x) => ({ ...x, model }))
+    if (askMode) void tableForModel(model).then((t) => t && tables.includes(t.table) && setTable(t.table))
+  }
+
   const patchCol = (key: number, fn: (c: Column) => Column) => setColumns((cs) => cs.map((c) => (c.key === key ? fn(c) : c)))
   const patch = (key: number, id: number, fn: (x: Exchange) => Exchange) => patchCol(key, (c) => ({ ...c, log: c.log.map((x) => (x.id === id ? fn(x) : x)) }))
 
@@ -91,11 +123,14 @@ export default function Chat({ request }: Props) {
     aborts.current.set(key, abort)
     // Only a model that sees gets the picture; the others would refuse the whole question.
     const sees = image ? await seesPictures(model) : false
-    patchCol(key, (c) => ({ ...c, log: [...c.log, { id, prompt: text, ...(image && { image, wordsOnly: !sees }), answer: '', thinking: '', state: 'streaming' }] }))
+    const p = askMode ? prepared : null
+    patchCol(key, (c) => ({ ...c, log: [...c.log, { id, prompt: text, ...(image && { image, wordsOnly: !sees }), ...(p && { table }), answer: '', thinking: '', state: 'streaming' }] }))
+    let wrote = ''
     chatOnce(
       model,
       text,
       (d) => {
+        wrote += d.content
         patch(key, id, (x) => ({
           ...x,
           answer: x.answer + d.content,
@@ -107,16 +142,18 @@ export default function Chat({ request }: Props) {
         }))
       },
       abort.signal,
-      undefined,
+      // a query: the same every time, and JSON only, as the model was trained and checked
+      p ? { temperature: 0 } : undefined,
       sees ? image : undefined,
+      p ? { system: systemFor(p), format: 'json' } : undefined,
     )
-      .then(() => patch(key, id, (x) => (x.state === 'streaming' ? { ...x, state: 'done' } : x)))
+      .then(() => patch(key, id, (x) => (x.state === 'streaming' || x.state === 'done' ? { ...x, state: 'done', ...(p && { asked: runWritten(p, wrote) }) } : x)))
       .catch((e: Error) => patch(key, id, (x) => ({ ...x, state: abort.signal.aborted ? 'stopped' : 'error', meta: abort.signal.aborted ? 'stopped' : e.message })))
   }
 
   const send = () => {
     const text = prompt.trim()
-    if (!text || streaming) return
+    if (!text || streaming || (askMode && !prepared)) return
     for (const c of columns) if (c.model) void ask(c.key, c.model, text, picture)
     setPrompt('')
   }
@@ -130,6 +167,27 @@ export default function Chat({ request }: Props) {
         <ChatMark size={1} />
         <span className="label">chat</span>
         {error && <span className="label label--muted">· {error}</span>}
+        <Explained id="chat.askTable">
+          <button type="button" role="switch" aria-checked={askMode} className={`text-button ${askMode ? 'is-active' : ''}`.trim()} onClick={() => setAskMode((v) => !v)}>
+            ask the table {askMode ? 'on' : 'off'}
+          </button>
+        </Explained>
+        {askMode && (
+          <Explained id="chat.table">
+            <label className="model-select">
+              <span className="label label--muted">table</span>
+              <select value={table} onChange={(e) => setTable(e.target.value)}>
+                {!tables.length && <option value="">no tables read yet (Data tab)</option>}
+                {tables.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Explained>
+        )}
+        {askMode && table && !prepared && <span className="label label--muted">reading the table…</span>}
         {n < MAX_COLUMNS && (
           <Explained id="chat.addColumn">
             <button type="button" className="text-button" onClick={() => setColumns((cs) => [...cs, { key: nextId++, model: cs.at(-1)?.model ?? '', log: [] }])}>
@@ -143,7 +201,7 @@ export default function Chat({ request }: Props) {
           <div className="chat__column" key={c.key}>
             <div className="chat__column-head">
               <Explained id="chat.model">
-                <ModelSelect label={LETTERS[i]} models={models} value={c.model} onChange={(v) => patchCol(c.key, (x) => ({ ...x, model: v }))} onOpen={reload} />
+                <ModelSelect label={LETTERS[i]} models={models} value={c.model} onChange={(v) => chooseModel(c.key, v)} onOpen={reload} />
               </Explained>
               {n > 2 && (
                 <button type="button" className="text-button" onClick={() => setColumns((cs) => cs.filter((x) => x.key !== c.key))} aria-label={`remove column ${LETTERS[i]}`}>
@@ -169,7 +227,7 @@ export default function Chat({ request }: Props) {
                         <p>{x.thinking}</p>
                       </details>
                     )}
-                    <p className="exchange__answer">{x.answer}</p>
+                    {x.asked ? <AskedAnswer asked={x.asked} roles={x.table === table ? prepared?.roles : undefined} /> : <p className="exchange__answer">{x.answer}</p>}
                     {x.meta && <span className="label label--muted">{x.meta}</span>}
                   </li>
                 ))}
@@ -183,7 +241,7 @@ export default function Chat({ request }: Props) {
         <textarea
           value={prompt}
           rows={2}
-          placeholder={`one prompt${picture ? ' and the picture' : ''}, ${n === 2 ? 'both' : `all ${n}`} models · enter sends, shift-enter for a new line`}
+          placeholder={askMode ? `a question about ${table || 'the table'}: each model writes a query, the table answers it · enter sends` : `one prompt${picture ? ' and the picture' : ''}, ${n === 2 ? 'both' : `all ${n}`} models · enter sends, shift-enter for a new line`}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

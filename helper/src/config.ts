@@ -13,4 +13,4 @@ export const PORT = Number(process.env.VARIABLE_MACHINE_PORT ?? 4817)
 export const OLLAMA_URL = new URL(process.env.OLLAMA_HOST_URL ?? 'http://127.0.0.1:11434')
 
 /** The folders §4 of the plan lays out (plus raw/, where downloaded sources are kept before conversion, shared/, where zips come and go, tools/, images/ and outputs/ for the image tools, audio/ for Voice and gestures/ for Move); created on startup so the watcher and `ls` have something to show. */
-export const WORKSPACE_DIRS = ['hf', 'raw', 'data', 'runs', 'adapters', 'fused', 'gguf', 'merges', 'chat', 'modelfiles', 'shared', 'uploads', 'tools', 'images', 'outputs', 'audio', 'gestures']
+export const WORKSPACE_DIRS = ['hf', 'raw', 'data', 'runs', 'adapters', 'fused', 'gguf', 'merges', 'chat', 'modelfiles', 'shared', 'uploads', 'tools', 'images', 'outputs', 'audio', 'gestures', 'packages']

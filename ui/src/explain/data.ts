@@ -21,6 +21,11 @@ export const KINDS = {
     use: 'Prefer',
     about: 'Pairs of answers to the same question, one marked better. Prefer teaches the model to lean toward the better one.',
   },
+  text: {
+    group: 'rows as they are',
+    use: 'Train',
+    about: 'A table\'s rows as plain text, with no question and answer. Train teaches a model to write more rows like them: invented records, never real ones.',
+  },
   picture: {
     group: 'pictures and what they show',
     use: 'Train',
@@ -74,6 +79,18 @@ export const OPEN = {
   template: {
     title: 'turn a table into questions and answers',
     when: 'A table is facts in rows and columns; training needs questions with answers. Write one question and its answer with {column} where each row fills in, and every row becomes an example. The answers are the table\'s own facts, so nothing is made up. (A model can also write rows from a table: choose a dataset and use "write more rows".)',
+  },
+}
+
+/** A table to ask: its roles, the questions made from them, and its rows as they are. */
+export const TABLE = {
+  ask: {
+    title: 'ask a table: a model that turns questions into queries',
+    when: 'For a table of facts (crime incidents, trees, permits): a model learns to turn a question into a query, and the answer is counted from the table itself, so it is always what the table says. Choose a table, check what each column means, and press the button. It makes several hundred questions from the table\'s own values, each with the query that answers it.',
+  },
+  rows: {
+    title: 'or use the rows as they are',
+    when: 'Smaller, and different: no questions, just the rows as text, for a model that writes more rows like them.',
   },
 }
 

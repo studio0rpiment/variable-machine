@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { problemFor, type ChatRow, type DataFormat, type PictureRow, type PrefRow } from '@shared/chatRow'
+import { problemFor, type ChatRow, type DataFormat, type PictureRow, type PrefRow, type TextRow } from '@shared/chatRow'
 
 interface Props {
   train: string
@@ -19,7 +19,7 @@ function parse(text: string, part: 'train' | 'valid', format: DataFormat) {
     .filter((r) => r.raw.trim())
     .map((r) => {
       try {
-        const row = JSON.parse(r.raw) as ChatRow & PrefRow & Partial<PictureRow>
+        const row = JSON.parse(r.raw) as ChatRow & PrefRow & Partial<PictureRow> & Partial<TextRow>
         return { ...r, part, row, problem: rowProblem(row) }
       } catch {
         return { ...r, part, row: null, problem: 'not valid JSON' }
@@ -78,11 +78,12 @@ export default function DataRows({ train, valid, format, dataset }: Props) {
                 {format === 'picture' && dataset && typeof r.row?.images?.[0] === 'string' && (
                   <img className="row__picture" src={`/api/workspace/file?path=${encodeURIComponent(`data/${dataset}/${r.row.images[0]}`)}`} alt={r.row.images[0]} />
                 )}
-                {r.row?.messages?.map((m, i) => (
+                {format === 'text' && typeof r.row?.text === 'string' && <p className="row__turn row__turn--text">{r.row.text}</p>}
+                {format !== 'text' && (r.row?.messages?.map((m, i) => (
                 <p key={i} className={`row__turn row__turn--${m.role}`}>
                   <span className="label label--muted">{m.role}</span> {m.content}
                 </p>
-                )) ?? <code className="row__raw">{r.raw}</code>}
+                )) ?? <code className="row__raw">{r.raw}</code>)}
               </>
             )}
           </li>

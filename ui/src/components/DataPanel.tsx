@@ -14,7 +14,8 @@ import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
 import PictureRows from './PictureRows'
 import { Explained } from '../explain/Explained'
-import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, OPEN, READY } from '../explain/data'
+import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, OPEN, READY, TABLE } from '../explain/data'
+import { TableAskWay, TableWhat } from './TableAsk'
 import { OpenDataCard, TemplateCard } from './OpenData'
 import { HfCard, UploadCard } from './DataBringIn'
 import { Linked } from '../explain/Linked'
@@ -260,6 +261,11 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                   <OpenDataCard busy={busy === 'opendata'} onRun={(line, raw) => void run('opendata', line).then(() => setNewTable(raw))} />
                 </div>
                 <div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{TABLE.ask.title}</h2>
+                  <p className="mf-next">{TABLE.ask.when}</p>
+                  <TableAskWay prefer={newTable} onMade={(name) => choose(name)} rowsTitle={TABLE.rows.title} rowsWhen={TABLE.rows.when} />
+                </div>
+                <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{OPEN.template.title}</h2>
                   <p className="mf-next">{OPEN.template.when}</p>
                   <TemplateCard busy={busy === 'template'} prefer={newTable} onRun={(line, name) => void run('template', line).then(created(name))} />
@@ -363,6 +369,18 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       })}
                     <dt>license</dt>
                     <dd>{current.license}</dd>
+                    {current.ask && (
+                      <>
+                        <dt>what a model learns</dt>
+                        <dd>to write the query for a question; the answer is counted from {current.table?.slice(4)}, so it is always what the table says. After training, ask it in Chat with "ask the table".</dd>
+                      </>
+                    )}
+                    {current.format === 'text' && (
+                      <>
+                        <dt>what a model learns</dt>
+                        <dd>to write rows that look like these. What it writes are invented records, never real ones.</dd>
+                      </>
+                    )}
                     {current.photos?.length ? (
                       <>
                         <dt>the photos</dt>
@@ -379,6 +397,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       </>
                     )}
                   </dl>
+                  {current.table && tables.includes(current.table.slice(4)) && <TableWhat table={current.table.slice(4)} open={false} />}
                   <div className="mf-make__run data-describe">
                     <label className="field">
                       <span className="label label--muted">describe it in your own words</span>

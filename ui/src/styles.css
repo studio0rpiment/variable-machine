@@ -927,3 +927,53 @@ img.move-view__picture { transform: none; }
   .move-studio.is-focus { grid-template-columns: minmax(0, 1fr); }
   .move-studio.is-focus > .move-side { grid-column: 1; grid-row: auto; }
 }
+
+/* ---- a table to ask: what's in it, the roles, the one button ---- */
+.table-ask { display: flex; flex-direction: column; gap: 1rem; }
+.table-ask > .field { max-width: 32rem; }
+.table-what .fold__body { gap: 1rem; }
+.table-what__facts { margin: 0; }
+.table-what__noun { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.75rem; }
+.table-what__noun input { width: 10rem; }
+.table-what__tools { align-items: flex-end; }
+.table-what__switch { align-items: center; }
+.table-cols { display: flex; flex-direction: column; max-height: 32rem; overflow-y: auto; border-top: 1px solid var(--line); }
+.table-cols__row { display: grid; grid-template-columns: minmax(9rem, 1.3fr) 6rem 4.5rem 4rem minmax(0, 2.4fr) 8rem; gap: 0.75rem; align-items: baseline; padding: 0.35rem 0; border-bottom: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); }
+.table-cols__row.is-open { border-bottom-style: solid; border-bottom-color: var(--line); }
+.table-cols__head { position: sticky; top: 0; background: var(--bg); z-index: 1; }
+.table-cols__name { text-align: left; text-transform: none; overflow-wrap: anywhere; }
+.table-cols__ex { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-cols__row select { width: 100%; }
+.table-values { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0 0.9rem 1rem; border-bottom: 1px solid var(--line); }
+.table-values__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.table-values__item { position: relative; display: grid; grid-template-columns: minmax(10rem, 1.2fr) 4.5rem minmax(0, 2fr); gap: 0.75rem; align-items: baseline; padding: 0.15rem 0.35rem; }
+.table-values__bar { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--line) 9%, transparent); pointer-events: none; }
+.table-values__value { position: relative; overflow-wrap: anywhere; }
+.table-values__words { position: relative; font-size: 0.75rem; }
+.ask-set { display: flex; flex-direction: column; gap: 0.75rem; }
+.ask-set__go { align-self: flex-start; padding: 0.5rem 0.9rem; border: 1px solid var(--act); color: var(--act); font-size: 0.85rem; letter-spacing: 0.04em; }
+.ask-set__go:hover:not([aria-disabled="true"]) { background: var(--act-wash); color: var(--act); }
+.ask-set__go[aria-disabled="true"] { opacity: 0.4; cursor: default; }
+.ask-set__lines { gap: 0.4rem; }
+@media (max-width: 56rem) {
+  .table-cols__row { grid-template-columns: minmax(7rem, 1fr) 5rem 4rem minmax(0, 1fr); }
+  .table-cols__row > :nth-child(4), .table-cols__row > :nth-child(5) { display: none; }
+  .table-values__item { grid-template-columns: minmax(0, 1fr) 4rem; }
+  .table-values__words { grid-column: 1 / -1; }
+}
+
+/* ---- Chat: an answer asked of a table ---- */
+.asked { display: flex; flex-direction: column; gap: 0.6rem; }
+.asked__step { display: flex; flex-direction: column; gap: 0.25rem; }
+.asked__query { display: block; padding: 0.4rem 0.55rem; border: 1px dotted var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; font-size: 0.75rem; }
+.asked__problem { margin: 0; padding: 0.5rem 0.6rem; border: 1px solid #e0604a; line-height: 1.5; }
+.asked__number { font-size: 1.6rem; }
+.asked__counts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.15rem; }
+.asked__counts li { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); }
+.asked__sentence { margin: 0; line-height: 1.55; font-size: 0.9rem; }
+.asked__more summary { cursor: pointer; color: var(--act); }
+.asked__rows { overflow-x: auto; max-height: 16rem; overflow-y: auto; }
+.asked__rows table { border-collapse: collapse; font-size: 0.7rem; }
+.asked__rows th, .asked__rows td { text-align: left; padding: 0.15rem 0.5rem 0.15rem 0; white-space: nowrap; border-bottom: 1px dashed color-mix(in srgb, var(--muted) 35%, transparent); }
+.asked__rows th { color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--bg); }
+.asked__sql { margin: 0.3rem 0 0; white-space: pre-wrap; font-size: 0.72rem; color: var(--muted); }
