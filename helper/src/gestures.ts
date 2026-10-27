@@ -4,14 +4,14 @@ import type http from 'node:http'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { OSC_ADDRESS, sendOsc } from './osc.ts'
-import { NONE, SIZE, TRACKERS, TRACKER_TOOL, train, type Check, type Example, type Tracker } from './shared/gesture.ts'
+import { asNow, NONE, SIZE, TRACKERS, trackerOf, train, type Check, type Example, type Tracker } from './shared/gesture.ts'
 
 /**
  * `gesture …` (the gesture tab). A gesture set is workspace/gestures/<name>/:
  * examples.jsonl (one {"label","v"} per recorded moment: the shape of the
  * points, never a camera frame), model.json once trained, and manifest.json.
  *
- *   gesture new <name> --tracker hands|two-hands|body   (two-hands: either hand or both)
+ *   gesture new <name> --tracker hands|body   (hands: one hand or two)
  *   gesture train <name> [--k 5]          check on every fifth example, then keep them all
  *   gesture clear <name> <label>          forget one gesture's examples
  *   gesture send <name> --port 9000 [--address /vm/<name>]   while testing, OSC to this computer
@@ -41,7 +41,8 @@ export interface GestureManifest {
 
 async function readManifest(name: string): Promise<GestureManifest | null> {
   try {
-    return JSON.parse(await fs.readFile(path.join(dir(name), 'manifest.json'), 'utf8')) as GestureManifest
+    const m = JSON.parse(await fs.readFile(path.join(dir(name), 'manifest.json'), 'utf8')) as GestureManifest
+    return { ...m, tracker: trackerOf(m.tracker) }
   } catch {
     return null
   }
@@ -58,6 +59,8 @@ async function readExamples(name: string): Promise<Example[]> {
     .split('\n')
     .filter(Boolean)
     .map((l) => JSON.parse(l) as Example)
+    // examples from when a hands set followed one hand only
+    .map((e) => ({ ...e, v: asNow(e.v) }))
 }
 
 const record = (m: GestureManifest, line: string) => m.command.at(-1) !== line && m.command.push(line)
@@ -113,13 +116,12 @@ export async function receiveExamples(req: http.IncomingMessage, res: http.Serve
 }
 
 async function create(name: string, tracker: string, line: string) {
-  if (!NAME.test(name) || !TRACKERS.includes(tracker as Tracker)) return print('usage: gesture new <name> --tracker hands|two-hands|body   (hands: one hand; two-hands: either hand or both)'), false
+  if (!NAME.test(name) || !TRACKERS.includes(tracker as Tracker)) return print('usage: gesture new <name> --tracker hands|body   (hands: one hand or two)'), false
   if (await readManifest(name)) return print(`gesture: ${name} exists`), false
   await fs.mkdir(dir(name), { recursive: true })
   await fs.writeFile(path.join(dir(name), 'examples.jsonl'), '')
   await writeManifest({ name, kind: 'gesture', created: now(), license: 'your own movements', inputs: [], command: [line], tracker: tracker as Tracker, counts: {} })
-  const on = TRACKER_TOOL[tracker as Tracker] !== tracker ? ` (on the ${TRACKER_TOOL[tracker as Tracker]} tracker, finding up to two)` : ''
-  print(`  ◂ workspace/gestures/${name}/ · ${tracker}${on}: record some examples of each gesture on the gesture tab`)
+  print(`  ◂ workspace/gestures/${name}/ · ${tracker === 'hands' ? 'hands, one or two' : tracker}: record some examples of each gesture on the gesture tab`)
   return true
 }
 
@@ -137,7 +139,7 @@ async function example(set: string) {
   await fs.cp(path.join(EXAMPLES, set), dir(set), { recursive: true })
   const m = await readManifest(set)
   if (m) print(`  ${Object.entries(m.counts).map(([l, n]) => `${l} ${n}`).join(' · ')} · ${m.license}`)
-  print(`  ◂ workspace/gestures/${set}/ · ${m?.tracker}: train it, then test it live with your own ${m?.tracker === 'body' ? 'body' : m?.tracker === 'two-hands' ? 'hands' : 'hand'}`)
+  print(`  ◂ workspace/gestures/${set}/ · ${m?.tracker}: train it, then test it live with your own ${m?.tracker === 'body' ? 'body' : 'hands'}`)
   broadcast({ type: 'workspace.changed', path: `gestures/${set}/manifest.json`, kind: 'add' })
   return true
 }
@@ -209,7 +211,7 @@ export async function gestureCommand(args: string[], line: string): Promise<bool
   if (sub === 'train') return trainSet(name, opts.k, line)
   if (sub === 'clear') return clear(name, pos.slice(1).join(' '), line)
   if (sub === 'send') return send(name, opts)
-  print('usage: gesture new <name> --tracker hands|two-hands|body | gesture example example-hands | gesture train <name> [--k 5] | gesture clear <name> <gesture> | gesture send <name> --port 9000 | gesture send <name> --stop')
+  print('usage: gesture new <name> --tracker hands|body | gesture example example-hands | gesture train <name> [--k 5] | gesture clear <name> <gesture> | gesture send <name> --port 9000 | gesture send <name> --stop')
   return false
 }
 

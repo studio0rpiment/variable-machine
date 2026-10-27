@@ -587,22 +587,17 @@ Downloads the tracker, one small file from Google's MediaPipe, into workspace/to
 ### Gesture set
 `move.set`
 
-A set is a few gestures, the examples recorded of each, and the model trained on them, in workspace/gestures. Start with the example: three hand gestures recorded for you, ready to train, so you can see it work (and fail) with your own hand. Then make your own. A set follows one hand, two hands or a body. A two-hands set takes either hand or both, so it can hold one-handed gestures and two-handed ones: it keeps which hand is which and where the hands are from each other.
+A set is a few gestures, the examples recorded of each, and the model trained on them, in workspace/gestures. Start with the example: three hand gestures recorded for you, ready to train, so you can see it work (and fail) with your own hand. Then make your own. A set follows hands or a body. A hands set takes one hand or two, so it can hold one-handed gestures and two-handed ones. One hand reads the same whichever hand it is; with two, it keeps which is which and where they are from each other.
 
 ### Make a set
 `move.new`
 
-Starts a new gesture set for one hand, two hands or a body. One hand and two hands use the same hands tracker. Then name a gesture and record some examples of it.
-
-### Hold to record
-`move.record`
-
-While you hold the button, the shape of your hand (or body) is recorded ten times a second: the points, measured from the wrist (or hips), so the same gesture reads the same anywhere in the picture. Move a little while you hold it, so the examples vary: 20 to 50 of each gesture is plenty.
+Starts a new gesture set for hands (one or two) or for a body. Then name a gesture and record some examples of it.
 
 ### Tap to record
-`move.recordTap`
+`move.record`
 
-Both hands are busy making the gesture, so for a two-hands set one tap starts recording and the next tap stops it (the space bar works the same way). After the tap you have 3 seconds to get your hands into place; only then is the shape of your hands recorded, ten times a second. Move a little while it records, so the examples vary: 20 to 50 of each gesture is plenty.
+Your hands are busy making the gesture, or you are standing back from the computer, so one tap starts recording and the next tap stops it (the space bar works the same way). After the tap you have 3 seconds to get your hands into place (5 to step back, for a body); only then is the shape recorded, ten times a second: the points, measured from each wrist (or the hips), so the same gesture reads the same anywhere in the picture. Move a little while it records, so the examples vary: 20 to 50 of each gesture is plenty.
 
 ### Train
 `move.train`

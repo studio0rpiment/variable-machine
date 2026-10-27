@@ -11,15 +11,13 @@
  */
 
 /**
- * What a set follows. hands: one hand. two-hands: either hand or both, so one
- * set can hold one-handed gestures and two-handed ones. body: a whole body.
- * hands and two-hands use the same downloaded model (the hands tracker), told
- * to look for one hand or two.
+ * What a set follows: hands (one or two, on the hands tracker) or a body (on
+ * the body tracker). A hands set can hold one-handed gestures and two-handed ones.
  */
-export type Tracker = 'hands' | 'two-hands' | 'body'
-export const TRACKERS: Tracker[] = ['hands', 'two-hands', 'body']
-/** the downloaded tracker each one runs on (model get <it>) */
-export const TRACKER_TOOL: Record<Tracker, 'hands' | 'body'> = { hands: 'hands', 'two-hands': 'hands', body: 'body' }
+export type Tracker = 'hands' | 'body'
+export const TRACKERS: Tracker[] = ['hands', 'body']
+/** A set's tracker as its manifest says it. Sets made while there was a separate two-hands tracker say two-hands: they are hands sets. */
+export const trackerOf = (t: string): Tracker => (t === 'body' ? 'body' : 'hands')
 
 export interface Point {
   x: number
@@ -28,9 +26,8 @@ export interface Point {
 }
 
 /**
- * What the tracker found in one picture: the points of each hand, or of the
- * body. For two-hands, always [the left hand, the right hand], with [] for a
- * hand that isn't in the picture.
+ * What the tracker found in one picture: the points of each hand (one, or two
+ * as [your left hand, your right hand]), or of the body.
  */
 export type Found = Point[][]
 
@@ -44,28 +41,38 @@ function handShape(points: Point[]): number[] {
 }
 
 /**
+ * Either hand the same: a left hand is a right hand seen in a mirror, so a
+ * hand's shape is turned over left to right (x times -1) when it turns the
+ * other way: when, going round from the index knuckle (5) to the little
+ * finger's (17), seen from the wrist, it turns anticlockwise. A thumbs up then
+ * reads the same with either hand. On the example sets, set-aside examples were
+ * named right as often as before.
+ */
+export function eitherHand(shape: number[]): number[] {
+  const turn = shape[15] * shape[52] - shape[16] * shape[51]
+  return turn < 0 ? shape.map((x, i) => (i % 3 === 0 ? -x : x)) : shape
+}
+
+const ZEROS = Array(63).fill(0) as number[]
+
+/**
  * The shape, not the place: points relative to a centre, scaled by a body
  * length, so the same gesture made nearer the camera or further left reads
- * the same. Hands: from the wrist (point 0), by wrist to middle knuckle (9).
- * Body: from the middle of the hips (23, 24), by shoulder width (11, 12).
- * Two hands: each hand's shape (0s for a hand that isn't there), then whether
- * each hand is there (1 or 0, counted three times over, so one hand and two
- * never pass for each other), then where the right wrist is from the left, in
- * hand lengths (0s unless both are there): hands together and hands apart differ.
+ * the same. Body: from the middle of the hips (23, 24), by shoulder width
+ * (11, 12): 33 points, x, y and z of each.
+ * Hands: from each wrist (point 0), by wrist to middle knuckle (9), as 131
+ * numbers. One hand: its shape, the same for either hand (eitherHand), then
+ * 0s. Two hands: your left hand's shape, then your right's. Then whether there
+ * are one hand or two (3 and 0, or 3 and 3: counted three times over, so one
+ * hand and two never pass for each other), then where the right wrist is from
+ * the left, in hand lengths (0s for one hand): hands together and hands apart differ.
  */
 export function normalize(found: Found, tracker: Tracker): number[] {
-  if (tracker === 'hands') return handShape(found[0])
-  if (tracker === 'two-hands') {
+  if (tracker === 'hands') {
+    if (found.length < 2) return [...eitherHand(handShape(found[0])), ...ZEROS, 3, 0, 0, 0, 0]
     const [left, right] = found
-    const both = left.length && right.length
-    const scale = both ? (dist(left[0], left[9]) + dist(right[0], right[9])) / 2 || 1 : 1
-    return [
-      ...(left.length ? handShape(left) : Array(63).fill(0)),
-      ...(right.length ? handShape(right) : Array(63).fill(0)),
-      left.length ? 3 : 0,
-      right.length ? 3 : 0,
-      ...(both ? [(right[0].x - left[0].x) / scale, (right[0].y - left[0].y) / scale, (right[0].z - left[0].z) / scale] : [0, 0, 0]),
-    ]
+    const scale = (dist(left[0], left[9]) + dist(right[0], right[9])) / 2 || 1
+    return [...handShape(left), ...handShape(right), 3, 3, (right[0].x - left[0].x) / scale, (right[0].y - left[0].y) / scale, (right[0].z - left[0].z) / scale]
   }
   const points = found[0]
   const centre = mid(points[23], points[24])
@@ -73,10 +80,11 @@ export function normalize(found: Found, tracker: Tracker): number[] {
   return points.flatMap((p) => [(p.x - centre.x) / scale, (p.y - centre.y) / scale, (p.z - centre.z) / scale])
 }
 
-/** points on one hand or one body */
-export const POINTS: Record<Tracker, number> = { hands: 21, 'two-hands': 42, body: 33 }
-/** how many numbers normalize makes: x, y, z of each point; for two hands, 5 more (which hands are there, and the right wrist from the left) */
-export const SIZE: Record<Tracker, number> = { hands: 63, 'two-hands': 131, body: 99 }
+/** how many numbers normalize makes */
+export const SIZE: Record<Tracker, number> = { hands: 131, body: 99 }
+
+/** An example recorded when a hands set followed one hand only (63 numbers), as a hands set has it now. */
+export const asNow = (v: number[]): number[] => (v.length === 63 ? [...eitherHand(v), ...ZEROS, 3, 0, 0, 0, 0] : v)
 
 export interface Example {
   label: string

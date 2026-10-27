@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TRACKER_MODELS, type TrackerModel } from '@shared/kinds'
-import { classify, NONE, normalize, reachOf, TRACKER_TOOL, TRACKERS, type Found, type GestureModel, type Tracker } from '@shared/gesture'
+import { asNow, classify, NONE, normalize, reachOf, trackerOf, TRACKERS, type Found, type GestureModel, type Tracker } from '@shared/gesture'
 import { joinWords } from '@shared/quote'
 import { runCommand, sendEvent } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
@@ -25,8 +25,8 @@ const asName = (typed: string) =>
     .slice(0, 64)
 /** examples recorded while a record button is held: at most this many a second, so a few seconds make a good handful */
 const PER_SECOND = 10
-/** with tap to record, seconds to get both hands into place before examples are kept */
-const GET_READY = 3
+/** seconds to get into place after the tap, before examples are kept: your hands up from the mouse, or back from the computer for a body */
+const GET_READY: Record<Tracker, number> = { hands: 3, body: 5 }
 
 type Camera = 'off' | 'starting' | 'on' | 'denied' | 'none' | 'busy' | 'unavailable' | 'error'
 
@@ -160,15 +160,13 @@ export function TrackerCard({ t, here, busy, onGet }: { t: TrackerModel; here: b
 }
 
 /** What each tracker is called on the page. */
-const TRACKER_NAMES: Record<Tracker, string> = { hands: 'one hand', 'two-hands': 'two hands', body: 'a body' }
+const TRACKER_NAMES: Record<Tracker, string> = { hands: 'hands, one or two', body: 'a body' }
 
-/** What was found, in words: "a hand: 21 points", "two hands: 42 points", "the left hand: 21 points". */
+/** What was found, in words: "a hand: 21 points", "two hands: 42 points". */
 function foundWords(found: Found | null, tracker: Tracker) {
   if (tracker === 'body') return found ? 'a body: 33 points' : 'no body found yet'
-  if (!found) return tracker === 'hands' ? 'no hand found yet' : 'no hands found yet'
-  if (tracker === 'hands') return 'a hand: 21 points'
-  const [left, right] = found
-  return left.length && right.length ? 'two hands: 42 points' : `the ${left.length ? 'left' : 'right'} hand: 21 points`
+  if (!found) return 'no hands found yet'
+  return found.length > 1 ? 'two hands: 42 points' : 'a hand: 21 points'
 }
 
 /** Draw the points and the bones between them over the picture, in the line colour: outlines only. */
@@ -182,7 +180,6 @@ function draw(canvas: HTMLCanvasElement, w: number, h: number, found: Found | nu
   g.strokeStyle = line
   g.lineWidth = Math.max(1, w / 400)
   for (const points of found) {
-    if (!points.length) continue
     for (const [a, b] of BONES[tracker]) {
       g.beginPath()
       g.moveTo(points[a].x * w, points[a].y * h)
@@ -252,9 +249,7 @@ export default function MovePanel({ active }: { active: boolean }) {
 
   const set = sets.find((s) => s.folder === name)
   const hasSet = !!set
-  const tracker = set?.tracker ?? newTracker
-  /** the downloaded tracker it runs on: one hand and two hands both run on hands */
-  const tool = TRACKER_TOOL[tracker]
+  const tracker = set ? trackerOf(set.tracker) : newTracker
   useEffect(() => setFoundText(''), [tracker])
 
   const load = useCallback(async () => {
@@ -279,8 +274,11 @@ export default function MovePanel({ active }: { active: boolean }) {
     if (!set?.trained) return
     void readFile(`gestures/${set.folder}/model.json`).then((t) => {
       const m = t ? (JSON.parse(t) as GestureModel) : null
-      // a model trained before none was there: work out its reach now
-      if (m && m.reach === undefined) m.reach = reachOf(m.examples)
+      // a model trained when a hands set followed one hand only: its examples as they are now, and their reach again
+      const old = m?.examples.some((e) => e.v.length === 63)
+      if (m && old) m.examples = m.examples.map((e) => ({ ...e, v: asNow(e.v) }))
+      // a model trained before none was there (or with old examples): work out its reach now
+      if (m && (m.reach === undefined || old)) m.reach = reachOf(m.examples)
       model.current = m
     })
   }, [set?.folder, set?.trained])
@@ -324,7 +322,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   // the camera loop reads the latest handler, so starting to record or test doesn't restart the camera
   const pointsTo = useRef(onPoints)
   pointsTo.current = onPoints
-  const trackerHere = !!here[tool]
+  const trackerHere = !!here[tracker]
 
   /** Stop the camera (leaving the tab, another set, or the photo route): its light goes off at once. */
   const stopCamera = useCallback(() => {
@@ -393,7 +391,7 @@ export default function MovePanel({ active }: { active: boolean }) {
   // a still photo: points once, when it has loaded
   const onPhoto = async () => {
     const i = img.current
-    if (!i || !here[tool]) return
+    if (!i || !here[tracker]) return
     const first = !trackerLoaded(tracker, 'IMAGE')
     if (first) setLoadingTracker(true)
     try {
@@ -416,22 +414,21 @@ export default function MovePanel({ active }: { active: boolean }) {
   }
 
   const save = async (lbl: string, vectors: number[][]) => {
-    if (!vectors.length) return setNote(`nothing was found to record: get your whole ${tracker === 'hands' ? 'hand' : tracker === 'two-hands' ? 'hand or hands' : 'body'} in the picture`)
+    if (!vectors.length) return setNote(`nothing was found to record: get your whole ${tracker === 'hands' ? 'hand or hands' : 'body'} in the picture`)
     const res = await fetch(`/api/workspace/gesture?name=${encodeURIComponent(name)}&label=${encodeURIComponent(lbl)}`, { method: 'POST', body: JSON.stringify({ vectors }) })
     const body = (await res.json().catch(() => ({}))) as { error?: string }
     setNote(res.ok ? '' : (body.error ?? 'recording failed'))
   }
   /**
-   * Two hands can't also hold a button: for a two-hands set, a tap starts
-   * recording and another tap stops it, and examples are kept only after
-   * GET_READY seconds, so the hands coming back from the mouse aren't recorded.
+   * Two hands, or a body standing back from the computer, can't also hold a
+   * button: a tap starts recording and another tap stops it, and examples are
+   * kept only after GET_READY seconds, so getting into place isn't recorded.
    */
-  const tap = tracker === 'two-hands'
   const startRecording = (lbl: string) => {
     setArmed(lbl)
     buffer.current = []
-    keepFrom.current = performance.now() + (tap ? GET_READY * 1000 : 0)
-    setReady(tap ? GET_READY : 0)
+    keepFrom.current = performance.now() + GET_READY[tracker] * 1000
+    setReady(GET_READY[tracker])
     setRecording(lbl)
   }
   const stopRecording = () => {
@@ -441,54 +438,49 @@ export default function MovePanel({ active }: { active: boolean }) {
     setReady(0)
     void save(lbl, buffer.current)
   }
-  /** tap to record: the first tap starts, the next stops (and a tap on another gesture stops this one and starts that) */
+  /** the first tap starts, the next stops (and a tap on another gesture stops this one and starts that) */
   const tapRecord = (lbl: string) => {
     const was = recording
     if (was) stopRecording()
     if (was !== lbl) startRecording(lbl)
   }
   useEffect(() => {
-    if (!recording || !tap) return
+    if (!recording) return
     const id = setInterval(() => setReady(Math.max(0, Math.ceil((keepFrom.current - performance.now()) / 1000))), 200)
     return () => clearInterval(id)
-  }, [recording, tap])
+  }, [recording])
+  // leaving the tab or stopping the camera stops recording too
+  useEffect(() => void ((!active || camera !== 'on') && stopRecording()), [active, camera]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const labels = Object.keys(set?.counts ?? {}).filter((l) => (set?.counts[l] ?? 0) > 0)
   /** training needs two gestures or more, with at least 5 examples of each (as `gesture train` checks) */
   const trainable = labels.length >= 2 && labels.every((l) => (set?.counts[l] ?? 0) >= 5)
-  // The space bar records too, held like the mouse (or tapped, for two hands): the gesture
-  // typed in "another gesture" (press Return to leave the field), or else the last one recorded.
+  // The space bar records too, tapped like the button: the gesture typed in "another
+  // gesture" (press Return to leave the field), or else the last one recorded.
   const typed = LABEL.test(label.trim()) ? label.trim() : ''
   const spaceLabel = typed || (labels.includes(armed) ? armed : (labels[0] ?? ''))
   useSpaceKey(
     active && !!set && source === 'camera' && camera === 'on' && !!spaceLabel,
     () => {
-      if (!tap) return startRecording(spaceLabel)
       if (typed && recording === typed) setLabel('')
       tapRecord(spaceLabel)
     },
-    () => {
-      if (tap) return
-      const was = recording
-      stopRecording()
-      if (typed && was === typed) setLabel('')
-    },
   )
-  /** what a record button says: hold or tap, and while recording, the count to get ready */
-  const recordWords = (on: boolean) => (!on ? (tap ? 'tap to record' : 'hold to record') : ready > 0 ? `get ready: ${ready}…` : tap ? 'recording… tap to stop' : 'recording…')
+  /** what a record button says, and while recording, the count to get ready */
+  const recordWords = (on: boolean) => (!on ? 'tap to record' : ready > 0 ? `get ready: ${ready}…` : 'recording… tap to stop')
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
-  const what = tracker === 'hands' ? 'hand' : tracker === 'two-hands' ? 'hands' : 'body'
-  const trackerInfo = TRACKER_MODELS.find((t) => t.name === tool)!
+  const what = tracker === 'hands' ? 'hands' : 'body'
+  const trackerInfo = TRACKER_MODELS.find((t) => t.name === tracker)!
   const taken = sets.some((x) => x.folder === newName)
-  const getTracker = () => void run(`get ${tool}`, `model get ${tool}`)
+  const getTracker = () => void run(`get ${tracker}`, `model get ${tracker}`)
 
   const steps = [
-    { name: 'get the tracker', how: `download the ${tool} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
+    { name: 'get the tracker', how: `download the ${tracker} tracker (${trackerInfo.mb} MB): it finds the points on your ${what} in the picture`, done: trackerHere },
     { name: 'choose a set', how: 'start with the example set, or make your own: give it a name, choose one hand, two hands or a body, and press make the set', done: hasSet },
     { name: 'start the camera', how: 'press start the camera, and allow it when the browser asks (or use a photo)', done: camera === 'on' || (source === 'photo' && !!photo) },
-    { name: 'record two or more gestures', how: 'name a gesture, then hold to record for 3–5 seconds while you make it (at least 5 examples of each); then another', done: trainable },
+    { name: 'record two or more gestures', how: 'name a gesture, tap to record, make it for 3–5 seconds once the count is done, and tap to stop (at least 5 examples of each); then another', done: trainable },
     { name: 'train', how: 'press train: it takes a second, and shows which gestures it mixes up', done: !!set?.trained },
     { name: 'test it, and send it on', how: 'test it live, then send it on as OSC; "use it in your patch" on the right says what to put in TouchDesigner, Max or Pure Data', done: testing || sending },
   ]
@@ -499,16 +491,16 @@ export default function MovePanel({ active }: { active: boolean }) {
   const offerTracker = !trackerHere && (
     <Next on={now === 0}>
     <div className="move-start">
-      {busy === `get ${tool}` ? (
-        <DownloadWait name={tool} label={`downloading the ${tool} tracker`} />
+      {busy === `get ${tracker}` ? (
+        <DownloadWait name={tracker} label={`downloading the ${tracker} tracker`} />
       ) : (
         <>
           <Explained id="move.get">
             <button type="button" className="act-button" onClick={getTracker}>
-              download the {tool} tracker ({trackerInfo.mb} MB)
+              download the {tracker} tracker ({trackerInfo.mb} MB)
             </button>
           </Explained>
-          <CommandPreview command={`model get ${tool}`} onRun={getTracker} label={`download the ${tool} tracker`} />
+          <CommandPreview command={`model get ${tracker}`} onRun={getTracker} label={`download the ${tracker} tracker`} />
         </>
       )}
     </div>
@@ -545,7 +537,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                       <span className="move-set__name">{x.folder}</span>
                       <span className="label label--muted">
                         {isExample ? 'the example · ' : ''}
-                        {x.tracker} · {Object.keys(x.counts).filter((l) => x.counts[l] > 0).length} gestures · {n} examples
+                        {TRACKER_NAMES[trackerOf(x.tracker)]} · {Object.keys(x.counts).filter((l) => x.counts[l] > 0).length} gestures · {n} examples
                       </span>
                       <span className="label label--muted">{x.trained ? 'trained' : 'not trained yet'}</span>
                     </button>
@@ -578,7 +570,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                     ))}
                   </div>
                   <span className="label label--muted">
-                    {newTracker === 'two-hands' ? 'either hand or both: one set can hold one-handed gestures and two-handed ones. ' : ''}this picks what the set follows; it doesn't download anything
+                    {newTracker === 'hands' ? 'either hand or both: one set can hold one-handed gestures and two-handed ones. ' : ''}this picks what the set follows; it doesn't download anything
                   </span>
                 </div>
                 {offerTracker}
@@ -601,7 +593,7 @@ export default function MovePanel({ active }: { active: boolean }) {
 
           <h2 className="panel__title label">choose a model</h2>
           <p className="models-intro">
-            The model that finds the points: on a hand (21) or on a whole body (33). It is ready-made and you don't train it: it runs in this page and turns each camera frame into points. Your gestures then train the small model that names them. A set uses one or the other: a set for one hand or for two hands uses the hands tracker, told to find one hand or up to two.
+            The model that finds the points: on a hand (21) or on a whole body (33). It is ready-made and you don't train it: it runs in this page and turns each camera frame into points. Your gestures then train the small model that names them. A set uses one or the other: the hands tracker finds one hand or two.
           </p>
           <div className="cards">
             {TRACKER_MODELS.map((t) => (
@@ -659,7 +651,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                 </div>
                 </Next>
               )}
-              {loadingTracker && <Loading label={`loading the ${tool} tracker`} about={2 + trackerInfo.mb * 0.15} />}
+              {loadingTracker && <Loading label={`loading the ${tracker} tracker`} about={2 + trackerInfo.mb * 0.15} />}
 
               <figure className="move-view">
                 {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
@@ -696,16 +688,10 @@ export default function MovePanel({ active }: { active: boolean }) {
                     <span className="move-label__name">{l}</span>
                     <span className="label label--muted">{set.counts[l]} examples</span>
                     {source === 'camera' ? (
-                      <Explained id={tap ? 'move.recordTap' : 'move.record'}>
-                        {tap ? (
-                          <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onClick={() => tapRecord(l)} aria-pressed={recording === l}>
-                            {recordWords(recording === l)}
-                          </button>
-                        ) : (
-                          <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onPointerDown={() => startRecording(l)} onPointerUp={stopRecording} onPointerLeave={stopRecording}>
-                            {recordWords(recording === l)}
-                          </button>
-                        )}
+                      <Explained id="move.record">
+                        <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onClick={() => tapRecord(l)} aria-pressed={recording === l}>
+                          {recordWords(recording === l)}
+                        </button>
                       </Explained>
                     ) : (
                       <button type="button" className="text-button" disabled={!found} onClick={() => latest.current && void save(l, [normalize(latest.current, tracker)])}>
@@ -719,7 +705,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                 ))}
                 <div className="move-label">
                   <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
-                  {source === 'camera' && tap ? (
+                  {source === 'camera' ? (
                     <button
                       type="button"
                       className={`text-button ${recording === label.trim() && label ? 'is-active' : ''}`.trim()}
@@ -733,17 +719,6 @@ export default function MovePanel({ active }: { active: boolean }) {
                     >
                       {recordWords(recording === label.trim() && !!label)}
                     </button>
-                  ) : source === 'camera' ? (
-                    <button
-                      type="button"
-                      className={`text-button ${recording === label.trim() && label ? 'is-active' : ''}`.trim()}
-                      disabled={!LABEL.test(label.trim())}
-                      onPointerDown={() => startRecording(label.trim())}
-                      onPointerUp={() => (stopRecording(), setLabel(''))}
-                      onPointerLeave={stopRecording}
-                    >
-                      hold to record
-                    </button>
                   ) : (
                     <button type="button" className="text-button" disabled={!found || !LABEL.test(label.trim())} onClick={() => latest.current && void save(label.trim(), [normalize(latest.current, tracker)]).then(() => setLabel(''))}>
                       add this photo
@@ -755,10 +730,8 @@ export default function MovePanel({ active }: { active: boolean }) {
                     {recording
                       ? ready > 0
                         ? `get ready: ${ready}… then make ${recording}`
-                        : `recording ${recording}…${tap ? ' tap again (or the space bar) to stop' : ''}`
-                      : tap
-                        ? `or press the space bar to start recording ${spaceLabel}, and again to stop`
-                        : `or hold the space bar to record ${spaceLabel}`}
+                        : `recording ${recording}… tap again (or the space bar) to stop`
+                      : `or press the space bar to start recording ${spaceLabel}, and again to stop`}
                     {typed && !recording ? ' (press Return first if you are still in the name)' : ''}
                   </span>
                 )}
