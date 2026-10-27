@@ -20,6 +20,7 @@ interface AudioFile {
   license: string
   text?: string
   model?: string
+  voice?: string
   transcript?: string
   heardBy?: string
 }
@@ -69,6 +70,8 @@ export default function VoicePanel({ active }: { active: boolean }) {
   const [rec, setRec] = useState<Recording | null>(null)
   const [level, setLevel] = useState(0)
   const [note, setNote] = useState('')
+  /** '' is the model's own voice; robot and baritone are that voice changed afterwards */
+  const [voice, setVoice] = useState('')
   const raf = useRef(0)
 
   const load = useCallback(() => void readManifests<AudioSet>('audio').then((m) => setSets(m.sort((a, b) => a.folder.localeCompare(b.folder)))), [])
@@ -87,7 +90,7 @@ export default function VoicePanel({ active }: { active: boolean }) {
     setBusy('')
     return ok
   }
-  const speakLine = joinWords(['speak', name || '<name>', text.trim() || '<text>'])
+  const speakLine = joinWords(['speak', name || '<name>', text.trim() || '<text>', ...(voice ? ['--voice', voice] : [])])
   const taken = sets.find((s) => s.folder === 'spoken')?.files[`${name}.wav`]
 
   const record = async () => {
@@ -148,6 +151,23 @@ export default function VoicePanel({ active }: { active: boolean }) {
           <input type="text" value={name} spellCheck={false} onChange={(e) => (setTouchedName(true), setName(e.target.value.toLowerCase()))} />
         </label>
         {taken && <span className="label label--muted">a sound with that name exists</span>}
+        <div className="field">
+          <span className="label label--muted">voice</span>
+          <div className="choice" role="radiogroup" aria-label="voice">
+            {['', 'robot', 'baritone'].map((v) => (
+              <button key={v} type="button" role="radio" aria-checked={v === voice} className={`text-button ${v === voice ? 'is-active' : ''}`.trim()} onClick={() => setVoice(v)}>
+                {v || 'soprano'}
+              </button>
+            ))}
+          </div>
+          <span className="label label--muted">
+            Soprano has one voice. Robot and baritone are that voice changed afterwards, by a short Python script you can read (python/variable_machine/voice.py).{' '}
+            <a href="https://huggingface.co/models?pipeline_tag=text-to-speech&library=mlx&sort=trending" target="_blank" rel="noreferrer">
+              More voices: other speaking models that run on a Mac (MLX), on Hugging Face
+            </a>
+            ; Variable Machine runs Soprano, so those are for your own projects.
+          </span>
+        </div>
         <Explained id="voice.speak">
           <CommandPreview command={speakLine} onRun={() => void run('speak', speakLine).then((ok) => ok && (setText(''), setTouchedName(false)))} disabled={!text.trim() || !NAME.test(name) || !!taken} running={busy === 'speak'} label="speak" />
         </Explained>
@@ -184,7 +204,11 @@ export default function VoicePanel({ active }: { active: boolean }) {
                     <AudioPlayer src={fileUrl(rel)} label={file} />
                     {f.made === 'spoken' ? (
                       <p className="voice-heard">
-                        <span className="label label--muted">spoken by {f.model?.split('/')[1]}</span> {f.text}
+                        <span className="label label--muted">
+                          spoken by {f.model?.split('/')[1]}
+                          {f.voice ? `, as ${f.voice}` : ''}
+                        </span>{' '}
+                        {f.text}
                       </p>
                     ) : (
                       <span className="label label--muted">recorded · {f.license}</span>

@@ -26,6 +26,8 @@ export interface AudioFile {
   /** what it was asked to say (spoken) */
   text?: string
   model?: string
+  /** the voice it was changed into afterwards (robot, baritone); none: the model's own */
+  voice?: string
   /** what listen heard, and with which model */
   transcript?: string
   heardBy?: string
@@ -74,14 +76,18 @@ function flags(words: string[]) {
 
 const shown = (argv: string[]) => joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...argv])
 
-/** `speak <name> "<text>" [--set spoken]`: a model reads the text aloud, into workspace/audio/<set>/<name>.wav. */
+/** The voices besides the model's own: its voice changed afterwards by python/variable_machine/voice.py. */
+export const VOICES = ['robot', 'baritone'] as const
+
+/** `speak <name> "<text>" [--voice robot|baritone] [--set spoken]`: a model reads the text aloud, into workspace/audio/<set>/<name>.wav. */
 async function speak(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
   const [name, ...words] = pos
   const text = words.join(' ').trim()
   const set = opts.set ?? 'spoken'
-  if (!name || !NAME.test(name) || !text || !SET.test(set) || Object.keys(opts).some((k) => k !== 'set')) {
-    print('usage: speak <name> "<text>" [--set spoken]   (into workspace/audio/<set>/<name>.wav)')
+  const voice = opts.voice
+  if (!name || !NAME.test(name) || !text || !SET.test(set) || Object.keys(opts).some((k) => k !== 'set' && k !== 'voice') || (voice !== undefined && !(VOICES as readonly string[]).includes(voice))) {
+    print(`usage: speak <name> "<text>" [--voice ${VOICES.join('|')}] [--set spoken]   (into workspace/audio/<set>/<name>.wav)`)
     return false
   }
   const m = await readAudioSet(set)
@@ -90,21 +96,27 @@ async function speak(args: string[], line: string): Promise<boolean> {
   // Greedy (temperature 0): sampled, Soprano sometimes never says its stop token and hums to its
   // 32-second limit (2 of 3 tries on one sentence, 2026-10-24); greedy finished every sentence tried.
   const argv = [...UV_VOICE, 'python', '-m', 'mlx_audio.tts.generate', '--model', model.repo, '--text', text, '--temperature', '0', '--output_path', `workspace/audio/${set}`, '--file_prefix', name, '--audio_format', 'wav']
+  // mlx-audio numbers its files (_000) in case a long text is split; one text is one file here
+  const spoken = `workspace/audio/${set}/${name}_000.wav`
+  const out = `workspace/audio/${set}/${name}.wav`
+  // another voice: the model's voice, changed afterwards (numpy and scipy, nothing learned)
+  const change = voice && [...UV_VOICE, 'python', 'python/variable_machine/voice.py', voice, spoken, out]
   return runRecipe({
     recipe: 'speak',
-    params: { name, set, text },
-    outputs: [`workspace/audio/${set}/${name}.wav`],
+    params: { name, set, text, ...(voice ? { voice } : {}) },
+    outputs: [out],
     steps: [
       { kind: 'spawn', argv, env: PY_ENV },
+      ...(change ? [{ kind: 'spawn' as const, argv: change, env: PY_ENV }] : []),
       {
         kind: 'do',
-        display: `mv workspace/audio/${set}/${name}_000.wav ${name}.wav; write workspace/audio/${set}/manifest.json`,
+        display: `${change ? `rm ${spoken}` : `mv ${spoken} ${name}.wav`}; write workspace/audio/${set}/manifest.json`,
         run: async () => {
-          // mlx-audio numbers its files (_000) in case a long text is split; one text is one file here
-          await fs.rename(path.join(dir(set), `${name}_000.wav`), path.join(dir(set), `${name}.wav`))
+          if (change) await fs.rm(path.join(dir(set), `${name}_000.wav`))
+          else await fs.rename(path.join(dir(set), `${name}_000.wav`), path.join(dir(set), `${name}.wav`))
           const fresh = await readAudioSet(set)
           if (!fresh.command.length) fresh.command.push(line)
-          fresh.files[`${name}.wav`] = { made: 'spoken', license: `${model.license} (${model.original})`, text, model: model.repo, command: [line, shown(argv)] }
+          fresh.files[`${name}.wav`] = { made: 'spoken', license: `${model.license} (${model.original})`, text, model: model.repo, ...(voice ? { voice } : {}), command: [line, shown(argv), ...(change ? [shown(change)] : [])] }
           await writeAudioSet(fresh)
         },
       },

@@ -145,7 +145,7 @@ zip <data|adapters|merges|runs|fused|images|audio|gestures>/<name>
 unzip <file.zip>
 model get cutout|depth|select|hands|body             ready-made models for image segmentation and gesture, into workspace/tools
 look cutout|depth|select images/<set>/<photo> [--point x,y]…
-speak <name> "<text>" [--set spoken]                 Soprano reads it aloud: workspace/audio/<set>/<name>.wav
+speak <name> "<text>" [--voice robot|baritone]      Soprano reads it aloud (robot, baritone: its voice changed afterwards): workspace/audio/spoken/<name>.wav
 listen audio/<set>/<file>.wav [--language English]  Qwen3-ASR writes down what it hears
 gesture new <name> --tracker hands|body
 gesture train <name> [--k 5]
