@@ -4,6 +4,7 @@ import { joinWords } from '@shared/quote'
 import { runCommand } from '../lib/helper'
 import { readManifests } from '../lib/workspace'
 import { startRecording, type Recording } from '../lib/record'
+import { useSpaceKey } from '../hooks/useSpaceKey'
 import { useHelperEvent } from '../hooks/useHelper'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
@@ -58,7 +59,8 @@ export function VoiceCard({ m }: { m: VoiceModel }) {
  * and Qwen3-ASR writes down what it hears (`listen`). Sounds are WAV files in
  * workspace/audio/<set>/, each with where it came from and what was heard.
  */
-export default function VoicePanel() {
+/** active: the speech tab is showing, so the space bar is its record button. */
+export default function VoicePanel({ active }: { active: boolean }) {
   const [sets, setSets] = useState<AudioSet[]>([])
   const [text, setText] = useState('')
   const [name, setName] = useState('')
@@ -116,6 +118,9 @@ export default function VoicePanel() {
       setNote(`no microphone: ${(e as Error).message}`)
     }
   }
+
+  // the space bar starts and stops recording, like a click on record
+  useSpaceKey(active, () => void record())
 
   return (
     <section className="panel" aria-label="voice">

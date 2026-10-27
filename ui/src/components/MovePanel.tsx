@@ -11,6 +11,7 @@ import CommandPreview from './CommandPreview'
 import PicturePicker from './PicturePicker'
 import { Explained } from '../explain/Explained'
 import Loading, { DownloadWait } from './Loading'
+import { useSpaceKey } from '../hooks/useSpaceKey'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const LABEL = /^[\w .-]{1,40}$/
@@ -203,6 +204,8 @@ export default function MovePanel({ active }: { active: boolean }) {
   const [photo, setPhoto] = useState('')
   const [label, setLabel] = useState('')
   const [recording, setRecording] = useState('')
+  /** the gesture the space bar records: the last one recorded with the mouse */
+  const [armed, setArmed] = useState('')
   const [testing, setTesting] = useState(false)
   const [guess, setGuess] = useState<{ label: string; confidence: number } | null>(null)
   const [port, setPort] = useState('9000')
@@ -392,6 +395,7 @@ export default function MovePanel({ active }: { active: boolean }) {
     setNote(res.ok ? '' : (body.error ?? 'recording failed'))
   }
   const startRecording = (lbl: string) => {
+    setArmed(lbl)
     buffer.current = []
     setRecording(lbl)
   }
@@ -405,6 +409,19 @@ export default function MovePanel({ active }: { active: boolean }) {
   const labels = Object.keys(set?.counts ?? {}).filter((l) => (set?.counts[l] ?? 0) > 0)
   /** training needs two gestures or more, with at least 5 examples of each (as `gesture train` checks) */
   const trainable = labels.length >= 2 && labels.every((l) => (set?.counts[l] ?? 0) >= 5)
+  // The space bar records too, held like the mouse: the gesture typed in "another
+  // gesture" (press Return to leave the field), or else the last one recorded.
+  const typed = LABEL.test(label.trim()) ? label.trim() : ''
+  const spaceLabel = typed || (labels.includes(armed) ? armed : (labels[0] ?? ''))
+  useSpaceKey(
+    active && !!set && source === 'camera' && camera === 'on' && !!spaceLabel,
+    () => startRecording(spaceLabel),
+    () => {
+      const was = recording
+      stopRecording()
+      if (typed && was === typed) setLabel('')
+    },
+  )
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
@@ -639,7 +656,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                   </div>
                 ))}
                 <div className="move-label">
-                  <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
+                  <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
                   {source === 'camera' ? (
                     <button
                       type="button"
@@ -657,6 +674,12 @@ export default function MovePanel({ active }: { active: boolean }) {
                     </button>
                   )}
                 </div>
+                {source === 'camera' && spaceLabel && (
+                  <span className="label label--muted">
+                    {recording ? `recording ${recording}…` : `or hold the space bar to record ${spaceLabel}`}
+                    {typed && !recording ? ' (press Return first if you are still in the name)' : ''}
+                  </span>
+                )}
                 {note && <p className="label">{note}</p>}
                 </Next>
                 </div>

@@ -171,7 +171,7 @@ export default function App() {
           <MovePanel active={panel === 'gesture'} />
         </div>
         <div className="panel-slot" hidden={panel !== 'speech'}>
-          <VoicePanel />
+          <VoicePanel active={panel === 'speech'} />
         </div>
         <div className="panel-slot" hidden={panel !== 'segmentation'}>
           <LookPanel />
