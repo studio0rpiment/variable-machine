@@ -2,6 +2,20 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.7: ask a table (2026-10-27)
+
+**Data tab: ask a table**
+- **What's in this table:** for a table you brought in (DC Open Data, data.gov or your own CSV), the rows, the dates, the source and license, and a line for each column: its type, how many values, how much is missing, examples, and its role in a question (what, where, when, how much, how, or an id to leave out). The roles are guessed from the names and values; change any of them. Click a column to see its values and the everyday words for each ("murders" for HOMICIDE).
+- **One button, *make a training set from this table*:** several hundred questions made from the table's own values, each with the query that answers it: how many, near a block, in a month or a season or at night, two places or periods or kinds compared, which has the most, and some whose answer is none. Each step is a command you can open, change and run again.
+- **A model that writes queries, not answers:** the answer is counted from the table, so it is always what the table says. On DC's crime incidents for 2025, SmolLM2-360M (it trains on an 8GB Mac, in about 9 minutes on an M1 Pro) got 145 of 150 questions it had never seen right, and 14 of 15 written in other words. It still slips: "pickpocketings" became robberies, and the query on screen is how you catch it.
+- **Or the rows as they are:** a smaller option that trains a model to write rows like the table's. What it writes are invented records, never real ones, and Chat says so.
+
+**Chat**
+- **Ask the table:** each model writes a query; you see the query, the counts and the rows behind them, the answer in a sentence, and the same query in SQL. A question the table can't answer (a place or a value it doesn't have, a year it doesn't cover) gets no answer rather than a guess. Put the base model in the next column to compare.
+
+**Share**
+- **A package to take away:** the model with a one-line `ollama create`, the table, its roles, `ask.js`, a one-page `demo.html` and a README for web pages, Node, Python, and TouchDesigner or Max over OSC, with the data's license and credit. The web page needs only Ollama. About 600MB zipped: the model is most of it.
+
 ## v0.2.6: two speaking models; gestures that can say none; recording up close (2026-10-26)
 
 **Speech tab**
