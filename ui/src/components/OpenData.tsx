@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import NextBox from './NextBox'
 import { joinWords } from '@shared/quote'
 import { useHelperEvent } from '../hooks/useHelper'
 import { readManifests } from '../lib/workspace'
@@ -127,7 +128,9 @@ export function OpenDataCard({ busy, onRun }: { busy: boolean; onRun: (line: str
               <input type="text" value={license} onChange={(e) => setLicense(e.target.value)} placeholder="e.g. CC BY 4.0, U.S. public domain" />
             </label>
           </div>
-          <CommandPreview command={line} onRun={() => onRun(line, name)} disabled={!NAME.test(name) || !license.trim()} running={busy} label="bring it in" />
+          <NextBox on>
+            <CommandPreview command={line} onRun={() => onRun(line, name)} disabled={!NAME.test(name) || !license.trim()} running={busy} label="bring it in" />
+          </NextBox>
         </div>
       )}
     </Manifest>
@@ -170,15 +173,10 @@ export function TemplateCard({ busy, onRun, prefer }: { busy: boolean; onRun: (l
     'workspace.changed',
     useCallback((e) => e.path.startsWith('raw/') && e.path.endsWith('manifest.json') && load(), [load]),
   )
-  // A table just brought in is the one to work on, and this is the next step: bring it into view.
-  const card = useRef<HTMLDivElement>(null)
+  // A table just brought in is the one to work on here too; the page goes to "ask a table", the next step.
   useEffect(() => {
-    if (prefer && tables.some((t) => t.name === prefer)) {
-      setTable(prefer)
-      requestAnimationFrame(() => {
-        card.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
-    } else if (!table && tables[0]) setTable(tables[0].name)
+    if (prefer && tables.some((t) => t.name === prefer)) setTable(prefer)
+    else if (!table && tables[0]) setTable(tables[0].name)
   }, [prefer, tables, table])
   useEffect(() => setName((n) => n || (table ? `${table}-qa` : '')), [table])
 
@@ -202,8 +200,7 @@ export function TemplateCard({ busy, onRun, prefer }: { busy: boolean; onRun: (l
 
   if (!tables.length) return <p className="mf-next">No tables yet: bring one in with the search above, or a CSV address under "bring in a book or a table".</p>
   return (
-    <div ref={card}>
-      {prefer && table === prefer && <p className="mf-next od-arrived">{prefer} is here. Next: write a question and its answer, with {'{column}'} where each row fills in.</p>}
+    <div>
     <Manifest name="table to questions and answers" lines={['write one question and its answer, with {column} where a row fills in', 'add |round to a number column for a whole number: {COUNT|round}']}>
       <div className="inline-fields">
         <label className="field">

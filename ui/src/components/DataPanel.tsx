@@ -16,6 +16,7 @@ import PictureRows from './PictureRows'
 import { Explained } from '../explain/Explained'
 import { BRING, DATA_INTRO, FIND_GUIDE, KINDS, MAKE, OPEN, READY, TABLE } from '../explain/data'
 import { TableAskWay, TableWhat } from './TableAsk'
+import NextBox from './NextBox'
 import { OpenDataCard, TemplateCard } from './OpenData'
 import { HfCard, UploadCard } from './DataBringIn'
 import { Linked } from '../explain/Linked'
@@ -423,6 +424,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       <CommandPreview command={`data count ${current.name}`} onRun={() => void run('count', `data count ${current.name}`)} running={busy === 'count'} label="count" />
                     </Explained>
                     <p className="mf-next">{READY.split}</p>
+                    <NextBox on={!current.split && current.counts.train >= 2}>
                     <div className="split">
                       <label className="split__slider">
                         <span className="label label--muted">set aside {Math.round(validFrac * 100)}%</span>
@@ -439,6 +441,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                         />
                       </Explained>
                     </div>
+                    </NextBox>
                   </div>
                 </section>
 
@@ -447,6 +450,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                     <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>3 · use it</h2>
                   </Explained>
                   {current.split && current.counts.train >= 2 ? (
+                    <NextBox on>
                     <div className="mf-make__run">
                       <Explained id="data.useButton">
                         <button type="button" className="text-button" onClick={() => onUse?.(current.name, isPref ? 'prefer' : 'train')}>
@@ -457,6 +461,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                         {kindOf(current).use} opens with {current.name} chosen; nothing starts until you press train there
                       </span>
                     </div>
+                    </NextBox>
                   ) : (
                     <p className="mf-next">{current.counts.train < 2 ? 'It needs a few more rows first: add some below.' : 'Split it first (step 2): training needs some rows set aside to test with.'}</p>
                   )}

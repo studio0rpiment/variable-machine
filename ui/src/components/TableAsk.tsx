@@ -1,12 +1,14 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { joinWords } from '@shared/quote'
-import type { Role, Roles } from '@shared/tableQuery'
+import { pluralOf, type Role, type Roles } from '@shared/tableQuery'
 import type { ColumnProfile, TableProfile } from '@shared/tableProfile'
 import { useHelperEvent } from '../hooks/useHelper'
 import { runCommand } from '../lib/helper'
 import { readFile, readManifests } from '../lib/workspace'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
+import NextBox from './NextBox'
+import type { DatasetManifest } from '@shared/manifest'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const ROLES: Role[] = ['what', 'where', 'when', 'how much', 'how', 'id', 'other']
@@ -109,7 +111,7 @@ export function TableWhat({ table, open: openAlways }: { table: string; open?: b
   const hidden = (profile?.columns.length ?? 0) - shown.length
 
   return (
-    <details className="fold table-what" open={open}>
+    <details className="fold table-what" open={open || (read && !profile)}>
       <summary className="fold__summary">
         <span className="fold__mark" aria-hidden="true" />
         what's in this table{profile ? ` · ${profile.rows.toLocaleString('en-US')} rows, ${profile.columns.length} columns` : ''}
@@ -118,9 +120,11 @@ export function TableWhat({ table, open: openAlways }: { table: string; open?: b
         {read && !profile ? (
           <>
             <p className="mf-next">Not read yet. Reading it counts each column's values and guesses what each column means in a question.</p>
-            <Explained id="table.profile">
-              <CommandPreview command={profileLine} onRun={() => void run('profile', profileLine)} running={busy === 'profile'} label="read the table" />
-            </Explained>
+            <NextBox on>
+              <Explained id="table.profile">
+                <CommandPreview command={profileLine} onRun={() => void run('profile', profileLine)} running={busy === 'profile'} label="read the table" />
+              </Explained>
+            </NextBox>
           </>
         ) : profile && roles ? (
           <>
@@ -219,7 +223,7 @@ function NounField({ table, noun }: { table: string; noun: string }) {
   return (
     <span className="table-what__noun">
       <input type="text" value={v} onChange={(e) => setV(e.target.value.toLowerCase())} onBlur={save} onKeyDown={(e) => e.key === 'Enter' && save()} aria-label="what one row is" spellCheck={false} />
-      <span className="label label--muted">the word answers count in: "12 {v || 'row'}s"</span>
+      <span className="label label--muted">the word answers count in: "12 {pluralOf(v || 'row')}"</span>
     </span>
   )
 }
@@ -278,7 +282,7 @@ export function askSetLines(table: string, name: string, rows: number, voice: st
  * some to test with, and checks them. Every step is a command, so each one
  * shows in the terminal and can be run again by hand, changed.
  */
-export function AskSetCard({ table, onMade }: { table: string; onMade: (name: string) => void }) {
+export function AskSetCard({ table, onMade, next }: { table: string; onMade: (name: string) => void; next?: boolean }) {
   const { roles, read } = useTableFiles(table)
   const [name, setName] = useState(`${table}-ask`.slice(0, 64))
   const [rows, setRows] = useState(600)
@@ -321,11 +325,13 @@ export function AskSetCard({ table, onMade }: { table: string; onMade: (name: st
           </select>
         </label>
       </div>
-      <Explained id="table.make">
-        <button type="button" className="text-button ask-set__go" onClick={() => void make()} aria-disabled={busy || !read || !NAME.test(name) || name === 'new' || undefined}>
-          {busy ? 'making it…' : 'make a training set from this table →'}
-        </button>
-      </Explained>
+      <NextBox on={!!next && !busy}>
+        <Explained id="table.make">
+          <button type="button" className="text-button ask-set__go" onClick={() => void make()} aria-disabled={busy || !read || !NAME.test(name) || name === 'new' || undefined}>
+            {busy ? 'making it…' : 'make a training set from this table →'}
+          </button>
+        </Explained>
+      </NextBox>
       {note && <span className="label label--muted">{note}</span>}
       <details className="fold">
         <summary className="fold__summary">
@@ -390,13 +396,35 @@ export function RowsAsTextCard({ table, onMade }: { table: string; onMade: (name
 export function TableAskWay({ prefer, onMade, rowsTitle, rowsWhen }: { prefer?: string; onMade: (name: string) => void; rowsTitle: string; rowsWhen: string }) {
   const tables = useTables()
   const [table, setTable] = useState('')
+  const { profile } = useTableFiles(table)
+  // A table just brought in is the one to ask, and this is the next step: bring it into view, once.
+  const box = useRef<HTMLDivElement>(null)
+  const arrived = useRef('')
   useEffect(() => {
-    if (prefer && tables.some((t) => t.name === prefer)) setTable(prefer)
-    else if (!table && tables[0]) setTable(tables[0].name)
+    if (prefer && tables.some((t) => t.name === prefer)) {
+      setTable(prefer)
+      if (arrived.current !== prefer) {
+        arrived.current = prefer
+        requestAnimationFrame(() => box.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+      }
+    } else if (!table && tables[0]) setTable(tables[0].name)
   }, [prefer, tables, table])
+  // the sets already made from each table: once there is one, the button is no longer the next step
+  const [made, setMade] = useState<string[]>([])
+  const loadMade = useCallback(() => void readManifests<DatasetManifest>('data').then((ds) => setMade(ds.filter((d) => d.ask && d.table).map((d) => d.table!.slice(4)))), [])
+  useEffect(loadMade, [loadMade])
+  useHelperEvent(
+    'workspace.changed',
+    useCallback((e) => e.path.startsWith('data/') && e.path.endsWith('manifest.json') && loadMade(), [loadMade]),
+  )
   if (!tables.length) return <p className="mf-next">No tables yet: bring one in with the search above, or a CSV address under "bring in a book or a table".</p>
   return (
-    <div className="table-ask">
+    <div className="table-ask" ref={box}>
+      {prefer && table === prefer && !made.includes(table) && (
+        <p className="mf-next od-arrived">
+          {prefer} is here. Next: {profile ? 'check what each column means (change a role if it\'s wrong), then make a training set from it.' : 'read the table, to see what each column holds.'}
+        </p>
+      )}
       <label className="field">
         <span className="label label--muted">table</span>
         <select value={table} onChange={(e) => setTable(e.target.value)}>
@@ -410,7 +438,7 @@ export function TableAskWay({ prefer, onMade, rowsTitle, rowsWhen }: { prefer?: 
       {table && (
         <>
           <TableWhat key={table} table={table} />
-          <AskSetCard table={table} onMade={onMade} />
+          <AskSetCard table={table} onMade={onMade} next={!!profile && !made.includes(table)} />
           <h3 className="panel__title label mf-lead-plain">{rowsTitle}</h3>
           <p className="mf-next">{rowsWhen}</p>
           <RowsAsTextCard table={table} onMade={onMade} />

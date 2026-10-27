@@ -289,7 +289,7 @@ export async function rawCommand(args: string[], opts: Record<string, string>, l
     }
     const chunks = table ? chunkCsv(text) : chunkText(text)
     await save(name, table ? 'csv' : kind, text, chunks, { url: what, license: `${opts.license.trim()} (as stated at import)`, licenseChecked: false, line, kind, about: opts.about?.trim(), page: opts.page?.trim() })
-    if (table) print(`  next: turn its rows into questions and answers ("turn a table into questions and answers" on the Data tab, or data template raw/${name} …)`)
+    if (table) print(`  next: read it and make a training set from it ("ask a table" on the Data tab, or data profile raw/${name}), or write one question and its answer by hand (data template raw/${name} …)`)
     return true
   } catch (err) {
     print(abort.signal.aborted ? '  ◂ stopped' : `data raw: ${(err as Error).message}`)

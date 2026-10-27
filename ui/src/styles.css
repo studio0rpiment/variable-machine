@@ -868,9 +868,10 @@ img.move-view__picture { transform: none; }
    The room for it is always there, so nothing moves when it appears. */
 .move-next { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; max-width: 100%; border: 1px dashed transparent; padding: 0.6rem 0.75rem; }
 .move-start .move-next .field { width: 20rem; max-width: 100%; }
-.move-next.is-next, .move-test.is-next { border-color: var(--line); animation: next-flash 0.5s steps(1, end) 4; }
+.next-box { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; max-width: 100%; border: 1px dashed transparent; padding: 0.6rem 0.75rem; margin: 0 -0.75rem; }
+.move-next.is-next, .move-test.is-next, .next-box.is-next { border-color: var(--line); animation: next-flash 0.5s steps(1, end) 4; }
 @keyframes next-flash { 50% { border-color: transparent; } }
-@media (prefers-reduced-motion: reduce) { .move-next.is-next, .move-test.is-next { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .move-next.is-next, .move-test.is-next, .next-box.is-next { animation: none; } }
 .move-help { margin: 0; max-width: 40rem; line-height: 1.5; font-size: 0.75rem; letter-spacing: 0.02em; }
 .move-help li { margin-bottom: 0.25rem; }
 
