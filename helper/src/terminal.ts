@@ -52,7 +52,8 @@ const HELP = `commands
   look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/
   look example classic-cv                         the example photos: duck, teapot, bunny
 
-  speak <name> "<text>" [--voice robot|baritone]   a model reads it aloud: workspace/audio/spoken/<name>.wav
+  speak <name> "<text>" [--voice <voice>]          a model reads it aloud: workspace/audio/spoken/<name>.wav
+                                                   voices: soprano robot baritone (Soprano), aiden ryan serena vivian (Qwen3-TTS)
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
 
   model get hands | model get body                the trackers that find points on a hand or a body (gesture tab)

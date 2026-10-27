@@ -153,15 +153,21 @@ export default function VoicePanel({ active }: { active: boolean }) {
         {taken && <span className="label label--muted">a sound with that name exists</span>}
         <div className="field">
           <span className="label label--muted">voice</span>
-          <div className="choice" role="radiogroup" aria-label="voice">
-            {['', 'robot', 'baritone'].map((v) => (
-              <button key={v} type="button" role="radio" aria-checked={v === voice} className={`text-button ${v === voice ? 'is-active' : ''}`.trim()} onClick={() => setVoice(v)}>
-                {v || 'soprano'}
-              </button>
-            ))}
-          </div>
+          {VOICE_MODELS.filter((m) => m.kind === 'speaks').map((m) => {
+            const voices = m.name === 'soprano' ? ['', 'robot', 'baritone'] : (m.voices ?? [])
+            return (
+              <div key={m.name} className="choice" role="radiogroup" aria-label={`${m.name} voices`}>
+                <span className="label label--muted voice-model">{m.name}</span>
+                {voices.map((v) => (
+                  <button key={v} type="button" role="radio" aria-checked={v === voice} className={`text-button ${v === voice ? 'is-active' : ''}`.trim()} onClick={() => setVoice(v)}>
+                    {v || 'soprano'}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
           <span className="label label--muted">
-            Soprano has one voice. Robot and baritone are that voice changed afterwards, by a short Python script you can read (python/variable_machine/voice.py).{' '}
+            Two speaking models. Soprano has one voice; robot and baritone are that voice changed afterwards, by a short Python script you can read (python/variable_machine/voice.py). Qwen3-TTS has voices of its own, and downloads about 1.8 GB the first time.{' '}
             <a href="https://huggingface.co/models?pipeline_tag=text-to-speech&library=mlx&sort=trending" target="_blank" rel="noreferrer">
               More voices: other speaking models that run on a Mac (MLX), on Hugging Face
             </a>

@@ -6,9 +6,12 @@ Soprano has one voice on purpose. These are that voice, changed by plain
 signal processing (numpy and scipy, nothing learned), so a student can read
 exactly what each one does:
 
-- baritone: the pitch four semitones lower, at the same speed. A phase vocoder
-  stretches the sound longer without changing its pitch, then playing it back
-  faster brings it to its first length and lowers the pitch.
+- baritone: the pitch eight semitones lower, at the same speed: Soprano
+  speaks at about 250 Hz, this at about 170. Ten semitones (about 150 Hz)
+  lowers the vowels with the pitch so far that the listening model heard only
+  "doo doo doo"; eight, it heard every word. A phase vocoder makes
+  the sound shorter without changing its pitch, then playing it back slower
+  brings it to its first length and lowers the pitch.
 - robot: ring modulation (multiplied by a 40 Hz sine wave), the classic radio
   robot, plus a very short echo for a metal ring.
 """
@@ -57,10 +60,10 @@ def stretch(x: np.ndarray, factor: float, n: int = 2048, hop: int = 256) -> np.n
     return out
 
 
-def baritone(rate: int, x: np.ndarray, semitones: float = -4) -> np.ndarray:
+def baritone(rate: int, x: np.ndarray, semitones: float = -8) -> np.ndarray:
     ratio = 2 ** (semitones / 12)  # below 1: lower
-    longer = stretch(x, 1 / ratio)
-    return resample(longer, len(x))
+    shorter = stretch(x, ratio)
+    return resample(shorter, len(x))
 
 
 def robot(rate: int, x: np.ndarray, carrier: float = 40, echo_ms: float = 6) -> np.ndarray:

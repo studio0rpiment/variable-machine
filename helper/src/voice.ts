@@ -3,7 +3,7 @@ import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { runRecipe } from './pipeline.ts'
-import { AUDIO_EXT, voiceModel } from './shared/kinds.ts'
+import { AUDIO_EXT, VOICE_MODELS, voiceModel } from './shared/kinds.ts'
 import { PY_ENV, UV_VOICE } from './shared/recipes.ts'
 import { joinWords } from './shared/quote.ts'
 
@@ -76,31 +76,35 @@ function flags(words: string[]) {
 
 const shown = (argv: string[]) => joinWords([...Object.entries(PY_ENV).map(([k, v]) => `${k}=${v}`), ...argv])
 
-/** The voices besides the model's own: its voice changed afterwards by python/variable_machine/voice.py. */
-export const VOICES = ['robot', 'baritone'] as const
+/** Soprano's voice changed afterwards by python/variable_machine/voice.py. */
+export const CHANGED = ['robot', 'baritone']
+/** Every voice speak takes: each speaking model's own, then the changed ones. */
+export const VOICES = [...VOICE_MODELS.flatMap((m) => m.voices ?? []), ...CHANGED]
 
-/** `speak <name> "<text>" [--voice robot|baritone] [--set spoken]`: a model reads the text aloud, into workspace/audio/<set>/<name>.wav. */
+/** `speak <name> "<text>" [--voice <voice>] [--set spoken]`: a model reads the text aloud, into workspace/audio/<set>/<name>.wav. The voice picks the model. */
 async function speak(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
   const [name, ...words] = pos
   const text = words.join(' ').trim()
   const set = opts.set ?? 'spoken'
   const voice = opts.voice
-  if (!name || !NAME.test(name) || !text || !SET.test(set) || Object.keys(opts).some((k) => k !== 'set' && k !== 'voice') || (voice !== undefined && !(VOICES as readonly string[]).includes(voice))) {
+  if (!name || !NAME.test(name) || !text || !SET.test(set) || Object.keys(opts).some((k) => k !== 'set' && k !== 'voice') || (voice !== undefined && !VOICES.includes(voice))) {
     print(`usage: speak <name> "<text>" [--voice ${VOICES.join('|')}] [--set spoken]   (into workspace/audio/<set>/<name>.wav)`)
     return false
   }
   const m = await readAudioSet(set)
   if (m.files[`${name}.wav`]) return print(`speak: workspace/audio/${set}/${name}.wav exists; choose another name`), false
-  const model = voiceModel('speaks')
+  // the model whose own voice it is; Soprano for its own and the changed ones
+  const model = VOICE_MODELS.find((m) => voice && m.voices?.includes(voice)) ?? voiceModel('speaks')
+  const own = !!voice && !CHANGED.includes(voice) && voice !== 'soprano'
   // Greedy (temperature 0): sampled, Soprano sometimes never says its stop token and hums to its
   // 32-second limit (2 of 3 tries on one sentence, 2026-10-24); greedy finished every sentence tried.
-  const argv = [...UV_VOICE, 'python', '-m', 'mlx_audio.tts.generate', '--model', model.repo, '--text', text, '--temperature', '0', '--output_path', `workspace/audio/${set}`, '--file_prefix', name, '--audio_format', 'wav']
+  const argv = [...UV_VOICE, 'python', '-m', 'mlx_audio.tts.generate', '--model', model.repo, '--text', text, '--temperature', '0', '--output_path', `workspace/audio/${set}`, '--file_prefix', name, '--audio_format', 'wav', ...(own ? ['--voice', voice, '--lang_code', 'en'] : [])]
   // mlx-audio numbers its files (_000) in case a long text is split; one text is one file here
   const spoken = `workspace/audio/${set}/${name}_000.wav`
   const out = `workspace/audio/${set}/${name}.wav`
   // another voice: the model's voice, changed afterwards (numpy and scipy, nothing learned)
-  const change = voice && [...UV_VOICE, 'python', 'python/variable_machine/voice.py', voice, spoken, out]
+  const change = voice && CHANGED.includes(voice) && [...UV_VOICE, 'python', 'python/variable_machine/voice.py', voice, spoken, out]
   return runRecipe({
     recipe: 'speak',
     params: { name, set, text, ...(voice ? { voice } : {}) },

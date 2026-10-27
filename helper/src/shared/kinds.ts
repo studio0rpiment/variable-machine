@@ -228,6 +228,8 @@ export interface VoiceModel {
   builtFor: string
   /** about how much it downloads */
   mb: number
+  /** a speaking model's own voices, chosen with speak --voice (the first is the one it uses when none is chosen) */
+  voices?: string[]
 }
 
 export const VOICE_MODELS: VoiceModel[] = [
@@ -240,6 +242,21 @@ export const VOICE_MODELS: VoiceModel[] = [
     maker: 'Eugene Kwek (Soprano), 2025',
     builtFor: 'Reads English text aloud in one clear voice. Small (80M) and quick: a sentence takes a second or two once it is loaded. It has one voice on purpose: no copying of anyone else\'s.',
     mb: 284,
+    voices: ['soprano'],
+  },
+  {
+    // The CustomVoice model: voices it was made with, chosen by name. It can't copy a voice
+    // from a recording (only the Base model does that). Checked 2026-10-26: about 5 s a
+    // sentence once loaded, and the listening model wrote down every word in each voice below.
+    name: 'qwen3-tts',
+    kind: 'speaks',
+    repo: 'mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit',
+    original: 'Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice',
+    license: 'Apache 2.0',
+    maker: 'Alibaba (Qwen team), 2026',
+    builtFor: 'Reads text aloud in ten languages, in one of nine voices it was made with (four of them here). Bigger (0.6B) and slower than Soprano, about 5 seconds a sentence. It can\'t copy a voice from a recording.',
+    mb: 1800,
+    voices: ['aiden', 'ryan', 'serena', 'vivian'],
   },
   {
     name: 'qwen3-asr',

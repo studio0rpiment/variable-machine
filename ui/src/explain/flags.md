@@ -587,7 +587,7 @@ Speech synthesis and speech recognition: two kinds of model, used as they are: o
 ### Speak
 `voice.speak`
 
-Soprano reads the text aloud and saves it as a WAV file in workspace/audio/spoken. It has one voice, on purpose: it can't copy anyone's. Robot and baritone are that voice changed afterwards, a second command you can see in the terminal: baritone lowers the pitch four semitones at the same speed, robot multiplies it by a 40 Hz hum (ring modulation). Press listen on the result to hear what the listening model makes of it: a round trip from text to voice and back.
+A speaking model reads the text aloud and saves it as a WAV file in workspace/audio/spoken. The voice picks the model. Soprano has one voice, on purpose: it can't copy anyone's. Qwen3-TTS has nine voices it was made with (aiden, ryan, serena and vivian here), and it can't copy anyone's either. Robot and baritone are that voice changed afterwards, a second command you can see in the terminal: baritone lowers the pitch eight semitones at the same speed, robot multiplies it by a 40 Hz hum (ring modulation). Press listen on the result to hear what the listening model makes of it: a round trip from text to voice and back.
 
 ### Record
 `voice.record`
