@@ -661,10 +661,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                   {recording && (
                     <div className="move-view__count" aria-live="polite">
                       {ready > 0 ? (
-                        <>
-                          <span className="move-view__number">{ready}</span>
-                          <span className="label">get ready: {recording}</span>
-                        </>
+                        <span className="move-view__number">{ready}</span>
                       ) : (
                         <span className="label move-view__recording">recording {recording} · tap to stop</span>
                       )}
