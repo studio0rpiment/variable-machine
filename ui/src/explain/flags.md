@@ -599,6 +599,11 @@ Starts a new gesture set for one hand, two hands or a body. One hand and two han
 
 While you hold the button, the shape of your hand (or body) is recorded ten times a second: the points, measured from the wrist (or hips), so the same gesture reads the same anywhere in the picture. Move a little while you hold it, so the examples vary: 20 to 50 of each gesture is plenty.
 
+### Tap to record
+`move.recordTap`
+
+Both hands are busy making the gesture, so for a two-hands set one tap starts recording and the next tap stops it (the space bar works the same way). After the tap you have 3 seconds to get your hands into place; only then is the shape of your hands recorded, ten times a second. Move a little while it records, so the examples vary: 20 to 50 of each gesture is plenty.
+
 ### Train
 `move.train`
 

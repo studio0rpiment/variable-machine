@@ -25,6 +25,8 @@ const asName = (typed: string) =>
     .slice(0, 64)
 /** examples recorded while a record button is held: at most this many a second, so a few seconds make a good handful */
 const PER_SECOND = 10
+/** with tap to record, seconds to get both hands into place before examples are kept */
+const GET_READY = 3
 
 type Camera = 'off' | 'starting' | 'on' | 'denied' | 'none' | 'busy' | 'unavailable' | 'error'
 
@@ -242,6 +244,10 @@ export default function MovePanel({ active }: { active: boolean }) {
   const latest = useRef<Found | null>(null)
   const buffer = useRef<number[][]>([])
   const lastTake = useRef(0)
+  /** examples are kept from this moment (performance.now()): later than the tap, with tap to record */
+  const keepFrom = useRef(0)
+  /** seconds left before tap to record keeps examples */
+  const [ready, setReady] = useState(0)
   const model = useRef<GestureModel | null>(null)
 
   const set = sets.find((s) => s.folder === name)
@@ -302,7 +308,7 @@ export default function MovePanel({ active }: { active: boolean }) {
         return
       }
       const t = performance.now()
-      if (recording && t - lastTake.current > 1000 / PER_SECOND) {
+      if (recording && t >= keepFrom.current && t - lastTake.current > 1000 / PER_SECOND) {
         lastTake.current = t
         buffer.current.push(normalize(points, tracker))
       }
@@ -410,39 +416,66 @@ export default function MovePanel({ active }: { active: boolean }) {
   }
 
   const save = async (lbl: string, vectors: number[][]) => {
-    if (!vectors.length) return setNote('nothing was found to record: get your whole hand (or body) in the picture')
+    if (!vectors.length) return setNote(`nothing was found to record: get your whole ${tracker === 'hands' ? 'hand' : tracker === 'two-hands' ? 'hand or hands' : 'body'} in the picture`)
     const res = await fetch(`/api/workspace/gesture?name=${encodeURIComponent(name)}&label=${encodeURIComponent(lbl)}`, { method: 'POST', body: JSON.stringify({ vectors }) })
     const body = (await res.json().catch(() => ({}))) as { error?: string }
     setNote(res.ok ? '' : (body.error ?? 'recording failed'))
   }
+  /**
+   * Two hands can't also hold a button: for a two-hands set, a tap starts
+   * recording and another tap stops it, and examples are kept only after
+   * GET_READY seconds, so the hands coming back from the mouse aren't recorded.
+   */
+  const tap = tracker === 'two-hands'
   const startRecording = (lbl: string) => {
     setArmed(lbl)
     buffer.current = []
+    keepFrom.current = performance.now() + (tap ? GET_READY * 1000 : 0)
+    setReady(tap ? GET_READY : 0)
     setRecording(lbl)
   }
   const stopRecording = () => {
     if (!recording) return
     const lbl = recording
     setRecording('')
+    setReady(0)
     void save(lbl, buffer.current)
   }
+  /** tap to record: the first tap starts, the next stops (and a tap on another gesture stops this one and starts that) */
+  const tapRecord = (lbl: string) => {
+    const was = recording
+    if (was) stopRecording()
+    if (was !== lbl) startRecording(lbl)
+  }
+  useEffect(() => {
+    if (!recording || !tap) return
+    const id = setInterval(() => setReady(Math.max(0, Math.ceil((keepFrom.current - performance.now()) / 1000))), 200)
+    return () => clearInterval(id)
+  }, [recording, tap])
 
   const labels = Object.keys(set?.counts ?? {}).filter((l) => (set?.counts[l] ?? 0) > 0)
   /** training needs two gestures or more, with at least 5 examples of each (as `gesture train` checks) */
   const trainable = labels.length >= 2 && labels.every((l) => (set?.counts[l] ?? 0) >= 5)
-  // The space bar records too, held like the mouse: the gesture typed in "another
-  // gesture" (press Return to leave the field), or else the last one recorded.
+  // The space bar records too, held like the mouse (or tapped, for two hands): the gesture
+  // typed in "another gesture" (press Return to leave the field), or else the last one recorded.
   const typed = LABEL.test(label.trim()) ? label.trim() : ''
   const spaceLabel = typed || (labels.includes(armed) ? armed : (labels[0] ?? ''))
   useSpaceKey(
     active && !!set && source === 'camera' && camera === 'on' && !!spaceLabel,
-    () => startRecording(spaceLabel),
     () => {
+      if (!tap) return startRecording(spaceLabel)
+      if (typed && recording === typed) setLabel('')
+      tapRecord(spaceLabel)
+    },
+    () => {
+      if (tap) return
       const was = recording
       stopRecording()
       if (typed && was === typed) setLabel('')
     },
   )
+  /** what a record button says: hold or tap, and while recording, the count to get ready */
+  const recordWords = (on: boolean) => (!on ? (tap ? 'tap to record' : 'hold to record') : ready > 0 ? `get ready: ${ready}…` : tap ? 'recording… tap to stop' : 'recording…')
   const newLine = joinWords(['gesture', 'new', newName || '<name>', '--tracker', newTracker])
   const trainLine = `gesture train ${name}`
   const sendLine = joinWords(['gesture', 'send', name, '--port', port])
@@ -663,10 +696,16 @@ export default function MovePanel({ active }: { active: boolean }) {
                     <span className="move-label__name">{l}</span>
                     <span className="label label--muted">{set.counts[l]} examples</span>
                     {source === 'camera' ? (
-                      <Explained id="move.record">
-                        <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onPointerDown={() => startRecording(l)} onPointerUp={stopRecording} onPointerLeave={stopRecording}>
-                          {recording === l ? 'recording…' : 'hold to record'}
-                        </button>
+                      <Explained id={tap ? 'move.recordTap' : 'move.record'}>
+                        {tap ? (
+                          <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onClick={() => tapRecord(l)} aria-pressed={recording === l}>
+                            {recordWords(recording === l)}
+                          </button>
+                        ) : (
+                          <button type="button" className={`text-button ${recording === l ? 'is-active' : ''}`.trim()} onPointerDown={() => startRecording(l)} onPointerUp={stopRecording} onPointerLeave={stopRecording}>
+                            {recordWords(recording === l)}
+                          </button>
+                        )}
                       </Explained>
                     ) : (
                       <button type="button" className="text-button" disabled={!found} onClick={() => latest.current && void save(l, [normalize(latest.current, tracker)])}>
@@ -680,7 +719,21 @@ export default function MovePanel({ active }: { active: boolean }) {
                 ))}
                 <div className="move-label">
                   <input type="text" className="move-label__new" value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} placeholder={labels.length ? 'another gesture' : 'name a gesture: open, fist, wave…'} />
-                  {source === 'camera' ? (
+                  {source === 'camera' && tap ? (
+                    <button
+                      type="button"
+                      className={`text-button ${recording === label.trim() && label ? 'is-active' : ''}`.trim()}
+                      disabled={!LABEL.test(label.trim())}
+                      aria-pressed={recording === label.trim() && !!label}
+                      onClick={() => {
+                        const stopping = recording === label.trim()
+                        tapRecord(label.trim())
+                        if (stopping) setLabel('')
+                      }}
+                    >
+                      {recordWords(recording === label.trim() && !!label)}
+                    </button>
+                  ) : source === 'camera' ? (
                     <button
                       type="button"
                       className={`text-button ${recording === label.trim() && label ? 'is-active' : ''}`.trim()}
@@ -699,7 +752,13 @@ export default function MovePanel({ active }: { active: boolean }) {
                 </div>
                 {source === 'camera' && spaceLabel && (
                   <span className="label label--muted">
-                    {recording ? `recording ${recording}…` : `or hold the space bar to record ${spaceLabel}`}
+                    {recording
+                      ? ready > 0
+                        ? `get ready: ${ready}… then make ${recording}`
+                        : `recording ${recording}…${tap ? ' tap again (or the space bar) to stop' : ''}`
+                      : tap
+                        ? `or press the space bar to start recording ${spaceLabel}, and again to stop`
+                        : `or hold the space bar to record ${spaceLabel}`}
                     {typed && !recording ? ' (press Return first if you are still in the name)' : ''}
                   </span>
                 )}
