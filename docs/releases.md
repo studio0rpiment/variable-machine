@@ -2,6 +2,12 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.5: install with one line in Terminal (2026-10-26)
+
+- **Installing:** macOS 26 won't open the zip's *Variable Machine.command* at all, because Apple hasn't signed it. Instead, open Terminal and paste `curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash`. It downloads the newest release into `~/variable-machine`, makes a **Variable Machine** app (the spiral) in the Applications folder in your home folder, and opens it. Next time, open the app like any other (cmd-space, *Variable Machine*). To update, paste the same line again: your workspace stays as it is.
+- **Gesture tab:** *make your own* flashes a dashed box around the name and puts the cursor in it, so naming the set reads as the next step.
+- **`npm run dev`:** while the page is still being built, the browser shows "building the page…" and opens the page by itself when it's ready, instead of "ui not built yet" until you refresh.
+
 ## v0.2.4: double-click to start; the gesture tab from a standing start (2026-10-26)
 
 - **Starting it:** download the zip, unzip it, and double-click **Variable Machine.command** in the folder. The first time, it installs what it needs and opens the page; after that it starts in seconds. macOS asks once (System Settings → Privacy & Security → Open Anyway), as the README and the download page explain.
