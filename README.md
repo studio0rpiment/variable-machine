@@ -21,7 +21,7 @@ A localhost instrument for changing small language models on an Apple Silicon Ma
 curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash
 ```
 
-It downloads the newest release into `~/variable-machine`, makes a **Variable Machine** app in the Applications folder in your home folder, and opens it ([the script](site/install.sh)). The app opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens http://localhost:4817 in your browser. Every command it runs is shown with ▸ in front.
+It downloads the newest release into `~/variable-machine`, makes a **Variable Machine** app in Applications, and opens it ([the script](site/install.sh)). The app opens a Terminal window, checks your Mac, and tells you plainly if Ollama or Node is missing. The first time it also installs uv (which runs training) and what the app uses, which takes a few minutes. Then it starts Ollama and the app and opens http://localhost:4817 in your browser. Every command it runs is shown with ▸ in front.
 
 **Why not the zip?** macOS won't open a script downloaded in a browser unless Apple has signed it ("Apple could not verify …"; on macOS 26 there is no way past it). curl downloads aren't marked as downloaded, and the app is made on your own Mac, so macOS opens both.
 

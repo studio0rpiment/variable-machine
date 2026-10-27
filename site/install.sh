@@ -5,7 +5,7 @@
 #
 # It downloads the newest release into ~/variable-machine (an update keeps your
 # workspace: datasets, sets, adapters, models), makes a Variable Machine app in
-# ~/Applications, and opens it. After that, start it from the app, like any other.
+# Applications, and opens it. After that, start it from the app, like any other.
 #
 # Why not just the zip: macOS won't open a script downloaded in a browser unless
 # Apple has signed it. Files that curl downloads aren't marked as downloaded, so
@@ -18,7 +18,10 @@ main() {
   set -u
   REPO="studio0rpiment/variable-machine"
   DEST="${VARIABLE_MACHINE_HOME:-$HOME/variable-machine}"
-  APP="$HOME/Applications/Variable Machine.app"
+  # The Applications folder; on a Mac where this user can't write there (not an
+  # administrator), the Applications folder in their home folder.
+  if [ -w /Applications ]; then APPS=/Applications; else APPS="$HOME/Applications"; fi
+  APP="$APPS/Variable Machine.app"
 
   bold() { printf '\033[1m%s\033[0m\n' "$1"; }
   say() { printf '%s\n' "$1"; }
@@ -74,8 +77,10 @@ main() {
 
   # ---- the app ----
   bold "4. Making the Variable Machine app"
-  mkdir -p "$HOME/Applications"
+  mkdir -p "$APPS"
   rm -rf "$APP"
+  # an app left in the home folder's Applications by an earlier install
+  [ "$APPS" = /Applications ] && rm -rf "$HOME/Applications/Variable Machine.app"
   # The app opens the launcher in Terminal, where its progress and messages can be read.
   run osacompile -o "$APP" -e "do shell script \"open -a Terminal \" & quoted form of \"$DEST/Variable Machine.command\"" \
     || stop "The app couldn't be made." "You can still start it: in Finder, open $DEST and double-click Variable Machine.command."
@@ -88,10 +93,12 @@ main() {
   echo
 
   bold "Installed. Starting Variable Machine."
-  say "  Next time, open Variable Machine like any other app: it is in Applications in your home folder,"
-  say "  or press cmd-space and type Variable Machine. You can drag it to the Dock."
+  say "  Next time, open Variable Machine like any other app: it is in $APPS (the Finder window"
+  say "  that just opened), or press cmd-space and type Variable Machine. You can drag it to the Dock."
   say "  To update it later, paste the same line again."
   echo
+  # show it in Finder, so it is clear where it lives, then start it
+  open -R "$APP"
   run open "$APP"
 }
 
