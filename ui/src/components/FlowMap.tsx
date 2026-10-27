@@ -156,7 +156,7 @@ const RUNS: Record<string, string[]> = {
   pictures: ['data picture my-labels images/studio/vase.jpg --question "What is this?" --answer "…"'],
   photos: ['look example classic-cv', '(or add photos on the image segmentation tab)'],
   'voice-in': ['speak label-1 "Your words, read aloud."', '(or record your voice on the speech tab)'],
-  movements: ['(hold to record on the gesture tab: points only)'],
+  movements: ['(tap to record on the gesture tab: points only)'],
   'made-images': ['model get cutout', 'model get depth', 'model get select'],
   'made-speech': ['speak …   Soprano-1.1-80M, Apache 2.0', 'listen …  Qwen3-ASR-0.6B, Apache 2.0'],
   'gesture-train': ['model get hands', 'gesture train studio-hands'],
