@@ -2,6 +2,13 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.8: the next step, marked on the Data tab (2026-10-27)
+
+**Data tab: the next step, marked**
+- **No more jump:** a table you bring in from public data now goes straight to *ask a table*, chosen and in view, with a line saying what to do next. Before, the page jumped past it to the hand-written questions.
+- **A dashed box on the next step**, as on the gesture tab: it flashes as it arrives and stays until that step is done. *Bring it in*, then *read the table*, then *make a training set from this table*; on the dataset that opens, *split* it if it isn't, then *open the Train tab with it*.
+- The terminal's line after a table arrives says the same.
+
 ## v0.2.7: ask a table (2026-10-27)
 
 **Data tab: ask a table**
