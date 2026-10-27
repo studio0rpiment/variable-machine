@@ -2,6 +2,22 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.6: two speaking models; gestures that can say none; recording up close (2026-10-26)
+
+**Speech tab**
+- **A second speaking model:** Qwen3-TTS 0.6B (Apache 2.0, about 1.8 GB the first time), with four voices of its own: aiden, ryan, serena and vivian. It can't copy a voice from a recording. The voice you choose picks the model: `speak <name> "<text>" --voice aiden`.
+- **Robot and baritone:** Soprano's one voice changed afterwards by a short script you can read (`python/variable_machine/voice.py`): robot is ring-modulated, baritone eight semitones lower at the same speed.
+- **More voices:** a link to other speaking models for Macs on Hugging Face, for your own projects.
+- **The space bar** starts and stops recording, like a click on record.
+
+**Gesture tab**
+- **None:** a pose far from all your examples, or no hand in the picture, is named *none* (with 0), in the test and on OSC.
+- **A lightbox for recording and for testing:** the camera and just those controls in the middle of the page, everything else faded; esc or done closes it.
+- **Stop the camera** under the picture.
+- **The next step** gets a dashed box that flashes when it arrives and stays until it is done.
+- **The space bar** records like holding the record button.
+- **Train** turns on at two gestures with 5 examples each, as training needs.
+
 ## v0.2.5: install with one line in Terminal (2026-10-26)
 
 - **Installing:** macOS 26 won't open the zip's *Variable Machine.command* at all, because Apple hasn't signed it. Instead, open Terminal and paste `curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash`. It downloads the newest release into `~/variable-machine`, makes a **Variable Machine** app (the spiral) in the Applications folder in your home folder, and opens it. Next time, open the app like any other (cmd-space, *Variable Machine*). To update, paste the same line again: your workspace stays as it is.
