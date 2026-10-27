@@ -3,5 +3,16 @@
   "framework": null,
   "installCommand": "echo the site is static: nothing to install",
   "buildCommand": "echo the site is static: nothing to build",
-  "outputDirectory": "site"
+  "outputDirectory": "site",
+  "headers": [
+    {
+      "source": "/install.sh",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        }
+      ]
+    }
+  ]
 }
