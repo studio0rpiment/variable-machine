@@ -2,6 +2,15 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.2.9: gestures with two hands, tap to record (2026-10-27)
+
+**Gesture tab**
+- **Hands, one or two:** a set now follows hands or a body. A hands set takes one hand or two, so it can hold one-handed gestures and two-handed ones. It runs on the same hands tracker, now finding up to two, so there is nothing new to download.
+- **One hand reads the same with either hand:** a left hand is turned over to read as a right, so a thumbs up recorded with one hand is named with the other. On the example set, it named set-aside examples right as often as before (21 of 22).
+- **Two hands keep left and right,** and where the hands are from each other, so hands together and hands apart are different gestures.
+- **Tap to record:** one tap starts recording and the next stops it (the space bar too), since your hands are busy making the gesture. After the tap, a count on the camera picture gives you 3 seconds to get your hands into place (5 to step back, for a body); only then are examples kept.
+- **Sets you already have still work:** one-hand sets and models trained on them are read as hands sets, without recording again.
+
 ## v0.2.8: the next step, marked on the Data tab (2026-10-27)
 
 **Data tab: the next step, marked**
