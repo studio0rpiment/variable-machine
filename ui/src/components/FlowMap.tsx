@@ -12,7 +12,7 @@ import type { ExplainId } from '../explain/text'
 
 const W = 150 // node width
 /** Everything drawn, in the SVG's units: what "fit" shows. */
-const CONTENT = { x: 40, y: 20, w: 1156, h: 830 } // the bottom 70 are room for the echo
+const CONTENT = { x: 40, y: 20, w: 1156, h: 920 } // the bottom 70 are room for the echo
 const MIN_W = 360 // closest zoom, in units across
 const MAX_W = 4000 // furthest
 const H = 44 // node height
@@ -45,6 +45,7 @@ interface Node {
  * (the change loop); each other kind is one row below, which skips the columns
  * it doesn't need: segmentation and speech are used as their makers trained
  * them, and a gesture model is trained from your own examples in seconds.
+ * The last row is the projects: finished work made from the rows above.
  */
 const COLUMNS: [number, string][] = [[60, 'bring'], [300, 'prepare'], [590, 'how it learns'], [820, 'make it a model'], [1000, 'use it']]
 
@@ -72,7 +73,12 @@ const NODES: Node[] = [
   { id: 'movements', name: 'movements', x: 60, y: 690, caption: 'points, never video', kind: 'input', to: 'gesture', flag: 'map.movements' },
   { id: 'gesture-train', name: 'train', x: 590, y: 690, caption: 'a gesture model, in seconds', to: 'gesture', flag: 'map.gestureTrain' },
   { id: 'gesture', x: 1000, y: 690, caption: 'gesture names, sent as OSC', kind: 'use' },
+  // projects: the parts above, put together into finished work
+  { id: 'projects', x: 60, y: 790, caption: 'finished work: the tabs put together' },
 ]
+
+/** The projects, named in their row on the map, in two lines so the echo in the corner never covers them. */
+const PROJECTS = ['ask a table · gesture controller · cut-out tool', 'a character\'s voice · research bot']
 
 type P = [number, number]
 
@@ -160,6 +166,7 @@ const RUNS: Record<string, string[]> = {
   'made-images': ['model get cutout', 'model get depth', 'model get select'],
   'made-speech': ['speak …   Soprano-1.1-80M, Apache 2.0', 'listen …  Qwen3-ASR-0.6B, Apache 2.0'],
   'gesture-train': ['model get hands', 'gesture train studio-hands'],
+  projects: ['data questions raw/dc-crime-2025 dc-crime-2025-ask --rows 1000', 'train dc-crime-2025-ask-360m --data dc-crime-2025-ask', 'package dc-crime-2025-ask-360m'],
 }
 
 interface Props {
@@ -324,6 +331,14 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
 
         {/* the other kinds, one row each, below the change loop */}
         <line x1={40} y1={478} x2={1172} y2={478} className="flow__rule" />
+
+        {/* the projects, below everything they are made from */}
+        <line x1={40} y1={762} x2={1172} y2={762} className="flow__rule" />
+        {PROJECTS.map((l, i) => (
+          <text key={l} x={240} y={808 + i * 18} className="flow__caption">
+            {l}
+          </text>
+        ))}
 
         {WIRES.map((w) => (
           <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${w.soon ? 'is-soon' : ''} ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>

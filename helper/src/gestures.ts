@@ -37,6 +37,8 @@ export interface GestureManifest {
   tracker: Tracker
   counts: Record<string, number>
   trained?: { at: string; k: number; examples: number; check: Check }
+  /** the last `gesture send`: where its guesses went (the Projects tab reads it as done) */
+  sent?: { at: string; port: number; address: string }
 }
 
 async function readManifest(name: string): Promise<GestureManifest | null> {
@@ -189,7 +191,8 @@ async function clear(name: string, label: string, line: string) {
 }
 
 async function send(name: string, opts: Record<string, string>) {
-  if (!(await readManifest(name))) return print(`gesture: no set ${name}`), false
+  const m = await readManifest(name)
+  if (!m) return print(`gesture: no set ${name}`), false
   if ('stop' in opts) {
     sending.delete(name)
     return print(`  ◂ stopped sending ${name}`), true
@@ -198,6 +201,7 @@ async function send(name: string, opts: Record<string, string>) {
   const address = opts.address ?? `/vm/${name}`
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || !OSC_ADDRESS.test(address)) return print('usage: gesture send <name> --port 9000 [--address /vm/<name>] | gesture send <name> --stop'), false
   sending.set(name, { port, address })
+  await writeManifest({ ...m, sent: { at: now(), port, address } })
   print(`  ◂ while the gesture tab tests ${name}: OSC ${address} <gesture> <confidence 0–1> → 127.0.0.1:${port}`)
   return true
 }

@@ -852,6 +852,26 @@ img.move-view__picture { transform: none; }
 @keyframes loading-turn { to { transform: rotate(-360deg); } }
 @media (prefers-reduced-motion: reduce) { .loading__spiral { animation-duration: 6s; } }
 
+/* ---- the projects tab: a card per project, its steps in order ---- */
+.projects__intro { margin: 0; }
+.projects__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+@media (max-width: 40rem) { .projects__cards { grid-template-columns: 1fr; } }
+.project { gap: 0.75rem; }
+.project__about { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 0.9rem; margin: 0; line-height: 1.5; }
+.project__about dt { padding-top: 0.15rem; }
+.project__about dd { margin: 0; }
+.project-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+.project-step { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.75rem; align-items: baseline; }
+.project-step.is-or { border-top: 1px dashed var(--muted); padding-top: 0.7rem; }
+.project-step__state { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: lowercase; color: var(--muted); }
+.project-step__body { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; min-width: 0; }
+.project-step__name { color: var(--line); }
+.project-step.is-done .project-step__name { text-decoration: line-through; text-decoration-color: var(--muted); color: var(--muted); }
+.project-step.is-soon .project-step__name { color: var(--muted); }
+.project-step.is-soon .project-step__state { border: 1px dashed var(--muted); padding: 0 0.3rem; width: fit-content; }
+.project-step__tab { font-size: 0.75rem; }
+.project-step .command-preview { max-width: 100%; }
+
 /* ---- an action that has to read as pressable: an outlined button in the click colour ---- */
 .act-button { font-size: 0.75rem; letter-spacing: 0.06em; color: var(--act); border: 1px solid var(--act); padding: 0.45rem 0.8rem; width: fit-content; }
 .act-button:hover:not(:disabled), .act-button:focus-visible { background: var(--act-wash); }

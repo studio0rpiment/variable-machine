@@ -11,6 +11,7 @@ import PreferPanel from './components/PreferPanel'
 import SharePanel from './components/SharePanel'
 import StartPanel from './components/StartPanel'
 import AboutPanel from './components/AboutPanel'
+import ProjectsPanel from './components/ProjectsPanel'
 import LookPanel from './components/LookPanel'
 import VoicePanel from './components/VoicePanel'
 import MovePanel from './components/MovePanel'
@@ -20,20 +21,22 @@ import { setPref, usePref } from './lib/viewPrefs'
 import StatusLine from './components/StatusLine'
 import { Explained } from './explain/Explained'
 import type { ExplainId } from './explain/text'
-import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark, AboutMark, LookMark, VoiceMark, MoveMark } from './icons'
+import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark, PreferMark, ShareMark, StartMark, TrainMark, AboutMark, ProjectsMark, LookMark, VoiceMark, MoveMark } from './icons'
 
 /**
- * The tabs, in the order you'd use them, grouped: the map; what to start from;
+ * The tabs, in the order you'd use them, grouped: the map, its words, and the
+ * projects they add up to; what to start from;
  * what to show it; the three ways to change it (imitate, prefer, blend); then
  * making it a model, comparing, sharing. Then the tabs for the other kinds of
  * model: image segmentation, speech, and gesture. The Start panel tells the same story.
  */
-const GROUPS = [['start', 'about'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share'], ['segmentation', 'speech', 'gesture']] as const
+const GROUPS = [['start', 'about', 'projects'], ['models', 'modelfile'], ['data'], ['train', 'prefer', 'merge'], ['adapters', 'chat', 'share'], ['segmentation', 'speech', 'gesture']] as const
 const PANELS = GROUPS.flat()
 type Panel = (typeof GROUPS)[number][number]
 const MARKS: Record<Panel, ReactNode> = {
   start: <StartMark size={0.9} />,
   about: <AboutMark size={0.9} />,
+  projects: <ProjectsMark size={0.9} />,
   models: <ModelsMark size={0.9} />,
   modelfile: <ModelfileMark size={0.9} />,
   data: <DataMark size={0.9} />,
@@ -57,7 +60,7 @@ const RENAMED: Record<string, Panel> = { look: 'segmentation', voice: 'speech', 
 /**
  * The path through the tabs, numbered: look at models, change one with words, gather
  * examples, then one of the three ways (they share a number: pick one), then what they
- * made. Start, Chat and Share are used at any point, so they have none.
+ * made. Start, Projects, Chat and Share are used at any point, so they have none.
  */
 const STEP: Partial<Record<Panel, number>> = { models: 1, modelfile: 2, data: 3, train: 4, prefer: 4, merge: 4, adapters: 5 }
 
@@ -139,6 +142,9 @@ export default function App() {
         </div>
         <div className="panel-slot" hidden={panel !== 'about'}>
           <AboutPanel />
+        </div>
+        <div className="panel-slot" hidden={panel !== 'projects'}>
+          <ProjectsPanel />
         </div>
         <div className="panel-slot" hidden={panel !== 'models'}>
           <ModelsPanel onChat={chatWith} onModelfile={editModelfile} />

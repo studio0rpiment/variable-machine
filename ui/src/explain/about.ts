@@ -124,4 +124,12 @@ export const ABOUT_TABS: AboutTab[] = [
     gives: 'A gesture model, and while you test it, OSC messages for TouchDesigner, Max or Pure Data.',
     next: 'Whatever listens to OSC: sound, light, projection.',
   },
+  {
+    panel: 'projects',
+    title: 'Projects: the tabs, put together',
+    does: 'Lists finished work you can make by putting the other tabs together: ask a table, a gesture controller, a cut-out tool, a character\'s voice, a research bot. Each project lists its steps in order, each with the tab that does it and its command, marked done when your workspace has what the step makes.',
+    takes: 'What the other tabs made: tables, datasets, adapters, models, gesture sets, cut-outs.',
+    gives: 'Nothing of its own: it shows the way through, and runs each step\'s command when you press it.',
+    next: 'The tab each step names.',
+  },
 ]

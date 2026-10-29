@@ -31,7 +31,7 @@ const GENERATED = [WORDS_TS, path.join(SRC, 'explain/text.ts'), path.join(TEXT_D
  * One file per tab, by the tab's id, and shared.md for what every tab shows (the
  * top bar, the terminal). A file not named here is a mistake, most likely a typo.
  */
-export const TAB_FILES = ['shared', 'start', 'about', 'models', 'modelfile', 'data', 'train', 'prefer', 'merge', 'adapters', 'chat', 'share', 'segmentation', 'speech', 'gesture']
+export const TAB_FILES = ['shared', 'start', 'about', 'projects', 'models', 'modelfile', 'data', 'train', 'prefer', 'merge', 'adapters', 'chat', 'share', 'segmentation', 'speech', 'gesture']
 
 const SLOT = /\{([^{}]*)\}/g
 

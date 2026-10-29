@@ -142,3 +142,4 @@ a.text-button { text-decoration: none; }
 .flow__svg .is-explained .flow__box, .flow__svg .is-explained .flow__dest { stroke-dasharray: none; }
 .flow__group.is-explained { stroke: var(--line); stroke-dasharray: 4 3; }
 .look-out .label { line-height: 1.4; padding: 1rem; }
+.move-view__count .label { background: var(--overlay); padding: 0.25rem 0.75rem; }
