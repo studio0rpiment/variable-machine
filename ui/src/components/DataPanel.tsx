@@ -19,6 +19,8 @@ import { TableAskWay, TableWhat } from './TableAsk'
 import NextBox from './NextBox'
 import { OpenDataCard, TemplateCard } from './OpenData'
 import { HfCard, UploadCard } from './DataBringIn'
+import { PapersCard } from './PapersCard'
+import { say } from '../text/say'
 import { Linked } from '../explain/Linked'
 import { describeDataset } from '@shared/datasetAbout'
 import { glide as glideAs, moving } from '../lib/moving'
@@ -260,6 +262,12 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                     <Linked text={OPEN.search.when} />
                   </p>
                   <OpenDataCard busy={busy === 'opendata'} onRun={(line, raw) => void run('opendata', line).then(() => setNewTable(raw))} />
+                </div>
+                <div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{say('data.papers.title')}</h2>
+                  <p className="mf-next">{say('data.papers.when')}</p>
+                  <p className="mf-next">{say('data.papers.limits')}</p>
+                  <PapersCard onTrain={(d) => onUse?.(d, 'train')} />
                 </div>
                 <div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{TABLE.ask.title}</h2>

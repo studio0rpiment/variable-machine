@@ -76,10 +76,12 @@ interface Have {
   photo: string | null
   outputs: Output[]
   gestures: Gesture[]
+  /** research folders, with the files each has (screen.json, reading-list.md) */
+  research: { folder: string; created?: string; files: string[] }[]
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -89,6 +91,7 @@ async function readHave(): Promise<Have> {
     listDir('images'),
     readManifests<Output>('outputs'),
     readManifests<Gesture>('gestures'),
+    readManifests<{ created?: string }>('research'),
   ])
   const models = await Promise.all(
     mfs
@@ -119,6 +122,7 @@ async function readHave(): Promise<Have> {
     photo: photo && `images/${set}/${photo}`,
     outputs,
     gestures,
+    research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
 }
 
@@ -155,6 +159,19 @@ function projects(h: Have): Project[] {
 
   // cut-out: the tool, a set of photos, a cut-out
   const cutouts = h.outputs.filter((o) => o.items?.some((i) => i.tool === 'cutout'))
+
+  // research bot: search → screen → reading list → judge set → judge → model → package
+  const topics = h.research
+  const screened = topics.filter((t) => t.files.includes('screen.json'))
+  const listed = topics.filter((t) => t.files.includes('reading-list.md'))
+  // the keep/skip set Train takes; its -prefs twin is for Prefer
+  const judgeSets = h.data.filter((d) => d.research && d.format === 'chat')
+  const judges = h.adapters.filter((a) => judgeSets.some((d) => d.folder === a.data))
+  const judgeModels = h.models.filter((m) => judges.some((a) => a.folder === m.adapter))
+  const topic = last(topics)?.folder ?? '<name>'
+  const judgeSet = last(judgeSets)?.folder ?? `${topic}-judge`
+  const judge = last(judges)?.folder ?? `${judgeSet}-360m`
+  const judgeModel = last(judgeModels)?.model ?? judge
 
   return [
     {
@@ -220,12 +237,13 @@ function projects(h: Have): Project[] {
       get: say('projects.research.get'),
       limits: say('projects.research.limits'),
       steps: [
-        { name: say('projects.research.search'), tab: 'data', commands: [], done: false, soon: true },
-        { name: say('projects.research.screen'), tab: 'data', commands: [], done: false, soon: true },
-        { name: say('projects.research.list'), tab: 'data', commands: [], done: false, soon: true },
-        { name: say('projects.research.judge'), tab: 'data', commands: [], done: false, soon: true },
-        { name: say('projects.research.trainJudge'), tab: 'train', commands: [], done: false, soon: true },
-        { name: say('projects.research.package'), tab: 'share', commands: [], done: false, soon: true },
+        { name: say('projects.research.search'), tab: 'data', commands: [joinWords(['papers', 'search', topic, '--topic', '<topic>', '--seed', '<doi>', '--seed', '<doi>'])], done: topics.length > 0 },
+        { name: say('projects.research.screen'), tab: 'data', commands: [joinWords(['papers', 'screen', topic])], done: screened.length > 0 },
+        { name: say('projects.research.list'), tab: 'data', commands: [joinWords(['papers', 'summarise', topic]), joinWords(['papers', 'list', topic])], done: listed.length > 0 },
+        { name: say('projects.research.judge'), tab: 'data', commands: [joinWords(['papers', 'judge', topic, judgeSet]), joinWords(['data', 'split', judgeSet, '--valid', '0.2'])], done: judgeSets.length > 0 },
+        { name: say('projects.research.trainJudge'), tab: 'train', commands: [joinWords(['train', judge, '--data', judgeSet])], done: judges.length > 0 },
+        { name: say('projects.research.export'), tab: 'adapters', commands: [joinWords(['export', judge])], done: judgeModels.length > 0 },
+        { name: say('projects.research.package'), tab: 'share', commands: [joinWords(['package', judgeModel]), joinWords(['zip', `packages/${judgeModel}`])], done: judgeModels.some((m) => h.packages.includes(m.model)) },
       ],
     },
   ]

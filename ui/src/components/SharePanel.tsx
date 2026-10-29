@@ -5,7 +5,8 @@ import { listDir, readManifests, type Entry } from '../lib/workspace'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
-import { tableForModel } from '../lib/askTable'
+import { datasetForModel } from '../lib/askTable'
+import { say } from '../text/say'
 
 const KINDS = ['data', 'adapters', 'merges', 'runs', 'fused', 'images', 'audio', 'gestures', 'packages'] as const
 type Kind = (typeof KINDS)[number]
@@ -29,8 +30,8 @@ export default function SharePanel() {
   const [zips, setZips] = useState<Entry[]>([])
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
-  /** models trained to ask a table, by the table they ask: each can become a package */
-  const [askers, setAskers] = useState<{ model: string; table: string }[]>([])
+  /** models trained to ask a table, or to judge relevance (the research bot): each can become a package */
+  const [askers, setAskers] = useState<{ model: string; table?: string; topic?: string }[]>([])
   const file = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -38,8 +39,8 @@ export default function SharePanel() {
     setArtifacts(found.flat())
     setZips((await listDir('shared')).filter((e) => e.name.endsWith('.zip')))
     const mfs = (await listDir('modelfiles')).filter((e) => e.name.endsWith('.Modelfile')).map((e) => e.name.replace(/\.Modelfile$/, ''))
-    const asks = await Promise.all(mfs.map(async (model) => ({ model, t: await tableForModel(model) })))
-    setAskers(asks.flatMap((x) => (x.t ? [{ model: x.model, table: x.t.table }] : [])))
+    const asks = await Promise.all(mfs.map(async (model) => ({ model, d: await datasetForModel(model) })))
+    setAskers(asks.flatMap(({ model, d }): { model: string; table?: string; topic?: string }[] => (d?.table && d.ask ? [{ model, table: d.table.slice(4) }] : d?.research ? [{ model, topic: d.research.topic }] : [])))
   }, [])
   useEffect(() => void load(), [load])
   useHelperEvent(
@@ -96,8 +97,9 @@ export default function SharePanel() {
         {zips.length === 0 && <p className="label label--muted">no zips yet</p>}
       </div>
 
-      <h2 className="panel__title label">packages · a model that asks a table, to take into another project</h2>
+      <h2 className="panel__title label">{say('share.packages.title')}</h2>
       <p className="mf-next">The model, the table, its roles, ask.js, a one-page demo and a README (web page, Node, Python, TouchDesigner and Max over OSC), in one folder and then one zip. On another computer it needs only Ollama.</p>
+      <p className="mf-next">{say('share.judge.about')}</p>
       <div className="cards">
         {askers.map((a) => {
           const made = artifacts.some((x) => x.kind === 'packages' && x.name === a.model)
@@ -107,8 +109,8 @@ export default function SharePanel() {
             <Manifest
               key={a.model}
               name={a.model}
-              badges={<Badge>asks {a.table}</Badge>}
-              lines={[made ? `workspace/packages/${a.model}: open demo.html in it, or zip it` : 'not packaged yet', 'about 720MB: the model is most of it']}
+              badges={<Badge>{a.table ? `asks ${a.table}` : say('share.judge.badge')}</Badge>}
+              lines={[a.topic ?? '', made ? (a.table ? `workspace/packages/${a.model}: open demo.html in it, or zip it` : say('share.judge.made', { model: a.model })) : 'not packaged yet', 'about 720MB: the model is most of it']}
               actions={
                 <>
                   {!made && (
@@ -123,6 +125,7 @@ export default function SharePanel() {
           )
         })}
         {askers.length === 0 && <p className="label label--muted">none yet: make a training set from a table (Data), train it, export it, and it appears here</p>}
+        {askers.length === 0 && <p className="label label--muted">{say('share.judge.none')}</p>}
       </div>
 
       <h2 className="panel__title label">artifacts · what can be shared</h2>

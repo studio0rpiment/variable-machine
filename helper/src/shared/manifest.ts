@@ -47,4 +47,6 @@ export interface DatasetManifest extends Manifest {
   ask?: { system: string; title: string; noun: string }
   /** a voice set: results said as plain sentences, a news brief or captions */
   voice?: string
+  /** a relevance judge's set, from the research bot's decisions: workspace/research/<folder> */
+  research?: { folder: string; topic: string }
 }

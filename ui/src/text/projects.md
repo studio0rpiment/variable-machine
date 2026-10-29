@@ -314,6 +314,11 @@ turn your decisions into a training set
 
 train a relevance judge on it
 
+### Step: export
+`projects.research.export`
+
+export the judge into Ollama
+
 ### Step: package
 `projects.research.package`
 
