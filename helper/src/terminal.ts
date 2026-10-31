@@ -19,6 +19,7 @@ import { gestureCommand, oscCommand } from './gestures.ts'
 import { askCommand } from './table.ts'
 import { packageCommand } from './package/index.ts'
 import { papersCommand } from './papers.ts'
+import { readerCommand } from './reader.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -39,6 +40,7 @@ const HELP = `commands
   data profile | questions | rows raw/<table> …       a table: what's in it, questions → queries, or its rows as text   (data help)
   ask <model> raw/<table> "<question>"             the model writes a query, the table answers it
   ask check <model> <dataset>                      how often its queries give the right answer, on questions set aside
+  reader check <model> <dataset> [--against qwen3:4b|none]   a reader model against qwen3:4b given a prompt, on rows set aside
   package <model>                                  an "ask the table" model, or a relevance judge, as a folder for another project: workspace/packages/<model>
   papers search | screen | decide | summarise | list | check | judge <name> …   the research bot: papers and articles on a topic   (papers help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
@@ -152,6 +154,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'ask') return askCommand(args)
   if (cmd === 'package') return packageCommand(args, line)
   if (cmd === 'papers') return papersCommand(args, line)
+  if (cmd === 'reader') return readerCommand(args)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)

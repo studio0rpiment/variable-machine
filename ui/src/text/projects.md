@@ -379,4 +379,14 @@ export it into Ollama under the reader's name
 ### Step: compare
 `projects.studio.compare`
 
-compare it with qwen3:4b given a prompt: valid JSON and right fields on the rows set aside
+compare it with qwen3:4b given a prompt: valid JSON and right fields on the rows set aside, and on a set of rows unlike any it trained on
+
+### The comparison
+`projects.studio.compared`
+
+on {n} rows set aside: {scores}
+
+### One model's score
+`projects.studio.result`
+
+{model} {right}% of fields right, {rows}% of rows, {s}s a row

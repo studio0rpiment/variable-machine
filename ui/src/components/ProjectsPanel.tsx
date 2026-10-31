@@ -22,6 +22,8 @@ interface Step {
   soon?: boolean
   /** the start of a second way: its steps take the place of the ones above */
   or?: boolean
+  /** what it found, once it has run */
+  result?: string
 }
 
 interface Project {
@@ -76,6 +78,8 @@ interface Have {
   photo: string | null
   outputs: Output[]
   gestures: Gesture[]
+  /** `reader check` results: the reader's scores, then the stand-in's */
+  readerChecks: { dataset: string; model: string; at: string; n: number; scores: { model: string; right: number; fields: number; rows: number; ms: number }[] }[]
   /** research folders, with the files each has (screen.json, reading-list.md) */
   research: { folder: string; created?: string; files: string[] }[]
 }
@@ -102,10 +106,15 @@ async function readHave(): Promise<Have> {
       }),
   )
   const checks = new Set<string>()
-  for (const d of data.filter((x) => x.ask))
+  const readerChecks: Have['readerChecks'] = []
+  for (const d of data.filter((x) => x.ask || x.folder.startsWith('studio-')))
     for (const f of await listDir(`data/${d.folder}`)) {
       const m = /^check-(.+)\.json$/.exec(f.name)
       if (m) checks.add(`${d.folder}/${m[1]}`)
+      if (m && !d.ask) {
+        const c = JSON.parse((await readFile(`data/${d.folder}/${f.name}`)) ?? 'null') as Have['readerChecks'][number] & { reader?: boolean }
+        if (c?.reader) readerChecks.push(c)
+      }
     }
   const sets = images.filter((i) => i.dir).map((i) => i.name)
   const set = sets.includes('classic-cv') || !sets.length ? 'classic-cv' : sets[0]
@@ -116,6 +125,7 @@ async function readHave(): Promise<Have> {
     adapters,
     models,
     checks,
+    readerChecks,
     packages: packages.map((p) => p.folder),
     tools: tools.filter((t) => t.dir).map((t) => t.name),
     images: sets,
@@ -125,6 +135,9 @@ async function readHave(): Promise<Have> {
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
 }
+
+/** The base the -360m names promise; only a table's question sets get it without asking. */
+const SMALL = 'HuggingFaceTB/SmolLM2-360M-Instruct'
 
 /** What was made last, so a step's command names it. */
 const last = <T extends { created?: unknown }>(xs: T[]): T | undefined => [...xs].sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? ''))).pop()
@@ -177,9 +190,20 @@ function projects(h: Have): Project[] {
   const readerSets = h.data.filter((d) => d.folder.startsWith('studio-') && d.format === 'chat')
   const readers = h.adapters.filter((a) => readerSets.some((d) => d.folder === a.data))
   const readerModels = h.models.filter((m) => readers.some((a) => a.folder === m.adapter))
-  const reader = last(readerSets)?.folder ?? 'studio-mail'
+  // the set the last reader trained on; a set made only to check it (rows it never saw) doesn't move the card on
+  const reader = last(readers)?.data ?? last(readerSets)?.folder ?? 'studio-mail'
   const readerAdapter = last(readers)?.folder ?? `${reader}-360m`
   const withRows = readerSets.filter((d) => d.counts.train + d.counts.valid > 0)
+  const readerModel = last(readerModels)?.model ?? reader
+  // sets of rows the reader never trained on, made only to check it
+  const asAside = readerSets.filter((d) => d.folder !== reader && !readers.some((a) => a.data === d.folder))
+  const compared = [...h.readerChecks].sort((a, b) => a.at.localeCompare(b.at)).pop()
+  const pc = (a: number, b: number) => Math.round((a / b) * 100)
+  const comparedLine =
+    compared &&
+    compared.scores
+      .map((x) => say('projects.studio.result', { model: x.model, right: pc(x.right, x.fields), rows: pc(x.rows, compared.n), s: (x.ms / 1000).toFixed(1) }))
+      .join(' · ')
 
   return [
     {
@@ -234,7 +258,7 @@ function projects(h: Have): Project[] {
         { name: say('projects.voice.modelfile'), tab: 'modelfile', commands: [joinWords(['ollama', 'create', '<name>', '-f', 'workspace/modelfiles/<name>.Modelfile'])], done: variants.length > 0 },
         { name: say('projects.voice.writing'), tab: 'data', commands: [joinWords(['data', 'raw', 'gutenberg', '<book number>', book])], done: writing.length > 0, or: true },
         { name: say('projects.voice.rows'), tab: 'data', commands: [], done: fromWriting.length > 0 },
-        { name: say('projects.voice.train'), tab: 'train', commands: [joinWords(['train', voiceAdapter, '--data', rows])], done: voiceAdapters.length > 0 },
+        { name: say('projects.voice.train'), tab: 'train', commands: [joinWords(['train', voiceAdapter, '--data', rows, '--base', SMALL])], done: voiceAdapters.length > 0 },
         { name: say('projects.voice.export'), tab: 'adapters', commands: [joinWords(['export', voiceAdapter])], done: h.models.some((m) => voiceAdapters.some((a) => a.folder === m.adapter)) },
       ],
     },
@@ -249,7 +273,7 @@ function projects(h: Have): Project[] {
         { name: say('projects.research.screen'), tab: 'data', commands: [joinWords(['papers', 'screen', topic])], done: screened.length > 0 },
         { name: say('projects.research.list'), tab: 'data', commands: [joinWords(['papers', 'summarise', topic]), joinWords(['papers', 'list', topic])], done: listed.length > 0 },
         { name: say('projects.research.judge'), tab: 'data', commands: [joinWords(['papers', 'judge', topic, judgeSet]), joinWords(['data', 'split', judgeSet, '--valid', '0.2'])], done: judgeSets.length > 0 },
-        { name: say('projects.research.trainJudge'), tab: 'train', commands: [joinWords(['train', judge, '--data', judgeSet])], done: judges.length > 0 },
+        { name: say('projects.research.trainJudge'), tab: 'train', commands: [joinWords(['train', judge, '--data', judgeSet, '--base', SMALL])], done: judges.length > 0 },
         { name: say('projects.research.export'), tab: 'adapters', commands: [joinWords(['export', judge])], done: judgeModels.length > 0 },
         { name: say('projects.research.package'), tab: 'share', commands: [joinWords(['package', judgeModel]), joinWords(['zip', `packages/${judgeModel}`])], done: judgeModels.some((m) => h.packages.includes(m.model)) },
       ],
@@ -263,11 +287,11 @@ function projects(h: Have): Project[] {
       steps: [
         { name: say('projects.studio.set'), tab: 'data', commands: [joinWords(['data', 'new', reader])], done: readerSets.length > 0 },
         { name: say('projects.studio.rows'), tab: 'data', commands: [], done: withRows.length > 0 },
-        { name: say('projects.studio.corrections'), tab: 'data', commands: [`data append ${reader} '<row json>' --source corrections`], done: readerSets.some((d) => d.command.some((c) => c.startsWith('data append'))) },
+        { name: say('projects.studio.corrections'), tab: 'data', commands: [`data append ${reader} '<row json>' --source corrections`], done: readerSets.some((d) => d.command.some((c) => c.startsWith('data append') && c.includes('--source corrections'))) },
         { name: say('projects.studio.split'), tab: 'data', commands: [joinWords(['data', 'split', reader, '--valid', '0.15']), joinWords(['data', 'validate', reader])], done: readerSets.some((d) => d.split) },
-        { name: say('projects.studio.train'), tab: 'train', commands: [joinWords(['train', readerAdapter, '--data', reader])], done: readers.length > 0 },
+        { name: say('projects.studio.train'), tab: 'train', commands: [joinWords(['train', readerAdapter, '--data', reader, '--base', SMALL, '--max-seq', '512'])], done: readers.length > 0 },
         { name: say('projects.studio.export'), tab: 'adapters', commands: [joinWords(['export', readerAdapter, '--name', reader])], done: readerModels.length > 0 },
-        { name: say('projects.studio.compare'), tab: 'chat', commands: [], done: false, soon: true },
+        { name: say('projects.studio.compare'), tab: 'chat', commands: [joinWords(['reader', 'check', readerModel, reader]), ...asAside.map((d) => joinWords(['reader', 'check', readerModel, d.folder]))], done: !!compared, result: comparedLine ? say('projects.studio.compared', { n: compared!.n, scores: comparedLine }) : undefined },
       ],
     },
   ]
@@ -346,6 +370,7 @@ export default function ProjectsPanel() {
                               s.commands.map((c) => (
                                 <CommandPreview key={c} command={c} onRun={() => void run([c])} disabled={c.includes('<')} running={busy === c} label={say('projects.step.run')} />
                               ))}
+                            {s.result && <span className="label label--muted project-step__result">{s.result}</span>}
                           </span>
                         </li>
                       )
