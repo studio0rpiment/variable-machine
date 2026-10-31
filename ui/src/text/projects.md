@@ -323,3 +323,60 @@ export the judge into Ollama
 `projects.research.package`
 
 package it with research.js, which runs the whole loop
+
+## Models for a multi-agent studio
+
+### Name
+`projects.studio.title`
+
+models for a multi-agent studio
+
+### What it does
+`projects.studio.does`
+
+Trains the small models a multi-agent studio calls for one job each. In a studio like the interactive studio in the crew explorer, every agent runs on qwen3:4b; a reader model reads one kind of text (a message, an invoice, a build log, a package update, a page of credits, a list of deadlines) and returns the same fields every time, as JSON. The agents' scripts call the readers; the agents never train them.
+
+### What you end up with
+`projects.studio.get`
+
+one model in Ollama per reader, named studio-mail, studio-invoice, studio-log, studio-update, studio-facts and studio-status, each a small model trained for its one job
+
+### What it can't do
+`projects.studio.limits`
+
+It trains SmolLM2, not qwen3:4b, so a reader is a whole small model of its own, not an adapter on the agents' model. Training is done by hand here; no agent can start it. The image reader needs photos of the studio's works, which a person supplies; until then it is the untrained smolvlm:256m.
+
+### Step: the set
+`projects.studio.set`
+
+pick a reader and make its set: one for each, named studio- and the reader
+
+### Step: rows
+`projects.studio.rows`
+
+have a model write made-up examples from the studio's notes, each a text and its fields as JSON; keep, edit or reject each one
+
+### Step: corrections
+`projects.studio.corrections`
+
+add the lead's corrections from the studio as rows, each marked with where it came from
+
+### Step: split
+`projects.studio.split`
+
+set rows aside for checking, and check every row is valid
+
+### Step: train
+`projects.studio.train`
+
+train the reader on the rows
+
+### Step: export
+`projects.studio.export`
+
+export it into Ollama under the reader's name
+
+### Step: compare
+`projects.studio.compare`
+
+compare it with qwen3:4b given a prompt: valid JSON and right fields on the rows set aside

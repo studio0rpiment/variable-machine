@@ -173,6 +173,14 @@ function projects(h: Have): Project[] {
   const judge = last(judges)?.folder ?? `${judgeSet}-360m`
   const judgeModel = last(judgeModels)?.model ?? judge
 
+  // a multi-agent studio's readers, one at a time, by name: studio-<reader> set → studio-<reader>-360m → studio-<reader> in Ollama
+  const readerSets = h.data.filter((d) => d.folder.startsWith('studio-') && d.format === 'chat')
+  const readers = h.adapters.filter((a) => readerSets.some((d) => d.folder === a.data))
+  const readerModels = h.models.filter((m) => readers.some((a) => a.folder === m.adapter))
+  const reader = last(readerSets)?.folder ?? 'studio-mail'
+  const readerAdapter = last(readers)?.folder ?? `${reader}-360m`
+  const withRows = readerSets.filter((d) => d.counts.train + d.counts.valid > 0)
+
   return [
     {
       id: 'ask',
@@ -244,6 +252,22 @@ function projects(h: Have): Project[] {
         { name: say('projects.research.trainJudge'), tab: 'train', commands: [joinWords(['train', judge, '--data', judgeSet])], done: judges.length > 0 },
         { name: say('projects.research.export'), tab: 'adapters', commands: [joinWords(['export', judge])], done: judgeModels.length > 0 },
         { name: say('projects.research.package'), tab: 'share', commands: [joinWords(['package', judgeModel]), joinWords(['zip', `packages/${judgeModel}`])], done: judgeModels.some((m) => h.packages.includes(m.model)) },
+      ],
+    },
+    {
+      id: 'studio',
+      title: say('projects.studio.title'),
+      does: say('projects.studio.does'),
+      get: say('projects.studio.get'),
+      limits: say('projects.studio.limits'),
+      steps: [
+        { name: say('projects.studio.set'), tab: 'data', commands: [joinWords(['data', 'new', reader])], done: readerSets.length > 0 },
+        { name: say('projects.studio.rows'), tab: 'data', commands: [], done: withRows.length > 0 },
+        { name: say('projects.studio.corrections'), tab: 'data', commands: [`data append ${reader} '<row json>' --source corrections`], done: readerSets.some((d) => d.command.some((c) => c.startsWith('data append'))) },
+        { name: say('projects.studio.split'), tab: 'data', commands: [joinWords(['data', 'split', reader, '--valid', '0.15']), joinWords(['data', 'validate', reader])], done: readerSets.some((d) => d.split) },
+        { name: say('projects.studio.train'), tab: 'train', commands: [joinWords(['train', readerAdapter, '--data', reader])], done: readers.length > 0 },
+        { name: say('projects.studio.export'), tab: 'adapters', commands: [joinWords(['export', readerAdapter, '--name', reader])], done: readerModels.length > 0 },
+        { name: say('projects.studio.compare'), tab: 'chat', commands: [], done: false, soon: true },
       ],
     },
   ]
