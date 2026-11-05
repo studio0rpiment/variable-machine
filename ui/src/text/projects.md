@@ -104,6 +104,93 @@ done on the {tab} tab, in the page: no command
 
 run this step
 
+## Latent image
+
+### Name
+`projects.latent.title`
+
+latent image
+
+### What it does
+`projects.latent.does`
+
+Makes the latent image of a collection: the picture a set of images holds without any one of them showing it, the collection's "subconscious" picture. A large picture encoder measures every image; the collection's centre and the main ways its images differ are fitted to those measures; a decoder turns the centre back into a picture. Then it measures a gallery against it: how near each image is, which way it leans, and what it brings that the collection lacks.
+
+### What you get
+`projects.latent.get`
+
+the latent image and its axes as pictures, beside the pixel average (Galton's composite); a decoder trained on the collection's look; a gallery page with a JSON of every image's distance, axes and what it brings
+
+### What it can't do
+`projects.latent.limits`
+
+It is a mean and a few directions of spread, measured in a model's numbers: not a memory or an unconscious in any literal sense. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 20 images at the least and about 100 before its axes hold still, and a Mac with 16 GB of memory.
+
+### Step: get the model
+`projects.latent.model`
+
+get the picture encoder and decoder (Kandinsky 2.2, 9 GB)
+
+### Step: the collection
+`projects.latent.pictures`
+
+bring in the collection: your own images (upload), or a public-domain body of work
+
+### Step: the texts
+`projects.latent.texts`
+
+bring in texts on memory and the unconscious, as framing: they are read beside the latent image, not trained on
+
+### Step: make it
+`projects.latent.make`
+
+make the latent image, its axes and the pixel average, and check it holds across halves of the collection
+
+### Step: train the decoder
+`projects.latent.train`
+
+train the decoder on the collection, so the latent image is drawn in its own look (about 20 minutes)
+
+### Step: a gallery
+`projects.latent.gallery`
+
+bring in a gallery to measure: the collection itself, or another one
+
+### Step: measure it
+`projects.latent.measure`
+
+measure the gallery against the latent image: distance, axes, and what each image brings
+
+### The check, on the make step
+`projects.latent.checked`
+
+{n} images · centre across halves {centre} ({centreSays}) · axis 1 across halves {axis} ({axisSays})
+
+### When it holds
+`projects.latent.stable`
+
+stable
+
+### When it doesn't
+`projects.latent.unstable`
+
+not yet stable
+
+### The training, on the train step
+`projects.latent.trainedIn`
+
+{steps} steps in {minutes} min
+
+### The link to the latent image
+`projects.latent.see`
+
+see the latent image
+
+### The link to the gallery page
+`projects.latent.open`
+
+open the gallery
+
 ## Image moods
 
 ### Name

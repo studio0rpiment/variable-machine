@@ -90,10 +90,12 @@ interface Have {
   described: string[]
   /** each image set's manifest: what it is, and where it came from */
   imageSets: { folder: string; created?: string; about?: string }[]
+  /** latent images, with the set each was made from, its check and its training */
+  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null }[]
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, classifiers, imageSets] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, classifiers, imageSets, latents] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -106,6 +108,7 @@ async function readHave(): Promise<Have> {
     readManifests<{ created?: string }>('research'),
     readManifests<Have['classifiers'][number]>('classifiers'),
     readManifests<Have['imageSets'][number]>('images'),
+    readManifests<Have['latents'][number]>('latents'),
   ])
   const models = await Promise.all(
     mfs
@@ -147,6 +150,7 @@ async function readHave(): Promise<Have> {
     classifiers,
     described,
     imageSets,
+    latents,
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
 }
@@ -234,7 +238,59 @@ function projects(h: Have): Project[] {
   const lastSorted = last(sorted)
   const pcm = (x: number) => Math.round(x * 100)
 
+  // latent image: model → a collection → texts (framing) → make → train the decoder → a gallery → measure it
+  const latentTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia/.test(String(r.source ?? '')))
+  const latent = last(h.latents)
+  const collection = latent?.set ?? last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv')))?.folder ?? 'hiroshige'
+  const latentName = latent?.folder ?? collection
+  // a gallery: the newest image set that isn't the collection, else the collection itself
+  const measureSet = last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv') && s.folder !== collection))?.folder
+  const measured = last(h.outputs.filter((o) => o.items?.some((i) => i.tool === 'latent')))
+  const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
+
   return [
+    {
+      id: 'latent',
+      title: say('projects.latent.title'),
+      does: say('projects.latent.does'),
+      get: say('projects.latent.get'),
+      limits: say('projects.latent.limits'),
+      steps: [
+        { name: say('projects.latent.model'), tab: 'models', commands: ['model get kandinsky'], done: h.tools.includes('kandinsky') },
+        { name: say('projects.latent.pictures'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'Utagawa Hiroshige', collection, '--limit', '100'])], done: h.imageSets.some((s) => !s.folder.startsWith('classic-cv')) },
+        {
+          name: say('projects.latent.texts'),
+          tab: 'data',
+          commands: [joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']), joinWords(['data', 'raw', 'wikipedia', 'Composite_portrait', 'composite-portrait'])],
+          done: latentTexts.length > 0,
+        },
+        {
+          name: say('projects.latent.make'),
+          tab: 'segmentation',
+          commands: [joinWords(['latent', 'make', latentName, `images/${collection}`])],
+          done: h.latents.length > 0,
+          result: latent?.check
+            ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
+            : undefined,
+          link: latent ? { path: `latents/${latent.folder}/latent.png`, label: say('projects.latent.see') } : undefined,
+        },
+        {
+          name: say('projects.latent.train'),
+          tab: 'train',
+          commands: [joinWords(['latent', 'train', latentName])],
+          done: h.latents.some((l) => !!l.trained),
+          result: latent?.trained ? say('projects.latent.trainedIn', { steps: latent.trained.steps, minutes: latent.trained.minutes }) : undefined,
+        },
+        { name: say('projects.latent.gallery'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'landscape', 'aic-landscapes', '--limit', '40'])], done: !!measureSet },
+        {
+          name: say('projects.latent.measure'),
+          tab: 'segmentation',
+          commands: [joinWords(['latent', 'gallery', latentName, `images/${measureSet ?? collection}`])],
+          done: !!measured,
+          link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
+        },
+      ],
+    },
     {
       id: 'mood',
       title: say('projects.mood.title'),

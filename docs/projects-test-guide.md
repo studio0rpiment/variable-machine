@@ -12,7 +12,27 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 
 ---
 
-## 1. Image moods
+## 1. Latent image
+
+**Makes:** the latent image of a collection (the picture the collection holds without any one image showing it), its axes and the pixel average; a decoder trained on the collection; and a gallery page with JSON of every picture's distance, axes and what it brings.
+
+- **Time:** about 35 minutes: 3 to make, 25 to train and redraw, 2 to measure, plus the download.
+- **Disk:** 9 GB for Kandinsky 2.2 and about 1 GB for torch. On Kevin's machine, run from the KP 512 install, not the Mac's own disk.
+- **Memory:** a Mac with 16 GB or more; the helper refuses below that and says why.
+
+| # | Tab | Do | Command | Check |
+|---|---|---|---|---|
+| 1 | Models | Get the picture encoder and decoder (picture encoders section, **kandinsky**) | `model get kandinsky` | 9 files in `workspace/tools/kandinsky/prior` and `/decoder`; the licence reads Apache 2.0 from Hugging Face. It refuses first if the disk has less than 9.9 GB free |
+| 2 | Image segmentation | Bring in the collection: 100 public-domain Hiroshige prints | `look museum "Utagawa Hiroshige" hiroshige --limit 100` | 100 pictures; the set's manifest credits each (title, artist, CC0) |
+| 3 | Data → raw material | Bring in texts, as framing | `data raw gutenberg 66048 freud-dreams`, `data raw wikipedia Composite_portrait composite-portrait` | Each lands in `workspace/raw`. They frame the card and don't change the model |
+| 4 | Image segmentation | Make the latent image | `latent make hiroshige images/hiroshige` | About 3 minutes; the echo shows the `uv run … latent.py make` command. In the session's test: centre across halves 0.993 (stable), axis 1 0.72 (stable), set-aside fit 0.67. The card shows the check; **see the latent image** opens `latent.png`, a Hiroshige-like scene |
+| 5 | Train | Train the decoder on the collection | `latent train hiroshige` | 800 steps, about 20 minutes (19.7 in the session's test); the loss is printed every 50 with the minutes left. Afterwards `latent-trained.png` is beside `latent.png`, in the prints' own look. The card shows steps and minutes |
+| 6 | Image segmentation | Bring in a gallery: public-domain landscapes | `look museum landscape aic-landscapes --limit 40` | 40 pictures |
+| 7 | Image segmentation | Measure it; press **open the gallery** on the card | `latent gallery hiroshige images/aic-landscapes` | The page shows the latent image (before and after training), the pixel average, three axes as picture pairs, then every landscape, nearest first. A Hiroshige or Hokusai print among the landscapes comes first; four pictures have a "what it brings" picture |
+| 8 | Image segmentation | Measure the collection against itself | `latent gallery hiroshige images/hiroshige` | Distances from about 0.8 to 1.6 |
+| 9 | Share | Zip it | `zip latents/hiroshige` | A zip with the pictures, `stats.npz`, `check.json` and `lora.safetensors`: about 16 MB in the session's test |
+
+## 2. Image moods
 
 **Makes:** a mood classifier (calm, lively, tense, sombre) for what a picture conveys, its score on pictures set aside, and a gallery page with CSV and JSON. **Time:** about 10 minutes, 2 of them embedding the texts. **Disk:** about 360 MB (encoder 204 MB, OASIS 88 MB zip plus 51 MB dataset). **Note:** OASIS includes unpleasant photos (a carcass, a crash); its licence is research use, so the results are for student projects only.
 
@@ -28,7 +48,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 8 | Image segmentation | Sort the gallery; press **open the gallery** on the card | `mood gallery oasis-moods-siglip images/aic-landscapes` | The page shows each picture's mood, confidence and reason; the passages differ from picture to picture; `moods.csv` and `moods.json` are beside it |
 | 9 | Share | Package and zip; in the unzipped folder, `sh get-encoder.sh`, then classify.py on a folder | `package oasis-moods-siglip`, `zip packages/oasis-moods-siglip` | A zip of about 120 KB; `classify.py` writes `moods/gallery.html` |
 
-## 2. Ask a table
+## 3. Ask a table
 
 **Makes:** a small model that turns a question into a query; the answer is counted from the table. **Time:** about 20 minutes, 9 of them training.
 
@@ -42,7 +62,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 6 | Chat | Ask three questions of your own, one with a place not in the table | — | The query and SQL show; the unknown place is refused with a list of real places, never answered with 0 |
 | 7 | Share | Package, then zip | `package <model>`, `zip packages/<model>` | The folder has `ask.js`, `demo.html` and the README; `node ask.js "how many …"` answers |
 
-## 3. Gesture controller
+## 4. Gesture controller
 
 **Makes:** a model trained on your own gestures, sent as OSC. **Time:** about 10 minutes. **Needs:** a camera, and TouchDesigner, Max or Pure Data listening on port 9000, or any OSC monitor.
 
@@ -54,7 +74,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 4 | Gesture | Train | `gesture train <set>` | Set-aside examples are mostly named right |
 | 5 | Gesture | Send | `gesture send <set> --port 9000` | The patch receives the gesture names |
 
-## 4. Cut-out tool
+## 5. Cut-out tool
 
 **Makes:** PNGs with a transparent background, each with a record. **Time:** about 5 minutes.
 
@@ -64,7 +84,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 2 | Look → segmentation | Bring in the example photos (or your own) | `look example classic-cv` | The photos show |
 | 3 | Look → segmentation | Cut one out | `look cutout images/classic-cv/<photo>` | A transparent PNG appears in outputs with its record |
 
-## 5. A character's voice
+## 6. A character's voice
 
 Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 
@@ -83,7 +103,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 3 | Train | Train on SmolLM2 | `train <adapter> --data <rows> --base <small>` | The run ends without an error |
 | 4 | Adapters → Chat | Export, then talk to it | `export <adapter>` | It sounds like the writer, and more than the base model does |
 
-## 6. Research bot
+## 7. Research bot
 
 **Makes:** a reading list, BibTeX, a library of what's been seen, and later a judge trained on your decisions. **Time:** about 15 minutes to the reading list; training adds about 10 minutes and needs about 2.2 GB of disk.
 
@@ -98,7 +118,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 7 | Data | Measure it: `papers check` | — | It agrees with your decisions more often than the stock screen (70%) and than keeping everything |
 | 8 | Share | Package; run `node research.js` in the folder | `package <judge>`, `zip packages/<judge>` | A rerun shows only new items |
 
-## 7. Models for a multi-agent studio
+## 8. Models for a multi-agent studio
 
 **Makes:** one reader model per job (`studio-mail`, `studio-invoice`, …), each returning fixed JSON fields. **Time:** about 20 minutes per reader. Test one reader, `studio-mail`, first.
 

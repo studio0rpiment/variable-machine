@@ -1,12 +1,20 @@
 # The latent image of a collection: plan and sources
 
-A Projects card for a student's thesis: train on the images a person keeps, make the collection's latent image from what the model learned, then measure a gallery against it. Written 2026-11-04. Licences were checked that day against the sources themselves.
+A Projects card for a student's thesis: train on the images a person keeps, make the collection's latent image from what the model learned, then measure a gallery against it. Written 2026-11-04; revised and built 2026-11-05, after Kevin allowed a larger model and some bending of the usual limits for this card. Licences were checked against the sources themselves.
 
 **The latent image** of a collection is the picture the collection holds without any one image in it showing it. Kevin's words for it are the collection's "subconscious" or "pre-cognitive" picture. Here it is made statistically: it is the centre of what a model learned from all the images, made back into a picture.
 
-**Card name, proposed:** *latent image*. On the card: **latent image · what a collection holds that no single image shows**.
+**Card name:** *latent image*. On the card: **latent image · what a collection holds that no single image shows**.
 
 This replaces the image-mood plan. That card, its commands and its result are on this branch in commit c58301a, not merged. Section 7 says what carries over.
+
+**What changed on 2026-11-05.** The first version of this plan (commit 583660c) kept to an 8 GB Mac and recommended a 10 MB autoencoder (TAESD). Kevin then allowed a larger model. A fifth way, (5) below, was prototyped on this Mac and is far better: its latent image is a picture, not a blur. It is what the card is built on. It bends three of the usual limits, on purpose:
+
+- **Download:** 9 GB (Kandinsky 2.2), against the usual ask-above-1-GB. On Kevin's machine it goes to KP 512 with the rest of his install.
+- **Memory:** it needs a 16 GB Mac (it peaks at about 8 GB, 9 GB to train), not 8 GB. The helper refuses below 15 GB and says why.
+- **Install:** torch and diffusers, about 1 GB in the python project's `latent` extra.
+
+TAESD, (2) below, stays in this plan as the way to do it on an 8 GB Mac; it isn't built.
 
 ## 1. What the latent image is not
 
@@ -27,9 +35,9 @@ To test without anyone's private photos, use a collection that is one person's w
 
 The test so far used 40 AIC landscapes (CC0) and, for contrast, 513 mixed OASIS photos. OASIS is research-only, so it is not for the final test; see the mood plan's notes.
 
-## 3. Four ways to make it, from plain statistics to training
+## 3. Five ways to make it, from plain statistics to a large model
 
-Each was weighed for an 8 GB Mac. The first two were prototyped on this Mac (M1 Pro) today. The picture below shows them for the 40 landscapes:
+The first four were weighed for an 8 GB Mac; the first two were prototyped on this Mac (M1 Pro, 32 GB) on 2026-11-04. The fifth was prototyped and built on 2026-11-05. The picture below shows (1) and (2) for the 40 landscapes:
 
 ![Pixel average, VAE-code average and median, and the first two axes of the codes decoded at ±2 spreads, for 40 public-domain landscapes](images/latent-image-prototype-aic-landscapes.png)
 
@@ -76,7 +84,7 @@ A **VAE** (variational autoencoder) is a model that squeezes an image into a sho
 
 - **How:** take the mean and principal components of the collection's SigLIP embeddings. SigLIP's numbers are about what an image shows (a harbour, a portrait, snow), not where its light falls.
 - **What its latent image looks like:** there is no picture. No small, permissively licensed generator turns a SigLIP embedding back into an image:
-  - Kandinsky 2.2 (Apache 2.0) decodes image embeddings from a different, larger CLIP encoder (ViT-G/14). Its files come to about 16 GB.
+  - Kandinsky 2.2 (Apache 2.0) decodes image embeddings from a different, larger CLIP encoder (ViT-bigG/14). That is (5) below: it needs 9 GB of its files, not SigLIP's.
   - Stable unCLIP is under OpenRAIL-M, not a permissive licence.
 
   So this latent image can only be *shown* as the images nearest it, the most typical of the collection, and each axis as the images at its two ends.
@@ -104,19 +112,59 @@ This is the "based on the training" version.
   - It needs **50 images at the least, 200–1,000 to mean much**. Below that, the plain mean of the codes is as good.
   - A caution: if the model were linear, its centre would simply be the mean of the codes, which is (2). A small nonlinear model's centre differs from that mean, but that difference is not evidence of anything "deeper". The card compares the two and lets the student see.
 
-### Recommendation
+### (5) A large encoder with a decoder: Kandinsky 2.2 (built)
 
-**Main path: (4) a small VAE trained on the TAESD codes of the person's images.**
+Kandinsky 2.2 (Sber AI, **Apache 2.0**) is an encoder and a decoder that work in the same space of 1280 numbers:
 
-- It is the trained version the thesis asks for.
-- It trains in a minute or two on any 8 GB Mac.
-- Its latent image is a 256 px picture, not a 64 px blur.
-- **Comparisons beside it:**
-  - (1), the pixel average, as the baseline;
-  - (2), the plain code average, which the training adds nothing to if the two look alike, and that is worth seeing.
-- **(3), SigLIP,** adds "near in subject" to the gallery.
+- **The encoder** is CLIP ViT-bigG/14 (trained by LAION): it puts a picture into 1280 numbers, what it shows and how it looks.
+- **The decoder** is a diffusion model of 1.2 billion weights with its own autoencoder (MoVQ): it draws a picture from any 1280 numbers.
 
-If the trained centre proves no different from (2) on real collections, (2) becomes the main path and the card says why. That is the first thing the build checks.
+So the centre of a collection, which no single picture has, can be drawn. That is what (3) lacked.
+
+- **How:**
+  - encode every picture;
+  - fit the collection's statistics: the mean and the main axes (principal components) with their spreads;
+  - decode the mean, scaled to a typical picture's length, since a mean is shorter than any one picture. That picture is the latent image.
+  - Decode each of the first three axes at the mean minus and plus two spreads.
+- **Decoding settings** (tested; see the picture below):
+  - 30 denoising steps;
+  - guidance 2.5, pushing away from the embedding of a plain grey picture.
+  - Pushing away from all-zeros instead, as a quick first try did, cast every picture magenta.
+- **Files:** `kandinsky-community/kandinsky-2-2-prior`, its image encoder only (3.7 GB); `kandinsky-community/kandinsky-2-2-decoder`, the U-Net (5.0 GB), MoVQ (0.27 GB) and configs. 9.0 GB in all. The prior's own diffusion model and text encoder (6.9 GB) aren't needed.
+- **Measured on this Mac (M1 Pro, 32 GB, torch 2.15 on MPS):**
+  - 99 pictures encode in 44 s; 513 in 188 s.
+  - One 512 px picture decodes in about 16 s; the latent image and its axes, nine pictures, take about 3 minutes.
+  - Peak memory is about 8 GB.
+- **What its latent image looks like:**
+  - **99 Hiroshige prints (CC0):** a whole Hiroshige-like scene: pines, a far mountain, travellers, a boat, a cartouche of text. The axes run from a bird study to a crowded street scene, and from Fuji over water to buildings and people.
+  - **40 landscapes (CC0):** a 19th-century tonal landscape, trees against an evening sky.
+  - **513 mixed OASIS photos:** a close view of earth and soil. That is the common ground of a camera roll of animals, food, weather and things; the pixel average of the same photos is brown fog. OASIS is research-only, so its picture isn't in this repository.
+
+![Hiroshige: the latent image and axes 1–3 (top), the four prints nearest the centre and the three furthest (bottom)](images/latent-image-kandinsky-hiroshige.jpg)
+
+![40 landscapes: the latent image and axes 1–3 (top), the nearest and furthest paintings (bottom)](images/latent-image-kandinsky-aic-landscapes.jpg)
+
+![Decoding settings for the same Hiroshige centre: guidance 1, 2 and 4 against all-zeros (the last two magenta), then 2 and 4 against a plain grey picture](images/latent-image-guidance.jpg)
+
+- **Training the decoder on the collection (the "based on the training" part):**
+  - The statistics are fitted to the person's images. The decoder can also learn them: LoRA adds small weights (1.6M, rank 8, on the U-Net's attention) and trains only those, on the collection's own pictures.
+  - Measured: 1.2 s a step of 2 pictures at 512 px in the prototype, 1.5 s through the helper (with the page open); 9 GB. 800 steps (16 passes over 100 pictures) took 16 and 20 minutes, plus about 5 minutes to draw the latent image and axes again with the trained decoder.
+  - **What it changed, on Hiroshige:** the same centre drawn after training has the prints' scattered inscriptions instead of a boxed cartouche, and their paper tone and finer line. The subject stays; the look moves toward the collection.
+
+![The Hiroshige latent image before (left) and after (right) the decoder trained on the 99 prints for 800 steps](images/latent-image-trained-decoder-hiroshige.jpg)
+
+- **What it means:** the centre of the collection in a space a very large model learned from hundreds of millions of pictures, drawn by a decoder that turns that space into pictures. It isn't a blur, because the decoder always draws a whole picture. That is also its limit: the decoder fills in what a centre doesn't say, in the manner of the pictures it was trained on. Training it on the collection moves that manner toward the person's own.
+- **Cost:** 9 GB download, 16 GB Mac, about 3 minutes to make, about 25 to train and redraw.
+
+### Recommendation (built)
+
+**Main path: (5), Kandinsky 2.2, with its decoder trained on the collection as the second step.**
+
+- It is the only way that gives a picture a reader recognises as the collection's, for a mixed collection as well as a coherent one.
+- The statistics are fitted to the person's images, and the decoder then learns their look: that is "train on a person's images and make the latent image from what the model learned".
+- **Beside it:** (1), the pixel average, as the baseline, on the same page.
+- **(2), TAESD,** is the way to do it on an 8 GB Mac. It isn't built.
+- **(4)** is not built: (5)'s training step does what it was for, better.
 
 ## 4. The texts
 
@@ -136,48 +184,65 @@ These texts are on the subconscious, memory and perception, and all are public d
 | Goethe, *Theory of Colours* | Gutenberg **50572** | |
 | Wikipedia: "Unconscious mind", "Preconscious", "Composite portrait", "Gestalt psychology" | `data raw wikipedia <title> <name>` (built) | CC BY-SA 4.0: credit the article, share alike |
 
-**How they enter: they don't change the model, and the card says so.** None of the four ways reads text: a VAE learns pixels, and the trained model learns the person's images. So the texts stay as **framing**:
+**How they enter: they don't change the model, and the card says so.** None of the five ways reads text: the encoder is given pictures only, and the trained decoder learns the person's images. So the texts stay as **framing**:
 
 - a reading list on the card, with the Galton–Freud passage quoted;
 - passages the student chooses, printed with the latent image on the gallery page, each with its source.
 
-There is one place they could touch the numbers. SigLIP can embed a sentence, so the sentences nearest each SigLIP axis could be listed as that axis's "name". In the mood test, SigLIP matched sentences about colour and light and missed abstract ones. James on memory, or Freud on condensation, would be matched almost at random. I'd leave that out rather than make the claim bigger than it is.
+There is one place they could touch the numbers. A CLIP-like encoder can embed a sentence, so the sentences nearest each SigLIP axis could be listed as that axis's "name". In the mood test, SigLIP matched sentences about colour and light and missed abstract ones. James on memory, or Freud on condensation, would be matched almost at random. I'd leave that out rather than make the claim bigger than it is.
 
 ## 5. The gallery step
 
 Point it at a folder: the collection itself, or another one ("how close are these museum pictures to my latent image?"). For each image it gives:
 
-- **Distance from the latent image:** in the trained model's code space, in units of the collection's own spread, so 1 is typical and 3 is far. It also gives the SigLIP distance ("near in subject") beside it.
+- **Distance from the latent image:** in the encoder's 1280 numbers, in units of the collection's own spread, so 1 is a typical picture of it. It also gives the cosine to the centre ("near in subject").
+  - Measured: against the Hiroshige latent image, the 40 landscapes range from 0.88 to 2.15. The nearest is a Hiroshige print among them, then a Hokusai; the furthest is a Western *Annunciation*. The prints themselves range from 0.78 to 1.57.
 - **The axes it pulls toward:** its position on the first five axes, with sign. Each axis is shown once at the top of the page as its two decoded ends, so "+2 on axis 1" can be seen, not just read.
-- **What it brings:** the part of the image that the latent image and its first five axes don't explain. That is the difference between the image and its rebuilding from those. It is shown as a small heat map, and its size is a number: high means the image brings something the collection mostly lacks.
+- **What it brings:** the share of how the image differs from the centre that the first five axes don't explain. High means the image brings something the collection mostly lacks.
+  - A heat map, as first planned, needs a model of pixels. This one measures the whole picture, so the map is replaced by a picture: for the images that bring most (4 by default), the latent image with that image's own unexplained part added, decoded. It shows what that image would bring to the centre.
+  - Measured: for pictures far from the collection, the unexplained part is most of the picture, so "what it brings" is close to the picture itself in the collection's manner. Against the trained Hiroshige decoder, Munch's *The Scream* comes back as a woodblock-like print on Hiroshige's paper.
 
 **Output:** `workspace/outputs/<set>-<model>/`:
 
-- `gallery.html`, the contact sheet: the latent image, its axes, and every image with its distances, axes and heat map, sorted from nearest to furthest. It is one file, sandboxed, as in c58301a.
+- `gallery.html`, the contact sheet: the latent image (and the trained decoder's, if trained), the pixel average, the axes, and every image with its distance, axes (as bars) and what it brings, sorted from nearest to furthest. It is one file, sandboxed, as in c58301a.
 - `latent.json`, with every number above.
-- `latent.png` and `axis-<n>-<sign>.png`.
+- `latent.png`, `axis-<n>-<sign>.png` and `brings-<image>.png`.
 
 ## 6. The check
 
-There is no right answer to score against, so the check is whether the model holds up:
+There is no right answer to score against, so the check is whether the statistics hold up. Each is the mean of 20 random splits.
 
-- **Held-out fit:** set 20% of the collection aside. Those images should rebuild about as well as the training images. If they rebuild far worse, the model memorised the collection rather than learning it, and the card says "too few images for training; use the code average".
-- **Stability:** train twice on two random halves of the collection. The two latent images should look alike, and the first axes should point the same way. That is measured as the correlation between the halves' axes, with 0.7 or more counting as stable. A latent image that changes with the half is noise, not the collection's.
-- **Against the baselines:** distance between the trained centre and the code mean, and between the trained centre and the pixel average. These are reported, not judged.
+- **The centre across halves:** split the collection in two at random and fit each half. The two centres' cosine should be 0.95 or more. A centre that changes with the half is noise, not the collection's.
+- **Axis 1 across halves:** the two halves' first axes should point the same way: their cosine, ignoring sign, should be 0.7 or more. Below that the gallery page says to read the axes as a sketch.
+- **Set-aside fit:** set 20% aside and fit the rest. The axes should explain about as much of how the set-aside images differ as of the training images: 0.75 or more of it.
 
-**Good enough** means set-aside rebuild error within 25% of training error and the first axis stable (0.7 or more) across halves. Below that, the card falls back to (2).
+**Measured:**
 
-## 7. The build, after your OK
+| Collection | Centre across halves | Axis 1 across halves | Set-aside fit |
+|---|---|---|---|
+| 100 Hiroshige prints (CC0), through the helper | **0.993**, stable | **0.72**, stable | 0.67 |
+| 40 landscapes (CC0), prototype | 0.949, just under | 0.30, not stable | not measured |
+| 513 mixed OASIS photos, prototype | 0.993, stable | 0.83, stable | not measured |
+
+- **The centre holds** from about 40 pictures.
+- **The axes need about 100.**
+- **Set-aside fit is under 0.75 even at 100 prints:** five axes fitted to 80 pictures in 1280 numbers partly fit those 80 pictures themselves. The page reports it rather than hiding it. The axes are a description of this collection, not a law that new pictures will follow.
+
+The 0.75 threshold was set before measuring; it may be too strict for so few pictures in so many numbers.
+
+## 7. The build (done 2026-11-05)
 
 | Step on the card | Tab | Command |
 |---|---|---|
-| get the image autoencoder (TAESD, MIT, 10 MB) | Models | `model get taesd` |
-| bring in the person's images | Image segmentation | upload, or `look museum "<artist>" <set> --limit 100` |
-| bring in texts, as framing | Data | `data raw gutenberg 66048 freud-dreams`, `data raw gutenberg 20842 bergson-dreams` |
-| the pixel average and the code average | Image segmentation | `latent average images/<set>` |
-| train the collection's model, with 20% set aside, and check it on two halves | Train | `latent train <name> images/<set>` |
-| measure a gallery against it | Image segmentation | `latent gallery <name> images/<gallery>` |
-| package it | Share | `package <name>`, `zip packages/<name>` |
+| get the picture encoder and decoder (Kandinsky 2.2, Apache 2.0, 9 GB) | Models | `model get kandinsky` |
+| bring in the collection | Image segmentation | upload, or `look museum "Utagawa Hiroshige" hiroshige --limit 100` |
+| bring in texts, as framing | Data | `data raw gutenberg 66048 freud-dreams`, `data raw wikipedia Composite_portrait composite-portrait` |
+| make the latent image, its axes and the pixel average, and check it | Image segmentation | `latent make <name> images/<set>` |
+| train the decoder on the collection (about 16 minutes) | Train | `latent train <name> [--steps 800]` |
+| bring in a gallery | Image segmentation | `look museum landscape aic-landscapes --limit 40` |
+| measure the gallery against it | Image segmentation | `latent gallery <name> images/<gallery> [--brings 4]` |
+
+Not built: a package to run it outside Variable Machine. It would have to carry instructions for a 9 GB download, so the gallery page and `latent.json` are what leave the tool; `zip latents/<name>` shares the statistics, pictures and trained LoRA (a 16 MB zip for Hiroshige, 6.6 MB of it the LoRA).
 
 **Carried over from c58301a:**
 
@@ -185,17 +250,18 @@ There is no right answer to score against, so the check is whether the model hol
 - `data raw wikipedia`;
 - the sandboxed HTML gallery and its served type;
 - the python extra pattern and the package's runs-without-Variable-Machine script;
-- the SigLIP encoder, for (3);
 - the Projects card format and step links.
 
-**To take out:** the image-moods card, `mood` commands, the OASIS import and the `sorts` kind. They answer the old brief. I'd remove them from this branch rather than merge them, unless you want image moods kept as a second card.
+**Still on the branch, below the new card:** the image-moods card, the `mood` commands, the OASIS import and SigLIP. They answer the old brief. Removing them is Kevin's call; they don't affect this card.
 
 **New:**
 
-- `model get taesd`;
-- `python/variable_machine/latent.py` (MLX: TAESD, the small VAE, statistics);
-- `helper/src/latent.ts`;
-- the card in `ProjectsPanel.tsx` and `projects.md`;
-- a guide section.
+- `model get kandinsky`: two repos into `workspace/tools/kandinsky/{prior,decoder}`, with a free-space check first;
+- `python/variable_machine/latent.py` (torch, diffusers, peft): make, train, gallery;
+- the `latent` extra in `python/pyproject.toml`;
+- `helper/src/latent.ts`, with a memory check (16 GB);
+- `workspace/latents/<name>/`, which `zip` and `trash` know;
+- the card at the top of Projects (`ProjectsPanel.tsx`, `projects.md`);
+- section 1 of `docs/projects-test-guide.md`.
 
-**Test:** end to end on 100 AIC works by one artist and on 40 landscapes, on a spare port. Report the held-out and stability numbers, and whether the trained centre differs from the code average.
+**Tested** end to end through the helper on port 4841: 100 Hiroshige prints (made and trained), measured against the 40 landscapes and against themselves.

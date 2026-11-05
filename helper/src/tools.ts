@@ -183,12 +183,22 @@ async function getTracker(t: TrackerModel): Promise<boolean> {
 
 export const encoderPresent = async (e: EncoderModel) => (await exists(path.join(dir(e), 'manifest.json'))) && (await Promise.all(e.files.map((f) => exists(path.join(dir(e), f))))).every(Boolean)
 
-/** A picture encoder for image moods: its ONNX files and tokenizer, run by onnxruntime in python (mood.py). */
+/** A picture encoder: SigLIP for image moods (ONNX, onnxruntime, mood.py), or Kandinsky 2.2 for the latent image (torch, latent.py). */
 async function getEncoder(e: EncoderModel): Promise<boolean> {
   if (await encoderPresent(e)) return print(`  already here: workspace/tools/${e.name}`), true
-  print(`  ${e.name}: ${e.repo} (from ${e.original}) · ${e.license} · about ${e.mb} MB · ${KINDS.sorts.id} (${KINDS.sorts.what})`)
-  if (!(await fetchFiles(e, e.files))) return false
-  const declared = (await hubLicense(e.original)) ?? (await hubLicense(e.repo))
+  print(`  ${e.name}: ${e.repos ? Object.values(e.repos).join(' and ') : `${e.repo} (from ${e.original})`} · ${e.license} · about ${e.mb} MB · ${e.repos ? (e.runsIn ?? '') : `${KINDS[e.kind].id} (${KINDS[e.kind].what})`}`)
+  if (e.repos) {
+    // files from more than one repo: each file's first folder names its repo
+    const need = e.mb * 1e6 * 1.1
+    const free = await fs.statfs(path.join(WORKSPACE, 'tools')).then((s) => s.bavail * s.bsize, () => Infinity)
+    if (free < need && !(await Promise.all(e.files.map((f) => exists(path.join(dir(e), f))))).every(Boolean)) {
+      print(`  ${e.name} needs about ${(e.mb / 1000).toFixed(1)} GB and the workspace's disk has ${(free / 1e9).toFixed(1)} GB free; make room, or run Variable Machine from a bigger drive`)
+      return false
+    }
+    for (const [top, repo] of Object.entries(e.repos))
+      if (!(await fetchFiles({ name: path.join(e.name, top), repo }, e.files.filter((f) => f.startsWith(`${top}/`)).map((f) => f.slice(top.length + 1))))) return false
+  } else if (!(await fetchFiles(e, e.files))) return false
+  const declared = e.repos ? ((await Promise.all(Object.values(e.repos).map(hubLicense))).every((l) => l === 'apache-2.0') ? 'apache-2.0' : null) : ((await hubLicense(e.original)) ?? (await hubLicense(e.repo)))
   const license = declared === 'apache-2.0' ? 'Apache 2.0' : (declared ?? e.license)
   const manifest = {
     name: e.name,
@@ -197,9 +207,9 @@ async function getEncoder(e: EncoderModel): Promise<boolean> {
     created: new Date().toISOString(),
     license,
     licenseChecked: !!declared,
-    inputs: e.files.map((f) => `https://huggingface.co/${e.repo}/resolve/main/${f}`),
+    inputs: e.files.map((f) => (e.repos ? `https://huggingface.co/${e.repos[f.split('/')[0]]}/resolve/main/${f.slice(f.indexOf('/') + 1)}` : `https://huggingface.co/${e.repo}/resolve/main/${f}`)),
     command: `model get ${e.name}`,
-    runsIn: 'python (onnxruntime), in the mood extra',
+    runsIn: e.runsIn ?? 'python (onnxruntime), in the mood extra',
     original: e.original,
   }
   await fs.writeFile(path.join(dir(e), 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')

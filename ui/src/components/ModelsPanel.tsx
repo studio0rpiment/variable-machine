@@ -488,7 +488,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
         ))}
       </div>
 
-      <h2 className="panel__title label">picture encoders · for image moods, on the projects tab</h2>
+      <h2 className="panel__title label">picture encoders · for the latent image and image moods, on the projects tab</h2>
       <p className="models-intro">
         <KindLine kind="sorts" />
       </p>

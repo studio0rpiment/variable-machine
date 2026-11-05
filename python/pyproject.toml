@@ -18,6 +18,10 @@ voice = ["mlx-audio>=0.6.1"]
 # onnxruntime (a 21MB download, 75MB installed), with Pillow to read the photos. The classifier
 # trained on top is plain numpy.
 mood = ["onnxruntime>=1.31.1", "pillow>=11.0"]
+# The latent image: Kandinsky 2.2's image encoder and decoder in torch, on the
+# Mac's GPU (MPS); peft trains the decoder's LoRA. About 1 GB installed, and the
+# model itself (model get kandinsky) is 9 GB, so it needs a 16 GB Mac.
+latent = ["torch>=2.15.0", "diffusers>=0.42.1", "transformers>=5.22.1", "peft>=0.21.2", "safetensors>=0.5", "pillow>=11.0"]
 
 [tool.uv]
 package = false

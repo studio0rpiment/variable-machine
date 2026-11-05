@@ -21,6 +21,7 @@ import { packageCommand } from './package/index.ts'
 import { papersCommand } from './papers.ts'
 import { readerCommand } from './reader.ts'
 import { moodCommand } from './mood.ts'
+import { latentCommand } from './latent.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -45,9 +46,9 @@ const HELP = `commands
   package <model>                                  an "ask the table" model, or a relevance judge, as a folder for another project: workspace/packages/<model>
   papers search | screen | decide | summarise | list | check | judge <name> …   the research bot: papers and articles on a topic   (papers help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
-  zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
+  zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research|classifiers>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research|classifiers|latents>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -68,6 +69,10 @@ const HELP = `commands
                                                    voices: soprano robot baritone (Soprano), aiden ryan serena vivian (Qwen3-TTS)
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
 
+  model get kandinsky                             Kandinsky 2.2, a picture encoder and decoder for the latent image (9 GB): workspace/tools/kandinsky/
+  latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
+  latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
+  latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
   model get siglip                                a picture encoder for image moods: workspace/tools/siglip/
   mood describe <dataset> --texts raw/<text> …    each mood's prompt and sentences from the texts: data/<dataset>/labels.md
   mood train <name> --data <picture dataset>      a mood classifier, checked on rows set aside: workspace/classifiers/<name>/
@@ -163,6 +168,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'papers') return papersCommand(args, line)
   if (cmd === 'reader') return readerCommand(args)
   if (cmd === 'mood') return moodCommand(args, line)
+  if (cmd === 'latent') return latentCommand(args, line)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)
