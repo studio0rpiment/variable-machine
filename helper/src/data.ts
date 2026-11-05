@@ -11,6 +11,7 @@ import { IMAGE_EXT } from './shared/kinds.ts'
 import { identifyLicense } from './shared/licenses.ts'
 import type { DataSource, DatasetManifest } from './shared/manifest.ts'
 import { DATA_SOURCES, OASST1, SMOLTALK } from './shared/library.ts'
+import { importOasis } from './oasis.ts'
 import { rawCommand } from './rawsources.ts'
 import { detectShape, parseCsv, SHAPES_HELP } from './shared/rowShapes.ts'
 import { describeDataset } from './shared/datasetAbout.ts'
@@ -30,6 +31,7 @@ const HELP = `data new <name> [--format chat|preference|picture]
 data picture <name> images/<set>/<photo> --question "<q>" --answer "<a>"   (a row about a photo; the photo is copied in)
 data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
 data import oasst1 <name> [--limit 300]
+data import oasis <name>   (OASIS: photos rated for valence and arousal, as four moods, people left out; a picture dataset)
 data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rewrite|smol-summarize [--limit 300] [--seed 0]
 data import example <example> <name>   (workspace/examples/data)
 data import hf <owner/name> <name> [--config <c>] [--split train] [--limit 300]   (any dataset on huggingface.co/datasets)
@@ -44,6 +46,7 @@ data words raw/<table> <COLUMN> <VALUE> "<word>, <word>"   (what people call a c
 data questions raw/<table> <name> [--rows 600] [--seed 0] [--voice plain|news|caption]   (questions and the queries that answer them, from the roles)
 data rows raw/<table> <name> --as csv|sentence [--limit 1000]   (the rows as they are, for a model that writes invented ones)
 data raw gutenberg <book number> <name>
+data raw wikipedia <Article_title> <name>
 data raw csv|txt <url> <name> --license "<what the source states>"
 data validate <name>
 data split <name> [--valid 0.1] [--seed 0]
@@ -893,11 +896,12 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     case 'import':
       if (pos[0] === 'example') return importExample(pos[1] ?? '', name, line)
       if (pos[0] === 'oasst1') return importOasst1(name, opts, line)
+      if (pos[0] === 'oasis') return importOasis(name, line)
       if (pos[0] === 'smoltalk') return importSmoltalk(name, opts, line)
       if (pos[0] === 'hf') return importHf(pos[1], name, opts, line)
       if (pos[0] === 'file') return importFile(pos[1], name, opts, line)
       if (pos[0] !== 'dolly') {
-        print(`data import: sources are dolly, oasst1, smoltalk, example <name>, hf <owner/name>, and file uploads/<file>`)
+        print(`data import: sources are dolly, oasst1, smoltalk, oasis (rated photos, as moods), example <name>, hf <owner/name>, and file uploads/<file>`)
         return false
       }
       return importDolly(name, opts, line)

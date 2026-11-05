@@ -21,7 +21,7 @@ The build checks this file against the page, and stops with a message naming the
 ### Projects
 `panel.projects` flag
 
-Finished work you make by putting parts of Variable Machine together: a model that answers questions from a table, a gesture controller for your patch, a cut-out tool, a character's voice. Each card lists the steps in order; each step opens the tab that does it, shows its command, and is marked done when your workspace has what that step makes.
+Finished work you make by putting parts of Variable Machine together: a classifier that sorts pictures by mood, a model that answers questions from a table, a gesture controller for your patch, a cut-out tool, a character's voice. Each card lists the steps in order; each step opens the tab that does it, shows its command, and is marked done when your workspace has what that step makes.
 
 ### The tab, for a screen reader
 `projects.label`
@@ -103,6 +103,83 @@ done on the {tab} tab, in the page: no command
 `projects.step.run`
 
 run this step
+
+## Image moods
+
+### Name
+`projects.mood.title`
+
+image moods
+
+### What it does
+`projects.mood.does`
+
+Learns what a picture conveys, its mood (calm, lively, tense or sombre), from pictures people have rated, and from texts on colour and perception: Goethe, William James, Wikipedia. Then it sorts a gallery: each picture gets a mood, how sure it is, and a one-line reason.
+
+### What you end up with
+`projects.mood.get`
+
+a mood classifier (SigLIP, a picture encoder, with a small classifier on top), its score on pictures set aside, and a gallery page with a CSV and JSON of every picture's mood
+
+### What it can't do
+`projects.mood.limits`
+
+It judges what a picture conveys by its look: colour, light, what is in it. It can't tell what anyone in a picture feels or is like, and it isn't trained to: reading feelings from faces is unreliable, and the EU AI Act bans it in workplaces and schools. The training pictures have no people in them. The reason's passage is found by nearness, not written: it isn't why the classifier chose.
+
+### Step: encoder
+`projects.mood.encoder`
+
+get the picture encoder
+
+### Step: pictures
+`projects.mood.pictures`
+
+bring in pictures rated for their mood, as a picture dataset
+
+### Step: texts
+`projects.mood.texts`
+
+bring in texts on colour and perception
+
+### Step: split
+`projects.mood.split`
+
+set pictures aside for checking
+
+### Step: describe
+`projects.mood.describe`
+
+pick each mood's sentences from the texts, into labels.md; read it, and cut what doesn't fit
+
+### Step: train
+`projects.mood.train`
+
+train the classifier, and check it on the pictures set aside
+
+### Step: gallery pictures
+`projects.mood.gallery`
+
+bring in a gallery to sort: public-domain artworks, or your own photos
+
+### Step: sort
+`projects.mood.sort`
+
+sort the gallery: each picture's mood, how sure, and why
+
+### Step: package
+`projects.mood.package`
+
+package it with classify.py, to sort pictures in another project
+
+### The check
+`projects.mood.checked`
+
+on {n} pictures set aside: {right}% right (balanced F1 {f1}); the texts alone {texts}%, the labels alone {labels}%, always "{common}" {commonest}%
+
+### The gallery
+`projects.mood.open`
+
+open the gallery
 
 ## Ask a table
 

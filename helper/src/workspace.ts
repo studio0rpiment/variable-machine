@@ -48,6 +48,8 @@ const TYPES: Record<string, string> = {
   '.onnx': 'application/octet-stream',
   '.task': 'application/octet-stream',
   '.json': 'application/json',
+  // a gallery page (mood gallery): shown, but sandboxed below, so a page in the workspace can't run code as this app
+  '.html': 'text/html; charset=utf-8',
 }
 
 function json(res: http.ServerResponse, code: number, body: unknown) {
@@ -212,6 +214,7 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
         'content-type': TYPES[path.extname(target).toLowerCase()] ?? 'text/plain; charset=utf-8',
         'content-length': String(st.size),
         'cache-control': 'no-store',
+        ...(path.extname(target).toLowerCase() === '.html' && { 'content-security-policy': "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'" }),
         ...(download ? { 'content-disposition': `attachment; filename="${path.basename(target)}"` } : {}),
       })
       createReadStream(target).pipe(res)

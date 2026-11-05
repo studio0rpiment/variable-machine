@@ -18,29 +18,31 @@ export default function RawCard({ onRun, busy }: { onRun: (line: string) => void
   const [what, setWhat] = useState('11')
   const [name, setName] = useState('alice')
   const [license, setLicense] = useState('')
-  const line = joinWords(['data', 'raw', kind, what, name, ...(kind !== 'gutenberg' && license ? ['--license', license] : [])])
-  const ok = NAME.test(name) && !!what && (kind === 'gutenberg' ? /^\d+$/.test(what) : /^https?:\/\//.test(what) && !!license.trim())
+  // a book and an article come with a license this app knows; anything else says what its source states
+  const known = kind === 'gutenberg' || kind === 'wikipedia'
+  const line = joinWords(['data', 'raw', kind, what, name, ...(!known && license ? ['--license', license] : [])])
+  const ok = NAME.test(name) && !!what && (kind === 'gutenberg' ? /^\d+$/.test(what) : kind === 'wikipedia' ? /^[^\s/][^/]*$/.test(what) : /^https?:\/\//.test(what) && !!license.trim())
   return (
     <Manifest name="raw material" lines={[RAW_SOURCES[kind].about, 'lands in workspace/raw as passages for the generator']}>
       <div className="choice" role="radiogroup" aria-label="raw source">
         <span className="label label--muted">from</span>
         {(Object.keys(RAW_SOURCES) as Kind[]).map((k) => (
-          <button key={k} type="button" role="radio" aria-checked={k === kind} className={`text-button ${k === kind ? 'is-active' : ''}`.trim()} onClick={() => (setKind(k), setWhat(k === 'gutenberg' ? '11' : ''))}>
+          <button key={k} type="button" role="radio" aria-checked={k === kind} className={`text-button ${k === kind ? 'is-active' : ''}`.trim()} onClick={() => (setKind(k), setWhat(k === 'gutenberg' ? '11' : k === 'wikipedia' ? 'Color_psychology' : ''))}>
             {k}
           </button>
         ))}
       </div>
       <div className="inline-fields">
         <label className="field">
-          <span className="label label--muted">{kind === 'gutenberg' ? 'book number' : 'url'}</span>
-          <input type="text" value={what} onChange={(e) => setWhat(e.target.value.trim())} spellCheck={false} placeholder={kind === 'gutenberg' ? '11' : 'https://…'} />
+          <span className="label label--muted">{kind === 'gutenberg' ? 'book number' : kind === 'wikipedia' ? 'article title' : 'url'}</span>
+          <input type="text" value={what} onChange={(e) => setWhat(e.target.value.trim())} spellCheck={false} placeholder={kind === 'gutenberg' ? '11' : kind === 'wikipedia' ? 'Color_psychology' : 'https://…'} />
         </label>
         <label className="field">
           <span className="label label--muted">as</span>
           <input type="text" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} spellCheck={false} />
         </label>
       </div>
-      {kind !== 'gutenberg' && (
+      {!known && (
         <label className="field">
           <span className="label label--muted">license the source states</span>
           <input type="text" value={license} onChange={(e) => setLicense(e.target.value)} placeholder="e.g. CC BY 4.0" />

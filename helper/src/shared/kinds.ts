@@ -7,7 +7,7 @@
  * map all say the same thing about it.
  */
 
-export type KindId = 'writes' | 'sees' | 'looks' | 'moves' | 'speaks' | 'listens'
+export type KindId = 'writes' | 'sees' | 'sorts' | 'looks' | 'moves' | 'speaks' | 'listens'
 
 export interface KindInfo {
   id: KindId
@@ -24,6 +24,7 @@ export interface KindInfo {
 export const KINDS: Record<KindId, KindInfo> = {
   writes: { id: 'writes', what: 'text generation', io: 'text in, text out', tabs: ['modelfile', 'train', 'prefer', 'merge', 'chat'] },
   sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'data', 'train'] },
+  sorts: { id: 'sorts', what: 'image classification', io: 'a picture in, one of a few labels out, and how sure', tabs: ['data', 'projects'] },
   looks: { id: 'looks', what: 'image tools: cut something out, distance between blobs, select a blob', io: 'a photo in, a picture made from it out', tabs: ['image segmentation'] },
   moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['gesture'] },
   speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['speech'] },
@@ -100,6 +101,45 @@ export const TOOL_MODELS: ToolModel[] = [
 ]
 
 export const toolModel = (name: string) => TOOL_MODELS.find((t) => t.name === name)
+
+/**
+ * A picture encoder (the sorts kind): it turns a picture, and a sentence, into
+ * numbers in one shared space, so a small classifier trained on top can sort
+ * pictures into a few labels (python/variable_machine/mood.py). Run by
+ * onnxruntime in the python project's `mood` extra, not in the page.
+ *
+ * Checked 2026-11-04 (onnxruntime 1.31.1): the 8-bit vision and text files
+ * give the same nearest captions as the full ones on the example photos; 16
+ * pictures take about a second on an M1 Pro, on the CPU.
+ */
+export interface EncoderModel {
+  name: string
+  kind: 'sorts'
+  repo: string
+  /** where the weights come from: the repo above is its ONNX conversion */
+  original: string
+  license: string
+  maker: string
+  builtFor: string
+  files: string[]
+  mb: number
+}
+
+export const ENCODER_MODELS: EncoderModel[] = [
+  {
+    name: 'siglip',
+    kind: 'sorts',
+    repo: 'Xenova/siglip-base-patch16-224',
+    original: 'google/siglip-base-patch16-224',
+    license: 'Apache 2.0',
+    maker: 'Google (SigLIP), 2023; ONNX by Xenova',
+    builtFor: 'Puts a picture and a sentence into the same space of 768 numbers, so a picture lands near the words that describe it. Trained by Google on pictures and their captions from the web. It sorts nothing by itself: a classifier trained on your labels does that, on top.',
+    files: ['config.json', 'preprocessor_config.json', 'tokenizer.json', 'tokenizer_config.json', 'special_tokens_map.json', 'onnx/vision_model_quantized.onnx', 'onnx/text_model_quantized.onnx'],
+    mb: 214,
+  },
+]
+
+export const encoderModel = (name: string) => ENCODER_MODELS.find((e) => e.name === name)
 
 /** The photos the image tools take: what an image set may hold. */
 export const IMAGE_EXT = /\.(jpe?g|png|webp)$/i

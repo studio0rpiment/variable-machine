@@ -49,4 +49,8 @@ export interface DatasetManifest extends Manifest {
   voice?: string
   /** a relevance judge's set, from the research bot's decisions: workspace/research/<folder> */
   research?: { folder: string; topic: string }
+  /** a picture set of moods (data import oasis): its labels and how ratings became them */
+  mood?: { labels: string[]; from: string; pleasantAbove?: number; highArousalAbove?: number; leftOut?: unknown }
+  /** the texts that inform its moods (mood describe): raw/<name> each */
+  texts?: string[]
 }

@@ -9,7 +9,7 @@ import { Explained } from '../explain/Explained'
 import { rich, say } from '../text/say'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
-const TAB_NAME = { data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
+const TAB_NAME = { models: 'models', data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
 type Tab = keyof typeof TAB_NAME
 
 interface Step {
@@ -24,6 +24,8 @@ interface Step {
   or?: boolean
   /** what it found, once it has run */
   result?: string
+  /** a file it made, to open: a workspace path */
+  link?: { path: string; label: string }
 }
 
 interface Project {
@@ -82,10 +84,16 @@ interface Have {
   readerChecks: { dataset: string; model: string; at: string; n: number; scores: { model: string; right: number; fields: number; rows: number; ms: number }[] }[]
   /** research folders, with the files each has (screen.json, reading-list.md) */
   research: { folder: string; created?: string; files: string[] }[]
+  /** mood classifiers, with their check on the pictures set aside */
+  classifiers: { folder: string; created?: string; data: string; check?: { setAside: number; accuracy: number; macroF1: number; commonest: number; commonestLabel: string; textsAlone: number; labelsAlone: number } }[]
+  /** picture datasets that have a labels.md (mood describe has run) */
+  described: string[]
+  /** each image set's manifest: what it is, and where it came from */
+  imageSets: { folder: string; created?: string; about?: string }[]
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, classifiers, imageSets] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -96,6 +104,8 @@ async function readHave(): Promise<Have> {
     readManifests<Output>('outputs'),
     readManifests<Gesture>('gestures'),
     readManifests<{ created?: string }>('research'),
+    readManifests<Have['classifiers'][number]>('classifiers'),
+    readManifests<Have['imageSets'][number]>('images'),
   ])
   const models = await Promise.all(
     mfs
@@ -116,6 +126,8 @@ async function readHave(): Promise<Have> {
         if (c?.reader) readerChecks.push(c)
       }
     }
+  const described: string[] = []
+  for (const d of data.filter((x) => x.format === 'picture')) if ((await listDir(`data/${d.folder}`)).some((f) => f.name === 'labels.md')) described.push(d.folder)
   const sets = images.filter((i) => i.dir).map((i) => i.name)
   const set = sets.includes('classic-cv') || !sets.length ? 'classic-cv' : sets[0]
   const photo = (await listDir(`images/${set}`)).find((f) => /\.(jpe?g|png|webp)$/i.test(f.name))?.name ?? null
@@ -132,6 +144,9 @@ async function readHave(): Promise<Have> {
     photo: photo && `images/${set}/${photo}`,
     outputs,
     gestures,
+    classifiers,
+    described,
+    imageSets,
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
 }
@@ -205,7 +220,58 @@ function projects(h: Have): Project[] {
       .map((x) => say('projects.studio.result', { model: x.model, right: pc(x.right, x.fields), rows: pc(x.rows, compared.n), s: (x.ms / 1000).toFixed(1) }))
       .join(' · ')
 
+  // image moods: encoder → rated pictures → texts → split → labels.md → classifier → a gallery set → its moods → package
+  const moodSets = h.data.filter((d) => d.format === 'picture' && (d.mood || h.described.includes(d.folder)))
+  const moodSet = last(moodSets)?.folder ?? 'oasis-moods'
+  const moodTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia/.test(String(r.source ?? '')))
+  const texts = (last(moodSets.filter((d) => Array.isArray(d.texts)))?.texts as string[] | undefined) ?? (moodTexts.length ? moodTexts.map((r) => `raw/${r.folder}`) : ['raw/goethe-colours', 'raw/colour-psychology'])
+  const clfs = h.classifiers.filter((c) => moodSets.some((d) => d.folder === c.data))
+  const clf = last(clfs)
+  const clfName = clf?.folder ?? `${moodSet}-siglip`
+  // a set to sort: one that isn't the training pictures, the newest
+  const gallerySet = last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv')))?.folder
+  const sorted = h.outputs.filter((o) => o.items?.some((i) => i.tool === 'mood'))
+  const lastSorted = last(sorted)
+  const pcm = (x: number) => Math.round(x * 100)
+
   return [
+    {
+      id: 'mood',
+      title: say('projects.mood.title'),
+      does: say('projects.mood.does'),
+      get: say('projects.mood.get'),
+      limits: say('projects.mood.limits'),
+      steps: [
+        { name: say('projects.mood.encoder'), tab: 'models', commands: ['model get siglip'], done: h.tools.includes('siglip') },
+        { name: say('projects.mood.pictures'), tab: 'data', commands: [joinWords(['data', 'import', 'oasis', moodSet])], done: moodSets.length > 0 },
+        {
+          name: say('projects.mood.texts'),
+          tab: 'data',
+          commands: [joinWords(['data', 'raw', 'gutenberg', '50572', 'goethe-colours']), joinWords(['data', 'raw', 'wikipedia', 'Color_psychology', 'colour-psychology'])],
+          done: moodTexts.length > 0,
+        },
+        { name: say('projects.mood.split'), tab: 'data', commands: [joinWords(['data', 'split', moodSet, '--valid', '0.2']), joinWords(['data', 'validate', moodSet])], done: moodSets.some((d) => d.split) },
+        { name: say('projects.mood.describe'), tab: 'data', commands: [joinWords(['mood', 'describe', moodSet, '--texts', ...texts]), joinWords(['cat', `data/${moodSet}/labels.md`])], done: moodSets.some((d) => h.described.includes(d.folder)) },
+        {
+          name: say('projects.mood.train'),
+          tab: 'train',
+          commands: [joinWords(['mood', 'train', clfName, '--data', moodSet])],
+          done: clfs.length > 0,
+          result: clf?.check
+            ? say('projects.mood.checked', { n: clf.check.setAside, right: pcm(clf.check.accuracy), f1: clf.check.macroF1.toFixed(2), texts: pcm(clf.check.textsAlone), labels: pcm(clf.check.labelsAlone), common: clf.check.commonestLabel, commonest: pcm(clf.check.commonest) })
+            : undefined,
+        },
+        { name: say('projects.mood.gallery'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'landscape', 'aic-landscapes', '--limit', '40'])], done: !!gallerySet },
+        {
+          name: say('projects.mood.sort'),
+          tab: 'segmentation',
+          commands: [joinWords(['mood', 'gallery', clfName, `images/${gallerySet ?? 'aic-landscapes'}`])],
+          done: sorted.length > 0,
+          link: lastSorted ? { path: `outputs/${lastSorted.folder}/gallery.html`, label: say('projects.mood.open') } : undefined,
+        },
+        { name: say('projects.mood.package'), tab: 'share', commands: [joinWords(['package', clfName]), joinWords(['zip', `packages/${clfName}`])], done: clfs.some((c) => h.packages.includes(c.folder)) },
+      ],
+    },
     {
       id: 'ask',
       title: say('projects.ask.title'),
@@ -313,7 +379,7 @@ export default function ProjectsPanel() {
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('modelfiles/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.endsWith('labels.md') || e.path.startsWith('modelfiles/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
 
   const run = async (lines: string[]) => {
@@ -371,6 +437,11 @@ export default function ProjectsPanel() {
                                 <CommandPreview key={c} command={c} onRun={() => void run([c])} disabled={c.includes('<')} running={busy === c} label={say('projects.step.run')} />
                               ))}
                             {s.result && <span className="label label--muted project-step__result">{s.result}</span>}
+                            {s.link && (
+                              <a className="text-link project-step__result" href={`/api/workspace/file?path=${encodeURIComponent(s.link.path)}`} target="_blank" rel="noreferrer">
+                                {s.link.label}
+                              </a>
+                            )}
                           </span>
                         </li>
                       )

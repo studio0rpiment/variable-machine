@@ -241,7 +241,7 @@ function jsonlToCsv(text: string): string | null {
 export async function rawCommand(args: string[], opts: Record<string, string>, line: string): Promise<boolean> {
   const [kind, what, name] = args
   if (!kind || !(kind in RAW_SOURCES) || !what || !name || !NAME.test(name)) {
-    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw jsonl <url> <name> --license "<…>"   (a table written as JSON lines)\n       data raw txt <url> <name> --license "<what the source states>"')
+    print('usage: data raw gutenberg <book number> <name>\n       data raw wikipedia <Article_title> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw jsonl <url> <name> --license "<…>"   (a table written as JSON lines)\n       data raw txt <url> <name> --license "<what the source states>"')
     return false
   }
   try {
@@ -266,6 +266,21 @@ export async function rawCommand(args: string[], opts: Record<string, string>, l
       const title = /Title:\s*(.+)/.exec(text)?.[1]?.trim()
       if (title) print(`title: ${title}`)
       await save(name, 'txt', body, chunkText(body), { url, license: RAW_SOURCES.gutenberg.license, licenseChecked: true, line, kind })
+      return true
+    }
+    if (kind === 'wikipedia') {
+      // the article as plain text, from the API's extracts (no markup); its page is the credit
+      const title = what.replace(/ /g, '_')
+      const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&format=json&formatversion=2&redirects=1&titles=${encodeURIComponent(title)}`
+      const json = await fetchText(url, abort)
+      if (!json) return false
+      const page = (JSON.parse(json) as { query?: { pages?: { title?: string; extract?: string; missing?: boolean }[] } }).query?.pages?.[0]
+      if (!page?.extract || page.missing) return print(`data raw wikipedia: no article called ${what}`), false
+      print(`title: ${page.title}`)
+      // drop the reference sections, which are lists of citations, not text
+      const body = page.extract.split(/\n==+ (See also|References|Notes|Further reading|External links|Sources|Bibliography) ==+\n/)[0]
+      const link = `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title!.replace(/ /g, '_'))}`
+      await save(name, 'txt', body, chunkText(body), { url: link, license: `${RAW_SOURCES.wikipedia.license}: ${link}`, licenseChecked: true, line, kind, about: `Wikipedia, "${page.title}"` })
       return true
     }
     if (!/^https?:\/\//.test(what)) return print(`data raw ${kind}: give a http(s) URL`), false

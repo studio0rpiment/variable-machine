@@ -3,7 +3,7 @@ import path from 'node:path'
 import { WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
 import { spawnStreamed } from './run.ts'
-import { KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, seeModelfile, toolModel, trackerModel, type SeeModel, type ToolModel, type TrackerModel } from './shared/kinds.ts'
+import { ENCODER_MODELS, KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, encoderModel, seeModelfile, toolModel, trackerModel, type EncoderModel, type SeeModel, type ToolModel, type TrackerModel } from './shared/kinds.ts'
 import { ollamaCommand } from './ollamaCommands.ts'
 
 /**
@@ -181,12 +181,40 @@ async function getTracker(t: TrackerModel): Promise<boolean> {
   return true
 }
 
+export const encoderPresent = async (e: EncoderModel) => (await exists(path.join(dir(e), 'manifest.json'))) && (await Promise.all(e.files.map((f) => exists(path.join(dir(e), f))))).every(Boolean)
+
+/** A picture encoder for image moods: its ONNX files and tokenizer, run by onnxruntime in python (mood.py). */
+async function getEncoder(e: EncoderModel): Promise<boolean> {
+  if (await encoderPresent(e)) return print(`  already here: workspace/tools/${e.name}`), true
+  print(`  ${e.name}: ${e.repo} (from ${e.original}) · ${e.license} · about ${e.mb} MB · ${KINDS.sorts.id} (${KINDS.sorts.what})`)
+  if (!(await fetchFiles(e, e.files))) return false
+  const declared = (await hubLicense(e.original)) ?? (await hubLicense(e.repo))
+  const license = declared === 'apache-2.0' ? 'Apache 2.0' : (declared ?? e.license)
+  const manifest = {
+    name: e.name,
+    kind: 'tool-model',
+    modelKind: e.kind,
+    created: new Date().toISOString(),
+    license,
+    licenseChecked: !!declared,
+    inputs: e.files.map((f) => `https://huggingface.co/${e.repo}/resolve/main/${f}`),
+    command: `model get ${e.name}`,
+    runsIn: 'python (onnxruntime), in the mood extra',
+    original: e.original,
+  }
+  await fs.writeFile(path.join(dir(e), 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+  print(`  ◂ workspace/tools/${e.name} · license ${license}${declared ? ` (read from Hugging Face, ${e.original})` : ' (expected; Hugging Face did not say)'}`)
+  broadcast({ type: 'workspace.changed', path: `tools/${e.name}/manifest.json`, kind: 'add' })
+  return true
+}
+
 export async function modelCommand(args: string[]): Promise<boolean> {
   const [sub, name, ...rest] = args
   if (sub === 'list' && !name) {
     for (const t of TOOL_MODELS) print(`  ${(await toolPresent(t)) ? '●' : '○'} ${t.name.padEnd(12)} ${t.kind} · ${t.action} · ${t.repo} · ${t.license} · ${t.mb} MB`)
     for (const t of TRACKER_MODELS) print(`  ${(await trackerPresent(t)) ? '●' : '○'} ${t.name.padEnd(12)} ${t.kind} · ${t.file} · ${t.license} · ${t.mb} MB`)
     for (const s of SEE_MODELS) print(`  ${(await seePresent(s)) ? '●' : '○'} ${s.name.padEnd(12)} ${s.kind} · ${s.tag} in Ollama · ${s.repo} · ${s.license} · ${s.mb} MB`)
+    for (const e of ENCODER_MODELS) print(`  ${(await encoderPresent(e)) ? '●' : '○'} ${e.name.padEnd(12)} ${e.kind} · ${e.repo} · ${e.license} · ${e.mb} MB`)
     print('  ● here   ○ not downloaded: model get <name>')
     return true
   }
@@ -196,6 +224,8 @@ export async function modelCommand(args: string[]): Promise<boolean> {
   if (sub === 'get' && s && !rest.length) return getSee(s)
   const tr = name ? trackerModel(name) : undefined
   if (sub === 'get' && tr && !rest.length) return getTracker(tr)
-  print(`usage: model list | model get <${[...TOOL_MODELS, ...TRACKER_MODELS, ...SEE_MODELS].map((x) => x.name).join('|')}>`)
+  const e = name ? encoderModel(name) : undefined
+  if (sub === 'get' && e && !rest.length) return getEncoder(e)
+  print(`usage: model list | model get <${[...TOOL_MODELS, ...TRACKER_MODELS, ...SEE_MODELS, ...ENCODER_MODELS].map((x) => x.name).join('|')}>`)
   return false
 }
