@@ -184,6 +184,8 @@ These texts are on the subconscious, memory and perception, and all are public d
 | Goethe, *Theory of Colours* | Gutenberg **50572** | |
 | Wikipedia: "Unconscious mind", "Preconscious", "Composite portrait", "Gestalt psychology" | `data raw wikipedia <title> <name>` (built) | CC BY-SA 4.0: credit the article, share alike |
 
+**More texts, added 2026-11-09:** the critique of Freud, Jung and the critique of Jung (Dalal, Fanon), contemporary dream science (Domhoff, Hoel's overfitted brain), writing on images and memory (Benjamin, Warburg, Steyerl), and texts from Korea (*Kuunmong*, the *Samguk yusa*, taemong) and West Africa (Jedrej and Shaw, the Akan) are in [`latent-image-reading.md`](latent-image-reading.md). Each is marked public domain, open (with its licence) or library.
+
 **How they enter: they don't change the model, and the card says so.** None of the five ways reads text: the encoder is given pictures only, and the trained decoder learns the person's images. So the texts stay as **framing**:
 
 - a reading list on the card, with the Galton–Freud passage quoted;
