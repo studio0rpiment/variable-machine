@@ -227,7 +227,7 @@ function projects(h: Have): Project[] {
   // image moods: encoder → rated pictures → texts → split → labels.md → classifier → a gallery set → its moods → package
   const moodSets = h.data.filter((d) => d.format === 'picture' && (d.mood || h.described.includes(d.folder)))
   const moodSet = last(moodSets)?.folder ?? 'oasis-moods'
-  const moodTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia/.test(String(r.source ?? '')))
+  const moodTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia|txt/.test(String(r.source ?? '')))
   const texts = (last(moodSets.filter((d) => Array.isArray(d.texts)))?.texts as string[] | undefined) ?? (moodTexts.length ? moodTexts.map((r) => `raw/${r.folder}`) : ['raw/goethe-colours', 'raw/colour-psychology'])
   const clfs = h.classifiers.filter((c) => moodSets.some((d) => d.folder === c.data))
   const clf = last(clfs)
@@ -239,7 +239,7 @@ function projects(h: Have): Project[] {
   const pcm = (x: number) => Math.round(x * 100)
 
   // latent image: model → a collection → texts (framing) → make → train the decoder → a gallery → measure it
-  const latentTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia/.test(String(r.source ?? '')))
+  const latentTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia|txt/.test(String(r.source ?? '')))
   const latent = last(h.latents)
   const collection = latent?.set ?? last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv')))?.folder ?? 'hiroshige'
   const latentName = latent?.folder ?? collection
@@ -261,7 +261,13 @@ function projects(h: Have): Project[] {
         {
           name: say('projects.latent.texts'),
           tab: 'data',
-          commands: [joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']), joinWords(['data', 'raw', 'wikipedia', 'Composite_portrait', 'composite-portrait'])],
+          commands: [
+            joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']),
+            joinWords(['data', 'raw', 'gutenberg', '65903', 'jung-unconscious']),
+            joinWords(['data', 'raw', 'gutenberg', '59709', 'zhuangzi']),
+            joinWords(['data', 'raw', 'txt', 'https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt', 'kuunmong', '--license', "public domain: Gale's translation, published 1922", '--about', "Kim Man-jung, The Cloud Dream of the Nine (Kuunmong), tr. James S. Gale, 1922; Cornell's copy, read by OCR", '--page', 'https://archive.org/details/cu31924023333077']),
+            joinWords(['data', 'raw', 'wikipedia', 'Composite_portrait', 'composite-portrait']),
+          ],
           done: latentTexts.length > 0,
         },
         {

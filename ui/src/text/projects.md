@@ -139,7 +139,7 @@ bring in the collection: your own images (upload), or a public-domain body of wo
 ### Step: the texts
 `projects.latent.texts`
 
-bring in texts on memory and the unconscious, as framing: they are read beside the latent image, not trained on
+bring in texts on dreams, memory and the unconscious, as framing: Freud and Jung, Zhuangzi's butterfly dream, the Korean novel Kuunmong (The Cloud Dream of the Nine), and Galton's composite portraits. They are read beside the latent image, not trained on. Their critics are in docs/latent-image-reading.md
 
 ### Step: make it
 `projects.latent.make`

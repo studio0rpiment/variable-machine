@@ -238,7 +238,7 @@ The 0.75 threshold was set before measuring; it may be too strict for so few pic
 |---|---|---|
 | get the picture encoder and decoder (Kandinsky 2.2, Apache 2.0, 9 GB) | Models | `model get kandinsky` |
 | bring in the collection | Image segmentation | upload, or `look museum "Utagawa Hiroshige" hiroshige --limit 100` |
-| bring in texts, as framing | Data | `data raw gutenberg 66048 freud-dreams`, `data raw wikipedia Composite_portrait composite-portrait` |
+| bring in texts, as framing | Data | `data raw gutenberg 66048 freud-dreams`, `data raw gutenberg 65903 jung-unconscious`, `data raw gutenberg 59709 zhuangzi`, `data raw txt https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt kuunmong --license "public domain: Gale's translation, published 1922" --page https://archive.org/details/cu31924023333077`, `data raw wikipedia Composite_portrait composite-portrait` |
 | make the latent image, its axes and the pixel average, and check it | Image segmentation | `latent make <name> images/<set>` |
 | train the decoder on the collection (about 16 minutes) | Train | `latent train <name> [--steps 800]` |
 | bring in a gallery | Image segmentation | `look museum landscape aic-landscapes --limit 40` |

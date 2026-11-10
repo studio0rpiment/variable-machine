@@ -76,7 +76,7 @@ Korean writing has a long tradition of the dream as a whole life seen and woken 
 
 | Text | What it says | Access |
 |---|---|---|
-| Kim Man-jung (Kim Man-choong), *Kuunmong* (*The Cloud Dream of the Nine*, 1687), translated by James Scarth Gale (London: D. O'Connor, 1922) | A monk dreams a whole worldly life and wakes to find it a dream. The first Korean literary work translated into English | **Public domain**: Internet Archive `cu31924023333077`; also at Eldritch Press (ibiblio.org/eldritch/kim/cloud9.html). Not on Gutenberg, so `data raw gutenberg` can't fetch it; download the text from the Archive |
+| Kim Man-jung (Kim Man-choong), *Kuunmong* (*The Cloud Dream of the Nine*, 1687), translated by James Scarth Gale (London: D. O'Connor, 1922) | A monk dreams a whole worldly life and wakes to find it a dream. The first Korean literary work translated into English | **Public domain**: Internet Archive `cu31924023333077`; also at Eldritch Press (ibiblio.org/eldritch/kim/cloud9.html). Not on Gutenberg; `data raw txt` fetches the Archive's text (section 6) |
 | Iryeon, *Samguk yusa* (*Memorabilia of the Three Kingdoms*, 1280s): the tale of the monk Josin (Chosin), who dreams fifty years of married life in one nap | The source of the "whole life in a dream" form that *Kuunmong* takes up | Library: Frits Vos et al., *Vestiges of the Three Kingdoms of Ancient Korea* (University of Hawai'i Press, 2025); older translation by Ha Tae-hung and Grafton Mintz (Yonsei University Press, 1972) |
 | *Samguk yusa*: Munhui buys her elder sister's dream, and so becomes queen | A dream as something owned and traded; I didn't check the passage in a translation | Library, as above |
 | **Taemong** (태몽), the conception dream: a dream, by the mother or a relative, that announces a child and its nature | Dreams read as images of a person before they exist | Library: Fred Jeremy Seligson, *Oriental Birth Dreams* (Hollym, 1989), the one book-length English study I found. Wikipedia's "Conception dreams" points to Korean encyclopedia sources |
@@ -112,9 +112,10 @@ data raw gutenberg 66048 freud-dreams
 data raw gutenberg 65903 jung-unconscious
 data raw gutenberg 59709 zhuangzi
 data raw gutenberg 11562 galton-inquiries
+data raw txt https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt kuunmong --license "public domain: Gale's translation, published 1922" --page https://archive.org/details/cu31924023333077
 ```
 
-*Kuunmong* is public domain but isn't on Gutenberg: its text is on the Internet Archive (`cu31924023333077`).
+*Kuunmong* isn't on Gutenberg. `data raw txt` fetches the Internet Archive's text of Cornell's copy instead, which was read by OCR (optical character recognition), so its first page and a few words come out garbled, and the running title repeats at the top of every page.
 
 The open-licence works are read online and quoted with credit, as are the library ones:
 

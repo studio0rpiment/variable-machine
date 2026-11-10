@@ -24,7 +24,7 @@ export const WORDS = {
   "projects.latent.limits": "It is a mean and a few directions of spread, measured in a model's numbers: not a memory or an unconscious in any literal sense. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 20 images at the least and about 100 before its axes hold still, and a Mac with 16 GB of memory.",
   "projects.latent.model": "get the picture encoder and decoder (Kandinsky 2.2, 9 GB)",
   "projects.latent.pictures": "bring in the collection: your own images (upload), or a public-domain body of work",
-  "projects.latent.texts": "bring in texts on memory and the unconscious, as framing: they are read beside the latent image, not trained on",
+  "projects.latent.texts": "bring in texts on dreams, memory and the unconscious, as framing: Freud and Jung, Zhuangzi's butterfly dream, the Korean novel Kuunmong (The Cloud Dream of the Nine), and Galton's composite portraits. They are read beside the latent image, not trained on. Their critics are in docs/latent-image-reading.md",
   "projects.latent.make": "make the latent image, its axes and the pixel average, and check it holds across halves of the collection",
   "projects.latent.train": "train the decoder on the collection, so the latent image is drawn in its own look (about 20 minutes)",
   "projects.latent.gallery": "bring in a gallery to measure: the collection itself, or another one",
