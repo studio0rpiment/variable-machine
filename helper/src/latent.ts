@@ -17,6 +17,7 @@ import { joinWords } from './shared/quote.ts'
  * 1280 numbers, the collection's mean and main axes are fitted to them, and
  * Kandinsky's decoder turns the mean back into a picture.
  *
+ *   latent crop images/<screenshots> <set> [--grid]   screenshots cut down to the pictures in them: images/<set>/
  *   latent make <name> images/<set>              the latent image, its axes, the pixel average and the check: latents/<name>/
  *   latent train <name> [--steps 800]            the decoder learns the collection (LoRA), and draws the latent image again
  *   latent gallery <name> images/<set> [--brings 4]   every picture measured against it: outputs/<set>-<name>/
@@ -78,6 +79,59 @@ async function images(set: string): Promise<string[]> {
   return (await fs.readdir(ws('images', set)).catch(() => [] as string[])).filter((f) => IMAGE_EXT.test(f) && !f.startsWith('.'))
 }
 
+/** Screenshots hold other people's posts: a set made from them is kept out of zips (share.ts), and so is all made from it. */
+export const PRIVATE = "screenshots of other people's posts: student project only, kept on this computer"
+
+/** `latent crop images/<screenshots> <set> [--grid]`: each screenshot cut down to its picture (or, with --grid, the Saved grid's thumbnails), into images/<set>/. */
+async function cropShots(args: string[], line: string): Promise<boolean> {
+  const grid = args.includes('--grid')
+  const { pos, opts } = flags(args.filter((a) => a !== '--grid'))
+  const [folder, name] = pos
+  const from = SET.exec(folder ?? '')?.[1]
+  if (!from || !name || !NAME.test(name) || pos.length !== 2 || Object.keys(opts).length) {
+    print('usage: latent crop images/<screenshots> <set> [--grid]   (screenshots of posts, stories or reels cut down to their pictures, into workspace/images/<set>/; --grid: screenshots of the Saved grid, one picture a thumbnail)')
+    return false
+  }
+  const n = (await images(from)).length
+  if (!n) return print(`latent crop: no pictures in workspace/images/${from}`), false
+  if (await exists(ws('images', name))) return print(`latent crop: workspace/images/${name} exists; choose another name`), false
+  const out = `workspace/images/${name}`
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'crop', `workspace/images/${from}`, out, ...(grid ? ['--grid'] : [])]
+  return runRecipe({
+    recipe: 'latent-crop',
+    params: { from, name, grid },
+    outputs: [`${out}/crops.json`],
+    steps: [
+      { kind: 'spawn', argv, env: PY_ENV },
+      {
+        kind: 'do',
+        display: `write ${out}/manifest.json, and mark both sets private`,
+        run: async () => {
+          const crops = await readJson<{ crops: { file: string }[] }>(ws('images', name, 'crops.json'))
+          const manifest = {
+            name,
+            kind: 'images',
+            created: new Date().toISOString(),
+            license: PRIVATE,
+            private: true,
+            about: `${crops?.crops.length ?? 0} pictures cut from ${n} screenshots in images/${from}${grid ? ' (the Saved grid)' : ''}`,
+            inputs: [`workspace/images/${from}`],
+            command: [line, shown(argv)],
+            crop: { from, grid },
+          }
+          await fs.writeFile(ws('images', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+          const src = ws('images', from, 'manifest.json')
+          const m = (await readJson<Record<string, unknown>>(src)) ?? { name: from, kind: 'images', created: manifest.created, inputs: [], command: 'uploaded' }
+          await fs.writeFile(src, JSON.stringify({ ...m, license: PRIVATE, private: true }, null, 2) + '\n')
+          broadcast({ type: 'workspace.changed', path: `images/${name}/manifest.json`, kind: 'add' })
+          print(`  look through ${out} before going on: a picture with large plain areas can be cut short, and a story's text over the picture stays in it`)
+          print(`  next: latent make ${name} images/${name}`)
+        },
+      },
+    ],
+  })
+}
+
 /** `latent make <name> images/<set>`: the collection's latent image, axes, pixel average and check, into workspace/latents/<name>/. */
 async function make(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
@@ -88,7 +142,7 @@ async function make(args: string[], line: string): Promise<boolean> {
     return false
   }
   const n = (await images(set)).length
-  if (n < 20) return print(`latent make: workspace/images/${set} has ${n} pictures; a latent image needs 20 at the least, about 100 for its axes`), false
+  if (n < 12) return print(`latent make: workspace/images/${set} has ${n} pictures; a latent image needs 12 at the least (15 screenshots will do), and 30 before it draws its axes`), false
   if (await exists(ws('latents', name))) return print(`latent make: workspace/latents/${name} exists; choose another name, or trash latents/${name}`), false
   if (!(await ready())) return false
   const out = `workspace/latents/${name}`
@@ -104,7 +158,7 @@ async function make(args: string[], line: string): Promise<boolean> {
         kind: 'do',
         display: `write ${out}/manifest.json`,
         run: async () => {
-          const setM = await readJson<{ license?: string }>(ws('images', set, 'manifest.json'))
+          const setM = await readJson<{ license?: string; private?: boolean }>(ws('images', set, 'manifest.json'))
           const check = await readJson<LatentCheck>(ws('latents', name, 'check.json'))
           const manifest = {
             name,
@@ -116,11 +170,13 @@ async function make(args: string[], line: string): Promise<boolean> {
             set,
             pictures: n,
             check,
+            ...(setM?.private ? { private: true } : {}),
           }
           await fs.writeFile(ws('latents', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
           broadcast({ type: 'workspace.changed', path: `latents/${name}/manifest.json`, kind: 'add' })
-          if (check && !check.axesStable) print(`  axis 1 changes with the half of the collection (${check.axis1AcrossHalves.toFixed(2)}; stable at 0.7): read the axes as a sketch until there are about 100 pictures`)
-          print(`  next: latent gallery ${name} images/<set>, or latent train ${name} (about ${Math.round((800 * 1.5) / 60)} min) so the decoder learns the collection's look`)
+          if (n < 30) print(`  ${n} pictures: the centre and what each picture brings, but no axes; they need 30 pictures or more`)
+          else if (check && !check.axesStable) print(`  axis 1 changes with the half of the collection (${check.axis1AcrossHalves.toFixed(2)}; stable at 0.7): read the axes as a sketch until there are about 100 pictures`)
+          print(`  next: latent gallery ${name} images/${set}, or latent train ${name} (about ${Math.max(1, Math.round((Math.min(800, n * 20) * 1.5) / 60))} min) so the decoder learns the collection's look`)
         },
       },
     ],
@@ -131,13 +187,15 @@ async function make(args: string[], line: string): Promise<boolean> {
 async function train(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
   const [name] = pos
-  const steps = opts.steps === undefined ? 800 : Number(opts.steps)
-  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => o !== 'steps') || !Number.isInteger(steps) || steps < 50 || steps > 5000) {
-    print('usage: latent train <name> [--steps 800]   (50 to 5000; about 1.5 s a step)')
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => o !== 'steps')) {
+    print('usage: latent train <name> [--steps 800]   (50 to 5000; about 1.5 s a step; 20 a picture, up to 800, when not given)')
     return false
   }
-  const m = await readJson<{ set: string; command: string[] }>(ws('latents', name, 'manifest.json'))
+  const m = await readJson<{ set: string; command: string[]; pictures?: number }>(ws('latents', name, 'manifest.json'))
   if (!m) return print(`latent train: no workspace/latents/${name}; make it first with latent make ${name} images/<set>`), false
+  // a few pictures and many steps: the decoder learns the pictures themselves, not their look. 20 steps a picture (40 views of each) is the most.
+  const steps = opts.steps === undefined ? Math.min(800, Math.max(50, (m.pictures ?? 40) * 20)) : Number(opts.steps)
+  if (!Number.isInteger(steps) || steps < 50 || steps > 5000) return print('latent train: --steps is 50 to 5000'), false
   if (await exists(ws('latents', name, 'lora.safetensors'))) return print(`latent train: ${name} is trained already; make the latent image again under a new name to train it again`), false
   if (!(await ready())) return false
   print(`  about ${Math.round((steps * 1.5) / 60)} minutes for ${steps} steps, and 9 GB of memory`)
@@ -190,7 +248,8 @@ async function gallery(args: string[], line: string): Promise<boolean> {
         kind: 'do',
         display: `write ${out}/manifest.json`,
         run: async () => {
-          const setM = await readJson<{ license?: string }>(ws('images', set, 'manifest.json'))
+          const setM = await readJson<{ license?: string; private?: boolean }>(ws('images', set, 'manifest.json'))
+          const latM = await readJson<{ private?: boolean }>(ws('latents', name, 'manifest.json'))
           const now = new Date().toISOString()
           const manifest = {
             name: outName,
@@ -200,6 +259,7 @@ async function gallery(args: string[], line: string): Promise<boolean> {
             inputs: [`workspace/images/${set}`, `workspace/latents/${name}`],
             command: line,
             items: ['gallery.html', 'latent.json'].map((file) => ({ file, from: `images/${set}`, tool: 'latent', command: line, created: now })),
+            ...(setM?.private || latM?.private ? { private: true } : {}),
           }
           await fs.writeFile(ws('outputs', outName, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
           broadcast({ type: 'workspace.changed', path: `outputs/${outName}/manifest.json`, kind: 'add' })
@@ -212,9 +272,10 @@ async function gallery(args: string[], line: string): Promise<boolean> {
 
 export async function latentCommand(args: string[], line: string): Promise<boolean> {
   const [sub, ...rest] = args
+  if (sub === 'crop') return cropShots(rest, line)
   if (sub === 'make') return make(rest, line)
   if (sub === 'train') return train(rest, line)
   if (sub === 'gallery') return gallery(rest, line)
-  print('usage: latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4]')
+  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4]')
   return false
 }

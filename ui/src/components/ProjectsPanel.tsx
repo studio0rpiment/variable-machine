@@ -89,7 +89,7 @@ interface Have {
   /** picture datasets that have a labels.md (mood describe has run) */
   described: string[]
   /** each image set's manifest: what it is, and where it came from */
-  imageSets: { folder: string; created?: string; about?: string }[]
+  imageSets: { folder: string; created?: string; about?: string; private?: boolean; crop?: { from: string; grid: boolean }; command?: string | string[] }[]
   /** latent images, with the set each was made from, its check and its training */
   latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null }[]
 }
@@ -238,13 +238,17 @@ function projects(h: Have): Project[] {
   const lastSorted = last(sorted)
   const pcm = (x: number) => Math.round(x * 100)
 
-  // latent image: model → a collection → texts (framing) → make → train the decoder → a gallery → measure it
+  // latent image: model → screenshots → crop them → texts (framing) → make → train the decoder → measure the pictures against it
   const latentTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia|txt/.test(String(r.source ?? '')))
   const latent = last(h.latents)
-  const collection = latent?.set ?? last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv')))?.folder ?? 'hiroshige'
+  const ownSets = h.imageSets.filter((s) => !s.folder.startsWith('classic-cv'))
+  const cropped = ownSets.filter((s) => s.crop)
+  // the screenshots: the newest uploaded set not cropped yet, else the last one cropped
+  const uploaded = ownSets.filter((s) => String(s.command ?? '').startsWith('uploaded'))
+  const shots = last(uploaded.filter((s) => !cropped.some((c) => c.crop?.from === s.folder)))?.folder ?? last(cropped)?.crop?.from ?? 'instagram'
+  const collection = latent?.set ?? last(cropped)?.folder ?? `${shots}-pictures`
   const latentName = latent?.folder ?? collection
-  // a gallery: the newest image set that isn't the collection, else the collection itself
-  const measureSet = last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv') && s.folder !== collection))?.folder
+  const measureSet = collection
   const measured = last(h.outputs.filter((o) => o.items?.some((i) => i.tool === 'latent')))
   const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
 
@@ -257,7 +261,15 @@ function projects(h: Have): Project[] {
       limits: say('projects.latent.limits'),
       steps: [
         { name: say('projects.latent.model'), tab: 'models', commands: ['model get kandinsky'], done: h.tools.includes('kandinsky') },
-        { name: say('projects.latent.pictures'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'Utagawa Hiroshige', collection, '--limit', '100'])], done: h.imageSets.some((s) => !s.folder.startsWith('classic-cv')) },
+        { name: say('projects.latent.screenshots'), tab: 'segmentation', commands: [], done: uploaded.length > 0 },
+        { name: say('projects.latent.pictures'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'Utagawa Hiroshige', 'hiroshige', '--limit', '100'])], done: ownSets.some((s) => s.folder === 'hiroshige'), or: true },
+        {
+          name: say('projects.latent.crop'),
+          tab: 'segmentation',
+          commands: [joinWords(['latent', 'crop', `images/${shots}`, `${shots}-pictures`])],
+          done: cropped.length > 0,
+          result: last(cropped)?.about,
+        },
         {
           name: say('projects.latent.texts'),
           tab: 'data',
@@ -287,11 +299,10 @@ function projects(h: Have): Project[] {
           done: h.latents.some((l) => !!l.trained),
           result: latent?.trained ? say('projects.latent.trainedIn', { steps: latent.trained.steps, minutes: latent.trained.minutes }) : undefined,
         },
-        { name: say('projects.latent.gallery'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'landscape', 'aic-landscapes', '--limit', '40'])], done: !!measureSet },
         {
           name: say('projects.latent.measure'),
           tab: 'segmentation',
-          commands: [joinWords(['latent', 'gallery', latentName, `images/${measureSet ?? collection}`])],
+          commands: [joinWords(['latent', 'gallery', latentName, `images/${measureSet}`])],
           done: !!measured,
           link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
         },

@@ -14,23 +14,23 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 
 ## 1. Latent image
 
-**Makes:** the latent image of a collection (the picture the collection holds without any one image showing it), its axes and the pixel average; a decoder trained on the collection; and a gallery page with JSON of every picture's distance, axes and what it brings.
+**Makes:** the latent image of what a person saves on Instagram (the picture their last 15 stories, reels or saved posts hold without any one showing it), beside the pixel average; a decoder trained on the set; and a gallery page that sets each part beside the psychology it is like, with JSON of every picture's distance and what it brings.
 
-- **Time:** about 35 minutes: 3 to make, 25 to train and redraw, 2 to measure, plus the download.
+- **Time:** about 15 minutes for 15 pictures: 1 to crop, 2 to make, 6 to train and redraw, 1 to measure, plus the download.
 - **Disk:** 9 GB for Kandinsky 2.2 and about 1 GB for torch. On Kevin's machine, run from the KP 512 install, not the Mac's own disk.
 - **Memory:** a Mac with 16 GB or more; the helper refuses below that and says why.
+- **Privacy:** the screenshots show other people's posts. Both sets, the latent image and the gallery are marked private, and `zip` refuses them. Student project only.
 
 | # | Tab | Do | Command | Check |
 |---|---|---|---|---|
 | 1 | Models | Get the picture encoder and decoder (picture encoders section, **kandinsky**) | `model get kandinsky` | 9 files in `workspace/tools/kandinsky/prior` and `/decoder`; the licence reads Apache 2.0 from Hugging Face. It refuses first if the disk has less than 9.9 GB free |
-| 2 | Image segmentation | Bring in the collection: 100 public-domain Hiroshige prints | `look museum "Utagawa Hiroshige" hiroshige --limit 100` | 100 pictures; the set's manifest credits each (title, artist, CC0) |
-| 3 | Data → raw material | Bring in texts, as framing | `data raw gutenberg 66048 freud-dreams`, `data raw gutenberg 65903 jung-unconscious`, `data raw gutenberg 59709 zhuangzi`, `data raw txt https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt kuunmong --license "public domain: Gale's translation, published 1922" --page https://archive.org/details/cu31924023333077`, `data raw wikipedia Composite_portrait composite-portrait` | Each lands in `workspace/raw`. They frame the card and don't change the model |
-| 4 | Image segmentation | Make the latent image | `latent make hiroshige images/hiroshige` | About 3 minutes; the echo shows the `uv run … latent.py make` command. In the session's test: centre across halves 0.993 (stable), axis 1 0.72 (stable), set-aside fit 0.67. The card shows the check; **see the latent image** opens `latent.png`, a Hiroshige-like scene |
-| 5 | Train | Train the decoder on the collection | `latent train hiroshige` | 800 steps, about 20 minutes (19.7 in the session's test); the loss is printed every 50 with the minutes left. Afterwards `latent-trained.png` is beside `latent.png`, in the prints' own look. The card shows steps and minutes |
-| 6 | Image segmentation | Bring in a gallery: public-domain landscapes | `look museum landscape aic-landscapes --limit 40` | 40 pictures |
-| 7 | Image segmentation | Measure it; press **open the gallery** on the card | `latent gallery hiroshige images/aic-landscapes` | The page shows the latent image (before and after training), the pixel average, three axes as picture pairs, then every landscape, nearest first. A Hiroshige or Hokusai print among the landscapes comes first; four pictures have a "what it brings" picture |
-| 8 | Image segmentation | Measure the collection against itself | `latent gallery hiroshige images/hiroshige` | Distances from about 0.8 to 1.6 |
-| 9 | Share | Zip it | `zip latents/hiroshige` | A zip with the pictures, `stats.npz`, `check.json` and `lora.safetensors`: about 16 MB in the session's test |
+| 2 | Image segmentation | On the phone, screenshot your last 15 stories, reels or saved posts, one a screenshot (or the Saved grid, a few screens of it). Upload them into a new set, `instagram` | none: upload in the page | 15 pictures in `workspace/images/instagram`. To try the card without screenshots, use `look museum "Utagawa Hiroshige" hiroshige --limit 100` instead and go to step 4 with `images/hiroshige` |
+| 3 | Image segmentation | Crop each screenshot to its picture | `latent crop images/instagram instagram-pictures` (add `--grid` for the Saved grid) | Each line names what it found: **post** (the picture between the header and the buttons) or **full screen: the middle square** (a story or reel). Look through `images/instagram-pictures`: no usernames, buttons or captions. Both sets' manifests say `"private": true`. On 15 mock screenshots (feed posts light and dark, square posts, stories, reels) and 3 mock Saved grids, every post's box matched the picture to the pixel and every grid gave its 9 thumbnails |
+| 4 | Data → raw material | Bring in texts, as framing | `data raw gutenberg 66048 freud-dreams`, `data raw gutenberg 65903 jung-unconscious`, `data raw gutenberg 59709 zhuangzi`, `data raw txt https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt kuunmong --license "public domain: Gale's translation, published 1922" --page https://archive.org/details/cu31924023333077`, `data raw wikipedia Composite_portrait composite-portrait` | Each lands in `workspace/raw`. They frame the card and don't change the model |
+| 5 | Image segmentation | Make the latent image | `latent make instagram-pictures images/instagram-pictures` | About 2 minutes. With fewer than 30 pictures it says it draws no axes. On the 15 mocks: centre across halves 0.942, just under the 0.95 it calls stable; the card shows that. **see the latent image** opens `latent.png` |
+| 6 | Train | Train the decoder on the set | `latent train instagram-pictures` | 20 steps a picture: 300 steps for 15, 6 minutes on the mocks. Afterwards `latent-trained.png` is beside `latent.png` |
+| 7 | Image segmentation | Measure the pictures; press **open the gallery** on the card | `latent gallery instagram-pictures images/instagram-pictures` | The page shows the latent image (before and after training) and the pixel average, each with its line of psychology; a list "what the psychology says it is like", with the line on saved posts and the recommender; "no axes"; then every picture, nearest first, with what it brings. On the mocks: 0.86 to 1.31 spreads |
+| 8 | Share | Try to zip it | `zip latents/instagram-pictures` | Refused: it says the set is private and stays on this computer |
 
 ## 2. Image moods
 

@@ -114,27 +114,37 @@ latent image
 ### What it does
 `projects.latent.does`
 
-Makes the latent image of a collection: the picture a set of images holds without any one of them showing it, the collection's "subconscious" picture. A large picture encoder measures every image; the collection's centre and the main ways its images differ are fitted to those measures; a decoder turns the centre back into a picture. Then it measures a gallery against it: how near each image is, which way it leans, and what it brings that the collection lacks.
+Makes the latent image of what a person saves: screenshots of their last 15 Instagram stories, reels or saved posts, cut down to the pictures in them. The image is the picture the set holds without any one of them showing it, its "subconscious" picture. A large picture encoder measures every picture; the set's centre is fitted to those measures; a decoder turns the centre back into a picture. Then each picture is measured against it: how near it is, and what it brings that the rest lack. Each result is set beside the psychology it is like: Galton's composites and Freud's condensation, Posner and Keele's prototypes, Bartlett's schemas, Jung's collective unconscious and Fanon's answer to it.
 
 ### What you get
 `projects.latent.get`
 
-the latent image and its axes as pictures, beside the pixel average (Galton's composite); a decoder trained on the collection's look; a gallery page with a JSON of every image's distance, axes and what it brings
+the latent image beside the pixel average (Galton's composite), and its axes once there are 30 pictures; a decoder trained on the set's look; a gallery page, with the psychology each part is like, and a JSON of every picture's distance and what it brings. All of it stays on this computer: zip refuses sets made from screenshots
 
 ### What it can't do
 `projects.latent.limits`
 
-It is a mean and a few directions of spread, measured in a model's numbers: not a memory or an unconscious in any literal sense. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 20 images at the least and about 100 before its axes hold still, and a Mac with 16 GB of memory.
+It is a mean and a few directions of spread, measured in a model's numbers: not a memory or an unconscious in any literal sense. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 12 pictures at the least, 30 before it draws axes and about 100 before they hold still, and a Mac with 16 GB of memory. The psychology is a likeness, not a finding: the statistics do what the experiments found people do. The screenshots show other people's posts, so the work is a student project only. Saved posts were chosen from what the app's recommender offered, so the set is the person's and the app's together.
 
 ### Step: get the model
 `projects.latent.model`
 
 get the picture encoder and decoder (Kandinsky 2.2, 9 GB)
 
-### Step: the collection
+### Step: the screenshots
+`projects.latent.screenshots`
+
+upload screenshots of your last 15 Instagram stories, reels or saved posts into a new image set (one post a screenshot, or screenshots of the Saved grid)
+
+### Step: a public-domain set instead
 `projects.latent.pictures`
 
-bring in the collection: your own images (upload), or a public-domain body of work
+to try the card first: a public-domain body of work (then crop nothing, and make it from images/hiroshige)
+
+### Step: crop the screenshots
+`projects.latent.crop`
+
+cut each screenshot down to its picture, so the app's header, buttons and captions don't become part of the latent image (add --grid for screenshots of the Saved grid). Both sets are marked private
 
 ### Step: the texts
 `projects.latent.texts`
@@ -144,22 +154,17 @@ bring in texts on dreams, memory and the unconscious, as framing: Freud and Jung
 ### Step: make it
 `projects.latent.make`
 
-make the latent image, its axes and the pixel average, and check it holds across halves of the collection
+make the latent image and the pixel average (and the axes, from 30 pictures), and check the centre holds across halves of the set
 
 ### Step: train the decoder
 `projects.latent.train`
 
-train the decoder on the collection, so the latent image is drawn in its own look (about 20 minutes)
-
-### Step: a gallery
-`projects.latent.gallery`
-
-bring in a gallery to measure: the collection itself, or another one
+train the decoder on the set, so the latent image is drawn in its own look (20 steps a picture, up to 800: about 8 minutes for 15 pictures)
 
 ### Step: measure it
 `projects.latent.measure`
 
-measure the gallery against the latent image: distance, axes, and what each image brings
+measure each picture against the latent image (or another set: another month's, another person's), with the psychology beside each part
 
 ### The check, on the make step
 `projects.latent.checked`

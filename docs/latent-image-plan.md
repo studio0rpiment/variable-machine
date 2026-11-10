@@ -267,3 +267,12 @@ Not built: a package to run it outside Variable Machine. It would have to carry 
 - section 1 of `docs/projects-test-guide.md`.
 
 **Tested** end to end through the helper on port 4841: 100 Hiroshige prints (made and trained), measured against the 40 landscapes and against themselves.
+
+## 8. Screenshots of saved posts, and the psychology (2026-11-10)
+
+Kevin's brief changed the collection: screenshots of a person's last 15 Instagram stories, reels or saved posts. Four changes follow.
+
+- **Crop first.** `latent crop images/<screenshots> <set> [--grid]` cuts each screenshot down to its picture. A post's picture is the band of rows that are almost all picture, between the header and the buttons, measured against the app's background colour (sampled from the status bar and the bottom bar). A story or reel fills the screen with the app drawn over it, so the crop is the middle square, which leaves out the name at the top and the caption and reply bar at the bottom. `--grid` cuts the Saved grid into its thumbnails. Tested on mock screenshots only; real ones may need the thresholds changed.
+- **15 pictures.** `latent make` takes 12 or more. Below 30 it draws no axes: on 40 landscapes axis 1 already changed with the half. On 15 mocks the centre across halves was 0.942, just under 0.95. Training defaults to 20 steps a picture (300 for 15), so the decoder learns the set's look, not the pictures themselves.
+- **Private.** The screenshots show other people's posts. Both image sets, the latent image and the gallery carry `"private": true`, and `zip` refuses them.
+- **The psychology on the page.** Each part of the gallery page is printed with what it is like (`PSY` in `latent.py`; sources in `docs/latent-image-reading.md`, section 5): the pixel average is Freud's comparison of condensation to Galton's composites; the latent image is a prototype (Posner and Keele) and an ensemble average (Ariely); the model's terms are Bartlett's schemas, and Jung's collective unconscious with Fanon's answer; what a picture brings is Hoel's off-pattern dream, called an analogy. For screenshots a line adds that saved posts were chosen from what the recommender offered: the latent image is where the person and the app meet.

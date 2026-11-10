@@ -6,6 +6,7 @@ The texts for the latent image card, gathered 2026-11-09. The card's plan (`docs
 - Jung, and the critique of Jung;
 - contemporary dream science;
 - writing on images and memory;
+- the experiments each part of the card is like (section 5), whose lines are printed on the gallery page;
 - texts from outside Europe, starting with Korea and West Africa.
 
 **How the texts enter the card.** As in the plan, the texts don't change the model: the encoder is given pictures only. They frame the latent image. The student reads them, chooses passages, and prints them beside the latent image on the gallery page, each with its source.
@@ -68,7 +69,21 @@ Jung's **collective unconscious** is a layer of the mind shared by everyone, hol
 | Hito Steyerl, "A Sea of Data: Apophenia and Pattern (Mis-)Recognition", *e-flux journal* 72 (2016) | **Apophenia**, seeing patterns in noise, as the way machines and states now see; Google's DeepDream images | Free to read at e-flux.com (no open licence: quote, don't copy) |
 | Joanna Zylinska, *AI Art: Machine Visions and Warped Dreams* (Open Humanities Press, 2020) | A critique of AI image-making and its claims to dream | **Open: CC BY-SA 4.0** |
 
-## 5. Beyond Europe
+## 5. The experiments the card is like
+
+Each part of the gallery page is printed with a line from this section (`PSY` in `python/variable_machine/latent.py`). Each is a likeness: the statistics do what these experiments found people do. They don't show that a model remembers or dreams.
+
+| Part of the page | Text | What it found | Access |
+|---|---|---|---|
+| The pixel average | Freud, *The Interpretation of Dreams*, chapters 4 and 6 | A dream face that is two people at once is "like a composite photograph of Galton": condensation. Freud makes the comparison three times | Public domain: Gutenberg 66048 |
+| The latent image | Michael I. Posner and Steven W. Keele, "On the genesis of abstract ideas", *Journal of Experimental Psychology* 77 (1968): 353–363; and "Retention of abstract ideas", 83 (1970): 304–308 | People who learned dot patterns only from distortions of them sorted the pattern itself, never seen, as well as the distortions they had seen, and forgot it more slowly | Library |
+| The latent image | Eleanor Rosch, "Cognitive representations of semantic categories", *Journal of Experimental Psychology: General* 104 (1975): 192–233 | Categories have central, typical members, and people judge membership by nearness to them | Library |
+| The latent image | Dan Ariely, "Seeing sets: representation by statistical properties", *Psychological Science* 12 (2001): 157–162 | Shown a set of circles, people judge the set's mean size well but can't say which circles were in it | Library |
+| The pixel average | Judith H. Langlois and Lori A. Roggman, "Attractive faces are only average", *Psychological Science* 1 (1990): 115–121 | Composite faces, made Galton's way, are judged more attractive than most of the faces in them | Library |
+| The model's terms | Frederic C. Bartlett, *Remembering: A Study in Experimental and Social Psychology* (Cambridge University Press, 1932) | People retelling a Native American story, "The War of the Ghosts", turned it, retelling by retelling, into a story in their own culture's terms: memory rebuilds with a schema | Library |
+| Saved posts | Taina Bucher, *If...Then: Algorithmic Power and Politics* (Oxford University Press, 2018) | How feeds' algorithms shape what people see and come to choose | Library |
+
+## 6. Beyond Europe
 
 ### Korea
 
@@ -76,7 +91,7 @@ Korean writing has a long tradition of the dream as a whole life seen and woken 
 
 | Text | What it says | Access |
 |---|---|---|
-| Kim Man-jung (Kim Man-choong), *Kuunmong* (*The Cloud Dream of the Nine*, 1687), translated by James Scarth Gale (London: D. O'Connor, 1922) | A monk dreams a whole worldly life and wakes to find it a dream. The first Korean literary work translated into English | **Public domain**: Internet Archive `cu31924023333077`; also at Eldritch Press (ibiblio.org/eldritch/kim/cloud9.html). Not on Gutenberg; `data raw txt` fetches the Archive's text (section 6) |
+| Kim Man-jung (Kim Man-choong), *Kuunmong* (*The Cloud Dream of the Nine*, 1687), translated by James Scarth Gale (London: D. O'Connor, 1922) | A monk dreams a whole worldly life and wakes to find it a dream. The first Korean literary work translated into English | **Public domain**: Internet Archive `cu31924023333077`; also at Eldritch Press (ibiblio.org/eldritch/kim/cloud9.html). Not on Gutenberg; `data raw txt` fetches the Archive's text (section 7) |
 | Iryeon, *Samguk yusa* (*Memorabilia of the Three Kingdoms*, 1280s): the tale of the monk Josin (Chosin), who dreams fifty years of married life in one nap | The source of the "whole life in a dream" form that *Kuunmong* takes up | Library: Frits Vos et al., *Vestiges of the Three Kingdoms of Ancient Korea* (University of Hawai'i Press, 2025); older translation by Ha Tae-hung and Grafton Mintz (Yonsei University Press, 1972) |
 | *Samguk yusa*: Munhui buys her elder sister's dream, and so becomes queen | A dream as something owned and traded; I didn't check the passage in a translation | Library, as above |
 | **Taemong** (태몽), the conception dream: a dream, by the mother or a relative, that announces a child and its nature | Dreams read as images of a person before they exist | Library: Fred Jeremy Seligson, *Oriental Birth Dreams* (Hollym, 1989), the one book-length English study I found. Wikipedia's "Conception dreams" points to Korean encyclopedia sources |
@@ -103,7 +118,7 @@ I found no open-access, peer-reviewed article on Yoruba dreams in particular. Th
 |---|---|---|
 | Zhuangzi, the butterfly dream (4th century BCE), in Herbert Giles's translation, *Chuang Tzu: Mystic, Moralist, and Social Reformer* (1889) | Zhuangzi dreams he is a butterfly and wakes unsure whether he is a man who dreamt of a butterfly or a butterfly dreaming he is a man | **Public domain**: Gutenberg **59709** |
 
-## 6. What to bring into the tool
+## 7. What to bring into the tool
 
 The public-domain texts, with the command that fetches each:
 

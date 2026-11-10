@@ -1,5 +1,6 @@
 """The latent image of a collection: what a set of pictures holds that no single picture shows.
 
+    python python/variable_machine/latent.py crop <screenshot folder> <out folder> [--grid]
     python python/variable_machine/latent.py make <image folder> <out folder>
     python python/variable_machine/latent.py train <latent folder> <image folder> [--steps 800]
     python python/variable_machine/latent.py gallery <latent folder> <image folder> <out folder> [--brings 4]
@@ -12,6 +13,9 @@ downloads anything.
 
 What each part does:
 
+- crop: screenshots (of Instagram posts, stories and reels, or of the Saved
+  grid with --grid) cut down to the pictures in them, so the app's own
+  header, buttons and captions don't become part of the latent image.
 - make: the encoder turns each picture into 1280 numbers (an embedding):
   what the picture shows and how it looks, as a model trained on hundreds of
   millions of pictures measures them. The collection's statistics are fitted
@@ -57,9 +61,26 @@ MODEL = Path("workspace/tools/kandinsky")
 EXT = {".jpg", ".jpeg", ".png", ".webp"}
 AXES = 5  # measured in the gallery
 SHOWN = 3  # axes decoded into pictures
+AXES_FROM = 30  # fewer pictures than this: no axis pictures (on 40 landscapes, axis 1 already changed with the half)
 GUIDANCE = 2.5  # how hard the decoder is pushed toward the embedding, away from a plain grey picture's
 STEPS = 30  # denoising steps per picture
 DEV = "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+# What each picture on the gallery page is like, in the psychology the card's texts come from. Each is a likeness:
+# the statistics do what the experiment found people do, not what a mind is. Sources: docs/latent-image-reading.md.
+PSY = {
+    "pixels": "Freud compares a dream face that is two people at once to “a composite photograph of Galton” (The Interpretation of Dreams, 1899): what the pictures share comes forward, what they don't cancels out. He calls it condensation.",
+    "latent": "Like a prototype: people who learned a pattern only from distortions of it sort the pattern itself, which they never saw, as well as the distortions they did, and forget it more slowly (Posner and Keele, 1968 and 1970). Memory keeps the centre of a set.",
+    "trained": "Drawn in the collection's own look, not the web's: the same centre, with the schema it is retold in changed.",
+    "model": [
+        "People take in the average of a set at a glance, without keeping its members (ensemble perception: Ariely, 2001). The latent image is that average, in a model's measure.",
+        "The model learned from about two billion pictures from the web, and it draws the centre in their terms. Bartlett (Remembering, 1932) found people retell a strange story in their own culture's terms. Jung would call the model's store a collective unconscious; Fanon's answer is that such a store is one culture's, not humanity's, and so is this one.",
+    ],
+    "feed": "These are saved posts: the person chose them, but from what the app's recommender offered. The latent image is where the two meet; what a picture brings is where they part.",
+    "axes": "What the collection's pictures disagree about: the tensions inside it, not one picture's place.",
+    "brings": "What a picture brings is the part of it the collection doesn't hold: Hoel (2021) proposes that dreams are the brain's own off-pattern pictures, which keep it from learning its days too narrowly. That is an analogy, not a finding about this page.",
+}
 
 
 def pictures(folder: Path) -> list[Path]:
@@ -194,13 +215,109 @@ def pixel_average(files: list[Path], size: int = 512) -> Image.Image:
     return Image.fromarray((acc / len(files)).round().astype(np.uint8))
 
 
+# ---------------------------------------------------------------- screenshots
+
+
+def _runs(mask: np.ndarray, min_len: int, gap: int = 0) -> list[tuple[int, int]]:
+    """Runs of True at least min_len long, with gaps of up to `gap` False closed first."""
+    m = mask.copy()
+    if gap:
+        idx = np.flatnonzero(m)
+        for a, b in zip(idx[:-1], idx[1:]):
+            if 1 < b - a <= gap + 1:
+                m[a:b] = True
+    out, start = [], None
+    for i, v in enumerate(list(m) + [False]):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            if i - start >= min_len:
+                out.append((start, i))
+            start = None
+    return out
+
+
+def _content(a: np.ndarray) -> np.ndarray:
+    """Per pixel: not the app's background. The background is the commonest colour in the top and bottom strips of the
+    screen (the status bar and the app's bar of buttons), which the app draws in one flat colour."""
+    h = a.shape[0]
+    strip = np.concatenate([a[: max(2, h // 50)].reshape(-1, 3), a[-max(3, h // 33) :].reshape(-1, 3)]).astype(int)
+    q = strip // 16
+    vals, counts = np.unique(q, axis=0, return_counts=True)
+    bg = np.median(strip[(q == vals[counts.argmax()]).all(1)], 0)
+    return np.abs(a.astype(int) - bg).max(2) > 6
+
+
+def crop_screen(im: Image.Image) -> tuple[list[int], str]:
+    """The picture in one screenshot of a post, story or reel: (box, how it was found).
+
+    A post shows its picture as a band of rows that are almost all picture, between the
+    app's header and its buttons and caption, which are mostly background: the box runs
+    from the first such row to the last. A story or
+    reel fills the screen, with the app drawn over it: there the box is the middle
+    square, which leaves out the name at the top and the caption and reply bar at the
+    bottom."""
+    W, H = im.size
+    k = 360 / W
+    a = np.asarray(im.resize((360, max(1, round(H * k)))))
+    c = _content(a)
+    h = a.shape[0]
+    full = np.flatnonzero(c.mean(1) > 0.8)
+    if len(full):
+        y0, y1 = int(full[0]), int(full[-1]) + 1  # from the first row that is all picture to the last
+        if h // 8 <= (y1 - y0) < 0.75 * h:
+            cols = _runs(c[y0:y1].mean(0) > 0.5, 360 // 4, gap=6)
+            x0, x1 = max(cols, key=lambda r: r[1] - r[0]) if cols else (0, 360)
+            return [round(x0 / k), round(y0 / k), round(x1 / k), round(y1 / k)], "post"
+    side = min(W, H)
+    return [(W - side) // 2, (H - side) // 2, (W - side) // 2 + side, (H - side) // 2 + side], "full screen: the middle square"
+
+
+def crop_grid(im: Image.Image) -> list[list[int]]:
+    """The thumbnails in a screenshot of the Saved grid: blocks of picture separated by thin lines of background."""
+    W, H = im.size
+    k = 720 / W
+    a = np.asarray(im.resize((720, max(1, round(H * k)))))
+    c = _content(a)
+    boxes = []
+    for y0, y1 in _runs(c.mean(1) > 0.6, 720 // 6):
+        for x0, x1 in _runs(c[y0:y1].mean(0) > 0.6, 720 // 6):
+            if 0.5 <= (y1 - y0) / (x1 - x0) <= 2:
+                boxes.append([round(x0 / k), round(y0 / k), round(x1 / k), round(y1 / k)])
+    return boxes
+
+
+def crop(folder: Path, out: Path, grid: bool) -> None:
+    files = pictures(folder)
+    out.mkdir(parents=True, exist_ok=True)
+    made = []
+    for f in files:
+        im = open_image(f)
+        if grid:
+            boxes = crop_grid(im)
+            for j, b in enumerate(boxes):
+                name = f"{f.stem}-{j + 1:02d}.png"
+                im.crop(b).save(out / name)
+                made.append({"file": name, "from": f.name, "box": b, "found": "grid"})
+            print(f"  {f.name}: {len(boxes)} thumbnails", flush=True)
+        else:
+            b, how = crop_screen(im)
+            name = f"{f.stem}.png"
+            im.crop(b).save(out / name)
+            made.append({"file": name, "from": f.name, "box": b, "found": how})
+            print(f"  {f.name}: {how} {b[2] - b[0]}×{b[3] - b[1]}", flush=True)
+    (out / "crops.json").write_text(json.dumps({"from": str(folder), "grid": grid, "crops": made}, indent=1) + "\n")
+    print(f"  ◂ {len(made)} pictures into {out}; check them: a picture with large plain areas can be cut short", flush=True)
+
+
+
 # ---------------------------------------------------------------- commands
 
 
 def make(folder: Path, out: Path) -> None:
     files = pictures(folder)
-    if len(files) < 20:
-        sys.exit(f"latent make: {len(files)} pictures; a latent image needs 20 at the least, and about 100 for its axes to mean much")
+    if len(files) < 12:
+        sys.exit(f"latent make: {len(files)} pictures; a latent image needs 12 at the least, 30 before it draws its axes, and about 100 for them to hold still")
     out.mkdir(parents=True, exist_ok=True)
     print(f"  {len(files)} pictures from {folder}; encoder: CLIP ViT-bigG/14 (Kandinsky 2.2's), on {DEV}", flush=True)
     E, grey = encode(files, [Image.new("RGB", (224, 224), (128, 128, 128))])
@@ -221,10 +338,12 @@ def make(folder: Path, out: Path) -> None:
     for seed in range(3):
         draw(pipe, mean, length, grey[0], seed).save(out / ("latent.png" if seed == 0 else f"latent-{seed + 1}.png"))
         print(f"  ◂ {'latent.png' if seed == 0 else f'latent-{seed + 1}.png'} ({time.time() - t:.0f}s)", flush=True)
-    for a in range(SHOWN):
+    for a in range(SHOWN if len(files) >= AXES_FROM else 0):
         for sign, tag in ((-2, "minus"), (2, "plus")):
             draw(pipe, mean + sign * sd[a] * V[a], length, grey[0]).save(out / f"axis-{a + 1}-{tag}.png")
         print(f"  ◂ axis-{a + 1}-minus.png, axis-{a + 1}-plus.png", flush=True)
+    if len(files) < AXES_FROM:
+        print(f"  no axis pictures: {len(files)} pictures is too few for the ways they differ to mean anything ({AXES_FROM} or more draws them)", flush=True)
     C = E - mean
     d = np.linalg.norm(C, axis=1)
     near = [files[i].name for i in np.argsort(d)[:5]]
@@ -292,10 +411,11 @@ def train(latent: Path, folder: Path, steps: int) -> None:
     with torch.no_grad():
         draw(pipe, mean, length, grey).save(latent / "latent-trained.png")
         print("  ◂ latent-trained.png: the latent image, drawn by the trained decoder", flush=True)
-        for a in range(SHOWN):
-            for sign, tag in ((-2, "minus"), (2, "plus")):
-                draw(pipe, mean + sign * sd[a] * V[a], length, grey).save(latent / f"axis-{a + 1}-{tag}-trained.png")
-        print(f"  ◂ axis-1 … axis-{SHOWN} -trained.png", flush=True)
+        if len(files) >= AXES_FROM:
+            for a in range(SHOWN):
+                for sign, tag in ((-2, "minus"), (2, "plus")):
+                    draw(pipe, mean + sign * sd[a] * V[a], length, grey).save(latent / f"axis-{a + 1}-{tag}-trained.png")
+            print(f"  ◂ axis-1 … axis-{SHOWN} -trained.png", flush=True)
 
 
 def gallery(latent: Path, folder: Path, out: Path, brings: int) -> None:
@@ -355,15 +475,23 @@ def write_html(path: Path, items: list[dict], files: list[Path], latent: Path, o
         return f'<img src="{thumb(Image.open(p), 384)}" alt="{e(alt)}">' if p.exists() else ""
 
     trained = (out / "latent-trained.png").exists()
-    head = [f'<figure>{img("latent.png", "the latent image")}<figcaption><b>the latent image</b> the centre of {e(latent.name)}, decoded</figcaption></figure>']
+    head = [f'<figure>{img("latent.png", "the latent image")}<figcaption><b>the latent image</b> the centre of {e(latent.name)}, decoded. {PSY["latent"]}</figcaption></figure>']
     if trained:
-        head.append(f'<figure>{img("latent-trained.png", "the latent image, trained decoder")}<figcaption><b>drawn by the trained decoder</b> the same centre, by a decoder that learned the collection</figcaption></figure>')
-    head.append(f'<figure>{img("pixel-average.png", "pixel average")}<figcaption><b>pixel average</b> every pixel averaged: the baseline</figcaption></figure>')
+        head.append(f'<figure>{img("latent-trained.png", "the latent image, trained decoder")}<figcaption><b>drawn by the trained decoder</b> the same centre, by a decoder that learned the collection. {PSY["trained"]}</figcaption></figure>')
+    head.append(f'<figure>{img("pixel-average.png", "pixel average")}<figcaption><b>pixel average</b> every pixel averaged: the baseline. {PSY["pixels"]}</figcaption></figure>')
     t = "-trained" if trained else ""
     axes = "".join(
         f'<div class="ax"><span>axis {a + 1} · {check_["axisShares"][a]:.0%} of the spread</span>{img(f"axis-{a + 1}-minus{t}.png", f"axis {a + 1}, minus")}{img(f"axis-{a + 1}-plus{t}.png", f"axis {a + 1}, plus")}<span>− 2 spreads · + 2 spreads</span></div>'
         for a in range(SHOWN)
     )
+    has_axes = (out / "axis-1-minus.png").exists()
+    axes_part = (
+        f'<h2>the axes: the main ways the collection\'s pictures differ, each decoded at two spreads either side of the centre</h2><p>{PSY["axes"]}</p><div class="axes">{axes}</div>'
+        if has_axes
+        else f'<h2>no axes</h2><p>{check_["pictures"]} pictures is too few for the ways they differ to mean anything: the axes are drawn from {AXES_FROM} pictures. The bars below are a sketch.</p>'
+    )
+    shots = (folder / "crops.json").exists()
+    psy = "".join(f"<li>{x}</li>" for x in PSY["model"]) + (f"<li>{PSY['feed']}</li>" if shots else "")
     by = {f.name: f for f in files}
     cards = []
     for i in sorted(items, key=lambda x: x["distance"]):
@@ -378,11 +506,12 @@ def write_html(path: Path, items: list[dict], files: list[Path], latent: Path, o
             f'<span class="f">{e(i["file"])}{" · " + e(credit) if credit else ""}</span></figcaption></figure>'
         )
     stable = "stable" if check_["centreStable"] else "not stable: too few pictures, or too mixed"
-    axes_ok = "" if check_["axesStable"] else f' Axis 1 changes with the half ({check_["axis1AcrossHalves"]:.2f}; stable at 0.7): read the axes as a sketch until the collection has about 100 pictures.'
+    axes_ok = "" if check_["axesStable"] or check_["pictures"] < AXES_FROM else f' Axis 1 changes with the half ({check_["axis1AcrossHalves"]:.2f}; stable at 0.7): read the axes as a sketch until the collection has about 100 pictures.'
     path.write_text(f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>latent image · {e(folder.name)}</title>
 <style>
 body{{font:0.875rem/1.45 ui-monospace,Menlo,monospace;background:#111;color:#ddd;margin:1.5rem}}
+ul{{color:#999;max-width:60rem;padding-left:1.25rem;margin:.25rem 0}} li{{margin:.25rem 0}}
 h1,h2{{font-size:1rem;font-weight:500;color:#5CF25C;margin:1.25rem 0 .5rem}} p{{margin:.25rem 0;color:#999;max-width:60rem}}
 .top{{display:flex;flex-wrap:wrap;gap:1rem}} .top figure{{width:20rem}} .axes{{display:flex;flex-wrap:wrap;gap:1.5rem}}
 .ax{{display:grid;grid-template-columns:10rem 10rem;gap:.25rem}} .ax span{{grid-column:1/3;color:#999}} .ax img{{width:10rem}}
@@ -396,10 +525,11 @@ figcaption{{padding:.5rem .625rem;display:flex;flex-wrap:wrap;gap:.25rem .5rem}}
 <h1>the latent image of {e(latent.name)} · {len(items)} pictures from {e(folder.name)} measured against it</h1>
 <p>The latent image is the centre of the collection's pictures as a large picture encoder measures them (CLIP ViT-bigG/14), decoded into a picture by Kandinsky 2.2. It is a mean, not a memory: no single picture shows it. The centre is {stable} across halves of the collection ({check_["centreAcrossHalves"]:.3f}; stable at 0.95).{axes_ok}</p>
 <div class="top">{"".join(head)}</div>
-<h2>the axes: the main ways the collection's pictures differ, each decoded at two spreads either side of the centre</h2>
-<div class="axes">{axes}</div>
+<h2>what the psychology says it is like</h2>
+<ul>{psy}</ul>
+{axes_part}
 <h2>the pictures, nearest the centre first</h2>
-<p>Distance is in the collection's own spreads: 1 is a typical picture of it. The bars are each picture's place on axes 1–{AXES} (centre line 0, ends ±3). "Brings" is the share of how a picture differs from the centre that the axes don't explain: high means it brings something the collection mostly lacks. "Near in subject" is the cosine between the picture and the centre (1 is the same direction).</p>
+<p>Distance is in the collection's own spreads: 1 is a typical picture of it. The bars are each picture's place on axes 1–{AXES} (centre line 0, ends ±3). "Brings" is the share of how a picture differs from the centre that the axes don't explain: high means it brings something the collection mostly lacks. "Near in subject" is the cosine between the picture and the centre (1 is the same direction). {PSY["brings"]}</p>
 <main>{"".join(cards)}</main></body></html>
 """)
 
@@ -413,6 +543,8 @@ def main(argv: list[str]) -> None:
         make(Path(pos[1]), Path(pos[2]))
     elif len(pos) == 3 and pos[0] == "train":
         train(Path(pos[1]), Path(pos[2]), opt("--steps", 800))
+    elif len(pos) == 3 and pos[0] == "crop":
+        crop(Path(pos[1]), Path(pos[2]), "--grid" in argv)
     elif len(pos) == 4 and pos[0] == "gallery":
         gallery(Path(pos[1]), Path(pos[2]), Path(pos[3]), opt("--brings", 4))
     else:

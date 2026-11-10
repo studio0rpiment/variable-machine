@@ -46,6 +46,11 @@ export async function zipCommand(args: string[]): Promise<boolean> {
     print(`zip: workspace/${kind}/${name} has no manifest.json, so it isn't an artifact this app can share`)
     return false
   }
+  const m = JSON.parse(await fs.readFile(path.join(folder, 'manifest.json'), 'utf8').catch(() => '{}')) as { private?: boolean; license?: string }
+  if (m.private) {
+    print(`zip: refused. workspace/${kind}/${name} is private (${m.license ?? 'its manifest says so'}). It stays on this computer; show its pictures in person, or make it again from pictures you may share`)
+    return false
+  }
   const mb = (await size(folder)) / 2 ** 20
   if (mb > 500) print(`  note: ${Math.round(mb)} MB. A fused model is a whole model; the adapter it came from is a few MB and rebuilds it (export).`)
   await fs.mkdir(shared, { recursive: true })
