@@ -2,6 +2,27 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.3.0: the Projects tab, a research bot, models for a multi-agent studio (2026-11-11)
+
+**Projects tab (new)**
+- **Finished work, one card each,** made by putting the tabs together: ask a table, a gesture controller, a cut-out tool, a character's voice, a research bot, and models for a multi-agent studio. Each card says what the project does and what you end up with, then its steps in order.
+- **Each step** opens the tab that does it and shows its command, filled in from your workspace; press the command to run it from the card, echoed in the terminal like the rest of the app. A step is marked done when your workspace has what it makes, and *soon* when it isn't built yet.
+- A step-by-step test guide for every card is in `docs/projects-test-guide.md`.
+
+**Research bot (Data tab: papers and articles)**
+- **A topic in a sentence and 2–5 seeds:** qwen3:4b writes the searches; search code finds real items in OpenAlex, arXiv, Crossref and RSS feeds (a Substack by its feed), and follows the seeds' citations both ways. Duplicates are removed. Everything seen is kept, so a rerun shows only what's new.
+- **Screen, then decide:** items are ranked by similarity, a model answers keep or skip with a reason, and you change any you disagree with.
+- **A reading list and BibTeX:** each item says why it's relevant; every quote is checked word for word against the abstract.
+- **A judge trained on your decisions:** `papers judge` makes them a training set, with preference pairs where you overrode the model; `papers check` measures a model against your decisions. On one topic of 60 items, stock qwen3:4b agreed on 70%; keeping everything would score 68%.
+- **research.js in a package** runs the whole loop with your trained judge.
+
+**Models for a multi-agent studio**
+- **One small reader model per job** (`studio-mail`, `studio-invoice`, …), trained on SmolLM2-360M, each returning fixed JSON fields, and exported to Ollama as `studio-<reader>`.
+- **reader check** compares a reader with qwen3:4b given a prompt, on rows set aside. On made-up mail only: 95% of fields right against 85%, about 6× faster.
+
+**Gesture tab**
+- Its words now live in `ui/src/text/gesture.md`, the first tab whose words are all in one Markdown file you can edit. The page reads as before.
+
 ## v0.2.9: gestures with two hands, tap to record (2026-10-27)
 
 **Gesture tab**
