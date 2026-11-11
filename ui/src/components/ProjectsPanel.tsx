@@ -24,7 +24,7 @@ interface Step {
   or?: boolean
   /** what it found, once it has run */
   result?: string
-  /** a file it made, to open: a workspace path */
+  /** a file it made, to open: a workspace path, or a page of the app (#…) */
   link?: { path: string; label: string }
 }
 
@@ -92,10 +92,14 @@ interface Have {
   imageSets: { folder: string; created?: string; about?: string; private?: boolean; crop?: { from: string; grid: boolean }; command?: string | string[] }[]
   /** latent images, with the set each was made from, its check and its training */
   latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null }[]
+  /** dream installations, with the four sets each was made from, and how many responses it has given */
+  dreams: { folder: string; created?: string; book: string; sets: Record<'who' | 'what' | 'when' | 'where', string>; responses?: number; pictures?: number; drawn?: number }[]
+  /** the last choice and response of each dream installation */
+  dreamState: Record<string, { chosen: boolean; response: string | null }>
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, classifiers, imageSets, latents] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, classifiers, imageSets, latents, dreams] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -109,7 +113,14 @@ async function readHave(): Promise<Have> {
     readManifests<Have['classifiers'][number]>('classifiers'),
     readManifests<Have['imageSets'][number]>('images'),
     readManifests<Have['latents'][number]>('latents'),
+    readManifests<Have['dreams'][number]>('dreams'),
   ])
+  const dreamState: Have['dreamState'] = {}
+  for (const d of dreams) {
+    const files = (await listDir(`dreams/${d.folder}`)).map((f) => f.name)
+    const latest = files.includes('latest.json') ? (JSON.parse((await readFile(`dreams/${d.folder}/latest.json`)) ?? 'null') as { response: string } | null) : null
+    dreamState[d.folder] = { chosen: files.includes('choice.json'), response: latest?.response ?? null }
+  }
   const models = await Promise.all(
     mfs
       .filter((e) => e.name.endsWith('.Modelfile'))
@@ -151,6 +162,8 @@ async function readHave(): Promise<Have> {
     described,
     imageSets,
     latents,
+    dreams,
+    dreamState,
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
 }
@@ -252,7 +265,64 @@ function projects(h: Have): Project[] {
   const measured = last(h.outputs.filter((o) => o.items?.some((i) => i.tool === 'latent')))
   const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
 
+  // dream reading: models → four image sets → texts → make → choose → respond → the room
+  const dream = last(h.dreams)
+  const dreamName = dream?.folder ?? 'dream'
+  const museum = { who: ['portrait', 'dream-who'], what: ['still life', 'dream-what'], when: ['moon', 'dream-when'], where: ['landscape', 'dream-where'] } as const
+  const cats = ['who', 'what', 'when', 'where'] as const
+  const has = (set: string) => ownSets.some((s) => s.folder === set)
+  // each category's set: the one the last installation used, else the museum one if it's here, else <who-pictures> to fill in
+  const dreamSet = (c: (typeof cats)[number]) => dream?.sets[c] ?? (has(museum[c][1]) ? museum[c][1] : `<${c}-pictures>`)
+  const dreamTexts = h.raw.filter((r) => ['zhougong-jiemeng', 'liezi-zh', 'liezi-dreams', 'wangfu-menglie'].includes(r.folder))
+  const dreamDone = dream ? h.dreamState[dream.folder] : undefined
+  const ws = (title: string) => `https://zh.wikisource.org/w/index.php?title=${encodeURIComponent(title)}&action=raw`
+  const dreamSteps: Step[] = [
+    { name: say('projects.dream.models'), tab: 'models', commands: ['model get kandinsky', 'model get siglip', joinWords(['ollama', 'pull', 'qwen3:4b'])], done: h.tools.includes('kandinsky') && h.tools.includes('siglip') },
+    { name: say('projects.dream.pictures'), tab: 'segmentation', commands: [], done: !!dream || ownSets.length >= 4 },
+    { name: say('projects.dream.museum'), tab: 'segmentation', commands: cats.map((c) => joinWords(['look', 'museum', museum[c][0], museum[c][1], '--limit', '8'])), done: cats.every((c) => has(museum[c][1])), or: true },
+    {
+      name: say('projects.dream.texts'),
+      tab: 'data',
+      commands: [
+        joinWords(['data', 'raw', 'txt', ws('周公解夢'), 'zhougong-jiemeng', '--license', 'public domain (Wikisource: PD-old)', '--about', '周公解夢, the Zhougong jiemeng: the folk dream book attributed to the Duke of Zhou, 27 sections, from Chinese Wikisource', '--page', 'https://zh.wikisource.org/wiki/周公解夢']),
+        joinWords(['data', 'raw', 'txt', ws('列子/周穆王篇'), 'liezi-zh', '--license', 'public domain (Wikisource)', '--about', '列子·周穆王, the Liezi, chapter 3, King Mu of Zhou: the six kinds of dream, in Chinese', '--page', 'https://zh.wikisource.org/wiki/列子/周穆王篇']),
+        joinWords(['data', 'raw', 'txt', 'https://en.wikisource.org/w/index.php?title=Taoist_teachings_from_the_book_of_Lieh_Tz%C5%AD/Book_3&action=raw', 'liezi-dreams', '--license', 'public domain: Lionel Giles, 1912 (Wikisource: PD-US)', '--about', 'The Liezi, Book III, Dreams, in Lionel Giles\'s abridged translation (1912)', '--page', 'https://en.wikisource.org/wiki/Taoist_teachings_from_the_book_of_Lieh_Tz%C5%AD/Book_3']),
+        joinWords(['data', 'raw', 'txt', ws('潛夫論/卷七'), 'wangfu-menglie', '--license', 'public domain (Wikisource)', '--about', '王符《潛夫論》卷七·夢列 (Wang Fu, Qianfu lun, chapter 28, the ten kinds of dream), in Chinese', '--page', 'https://zh.wikisource.org/wiki/潛夫論/卷七']),
+        joinWords(['data', 'raw', 'gutenberg', '59709', 'zhuangzi']),
+        joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']),
+        joinWords(['data', 'raw', 'txt', 'https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt', 'kuunmong', '--license', "public domain: Gale's translation, published 1922", '--about', "Kim Man-jung, The Cloud Dream of the Nine (Kuunmong), tr. James S. Gale, 1922; Cornell's copy, read by OCR", '--page', 'https://archive.org/details/cu31924023333077']),
+        joinWords(['data', 'raw', 'wikipedia', 'Dream_incubation', 'dream-incubation']),
+      ],
+      done: h.raw.some((r) => r.folder === 'zhougong-jiemeng'),
+      result: dreamTexts.length ? dreamTexts.map((r) => r.folder).join(' · ') : undefined,
+    },
+    {
+      name: say('projects.dream.make'),
+      tab: 'segmentation',
+      commands: [joinWords(['dream', 'make', dreamName, '--book', 'raw/zhougong-jiemeng', ...cats.flatMap((c) => [`--${c}`, `images/${dreamSet(c)}`]), ...(dream?.drawn ? ['--drawn', String(dream.drawn)] : [])])],
+      done: !!dream,
+      result: dream?.pictures ? say('projects.dream.made', { n: dream.pictures }) : undefined,
+    },
+    { name: say('projects.dream.choose'), tab: 'segmentation', commands: [joinWords(['dream', 'choose', dreamName, 'where', '<picture>'])], done: !!dreamDone?.chosen },
+    {
+      name: say('projects.dream.respond'),
+      tab: 'segmentation',
+      commands: [joinWords(['dream', 'respond', dreamName])],
+      done: !!dreamDone?.response,
+      link: dreamDone?.response ? { path: dreamDone.response.replace(/json$/, 'html'), label: say('projects.dream.see') } : undefined,
+    },
+    { name: say('projects.dream.room'), tab: 'segmentation', commands: [], done: !!dream?.responses, link: dream ? { path: `#room/${dream.folder}`, label: say('projects.dream.open') } : undefined },
+  ]
+
   return [
+    {
+      id: 'dream',
+      title: say('projects.dream.title'),
+      does: say('projects.dream.does'),
+      get: say('projects.dream.get'),
+      limits: say('projects.dream.limits'),
+      steps: dreamSteps,
+    },
     {
       id: 'latent',
       title: say('projects.latent.title'),
@@ -452,7 +522,7 @@ export default function ProjectsPanel() {
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.endsWith('labels.md') || e.path.startsWith('modelfiles/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.endsWith('labels.md') || e.path.startsWith('modelfiles/') || /^data\/[^/]+\/check-/.test(e.path) || /^dreams\/[^/]+\/(choice|latest)\.json$/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
 
   const run = async (lines: string[]) => {
@@ -511,7 +581,7 @@ export default function ProjectsPanel() {
                               ))}
                             {s.result && <span className="label label--muted project-step__result">{s.result}</span>}
                             {s.link && (
-                              <a className="text-link project-step__result" href={`/api/workspace/file?path=${encodeURIComponent(s.link.path)}`} target="_blank" rel="noreferrer">
+                              <a className="text-link project-step__result" href={s.link.path.startsWith('#') ? s.link.path : `/api/workspace/file?path=${encodeURIComponent(s.link.path)}`} target="_blank" rel="noreferrer">
                                 {s.link.label}
                               </a>
                             )}

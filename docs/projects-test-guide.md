@@ -12,7 +12,31 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 
 ---
 
-## 1. Latent image
+## 1. Dream reading
+
+**Makes:** an installation for a student's dream project. A visitor is shown four pictures (who 誰, what 什麼, when 何時, where 何地), chooses the one most like their dream, and gets a reading from the *Zhougong jiemeng* (周公解夢) in Chinese and English, and a response picture drawn by Kandinsky 2.2. Plan: `docs/dream-card-plan.md`; sources: `docs/dream-reading.md`.
+
+- **Time:** about 10 minutes with the four museum sets: the downloads, then about 3 minutes (with `--drawn 1`) to make, then about 70 seconds a response.
+- **Disk:** 9 GB for Kandinsky, 214 MB for SigLIP, 2.5 GB for `qwen3:4b` in Ollama, and about 1 GB for torch.
+- **Memory:** a Mac with 16 GB or more (Kandinsky's limit).
+- **Privacy:** a visitor's words are kept in the dream folder on this computer and nowhere else; all three models run locally.
+
+| # | Tab | Do | Command | Check |
+|---|---|---|---|---|
+| 1 | Models | Get the picture models and the reading model | `model get kandinsky`, `model get siglip`, `ollama pull qwen3:4b` | Both under **picture encoders** marked here; `qwen3:4b` in `ollama list`. Without `qwen3:4b` the card still runs, but the response quotes the book's lines with no glosses or reading, and says so |
+| 2 | Image segmentation | Upload the student's pictures into four sets, one per category (e.g. `her-who`, `her-what`, `her-when`, `her-where`) | none: upload in the page | A few pictures in each; 8 or more so the room shows each visitor different ones. To try the card first, use step 3 instead |
+| 3 | Image segmentation | Or: four public-domain sets (CC0, Art Institute of Chicago) | `look museum portrait dream-who --limit 8`, `look museum "still life" dream-what --limit 8`, `look museum moon dream-when --limit 8`, `look museum landscape dream-where --limit 8` | 8 pictures in each of `workspace/images/dream-who` … `dream-where`, each credited in its manifest |
+| 4 | Data → raw material | Bring in the dream book and the texts it is read beside | the card's eight commands: `data raw txt <Wikisource address> zhougong-jiemeng …`, `liezi-zh`, `liezi-dreams`, `wangfu-menglie`, `data raw gutenberg 59709 zhuangzi`, `data raw gutenberg 66048 freud-dreams`, `kuunmong`, `data raw wikipedia Dream_incubation dream-incubation` | `workspace/raw/zhougong-jiemeng/source.txt` begins `{{Header|title=周公解夢` and has the 27 section headings (`== 天地日月星辰 ==` …). The step's result lists the Chinese texts brought in |
+| 5 | Image segmentation | Match every picture to the dream book | `dream make dream --book raw/zhougong-jiemeng --who images/dream-who --what images/dream-what --when images/dream-when --where images/dream-where` (add `--drawn 1` for one Kandinsky drawing a category) | It says `the dream book: 988 lines in 27 sections`, then each picture with its three nearest glossary words. Museum portraits get *a man* 男, *a woman* 婦, *a monk* 僧; landscapes *a river* 河, *trees* 樹, *fields* 田; still lifes *fruit* 果, *food* 食. The card's result reads **36 pictures matched to the dream book** with `--drawn 1` (8 a category and one drawn). Read the words in `workspace/dreams/dream/dream.json`: a picture with wrong words will get the wrong lines |
+| 6 | Image segmentation | Choose for a visitor, by hand | `dream choose dream where <picture>` (a file from `images/dream-where`; add `--dream "<a few words>"`) | It prints the picture's words and writes `workspace/dreams/dream/choice.json` |
+| 7 | Image segmentation | Respond | `dream respond dream` | It prints up to five lines of the book (e.g. for a boat on a river: 船飛行主大富貴, 船淺在岸是非厄, 渡天河主有所吉 …), `the reading, by qwen3:4b in 21s`, and which picture the response was drawn toward. About 70 s in all: 21 s to read, 20 s to draw, the rest loading Kandinsky. If the Chinese reading comes back partly in English, it says so and leaves it out. **see the last response** opens `response.html`: the chosen picture and the response side by side, the book's lines with their glosses, the reading in English and Chinese, and the other traditions |
+| 8 | — | Open the room on the installation's screen | open **open the room** on the card (`http://localhost:4817/#room/dream`), then the browser's full-screen key | Black page, four pictures labelled 誰 · who … 何地 · where, a box for a few words. Type a few words, touch a picture: it turns green, the others dim, "reading the dream book…", and about a minute later the response. **another dream** deals four new pictures. The terminal on the main page shows the same `dream choose` and `dream respond` lines |
+
+**Tested** end to end through the helper on port 4843 on 2026-11-11, with the four museum sets and `--drawn 1`: the texts, `make`, one response by hand (a boat on a dark river, with the visitor's words) and two from the room (a woman's portrait; a quilt for *when*, read as *withering*, *sowing* and *spring*: 枯木再發子孫興, "a withered tree puts out shoots: your descendants will prosper"). In one of the room's responses the model wrote half its Chinese reading in English; the check that leaves such a reading out was added after it.
+
+---
+
+## 2. Latent image
 
 **Makes:** the latent image of what a person saves on Instagram (the picture their last 15 stories, reels or saved posts hold without any one showing it), beside the pixel average; a decoder trained on the set; and a gallery page that sets each part beside the psychology it is like, with JSON of every picture's distance and what it brings.
 
@@ -32,7 +56,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 7 | Image segmentation | Measure the pictures; press **open the gallery** on the card | `latent gallery instagram-pictures images/instagram-pictures` | The page shows the latent image (before and after training) and the pixel average, each with its line of psychology; a list "what the psychology says it is like", with the line on saved posts and the recommender; "no axes"; then every picture, nearest first, with what it brings. On the mocks: 0.86 to 1.31 spreads |
 | 8 | Share | Try to zip it | `zip latents/instagram-pictures` | Refused: it says the set is private and stays on this computer |
 
-## 2. Image moods
+## 3. Image moods
 
 **Makes:** a mood classifier (calm, lively, tense, sombre) for what a picture conveys, its score on pictures set aside, and a gallery page with CSV and JSON. **Time:** about 10 minutes, 2 of them embedding the texts. **Disk:** about 360 MB (encoder 204 MB, OASIS 88 MB zip plus 51 MB dataset). **Note:** OASIS includes unpleasant photos (a carcass, a crash); its licence is research use, so the results are for student projects only.
 
@@ -48,7 +72,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 8 | Image segmentation | Sort the gallery; press **open the gallery** on the card | `mood gallery oasis-moods-siglip images/aic-landscapes` | The page shows each picture's mood, confidence and reason; the passages differ from picture to picture; `moods.csv` and `moods.json` are beside it |
 | 9 | Share | Package and zip; in the unzipped folder, `sh get-encoder.sh`, then classify.py on a folder | `package oasis-moods-siglip`, `zip packages/oasis-moods-siglip` | A zip of about 120 KB; `classify.py` writes `moods/gallery.html` |
 
-## 3. Ask a table
+## 4. Ask a table
 
 **Makes:** a small model that turns a question into a query; the answer is counted from the table. **Time:** about 20 minutes, 9 of them training.
 
@@ -62,7 +86,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 6 | Chat | Ask three questions of your own, one with a place not in the table | — | The query and SQL show; the unknown place is refused with a list of real places, never answered with 0 |
 | 7 | Share | Package, then zip | `package <model>`, `zip packages/<model>` | The folder has `ask.js`, `demo.html` and the README; `node ask.js "how many …"` answers |
 
-## 4. Gesture controller
+## 5. Gesture controller
 
 **Makes:** a model trained on your own gestures, sent as OSC. **Time:** about 10 minutes. **Needs:** a camera, and TouchDesigner, Max or Pure Data listening on port 9000, or any OSC monitor.
 
@@ -74,7 +98,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 4 | Gesture | Train | `gesture train <set>` | Set-aside examples are mostly named right |
 | 5 | Gesture | Send | `gesture send <set> --port 9000` | The patch receives the gesture names |
 
-## 5. Cut-out tool
+## 6. Cut-out tool
 
 **Makes:** PNGs with a transparent background, each with a record. **Time:** about 5 minutes.
 
@@ -84,7 +108,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 | 2 | Look → segmentation | Bring in the example photos (or your own) | `look example classic-cv` | The photos show |
 | 3 | Look → segmentation | Cut one out | `look cutout images/classic-cv/<photo>` | A transparent PNG appears in outputs with its record |
 
-## 6. A character's voice
+## 7. A character's voice
 
 Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 
@@ -103,7 +127,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 3 | Train | Train on SmolLM2 | `train <adapter> --data <rows> --base <small>` | The run ends without an error |
 | 4 | Adapters → Chat | Export, then talk to it | `export <adapter>` | It sounds like the writer, and more than the base model does |
 
-## 7. Research bot
+## 8. Research bot
 
 **Makes:** a reading list, BibTeX, a library of what's been seen, and later a judge trained on your decisions. **Time:** about 15 minutes to the reading list; training adds about 10 minutes and needs about 2.2 GB of disk.
 
@@ -118,7 +142,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 7 | Data | Measure it: `papers check` | — | It agrees with your decisions more often than the stock screen (70%) and than keeping everything |
 | 8 | Share | Package; run `node research.js` in the folder | `package <judge>`, `zip packages/<judge>` | A rerun shows only new items |
 
-## 8. Models for a multi-agent studio
+## 9. Models for a multi-agent studio
 
 **Makes:** one reader model per job (`studio-mail`, `studio-invoice`, …), each returning fixed JSON fields. **Time:** about 20 minutes per reader. Test one reader, `studio-mail`, first.
 

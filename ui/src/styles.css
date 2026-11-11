@@ -1022,3 +1022,22 @@ img.move-view__picture { transform: none; }
 .asked__rows th { color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--bg); }
 .asked__sql { margin: 0.3rem 0 0; white-space: pre-wrap; font-size: 0.72rem; color: var(--muted); }
 .chat__invents { margin: 0; padding: 0.35rem 0.5rem; border: 1px solid #e0604a; text-transform: none; line-height: 1.45; }
+
+/* the dream room (#room/<name>): the installation's own page, full screen */
+.room { position: fixed; inset: 0; background: #000; color: #ddd; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 2rem; overflow: auto; font: 1rem/1.5 ui-monospace, Menlo, monospace; }
+.room__ask { font-size: 1.5rem; color: #eee; text-align: center; margin: 0; }
+.room__four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; width: min(100%, 90rem); }
+.room__pic { background: none; border: 0.125rem solid #222; padding: 0; color: #999; cursor: pointer; display: flex; flex-direction: column; font: inherit; }
+.room__pic img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.room__pic span { padding: 0.5rem; font-size: 1.125rem; }
+.room__pic:hover, .room__pic:focus-visible, .room__pic.is-chosen { border-color: #5CF25C; color: #5CF25C; outline: none; }
+.room__pic:disabled:not(.is-chosen) { opacity: 0.35; cursor: default; }
+.room__words { width: min(100%, 40rem); background: #111; border: 0.0625rem solid #333; color: #ddd; padding: 0.75rem 1rem; font: inherit; }
+.room__wait { color: #5CF25C; margin: 0; }
+.room__response { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 2rem; width: min(100%, 90rem); align-items: center; }
+.room__pair { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: end; }
+.room__pair img { width: 100%; display: block; }
+.room__reading p { margin: 0 0 1rem; color: #ccc; }
+.room__lines { color: #5CF25C !important; font-size: 1.25rem; }
+.room__note { font-size: 0.8125rem; color: #777 !important; }
+.room__again { background: none; border: 0.0625rem solid #5CF25C; color: #5CF25C; padding: 0.5rem 1rem; font: inherit; cursor: pointer; }

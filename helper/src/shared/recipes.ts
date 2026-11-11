@@ -48,6 +48,8 @@ export const UV_VOICE = [...UV, '--extra', 'voice']
 export const UV_MOOD = [...UV, '--extra', 'mood']
 /** The same, with torch and diffusers for the latent image (helper/src/latent.ts). */
 export const UV_LATENT = [...UV, '--extra', 'latent']
+/** Both, for the dream installation: Kandinsky (latent.py) and SigLIP (mood.py) in one run (helper/src/dream.ts). */
+export const UV_DREAM = [...UV, '--extra', 'latent', '--extra', 'mood']
 
 /**
  * Training a model that sees on a picture dataset (mlx-vlm 0.7.10, through

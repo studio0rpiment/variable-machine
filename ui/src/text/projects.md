@@ -196,6 +196,120 @@ see the latent image
 
 open the gallery
 
+## Dream reading
+
+### Name
+`projects.dream.title`
+
+dream reading · who, what, when, where
+
+### What it does
+`projects.dream.does`
+
+An installation for a dream. A visitor thinks of a dream and is shown four pictures, one each for its who (誰), what (什麼), when (何時) and where (何地). They choose the one most like their dream. The installation answers from the Zhougong jiemeng (周公解夢), the Chinese folk dream book: SigLIP finds the words of the book nearest the chosen picture, the book's lines for those words are looked up, and a language model glosses them and writes a short reading, in English and Chinese. Kandinsky 2.2 then draws a response picture: the chosen picture moved toward the picture, among the student's own, nearest what the book foretells.
+
+### What you get
+`projects.dream.get`
+
+a room page that runs full screen (four pictures, a choice, a response); for each visitor, a response page with the chosen picture, the response picture, the book's lines with their glosses, the reading and other traditions' ways of reading the same dream; and a JSON of all of it
+
+### What it can't do
+`projects.dream.limits`
+
+It doesn't interpret anyone's dream: it looks up a folk book of omens and has a small language model paraphrase it. The bridge from pictures to the book is a glossary of about 140 characters, so a picture is only ever read through those words; edit the glossary to change what the book can see. The glosses are the model's and can be wrong, so the page prints the Chinese lines beside them. The model doesn't read the dream itself; the visitor's own words are passed to it as context. A response takes a little over a minute (a third reading, a third drawing, a third loading the picture model), and Kandinsky needs a Mac with 16 GB of memory.
+
+### Step: get the models
+`projects.dream.models`
+
+get the picture models: Kandinsky 2.2 (9 GB) draws, SigLIP (214 MB) matches pictures to words; and the language model that writes the reading (qwen3:4b, 2.5 GB, Apache 2.0)
+
+### Step: the student's pictures
+`projects.dream.pictures`
+
+upload the student's pictures into four image sets, one for each of who, what, when and where (a few in each will do; 8 or more lets the room show a different picture to each visitor)
+
+### Step: public-domain pictures instead
+`projects.dream.museum`
+
+to try the card first: four public-domain sets from the Art Institute of Chicago (CC0)
+
+### Step: the texts
+`projects.dream.texts`
+
+bring in the dream book and the texts it is read beside: the Zhougong jiemeng in Chinese (Wikisource), the Liezi's chapter on dreams in Chinese and in Giles's English, Zhuangzi's butterfly dream, Freud, and the Korean novel Kuunmong. The full list, with Wang Fu, Chen Shiyuan, the Dunhuang dream books and temple practice in Taiwan, is in docs/dream-reading.md
+
+### Step: make it
+`projects.dream.make`
+
+match every picture to the dream book: SigLIP picks each picture's three nearest glossary words. Add --drawn 2 to have Kandinsky draw two more pictures for each category from the centre of its pictures
+
+### Step: choose
+`projects.dream.choose`
+
+a visitor's choice, by hand: the category and the picture (the room page does this when a visitor touches a picture)
+
+### Step: respond
+`projects.dream.respond`
+
+the reading and the response picture for the last choice (about a minute)
+
+### Step: open the room
+`projects.dream.room`
+
+open the room page full screen on the installation's screen: it shows four pictures, takes the visitor's choice, and shows the response
+
+### What make found, on the make step
+`projects.dream.made`
+
+{n} pictures matched to the dream book
+
+### The link to the room page
+`projects.dream.open`
+
+open the room
+
+### The link to the last response
+`projects.dream.see`
+
+see the last response
+
+## The dream room
+
+### The room, for a screen reader
+`projects.dream.roomLabel`
+
+dream reading room
+
+### What the room asks
+`projects.dream.ask`
+
+Think of a dream. Which of these is most like it?
+
+### The words box
+`projects.dream.words`
+
+a few words of your dream (you can leave this empty)
+
+### While it answers
+`projects.dream.waiting`
+
+reading the dream book…
+
+### The button to start again
+`projects.dream.again`
+
+another dream
+
+### When the room has nothing to show
+`projects.dream.none`
+
+no dream installation called {name}: make it on the projects tab first
+
+### Under the reading
+`projects.dream.note`
+
+From the Zhougong jiemeng (周公解夢), a Chinese folk dream book, read by a small language model. It is what the book says, not what will happen.
+
 ## Image moods
 
 ### Name
