@@ -82,14 +82,14 @@ async function images(set: string): Promise<string[]> {
 /** Screenshots hold other people's posts: a set made from them is kept out of zips (share.ts), and so is all made from it. */
 export const PRIVATE = "screenshots of other people's posts: student project only, kept on this computer"
 
-/** `latent crop images/<screenshots> <set> [--grid]`: each screenshot cut down to its picture (or, with --grid, the Saved grid's thumbnails), into images/<set>/. */
+/** `latent crop images/<screenshots> <set> [--grid]`: each screenshot cut down to its picture (or, with --grid, a grid's thumbnails: Instagram's Saved grid or a photo roll), into images/<set>/. */
 async function cropShots(args: string[], line: string): Promise<boolean> {
   const grid = args.includes('--grid')
   const { pos, opts } = flags(args.filter((a) => a !== '--grid'))
   const [folder, name] = pos
   const from = SET.exec(folder ?? '')?.[1]
   if (!from || !name || !NAME.test(name) || pos.length !== 2 || Object.keys(opts).length) {
-    print('usage: latent crop images/<screenshots> <set> [--grid]   (screenshots of posts, stories or reels cut down to their pictures, into workspace/images/<set>/; --grid: screenshots of the Saved grid, one picture a thumbnail)')
+    print('usage: latent crop images/<screenshots> <set> [--grid]   (screenshots of posts, stories or reels cut down to their pictures, into workspace/images/<set>/; --grid: screenshots of a grid, the Saved grid or a photo roll, one picture a thumbnail)')
     return false
   }
   const n = (await images(from)).length
@@ -114,7 +114,7 @@ async function cropShots(args: string[], line: string): Promise<boolean> {
             created: new Date().toISOString(),
             license: PRIVATE,
             private: true,
-            about: `${crops?.crops.length ?? 0} pictures cut from ${n} screenshots in images/${from}${grid ? ' (the Saved grid)' : ''}`,
+            about: `${crops?.crops.length ?? 0} pictures cut from ${n} screenshots in images/${from}${grid ? ' (a grid)' : ''}`,
             inputs: [`workspace/images/${from}`],
             command: [line, shown(argv)],
             crop: { from, grid },

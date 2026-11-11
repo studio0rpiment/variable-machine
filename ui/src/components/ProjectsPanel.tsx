@@ -245,7 +245,7 @@ function projects(h: Have): Project[] {
   const cropped = ownSets.filter((s) => s.crop)
   // the screenshots: the newest uploaded set not cropped yet, else the last one cropped
   const uploaded = ownSets.filter((s) => String(s.command ?? '').startsWith('uploaded'))
-  const shots = last(uploaded.filter((s) => !cropped.some((c) => c.crop?.from === s.folder)))?.folder ?? last(cropped)?.crop?.from ?? 'instagram'
+  const shots = last(uploaded.filter((s) => !cropped.some((c) => c.crop?.from === s.folder)))?.folder ?? last(cropped)?.crop?.from ?? 'screenshots'
   const collection = latent?.set ?? last(cropped)?.folder ?? `${shots}-pictures`
   const latentName = latent?.folder ?? collection
   const measureSet = collection
@@ -274,11 +274,12 @@ function projects(h: Have): Project[] {
           name: say('projects.latent.texts'),
           tab: 'data',
           commands: [
-            joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']),
-            joinWords(['data', 'raw', 'gutenberg', '65903', 'jung-unconscious']),
-            joinWords(['data', 'raw', 'gutenberg', '59709', 'zhuangzi']),
-            joinWords(['data', 'raw', 'txt', 'https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt', 'kuunmong', '--license', "public domain: Gale's translation, published 1922", '--about', "Kim Man-jung, The Cloud Dream of the Nine (Kuunmong), tr. James S. Gale, 1922; Cornell's copy, read by OCR", '--page', 'https://archive.org/details/cu31924023333077']),
-            joinWords(['data', 'raw', 'wikipedia', 'Composite_portrait', 'composite-portrait']),
+            joinWords(['data', 'raw', 'wikipedia', 'The_Work_of_Art_in_the_Age_of_Mechanical_Reproduction', 'benjamin-work-of-art']),
+            joinWords(['data', 'raw', 'wikipedia', 'Camera_Lucida_(book)', 'barthes-camera-lucida']),
+            joinWords(['data', 'raw', 'wikipedia', 'Simulacra_and_Simulation', 'baudrillard-simulacra']),
+            joinWords(['data', 'raw', 'wikipedia', 'Mirror_stage', 'lacan-mirror-stage']),
+            joinWords(['data', 'raw', 'gutenberg', '11751', 'holmes-stereograph']),
+            joinWords(['data', 'raw', 'gutenberg', '1735', 'plato-sophist']),
           ],
           done: latentTexts.length > 0,
         },

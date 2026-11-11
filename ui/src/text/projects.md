@@ -114,17 +114,17 @@ latent image
 ### What it does
 `projects.latent.does`
 
-Makes the latent image of what a person saves: screenshots of their last 15 Instagram stories, reels or saved posts, cut down to the pictures in them. The image is the picture the set holds without any one of them showing it, its "subconscious" picture. A large picture encoder measures every picture; the set's centre is fitted to those measures; a decoder turns the centre back into a picture. Then each picture is measured against it: how near it is, and what it brings that the rest lack. Each result is set beside the psychology it is like: Galton's composites and Freud's condensation, Posner and Keele's prototypes, Bartlett's schemas, Jung's collective unconscious and Fanon's answer to it.
+Makes the latent image of what a person keeps: screenshots of their photo roll, or of their Instagram saved posts, stories and reels, cut down to the pictures in them. The latent image is the picture the set holds without any one of them showing it. A large picture encoder measures every picture; the set's centre is fitted to those measures; a decoder turns the centre back into a picture. Then each picture is measured against it: how near it is, and what it brings that the rest lack. Each result is set beside the media theory it is like: Benjamin on mechanical reproduction, Barthes's studium, punctum and "that-has-been", Baudrillard's simulacra, and Lacan's mirror stage.
 
 ### What you get
 `projects.latent.get`
 
-the latent image beside the pixel average (Galton's composite), and its axes once there are 30 pictures; a decoder trained on the set's look; a gallery page, with the psychology each part is like, and a JSON of every picture's distance and what it brings. All of it stays on this computer: zip refuses sets made from screenshots
+the latent image beside the pixel average, and its axes once there are 30 pictures; a decoder trained on the set's look; a gallery page, with the media theory each part is like, and a JSON of every picture's distance and what it brings. All of it stays on this computer: zip refuses sets made from screenshots
 
 ### What it can't do
 `projects.latent.limits`
 
-It is a mean and a few directions of spread, measured in a model's numbers: not a memory or an unconscious in any literal sense. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 12 pictures at the least, 30 before it draws axes and about 100 before they hold still, and a Mac with 16 GB of memory. The psychology is a likeness, not a finding: the statistics do what the experiments found people do. The screenshots show other people's posts, so the work is a student project only. Saved posts were chosen from what the app's recommender offered, so the set is the person's and the app's together.
+It is a mean and a few directions of spread, measured in a model's numbers: a picture made from copies, of no picture. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 12 pictures at the least, 30 before it draws axes and about 100 before they hold still, and a Mac with 16 GB of memory. The theory is a likeness, not a finding: the statistics don't do what Benjamin, Barthes, Baudrillard or Lacan describe; they give a place to argue from. The screenshots show a person's own photographs or other people's posts, so the work is a student project only. Saved posts were chosen from what the app's recommender offered, so that set is the person's and the app's together.
 
 ### Step: get the model
 `projects.latent.model`
@@ -134,7 +134,7 @@ get the picture encoder and decoder (Kandinsky 2.2, 9 GB)
 ### Step: the screenshots
 `projects.latent.screenshots`
 
-upload screenshots of your last 15 Instagram stories, reels or saved posts into a new image set (one post a screenshot, or screenshots of the Saved grid)
+upload 15 or more screenshots into a new image set: of a photo roll, or of Instagram saved posts, stories or reels (one post a screenshot, or screenshots of a grid: the Saved grid or the photo roll)
 
 ### Step: a public-domain set instead
 `projects.latent.pictures`
@@ -144,12 +144,12 @@ to try the card first: a public-domain body of work (then crop nothing, and make
 ### Step: crop the screenshots
 `projects.latent.crop`
 
-cut each screenshot down to its picture, so the app's header, buttons and captions don't become part of the latent image (add --grid for screenshots of the Saved grid). Both sets are marked private
+cut each screenshot down to its picture, so the app's header, buttons and captions don't become part of the latent image (add --grid for screenshots of a grid: the Saved grid or the photo roll). Both sets are marked private
 
 ### Step: the texts
 `projects.latent.texts`
 
-bring in texts on dreams, memory and the unconscious, as framing: Freud and Jung, Zhuangzi's butterfly dream, the Korean novel Kuunmong (The Cloud Dream of the Nine), and Galton's composite portraits. They are read beside the latent image, not trained on. Their critics are in docs/latent-image-reading.md
+bring in media theory as framing: the Wikipedia articles on Benjamin's "The Work of Art in the Age of Mechanical Reproduction", Barthes's Camera Lucida, Baudrillard's Simulacra and Simulation and Lacan's mirror stage, and two public-domain texts: Holmes on the stereograph (1859), and Plato's Sophist, where the copy without an original starts. The works themselves are in copyright: read them through the library (docs/latent-image-reading.md). They are read beside the latent image, not trained on
 
 ### Step: make it
 `projects.latent.make`
@@ -164,7 +164,7 @@ train the decoder on the set, so the latent image is drawn in its own look (20 s
 ### Step: measure it
 `projects.latent.measure`
 
-measure each picture against the latent image (or another set: another month's, another person's), with the psychology beside each part
+measure each picture against the latent image (or another set: another month's, another person's), with the media theory beside each part
 
 ### The check, on the make step
 `projects.latent.checked`

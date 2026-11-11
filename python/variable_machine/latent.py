@@ -13,8 +13,8 @@ downloads anything.
 
 What each part does:
 
-- crop: screenshots (of Instagram posts, stories and reels, or of the Saved
-  grid with --grid) cut down to the pictures in them, so the app's own
+- crop: screenshots (of Instagram posts, stories and reels, or with --grid
+  of the Saved grid or a photo roll) cut down to the pictures in them, so the app's own
   header, buttons and captions don't become part of the latent image.
 - make: the encoder turns each picture into 1280 numbers (an embedding):
   what the picture shows and how it looks, as a model trained on hundreds of
@@ -23,7 +23,7 @@ What each part does:
   pictures differ (principal components), with their spreads. The decoder
   turns the mean back into a picture: that is the latent image. Each axis is
   shown as two pictures, the mean minus and plus two spreads. Beside them,
-  the pixel average (Galton's composite) is the baseline. The check: is the
+  the pixel average is the baseline. The check: is the
   centre the same when made from either half of the collection, and do
   pictures set aside fit the axes as well as the ones they were fitted on?
 - train: the decoder itself learns the collection (LoRA: small added
@@ -37,9 +37,9 @@ What each part does:
   bring most get a picture of it: the latent image with that picture's own
   part added, decoded.
 
-A mean and a few directions of spread is all the latent image is. It is not
-a memory or an unconscious in any literal sense: "subconscious" is the
-project's frame, and the texts on the card give that frame its history.
+A mean and a few directions of spread is all the latent image is: a picture
+made from copies, of no picture. The texts on the card are media theory
+(Benjamin, Barthes, Baudrillard, Lacan) and frame it; they don't change it.
 """
 
 from __future__ import annotations
@@ -67,19 +67,22 @@ STEPS = 30  # denoising steps per picture
 DEV = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
-# What each picture on the gallery page is like, in the psychology the card's texts come from. Each is a likeness:
-# the statistics do what the experiment found people do, not what a mind is. Sources: docs/latent-image-reading.md.
+# What each part of the gallery page is like, in the media theory the card's texts come from. Each is a likeness:
+# the statistics don't do what the theory describes; they give the student a place to argue from.
+# Sources: docs/latent-image-reading.md.
 PSY = {
-    "pixels": "Freud compares a dream face that is two people at once to “a composite photograph of Galton” (The Interpretation of Dreams, 1899): what the pictures share comes forward, what they don't cancels out. He calls it condensation.",
-    "latent": "Like a prototype: people who learned a pattern only from distortions of it sort the pattern itself, which they never saw, as well as the distortions they did, and forget it more slowly (Posner and Keele, 1968 and 1970). Memory keeps the centre of a set.",
-    "trained": "Drawn in the collection's own look, not the web's: the same centre, with the schema it is retold in changed.",
+    "pixels": "Benjamin: mechanical reproduction strips a picture of its aura, its here and now, and of a negative's prints none is the authentic one (“The Work of Art in the Age of Mechanical Reproduction”, 1935). A screenshot is a copy of a copy; the pixel average is reproduction one step further, a copy of every copy at once.",
+    "latent": "Barthes: the studium is the general interest a photograph raises, coded by the viewer's culture (Camera Lucida, 1980). The latent image is the studium of the set: what all of it shares, with nothing in it that pricks. And a photograph says that-has-been: its subject was in front of the lens. No one was ever in front of this one.",
+    "trained": "Drawn in the set's own look, copied from no picture in it: in Baudrillard's terms, an image with no relation to any reality, its own simulacrum.",
     "model": [
-        "People take in the average of a set at a glance, without keeping its members (ensemble perception: Ariely, 2001). The latent image is that average, in a model's measure.",
-        "The model learned from about two billion pictures from the web, and it draws the centre in their terms. Bartlett (Remembering, 1932) found people retell a strange story in their own culture's terms. Jung would call the model's store a collective unconscious; Fanon's answer is that such a store is one culture's, not humanity's, and so is this one.",
+        "Baudrillard's phases of the image (Simulacra and Simulation, 1981), run through the method: the photograph reflects a reality; the screenshot, cropped, compressed and framed by the app, masks and distorts it; the pixel average masks that there is no one picture behind it; the latent image has no relation to any picture at all. It is a copy without an original, a simulacrum.",
+        "Lacan's mirror stage (1949): a child recognises itself in a mirror's whole image while its body feels in pieces, and forms its self on that image of a unity it doesn't have. The saved pictures are a mirror the person recognises themselves in; the latent image is the unified self no single picture shows, and to recognise yourself in it is a misrecognition.",
+        "Flusser: a camera is an apparatus with a program, and its pictures are what the program allows (Towards a Philosophy of Photography, 1983). This model learned its program from about two billion pictures from the web, so the latent image can only be a picture that program can draw.",
     ],
-    "feed": "These are saved posts: the person chose them, but from what the app's recommender offered. The latent image is where the two meet; what a picture brings is where they part.",
-    "axes": "What the collection's pictures disagree about: the tensions inside it, not one picture's place.",
-    "brings": "What a picture brings is the part of it the collection doesn't hold: Hoel (2021) proposes that dreams are the brain's own off-pattern pictures, which keep it from learning its days too narrowly. That is an analogy, not a finding about this page.",
+    "feed": "If these are saved posts, the person chose them from what the app's recommender offered (Bucher, If...Then, 2018): the set is the person's and the feed's together. The latent image is where the two meet; what a picture brings is where they part.",
+    "shots": "Steyerl: a screenshot is a poor image, a copy in motion that loses resolution as it gains reach (“In Defense of the Poor Image”, 2009). The crop cuts each one out of the app's frame; the compression stays in.",
+    "axes": "Holmes, on the stereograph: “Form is henceforth divorced from matter” (1859). Each end of an axis is a form with no matter: a way the collection's pictures differ, drawn without any picture.",
+    "brings": "Barthes's punctum is the detail that pricks one viewer, by accident; it can't be coded, so no measure finds it. What a picture brings is what the set lacks, which makes it a place to look for one, not the punctum itself.",
 }
 
 
@@ -274,14 +277,17 @@ def crop_screen(im: Image.Image) -> tuple[list[int], str]:
 
 
 def crop_grid(im: Image.Image) -> list[list[int]]:
-    """The thumbnails in a screenshot of the Saved grid: blocks of picture separated by thin lines of background."""
+    """The thumbnails in a screenshot of a grid (Instagram's Saved grid, or a phone's photo roll): blocks of picture
+    separated by thin lines of background. A photo roll's lines are 1–3 pixels, so the grid is read at the screenshot's
+    own size: shrinking it blurs the lines into the pictures."""
     W, H = im.size
-    k = 720 / W
-    a = np.asarray(im.resize((720, max(1, round(H * k)))))
+    k = min(1.0, 2000 / W)
+    a = np.asarray(im if k == 1 else im.resize((round(W * k), max(1, round(H * k)))))
+    w = a.shape[1]
     c = _content(a)
     boxes = []
-    for y0, y1 in _runs(c.mean(1) > 0.6, 720 // 6):
-        for x0, x1 in _runs(c[y0:y1].mean(0) > 0.6, 720 // 6):
+    for y0, y1 in _runs(c.mean(1) > 0.6, w // 8):
+        for x0, x1 in _runs(c[y0:y1].mean(0) > 0.6, w // 8):
             if 0.5 <= (y1 - y0) / (x1 - x0) <= 2:
                 boxes.append([round(x0 / k), round(y0 / k), round(x1 / k), round(y1 / k)])
     return boxes
@@ -491,7 +497,7 @@ def write_html(path: Path, items: list[dict], files: list[Path], latent: Path, o
         else f'<h2>no axes</h2><p>{check_["pictures"]} pictures is too few for the ways they differ to mean anything: the axes are drawn from {AXES_FROM} pictures. The bars below are a sketch.</p>'
     )
     shots = (folder / "crops.json").exists()
-    psy = "".join(f"<li>{x}</li>" for x in PSY["model"]) + (f"<li>{PSY['feed']}</li>" if shots else "")
+    psy = "".join(f"<li>{x}</li>" for x in PSY["model"] + ([PSY["shots"], PSY["feed"]] if shots else []))
     by = {f.name: f for f in files}
     cards = []
     for i in sorted(items, key=lambda x: x["distance"]):
@@ -523,9 +529,9 @@ figcaption{{padding:.5rem .625rem;display:flex;flex-wrap:wrap;gap:.25rem .5rem}}
 .bars u{{position:absolute;top:0;width:.25rem;height:.5rem;background:#5CF25C;margin-left:-.125rem}}
 </style></head><body>
 <h1>the latent image of {e(latent.name)} · {len(items)} pictures from {e(folder.name)} measured against it</h1>
-<p>The latent image is the centre of the collection's pictures as a large picture encoder measures them (CLIP ViT-bigG/14), decoded into a picture by Kandinsky 2.2. It is a mean, not a memory: no single picture shows it. The centre is {stable} across halves of the collection ({check_["centreAcrossHalves"]:.3f}; stable at 0.95).{axes_ok}</p>
+<p>The latent image is the centre of the collection's pictures as a large picture encoder measures them (CLIP ViT-bigG/14), decoded into a picture by Kandinsky 2.2. It is a mean of copies: no single picture shows it. The centre is {stable} across halves of the collection ({check_["centreAcrossHalves"]:.3f}; stable at 0.95).{axes_ok}</p>
 <div class="top">{"".join(head)}</div>
-<h2>what the psychology says it is like</h2>
+<h2>what media theory says it is like</h2>
 <ul>{psy}</ul>
 {axes_part}
 <h2>the pictures, nearest the centre first</h2>
