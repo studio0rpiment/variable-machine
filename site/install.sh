@@ -45,9 +45,16 @@ main() {
 
   # ---- the newest release ----
   bold "1. Finding the newest release"
-  TAG="${VARIABLE_MACHINE_TAG:-$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" 2>/dev/null \
-    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)}"
+  if [ -n "${VARIABLE_MACHINE_TAG:-}" ]; then
+    RELEASE="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/tags/$VARIABLE_MACHINE_TAG" 2>/dev/null)"
+  else
+    RELEASE="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" 2>/dev/null)"
+  fi
+  TAG="${VARIABLE_MACHINE_TAG:-$(printf '%s' "$RELEASE" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)}"
   [ -n "$TAG" ] || stop "GitHub didn't answer." "Check the internet connection and paste the line again."
+  # The zip attached to the release (GitHub counts its downloads); else GitHub's source zip.
+  ZIP_URL="$(printf '%s' "$RELEASE" | sed -n 's/.*"browser_download_url": *"\([^"]*\.zip\)".*/\1/p' | head -1)"
+  [ -n "$ZIP_URL" ] || ZIP_URL="https://github.com/$REPO/archive/refs/tags/$TAG.zip"
   say "  $TAG"
   echo
 
@@ -55,7 +62,7 @@ main() {
   bold "2. Downloading it"
   TMP="$(mktemp -d)"
   trap 'rm -rf "$TMP"' EXIT
-  run curl -fL --progress-bar -o "$TMP/vm.zip" "https://github.com/$REPO/archive/refs/tags/$TAG.zip" \
+  run curl -fL --progress-bar -o "$TMP/vm.zip" "$ZIP_URL" \
     || stop "The download didn't finish." "Check the internet connection and paste the line again."
   run unzip -q "$TMP/vm.zip" -d "$TMP" || stop "The download is damaged." "Paste the line again."
   SRC="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -1)"
