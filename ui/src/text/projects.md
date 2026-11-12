@@ -5,7 +5,7 @@ Every word on the projects tab, from the top of the page to the bottom: the head
 Each entry is:
 
 - a `###` line with its **title**, to find it by. On a flag (a pop-up that explains a control), the title is shown: it is the bold words at the top of the flag;
-- on the next line, its **name** in backticks, which ties it to its place on the page. Don't change the name. A flag says so after its name: `projects.steps` flag;
+- on the next line, its **name** in backticks, which ties it to its place on the page. Don't change the name. A flag says so after its name: `panel.projects` flag;
 - then its **text**, one paragraph (line breaks inside it become spaces).
 
 In the text:
@@ -61,11 +61,6 @@ what it can't do
 `projects.card.steps`
 
 steps
-
-### Steps
-`projects.steps` flag
-
-The steps in order. Each says which tab does it and shows its command: press the command to run it here, exactly as that tab would (it shows in the terminal below), or open the tab to change it first. A command with a part in angle brackets, like <table>, needs something you haven't made yet: open the tab to make it. Done means your workspace has what the step makes. A step marked "or" starts a second way to the same work, in place of the steps above it.
 
 ## A step
 

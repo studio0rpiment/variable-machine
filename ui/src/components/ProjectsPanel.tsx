@@ -5,7 +5,6 @@ import { useHelperEvent } from '../hooks/useHelper'
 import { runCommand } from '../lib/helper'
 import { listDir, readFile, readManifests } from '../lib/workspace'
 import CommandPreview from './CommandPreview'
-import { Explained } from '../explain/Explained'
 import { rich, say } from '../text/say'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -348,35 +347,33 @@ export default function ProjectsPanel() {
                     </>
                   )}
                 </dl>
-                <Explained id="projects.steps">
-                  <ol className="project-steps" aria-label={say('projects.card.steps')}>
-                    {p.steps.map((s, i) => {
-                      const state = s.soon ? 'soon' : s.done ? 'done' : 'todo'
-                      // a second way counts from its own first step
-                      const n = i - Math.max(0, p.steps.slice(0, i + 1).findLastIndex((x) => x.or)) + 1
-                      return (
-                        <li key={s.name} className={`project-step is-${state} ${s.or ? 'is-or' : ''}`.trim()}>
-                          <span className="project-step__state label">
-                            {s.or && `${say('projects.step.or')} `}
-                            {n} · {STATE_WORDS[state]()}
-                          </span>
-                          <span className="project-step__body">
-                            <span className="project-step__name">{s.name}</span>
-                            <a href={`#${s.tab}`} className="text-link project-step__tab">
-                              {say('projects.step.open', { tab: TAB_NAME[s.tab] })}
-                            </a>
-                            {!s.soon && s.commands.length === 0 && <span className="label label--muted">{say('projects.step.inPage', { tab: TAB_NAME[s.tab] })}</span>}
-                            {!s.soon &&
-                              s.commands.map((c) => (
-                                <CommandPreview key={c} command={c} onRun={() => void run([c])} disabled={c.includes('<')} running={busy === c} label={say('projects.step.run')} />
-                              ))}
-                            {s.result && <span className="label label--muted project-step__result">{s.result}</span>}
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ol>
-                </Explained>
+                <ol className="project-steps" aria-label={say('projects.card.steps')}>
+                  {p.steps.map((s, i) => {
+                    const state = s.soon ? 'soon' : s.done ? 'done' : 'todo'
+                    // a second way counts from its own first step
+                    const n = i - Math.max(0, p.steps.slice(0, i + 1).findLastIndex((x) => x.or)) + 1
+                    return (
+                      <li key={s.name} className={`project-step is-${state} ${s.or ? 'is-or' : ''}`.trim()}>
+                        <span className="project-step__state label">
+                          {s.or && `${say('projects.step.or')} `}
+                          {n} · {STATE_WORDS[state]()}
+                        </span>
+                        <span className="project-step__body">
+                          <span className="project-step__name">{s.name}</span>
+                          <a href={`#${s.tab}`} className="text-link project-step__tab">
+                            {say('projects.step.open', { tab: TAB_NAME[s.tab] })}
+                          </a>
+                          {!s.soon && s.commands.length === 0 && <span className="label label--muted">{say('projects.step.inPage', { tab: TAB_NAME[s.tab] })}</span>}
+                          {!s.soon &&
+                            s.commands.map((c) => (
+                              <CommandPreview key={c} command={c} onRun={() => void run([c])} disabled={c.includes('<')} running={busy === c} label={say('projects.step.run')} />
+                            ))}
+                          {s.result && <span className="label label--muted project-step__result">{s.result}</span>}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ol>
               </article>
             )
           })}
