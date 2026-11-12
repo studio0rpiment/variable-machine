@@ -9,6 +9,7 @@ import Manifest from './Manifest'
 import CommandPreview from './CommandPreview'
 import DataRows from './DataRows'
 import DataGenerator from './DataGenerator'
+import DataDrafts from './DataDrafts'
 import ImportCard from './ImportCard'
 import RawCard from './RawCard'
 import PreferenceBuilder from './PreferenceBuilder'
@@ -495,6 +496,13 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                       <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>write more rows: a model writes, you keep the good ones</h2>
                     </Explained>
                     <DataGenerator dataset={current.name} examples={examples} />
+                  </section>
+                )}
+
+                {(current.format ?? 'chat') === 'chat' && (
+                  <section className="mf-part" aria-label={say('data.drafts.title')}>
+                    <h2 className="panel__title label mf-lead-plain">{say('data.drafts.title')}</h2>
+                    <DataDrafts dataset={current.name} train={files.train} />
                   </section>
                 )}
 

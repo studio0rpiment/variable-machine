@@ -94,6 +94,11 @@ open {tab}
 
 done on the {tab} tab, in the page: no command
 
+### A drafting step's count
+`projects.step.kept`
+
+{kept} of {target} rows kept · {unreviewed} drafts to read
+
 ### What the run button says to a screen reader
 `projects.step.run`
 
@@ -178,6 +183,16 @@ make a gesture set
 
 record two or more gestures, five examples of each
 
+### Step: record, its check
+`projects.gesture.check`
+
+{counts} · done when two gestures have 5 examples or more each
+
+### Step: record, nothing recorded
+`projects.gesture.none`
+
+no examples yet
+
 ### Step: train
 `projects.gesture.train`
 
@@ -250,7 +265,7 @@ bring in their writing: a book, or a text file
 ### Step: rows
 `projects.voice.rows`
 
-have a model write rows from its passages, and keep the good ones
+have a model draft rows from its passages, then keep, edit or reject each draft
 
 ### Step: train
 `projects.voice.train`
@@ -349,7 +364,7 @@ pick a reader and make its set: one for each, named studio- and the reader
 ### Step: rows
 `projects.studio.rows`
 
-have a model write made-up examples from the studio's notes, each a text and its fields as JSON; keep, edit or reject each one
+have a model draft made-up examples from the studio's notes (a .txt or .md, uploaded under drafts on the Data tab), each a text and its fields as JSON; then keep, edit or reject each draft
 
 ### Step: corrections
 `projects.studio.corrections`

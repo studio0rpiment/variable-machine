@@ -262,3 +262,115 @@ split it
 `data.papers.train`
 
 open Train with it
+
+## Drafts: a model writes many rows, you read them later
+
+### Heading
+`data.drafts.title`
+
+drafts · a model writes many rows at once, you read each one
+
+### What drafts are
+`data.drafts.intro`
+
+A model reads your material a passage at a time and writes rows from it, ten to a call, into drafts.jsonl. Nothing goes into the set until you read a draft: keep it as it is, edit it and keep it, or reject it. Leave it running, and read them when it's done.
+
+### Write from
+`data.drafts.from`
+
+write from
+
+### Write from, nothing chosen
+`data.drafts.from.none`
+
+choose the material
+
+### Upload a text
+`data.drafts.upload`
+
+or upload a .txt or .md
+
+### Uploading
+`data.drafts.uploading`
+
+uploading {file}…
+
+### Upload failed
+`data.drafts.uploadFailed`
+
+the upload didn't go through: {error}
+
+### Fields
+`data.drafts.fields`
+
+fields, for a reader (optional)
+
+### Fields, example
+`data.drafts.fields.example`
+
+sender,work,ask,deadline
+
+### Fields, what they do
+`data.drafts.fields.note`
+
+With fields, each draft is a made-up text and those fields as JSON, for a reader model. Without, each draft is a question about a passage and its answer.
+
+### How many
+`data.drafts.count`
+
+rows
+
+### The model that writes
+`data.drafts.model`
+
+writer
+
+### The run button, for a screen reader
+`data.drafts.run`
+
+draft rows
+
+### Draft
+`data.draft` flag
+
+Runs the writer model on your material in the helper, not in the page, so you can leave the tab while it works. Every draft is marked unreviewed in the set's drafts.jsonl. Keeping one is a `data append`, rejecting one a `data reject`: both show in the terminal.
+
+### The tally
+`data.drafts.tally`
+
+{kept} kept · {rejected} rejected · {unreviewed} to read
+
+### Text
+`data.drafts.text`
+
+text
+
+### Answer
+`data.drafts.answer`
+
+answer
+
+### Answer, not JSON
+`data.drafts.notJson`
+
+the answer has to be JSON with the fields, like the draft's
+
+### Keep
+`data.drafts.keep`
+
+keep
+
+### Reject
+`data.drafts.reject`
+
+reject
+
+### Show more
+`data.drafts.more`
+
+show {n} more
+
+### Where a draft came from
+`data.drafts.source`
+
+draft {id} · by {model} · from {from}

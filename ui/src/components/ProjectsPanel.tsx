@@ -6,6 +6,7 @@ import { runCommand } from '../lib/helper'
 import { listDir, readFile, readManifests } from '../lib/workspace'
 import CommandPreview from './CommandPreview'
 import { rich, say } from '../text/say'
+import { readerFields } from '../lib/readers'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
 const TAB_NAME = { data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
@@ -81,10 +82,12 @@ interface Have {
   readerChecks: { dataset: string; model: string; at: string; n: number; scores: { model: string; right: number; fields: number; rows: number; ms: number }[] }[]
   /** research folders, with the files each has (screen.json, reading-list.md) */
   research: { folder: string; created?: string; files: string[] }[]
+  /** texts uploaded for drafting rows from (data draft --from uploads/…) */
+  texts: string[]
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, uploads] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -95,6 +98,7 @@ async function readHave(): Promise<Have> {
     readManifests<Output>('outputs'),
     readManifests<Gesture>('gestures'),
     readManifests<{ created?: string }>('research'),
+    listDir('uploads'),
   ])
   const models = await Promise.all(
     mfs
@@ -131,12 +135,18 @@ async function readHave(): Promise<Have> {
     photo: photo && `images/${set}/${photo}`,
     outputs,
     gestures,
+    texts: uploads.filter((u) => /\.(txt|md)$/.test(u.name)).map((u) => `uploads/${u.name}`),
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
 }
 
 /** The base the -360m names promise; only a table's question sets get it without asking. */
 const SMALL = 'HuggingFaceTB/SmolLM2-360M-Instruct'
+
+/** Rows kept from a model's drafts (or written by a model on the Data tab), and drafts still to read. */
+const kept = (d: DatasetManifest) => ({ kept: d.sources.filter((s) => s.kind === 'generated').reduce((a, s) => a + s.rows, 0), unreviewed: d.drafts?.unreviewed ?? 0 })
+/** How many kept rows a drafting step needs before it is done. */
+const KEEP = { studio: 150, voice: 100 }
 
 /** What was made last, so a step's command names it. */
 const last = <T extends { created?: unknown }>(xs: T[]): T | undefined => [...xs].sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? ''))).pop()
@@ -162,12 +172,15 @@ function projects(h: Have): Project[] {
   const book = last(writing)?.folder ?? '<name>'
   const rows = last(fromWriting)?.folder ?? `${book}-qa`
   const voiceAdapter = last(voiceAdapters)?.folder ?? `${rows}-360m`
+  const voiceKept = fromWriting.find((d) => d.folder === rows)
+  const voiceCount = voiceKept ? kept(voiceKept) : { kept: 0, unreviewed: 0 }
 
   // gesture: tracker → set → examples → trained → sent
   const gestures = h.gestures
   const recorded = gestures.filter((g) => Object.values(g.counts ?? {}).filter((n) => n >= 5).length >= 2)
   const trained = gestures.filter((g) => g.trained)
   const gset = last(trained)?.folder ?? last(recorded)?.folder ?? last(gestures)?.folder ?? 'my-hands'
+  const gcounts = Object.entries(gestures.find((g) => g.folder === gset)?.counts ?? {})
 
   // cut-out: the tool, a set of photos, a cut-out
   const cutouts = h.outputs.filter((o) => o.items?.some((i) => i.tool === 'cutout'))
@@ -192,7 +205,10 @@ function projects(h: Have): Project[] {
   // the set the last reader trained on; a set made only to check it (rows it never saw) doesn't move the card on
   const reader = last(readers)?.data ?? last(readerSets)?.folder ?? 'studio-mail'
   const readerAdapter = last(readers)?.folder ?? `${reader}-360m`
-  const withRows = readerSets.filter((d) => d.counts.train + d.counts.valid > 0)
+  const readerSet = readerSets.find((d) => d.folder === reader)
+  const readerCount = readerSet ? kept(readerSet) : { kept: 0, unreviewed: 0 }
+  const notes = h.raw.find((r) => !r.columns?.length && /notes/.test(r.folder))?.folder
+  const notesFrom = (notes && `raw/${notes}`) ?? h.texts.find((t) => /notes/.test(t)) ?? '<notes>'
   const readerModel = last(readerModels)?.model ?? reader
   // sets of rows the reader never trained on, made only to check it
   const asAside = readerSets.filter((d) => d.folder !== reader && !readers.some((a) => a.data === d.folder))
@@ -232,7 +248,13 @@ function projects(h: Have): Project[] {
       steps: [
         { name: say('projects.gesture.tracker'), tab: 'gesture', commands: ['model get hands'], done: h.tools.includes('hands') },
         { name: say('projects.gesture.set'), tab: 'gesture', commands: [joinWords(['gesture', 'new', gset, '--tracker', 'hands'])], done: gestures.length > 0 },
-        { name: say('projects.gesture.record'), tab: 'gesture', commands: [], done: recorded.length > 0 },
+        {
+          name: say('projects.gesture.record'),
+          tab: 'gesture',
+          commands: [],
+          done: recorded.length > 0,
+          result: say('projects.gesture.check', { counts: gcounts.length ? gcounts.map(([k, n]) => `${k} ${n}`).join(' · ') : say('projects.gesture.none') }),
+        },
         { name: say('projects.gesture.train'), tab: 'gesture', commands: [joinWords(['gesture', 'train', gset])], done: trained.length > 0 },
         { name: say('projects.gesture.send'), tab: 'gesture', commands: [joinWords(['gesture', 'send', gset, '--port', '9000'])], done: gestures.some((g) => g.sent) },
       ],
@@ -256,7 +278,13 @@ function projects(h: Have): Project[] {
       steps: [
         { name: say('projects.voice.modelfile'), tab: 'modelfile', commands: [joinWords(['ollama', 'create', '<name>', '-f', 'workspace/modelfiles/<name>.Modelfile'])], done: variants.length > 0 },
         { name: say('projects.voice.writing'), tab: 'data', commands: [joinWords(['data', 'raw', 'gutenberg', '<book number>', book])], done: writing.length > 0, or: true },
-        { name: say('projects.voice.rows'), tab: 'data', commands: [], done: fromWriting.length > 0 },
+        {
+          name: say('projects.voice.rows'),
+          tab: 'data',
+          commands: [joinWords(['data', 'draft', rows, '--from', `raw/${book}`, '--count', '150', '--model', 'qwen3:4b'])],
+          done: voiceCount.kept >= KEEP.voice,
+          result: voiceKept && say('projects.step.kept', { kept: voiceCount.kept, target: KEEP.voice, unreviewed: voiceCount.unreviewed }),
+        },
         { name: say('projects.voice.train'), tab: 'train', commands: [joinWords(['train', voiceAdapter, '--data', rows, '--base', SMALL])], done: voiceAdapters.length > 0 },
         { name: say('projects.voice.export'), tab: 'adapters', commands: [joinWords(['export', voiceAdapter])], done: h.models.some((m) => voiceAdapters.some((a) => a.folder === m.adapter)) },
       ],
@@ -285,7 +313,13 @@ function projects(h: Have): Project[] {
       limits: say('projects.studio.limits'),
       steps: [
         { name: say('projects.studio.set'), tab: 'data', commands: [joinWords(['data', 'new', reader])], done: readerSets.length > 0 },
-        { name: say('projects.studio.rows'), tab: 'data', commands: [], done: withRows.length > 0 },
+        {
+          name: say('projects.studio.rows'),
+          tab: 'data',
+          commands: [joinWords(['data', 'draft', reader, '--from', notesFrom, '--fields', readerFields(reader) ?? '<a,b,c>', '--count', '200', '--model', 'qwen3:4b'])],
+          done: readerCount.kept >= KEEP.studio,
+          result: readerSet && say('projects.step.kept', { kept: readerCount.kept, target: KEEP.studio, unreviewed: readerCount.unreviewed }),
+        },
         { name: say('projects.studio.corrections'), tab: 'data', commands: [`data append ${reader} '<row json>' --source corrections`], done: readerSets.some((d) => d.command.some((c) => c.startsWith('data append') && c.includes('--source corrections'))) },
         { name: say('projects.studio.split'), tab: 'data', commands: [joinWords(['data', 'split', reader, '--valid', '0.15']), joinWords(['data', 'validate', reader])], done: readerSets.some((d) => d.split) },
         { name: say('projects.studio.train'), tab: 'train', commands: [joinWords(['train', readerAdapter, '--data', reader, '--base', SMALL, '--max-seq', '512'])], done: readers.length > 0 },
@@ -312,7 +346,7 @@ export default function ProjectsPanel() {
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('modelfiles/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
 
   const run = async (lines: string[]) => {

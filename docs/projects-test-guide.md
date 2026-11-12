@@ -34,7 +34,7 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 |---|---|---|---|---|
 | 1 | Gesture | Get the hand tracker | `model get hands` | The download finishes; the step checklist moves on |
 | 2 | Gesture | Name a new set | `gesture new <set> --tracker hands` | The set appears |
-| 3 | Gesture | Start the camera; for each of 2 gestures, tap to record, wait for the countdown, record 5 or more examples | (in the page) | The count shows on the camera picture; each gesture has 5 or more examples |
+| 3 | Gesture | Start the camera; for each of 2 gestures, tap to record, wait for the countdown, record 5 or more examples | (in the page) | The count shows on the camera picture; the card's step shows each gesture's count and is done when two gestures have 5 or more |
 | 4 | Gesture | Train | `gesture train <set>` | Set-aside examples are mostly named right |
 | 5 | Gesture | Send | `gesture send <set> --port 9000` | The patch receives the gesture names |
 
@@ -63,7 +63,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | # | Tab | Do | Command | Check |
 |---|---|---|---|---|
 | 1 | Data | Bring in a public-domain book | `data raw gutenberg <book number> <name>` | The text appears |
-| 2 | Data | Have a model write rows from its passages; keep, edit or reject each one | (in the page) | 100 or more kept rows |
+| 2 | Data → drafts | Draft rows from its passages, then keep, edit or reject each draft | `data draft <name>-qa --from raw/<name> --count 150 --model qwen3:4b` | The set appears with its drafts, marked unreviewed. Each keep echoes `data append … --draft <id>`, each reject `data reject <name>-qa <id>`. The card shows *n of 100 rows kept*; done at 100 |
 | 3 | Train | Train on SmolLM2 | `train <adapter> --data <rows> --base <small>` | The run ends without an error |
 | 4 | Adapters → Chat | Export, then talk to it | `export <adapter>` | It sounds like the writer, and more than the base model does |
 
@@ -89,7 +89,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | # | Tab | Do | Command | Check |
 |---|---|---|---|---|
 | 1 | Data | New set named for the reader | `data new studio-mail` | The set appears |
-| 2 | Data | Have a model write 150–300 made-up examples from the studio's notes; keep, edit or reject each one | (in the page) | Each row is a message plus its fields (sender, work, ask, deadline) as JSON |
+| 2 | Data → drafts | Upload the studio's notes (a .txt or .md) under drafts, then draft. Fields fill in as sender,work,ask,deadline. Keep, edit or reject each draft | `data draft studio-mail --from uploads/<notes>.txt --fields sender,work,ask,deadline --count 200 --model qwen3:4b` | Drafts come in ten to a call and wait, unreviewed, in `drafts.jsonl`. Each draft is a message plus its fields as JSON; an edit that breaks the JSON can't be kept. The card shows *n of 150 rows kept · n drafts to read*; done at 150 |
 | 3 | Data | Add the lead's corrections as rows | `data append studio-mail '<row json>' --source corrections` | Rows show their source |
 | 4 | Data | Set rows aside and validate | `data split studio-mail --valid 0.15`, `data validate studio-mail` | No bad rows |
 | 5 | Train | Train on SmolLM2-360M | `train <adapter> --data studio-mail --base <small> --max-seq 512` | The run ends without an error |
