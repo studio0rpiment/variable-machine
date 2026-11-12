@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import type { TrainParams } from '@shared/recipes'
 import { useTheme } from './hooks/useTheme'
 import Chat from './components/Chat'
 import ModelsPanel from './components/ModelsPanel'
@@ -11,7 +12,8 @@ import PreferPanel from './components/PreferPanel'
 import SharePanel from './components/SharePanel'
 import StartPanel from './components/StartPanel'
 import AboutPanel from './components/AboutPanel'
-import ProjectsPanel from './components/ProjectsPanel'
+import ProjectsPanel, { type Fill } from './components/ProjectsPanel'
+import GuideBar from './components/GuideBar'
 import LookPanel from './components/LookPanel'
 import VoicePanel from './components/VoicePanel'
 import MovePanel from './components/MovePanel'
@@ -97,11 +99,21 @@ export default function App() {
   const chatWith = (model: string) => chatModels([null, model])
   /** Two models side by side, e.g. the untouched base next to what training made of it. */
   const chatPair = (a: string, b: string) => chatModels([a, b])
-  const [trainData, setTrainData] = useState<{ data: string; n: number }>()
+  const [trainData, setTrainData] = useState<{ data: string; n: number; params?: Partial<TrainParams> }>()
+  /** a dataset to open on the Data tab (or "new", with the name to make), from a project's step */
+  const [dataPick, setDataPick] = useState<{ pick: string; newName?: string; n: number }>()
+  /** Project mode: fill in the names a card has chosen, on the tab its step opens. */
+  const fill = useCallback((f: Fill) => {
+    if (f.data) setDataPick((r) => ({ ...f.data!, n: (r?.n ?? 0) + 1 }))
+    if (f.train) {
+      const { data, ...params } = f.train
+      setTrainData((r) => ({ data, params, n: (r?.n ?? 0) + 1 }))
+    }
+  }, [])
   const [preferData, setPreferData] = useState<{ data: string; n: number }>()
   /** Data → "use it": open Train or Prefer with that dataset chosen. */
   const sendDataset = (data: string, way: 'train' | 'prefer') => {
-    ;(way === 'train' ? setTrainData : setPreferData)((r) => ({ data, n: (r?.n ?? 0) + 1 }))
+    ;(way === 'train' ? setTrainData : setPreferData)((r?: { n: number }) => ({ data, n: (r?.n ?? 0) + 1 }))
     go(way)
   }
   const editModelfile = (model: string) => {
@@ -137,6 +149,7 @@ export default function App() {
         <ThemeToggle mode={theme.mode} onToggle={toggle} />
       </header>
       <main className="shell__main">
+        <GuideBar panel={panel} onFill={fill} />
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'start'}>
           <StartPanel />
         </div>
@@ -153,7 +166,7 @@ export default function App() {
           <ModelfilePanel startFrom={modelfileFrom} onChatPair={chatPair} />
         </div>
         <div className="panel-slot" hidden={panel !== 'data'}>
-          <DataPanel onUse={sendDataset} />
+          <DataPanel onUse={sendDataset} pick={dataPick} />
         </div>
         <div className="panel-slot" hidden={panel !== 'train'}>
           <TrainPanel onAdapters={() => go('adapters')} onChatPair={chatPair} onChat={chatWith} withData={trainData} />

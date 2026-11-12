@@ -7,12 +7,27 @@ import { listDir, readFile, readManifests } from '../lib/workspace'
 import CommandPreview from './CommandPreview'
 import { rich, say } from '../text/say'
 import { readerFields } from '../lib/readers'
+import { guideHref, startGuide, useGuide } from '../lib/guide'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
-const TAB_NAME = { data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
+export const TAB_NAME = { data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
 type Tab = keyof typeof TAB_NAME
 
-interface Step {
+/** What a step fills in on its tab when a student arrives from the card: the names the card has chosen. */
+export interface Fill {
+  /** the Data tab: the set to open, or "new" with the name to make */
+  data?: { pick: string; newName?: string }
+  /** the Train tab: the set, the adapter's name, the base, the max sequence length */
+  train?: { data: string; name: string; base: string; maxSeq?: number }
+}
+
+/** One note of a step's walkthrough: the control it points at (its flag's id, or a data-guide marker) and what it says. */
+export interface Note {
+  at: string
+  text: string
+}
+
+export interface Step {
   name: string
   tab: Tab
   /** the commands it runs, in order, filled from the workspace where it can be; none when it is done in the page */
@@ -24,9 +39,12 @@ interface Step {
   or?: boolean
   /** what it found, once it has run */
   result?: string
+  fill?: Fill
+  /** the walkthrough on its tab, a note at a time; a step without notes shows its commands in the guide bar */
+  notes?: Note[]
 }
 
-interface Project {
+export interface Project {
   id: string
   title: string
   does: string
@@ -312,17 +330,55 @@ function projects(h: Have): Project[] {
       get: say('projects.studio.get'),
       limits: say('projects.studio.limits'),
       steps: [
-        { name: say('projects.studio.set'), tab: 'data', commands: [joinWords(['data', 'new', reader])], done: readerSets.length > 0 },
+        {
+          name: say('projects.studio.set'),
+          tab: 'data',
+          commands: [joinWords(['data', 'new', reader])],
+          done: readerSets.length > 0,
+          fill: { data: { pick: 'new', newName: reader } },
+          notes: [
+            { at: 'data.new.name', text: say('projects.studio.set.name') },
+            { at: 'data.new', text: say('projects.studio.set.create') },
+          ],
+        },
         {
           name: say('projects.studio.rows'),
           tab: 'data',
           commands: [joinWords(['data', 'draft', reader, '--from', notesFrom, '--fields', readerFields(reader) ?? '<a,b,c>', '--count', '200', '--model', 'qwen3:4b'])],
           done: readerCount.kept >= KEEP.studio,
           result: readerSet && say('projects.step.kept', { kept: readerCount.kept, target: KEEP.studio, unreviewed: readerCount.unreviewed }),
+          fill: { data: { pick: reader } },
+          notes: [
+            { at: 'data.drafts.from', text: say('projects.studio.rows.from') },
+            { at: 'data.drafts.fields', text: say('projects.studio.rows.fields') },
+            { at: 'data.draft', text: say('projects.studio.rows.draft') },
+            { at: 'data.drafts.list', text: say('projects.studio.rows.read', { target: KEEP.studio }) },
+          ],
         },
-        { name: say('projects.studio.corrections'), tab: 'data', commands: [`data append ${reader} '<row json>' --source corrections`], done: readerSets.some((d) => d.command.some((c) => c.startsWith('data append') && c.includes('--source corrections'))) },
-        { name: say('projects.studio.split'), tab: 'data', commands: [joinWords(['data', 'split', reader, '--valid', '0.15']), joinWords(['data', 'validate', reader])], done: readerSets.some((d) => d.split) },
-        { name: say('projects.studio.train'), tab: 'train', commands: [joinWords(['train', readerAdapter, '--data', reader, '--base', SMALL, '--max-seq', '512'])], done: readers.length > 0 },
+        { name: say('projects.studio.corrections'), tab: 'data', fill: { data: { pick: reader } }, commands: [`data append ${reader} '<row json>' --source corrections`], done: readerSets.some((d) => d.command.some((c) => c.startsWith('data append') && c.includes('--source corrections'))) },
+        {
+          name: say('projects.studio.split'),
+          tab: 'data',
+          commands: [joinWords(['data', 'split', reader, '--valid', '0.15']), joinWords(['data', 'validate', reader])],
+          done: readerSets.some((d) => d.split),
+          fill: { data: { pick: reader } },
+          notes: [
+            { at: 'data.split.run', text: say('projects.studio.split.split') },
+            { at: 'data.validate', text: say('projects.studio.split.validate') },
+          ],
+        },
+        {
+          name: say('projects.studio.train'),
+          tab: 'train',
+          commands: [joinWords(['train', readerAdapter, '--data', reader, '--base', SMALL, '--max-seq', '512'])],
+          done: readers.length > 0,
+          fill: { train: { data: reader, name: readerAdapter, base: SMALL, maxSeq: 512 } },
+          notes: [
+            { at: 'train.base', text: say('projects.studio.train.base') },
+            { at: 'train.maxSeq', text: say('projects.studio.train.maxSeq') },
+            { at: 'train.run', text: say('projects.studio.train.run') },
+          ],
+        },
         { name: say('projects.studio.export'), tab: 'adapters', commands: [joinWords(['export', readerAdapter, '--name', reader])], done: readerModels.length > 0 },
         { name: say('projects.studio.compare'), tab: 'chat', commands: [joinWords(['reader', 'check', readerModel, reader]), ...asAside.map((d) => joinWords(['reader', 'check', readerModel, d.folder]))], done: !!compared, result: comparedLine ? say('projects.studio.compared', { n: compared!.n, scores: comparedLine }) : undefined },
       ],
@@ -339,15 +395,29 @@ const STATE_WORDS = { done: () => say('projects.step.done'), todo: () => say('pr
  * from here, exactly as the tab would), and is done when the workspace has what
  * it makes. A step not built yet is marked soon.
  */
-export default function ProjectsPanel() {
+/** The projects, read from the workspace and read again whenever it changes: for the tab, and for the guide bar. */
+export function useProjects(): Project[] | null {
   const [have, setHave] = useState<Have | null>(null)
-  const [busy, setBusy] = useState('')
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
     useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
+  return have && projects(have)
+}
+
+/** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
+export function stepNumber(steps: Step[], i: number) {
+  const start = Math.max(0, steps.slice(0, i + 1).findLastIndex((x) => x.or))
+  const end = steps.findIndex((x, j) => j > i && x.or)
+  return { n: i - start + 1, of: (end < 0 ? steps.length : end) - start }
+}
+
+export default function ProjectsPanel() {
+  const list = useProjects()
+  const guide = useGuide()
+  const [busy, setBusy] = useState('')
 
   const run = async (lines: string[]) => {
     setBusy(lines[0])
@@ -360,10 +430,10 @@ export default function ProjectsPanel() {
       <h2 className="panel__title label">{say('projects.title')}</h2>
       <p className="mf-next projects__intro">{rich('projects.intro')}</p>
       <div className="projects__cards">
-        {have &&
-          projects(have).map((p) => {
+        {list &&
+          list.map((p) => {
             return (
-              <article key={p.id} className="manifest project" aria-labelledby={`project-${p.id}`}>
+              <article key={p.id} id={`card-${p.id}`} className={`manifest project ${guide?.project === p.id ? 'is-followed' : ''}`.trim()} aria-labelledby={`project-${p.id}`}>
                 <header className="manifest__head">
                   <h3 className="manifest__name" id={`project-${p.id}`}>
                     {p.title}
@@ -384,17 +454,24 @@ export default function ProjectsPanel() {
                 <ol className="project-steps" aria-label={say('projects.card.steps')}>
                   {p.steps.map((s, i) => {
                     const state = s.soon ? 'soon' : s.done ? 'done' : 'todo'
-                    // a second way counts from its own first step
-                    const n = i - Math.max(0, p.steps.slice(0, i + 1).findLastIndex((x) => x.or)) + 1
+                    const { n } = stepNumber(p.steps, i)
+                    const followed = guide?.project === p.id && guide.step === i + 1
                     return (
-                      <li key={s.name} className={`project-step is-${state} ${s.or ? 'is-or' : ''}`.trim()}>
+                      <li key={s.name} className={`project-step is-${state} ${s.or ? 'is-or' : ''} ${followed ? 'is-followed' : ''}`.trim()}>
                         <span className="project-step__state label">
                           {s.or && `${say('projects.step.or')} `}
                           {n} · {STATE_WORDS[state]()}
                         </span>
                         <span className="project-step__body">
                           <span className="project-step__name">{s.name}</span>
-                          <a href={`#${s.tab}`} className="text-link project-step__tab">
+                          <a
+                            href={guideHref(p.id, i + 1, s.tab)}
+                            className="text-link project-step__tab"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              startGuide(p.id, i + 1, s.tab)
+                            }}
+                          >
                             {say('projects.step.open', { tab: TAB_NAME[s.tab] })}
                           </a>
                           {!s.soon && s.commands.length === 0 && <span className="label label--muted">{say('projects.step.inPage', { tab: TAB_NAME[s.tab] })}</span>}

@@ -278,7 +278,7 @@ export function Explained({ id, children, svg, module: moduleSel }: Props) {
       {inner}
     </g>
   ) : (
-    <span ref={wrap} className="explained" {...handlers}>
+    <span ref={wrap} className="explained" data-flag={id} {...handlers}>
       {inner}
     </span>
   )

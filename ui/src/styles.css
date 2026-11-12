@@ -912,9 +912,9 @@ img.move-view__picture { transform: none; }
 .move-next { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; max-width: 100%; border: 1px dashed transparent; padding: 0.6rem 0.75rem; }
 .move-start .move-next .field { width: 20rem; max-width: 100%; }
 .next-box { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; max-width: 100%; border: 1px dashed transparent; padding: 0.6rem 0.75rem; margin: 0 -0.75rem; }
-.move-next.is-next, .move-test.is-next, .next-box.is-next { border-color: var(--line); animation: next-flash 0.5s steps(1, end) 4; }
+.move-next.is-next, .move-test.is-next, .next-box.is-next, .guide-bar__next.is-next { border-color: var(--line); animation: next-flash 0.5s steps(1, end) 4; }
 @keyframes next-flash { 50% { border-color: transparent; } }
-@media (prefers-reduced-motion: reduce) { .move-next.is-next, .move-test.is-next, .next-box.is-next { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .move-next.is-next, .move-test.is-next, .next-box.is-next, .guide-bar__next.is-next { animation: none; } }
 .move-help { margin: 0; max-width: 40rem; line-height: 1.5; font-size: 0.75rem; letter-spacing: 0.02em; }
 .move-help li { margin-bottom: 0.25rem; }
 
@@ -1022,3 +1022,17 @@ img.move-view__picture { transform: none; }
 .asked__rows th { color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--bg); }
 .asked__sql { margin: 0.3rem 0 0; white-space: pre-wrap; font-size: 0.72rem; color: var(--muted); }
 .chat__invents { margin: 0; padding: 0.35rem 0.5rem; border: 1px solid #e0604a; text-transform: none; line-height: 1.45; }
+
+/* project mode: the bar while a student follows a project's card, and the walkthrough's note beside one control */
+.guide-bar { flex: none; display: flex; flex-direction: column; gap: 0.35rem; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+.guide-bar__line { display: flex; align-items: center; gap: 0.5rem 1rem; flex-wrap: wrap; }
+.guide-bar__line .mf-next { margin: 0; }
+.guide-bar__do { flex: 1 1 18rem; min-width: 0; }
+.guide-bar__ways { display: flex; align-items: center; gap: 1rem; margin-left: auto; }
+.guide-bar__next { border: 1px dashed transparent; padding: 0.15rem 0.4rem; }
+.guide-bar__look .guide-note__text { flex: 1 1 18rem; }
+.guide-target { outline: 1px dashed var(--line); outline-offset: 0.35rem; }
+.guide-note { position: fixed; z-index: 50; max-width: 24rem; display: flex; flex-direction: column; gap: 0.35rem; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px dashed var(--line); font-size: 0.75rem; line-height: 1.5; }
+.guide-note__ways { display: flex; gap: 1rem; }
+.project.is-followed { border-color: var(--line); }
+.project-step.is-followed .project-step__name { text-decoration: underline; text-underline-offset: 0.2rem; }

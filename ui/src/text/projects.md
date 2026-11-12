@@ -104,6 +104,80 @@ done on the {tab} tab, in the page: no command
 
 run this step
 
+## The guide bar
+
+A step on a card opens its tab with this bar above it: the project is being followed. It stays on every tab until it is closed. On the tab, a walkthrough points at one control at a time.
+
+### The bar, for a screen reader
+`projects.guide.label`
+
+the project you are following
+
+### Which step
+`projects.guide.step`
+
+step {n} of {of}
+
+### On a tab the step doesn't use
+`projects.guide.elsewhere`
+
+This tab isn't part of step {n}; the step is on the {tab} tab.
+
+### The way back to the step's tab
+`projects.guide.backToStep`
+
+back to step {n} →
+
+### Back to the card
+`projects.guide.card`
+
+← back to the card
+
+### Next step
+`projects.guide.next`
+
+next step →
+
+### The last step's way out
+`projects.guide.finished`
+
+that's the last step: back to the card →
+
+### Close
+`projects.guide.close`
+
+stop following this project
+
+### A step with no walkthrough
+`projects.guide.run`
+
+Its command: press it to run it here, or type it in the terminal, with your own words in place of anything in angle brackets.
+
+### A note whose control isn't in view
+`projects.guide.lookFor`
+
+Look for it on the tab:
+
+### A note's place in the walkthrough
+`projects.guide.note`
+
+{n} of {of}
+
+### A note's next
+`projects.guide.noteNext`
+
+next note ›
+
+### Skip the walkthrough
+`projects.guide.skip`
+
+skip the walkthrough
+
+### Show the walkthrough again
+`projects.guide.again`
+
+show the walkthrough again
+
 ## Ask a table
 
 ### Name
@@ -361,10 +435,40 @@ It trains SmolLM2, not qwen3:4b, so a reader is a whole small model of its own, 
 
 pick a reader and make its set: one for each, named studio- and the reader
 
+### Step: the set, walkthrough 1
+`projects.studio.set.name`
+
+The set's name: studio- and the reader. studio-mail is filled in; change the reader's name if you're making another one.
+
+### Step: the set, walkthrough 2
+`projects.studio.set.create`
+
+Make the set. It starts empty: the next step fills it.
+
 ### Step: rows
 `projects.studio.rows`
 
 have a model draft made-up examples from the studio's notes (a .txt or .md, uploaded under drafts on the Data tab), each a text and its fields as JSON; then keep, edit or reject each draft
+
+### Step: rows, walkthrough 1
+`projects.studio.rows.from`
+
+The studio's notes: who the clients and suppliers are, and the work. Choose them, or upload them as a .txt or .md. The model knows only what's in here.
+
+### Step: rows, walkthrough 2
+`projects.studio.rows.fields`
+
+What the reader returns from every message, always the same. Change them now if the studio needs others: they can't change once the rows are made.
+
+### Step: rows, walkthrough 3
+`projects.studio.rows.draft`
+
+The command. Press it to run it: drafts arrive ten at a time and wait, unreviewed. You can leave the tab while it runs.
+
+### Step: rows, walkthrough 4
+`projects.studio.rows.read`
+
+Read each draft. Keep it, fix it and keep it, or reject it. Look for a field the text doesn't actually say. The step is done at {target} kept.
 
 ### Step: corrections
 `projects.studio.corrections`
@@ -376,10 +480,35 @@ add the lead's corrections from the studio as rows, each marked with where it ca
 
 set rows aside for checking, and check every row is valid
 
+### Step: split, walkthrough 1
+`projects.studio.split.split`
+
+Set 15% of the rows aside, then press split. The reader never trains on these: the last step checks it on them.
+
+### Step: split, walkthrough 2
+`projects.studio.split.validate`
+
+Check every row: each needs a text and an answer that is JSON with the fields.
+
 ### Step: train
 `projects.studio.train`
 
 train the reader on the rows
+
+### Step: train, walkthrough 1
+`projects.studio.train.base`
+
+SmolLM2-360M is chosen: the reader is a whole small model of its own, small enough to answer quickly on an 8 GB Mac.
+
+### Step: train, walkthrough 2
+`projects.studio.train.maxSeq`
+
+512 is chosen: a message and its fields are short, and a shorter length trains faster and in less memory.
+
+### Step: train, walkthrough 3
+`projects.studio.train.run`
+
+The set and the adapter's name are filled in. Press train; the loss should fall as it goes.
 
 ### Step: export
 `projects.studio.export`

@@ -10,6 +10,16 @@ One walk-through per card on the Projects tab, in the order the tab shows them. 
 
 Words in angle brackets, like `<table>`, are names you choose or that the page fills in.
 
+**Project mode.** Press *open <tab>* on a step: the tab opens with the guide bar at the top (the card, step n of m, what to do, *back to the card*, *next step*, ×). Check on each step:
+
+- The address says `?project=<card>&step=<n>`; a reload keeps the bar and the step.
+- The names the card chose are filled in on the tab (on the studio card: the set on Data, and the set, adapter name, base and max seq on Train).
+- A step with a walkthrough points at one control at a time, with a dashed box round it. Using the control (a choice changed, its button pressed) moves to the next note; so does *next note*. After the last note the bar shows the step's count and *show the walkthrough again*. So far only the studio card has walkthroughs (steps 1, 2, 4, 5).
+- A step with no walkthrough shows its commands in the bar, to run from there.
+- When the step is done, *next step* gets the dashed box. Nothing moves on by itself.
+- On a tab the step doesn't use, the bar stays and offers *back to step n*.
+- × closes the bar; the tab stays where it is.
+
 ---
 
 ## 1. Ask a table

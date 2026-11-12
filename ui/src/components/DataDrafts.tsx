@@ -122,7 +122,7 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
   return (
     <div className="generator drafts">
       <p className="mf-next">{say('data.drafts.intro')}</p>
-      <div className="generator__head">
+      <div className="generator__head" data-guide="data.drafts.from">
         <label className="field">
           <span className="label label--muted">{say('data.drafts.from')}</span>
           <select value={from} onChange={(e) => setFrom(e.target.value)}>
@@ -140,7 +140,7 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
         <input ref={picker} type="file" accept=".txt,.md,text/plain,text/markdown" hidden onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
       </div>
       <div className="generator__head">
-        <label className="field">
+        <label className="field" data-guide="data.drafts.fields">
           <span className="label label--muted">{say('data.drafts.fields')}</span>
           <input type="text" value={fields} placeholder={say('data.drafts.fields.example')} onChange={(e) => setFields(e.target.value.replace(/\s/g, ''))} />
         </label>
@@ -164,7 +164,7 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
           {say('data.drafts.tally', { kept: drafts.filter((d) => d.state === 'kept').length, rejected: drafts.filter((d) => d.state === 'rejected').length, unreviewed: open.length })}
         </span>
       )}
-      <ol className="candidates">
+      <ol className="candidates" data-guide="data.drafts.list">
         {open.slice(0, shown).map((d) => (
           <li key={d.id} className="candidate">
             <span className="label label--muted">{say('data.drafts.source', { id: d.id, model: d.model, from: d.from })}</span>

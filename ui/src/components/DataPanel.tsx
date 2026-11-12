@@ -43,7 +43,8 @@ const kindOf = (s: DatasetManifest) => KINDS[s.format ?? 'chat']
  * the others in a column on the right. "Make a new one" opens the ways to
  * start a dataset.
  */
-export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 'train' | 'prefer') => void }) {
+/** pick: a set to open (or NEW, with the name to make), sent by a project's step; a new n each time. */
+export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, way: 'train' | 'prefer') => void; pick?: { pick: string; newName?: string; n: number } }) {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [selected, setSelected] = useState('')
   const [files, setFiles] = useState({ train: '', valid: '' })
@@ -102,6 +103,14 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
   }
 
   const current = sets.find((s) => s.name === selected)
+  // a project's step opens its set once the set is there (or the new-set card, with its name)
+  const picked = useRef(0)
+  useEffect(() => {
+    if (!pick || picked.current === pick.n || (pick.pick !== NEW && !sets.some((s) => s.name === pick.pick))) return
+    picked.current = pick.n
+    if (pick.newName) setNewName(pick.newName)
+    choose(pick.pick)
+  }, [pick, sets])
   const examples = useMemo(
     () =>
       files.train
@@ -295,7 +304,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                   <p className="mf-next">{MAKE.empty.when}</p>
                   <Manifest name="empty dataset" lines={[`chat: ${KINDS.chat.about}`, `preference: ${KINDS.preference.about}`, `picture: ${KINDS.picture.about}`]}>
                     <div className="inline-fields">
-                      <label className="field">
+                      <label className="field" data-guide="data.new.name">
                         <span className="label label--muted">name</span>
                         <input type="text" value={newName} onChange={(e) => setNewName(e.target.value.toLowerCase())} spellCheck={false} placeholder="my-set" />
                       </label>
@@ -434,7 +443,7 @@ export default function DataPanel({ onUse }: { onUse?: (dataset: string, way: 't
                     </Explained>
                     <p className="mf-next">{READY.split}</p>
                     <NextBox on={!current.split && current.counts.train >= 2}>
-                    <div className="split">
+                    <div className="split" data-guide="data.split.run">
                       <label className="split__slider">
                         <span className="label label--muted">set aside {Math.round(validFrac * 100)}%</span>
                         <Explained id="data.split">
