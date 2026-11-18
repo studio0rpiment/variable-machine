@@ -1101,3 +1101,58 @@ img.move-view__picture { transform: none; }
 .project__mode { margin-left: auto; }
 .move-layout--step4 .move-view, .move-layout--step4 .move-camera-off { display: none; }
 .move-layout--only .move-use > h3 { display: none; } /* the tab numbers its parts; in project mode the schematic numbers the steps */
+
+/* ---- project mode: a character's voice (VoiceMode.tsx) ---- */
+.voice-mode { flex: none; }
+.voice-mode__line { position: sticky; top: 0; height: 0; z-index: 3; }
+.route-line { list-style: none; margin: 0; padding: 0.45rem 0; display: flex; flex-wrap: wrap; gap: 0.2rem 0; align-items: baseline; background: var(--bg); border-bottom: 1px solid var(--muted); }
+.route-line__step { display: flex; align-items: baseline; }
+.route-line__step + .route-line__step::before, .route-line__end::before { content: '→'; color: var(--muted); margin: 0 0.6rem; }
+.route-line__step .text-button { color: var(--muted); }
+.route-line__step.is-done .text-button { color: var(--line); }
+.route-line__step.is-now .text-button { color: var(--act); }
+.route-line__step.is-open .text-button { text-decoration: underline; text-underline-offset: 0.3em; }
+.voice-band { margin: 0; padding: 0.25rem 0 0.5rem; border-bottom: 1px solid var(--muted); }
+.voice-band__svg { display: block; width: 100%; max-width: 72rem; height: auto; max-height: 20rem; font-family: var(--font); }
+.voice-band__wire polyline { fill: none; stroke: var(--muted); stroke-width: 1; opacity: 0.25; }
+.voice-band__wire.is-lit polyline { stroke: var(--line); stroke-width: 1.5; opacity: 1; }
+.voice-band__tip { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+.voice-band__label { fill: var(--muted); font-size: 11.5px; }
+.voice-band__node { opacity: 0.22; }
+.voice-band__node.is-on { opacity: 1; }
+.voice-band__node.is-step { cursor: pointer; outline: none; }
+.voice-band__box { fill: var(--bg); stroke: var(--muted); stroke-width: 1.25; }
+.voice-band__box.is-input { stroke-dasharray: none; }
+.voice-band__node.is-done .voice-band__box { stroke: var(--line); }
+.voice-band__node.is-now .voice-band__box { stroke: var(--act); stroke-dasharray: 4 3; }
+.voice-band__node.is-open .voice-band__box { fill: var(--act-wash); stroke-width: 2.5; }
+.voice-band__node.is-step:hover .voice-band__box, .voice-band__node.is-step:focus-visible .voice-band__box { stroke: var(--act); fill: var(--act-wash); }
+.voice-band__name { fill: var(--muted); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+.voice-band__node.is-on .voice-band__name { fill: var(--line); }
+.voice-band__node.is-now .voice-band__name { fill: var(--act); }
+.voice-band__num { fill: var(--act); font-size: 13px; }
+.voice-band__caption { fill: var(--muted); font-size: 11.5px; }
+.voice-band__node.is-now .voice-band__caption { fill: var(--act); }
+.voice-band__fork polygon { fill: var(--bg); stroke: var(--act); stroke-width: 1.25; }
+.voice-band__fork text { fill: var(--act); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.voice-decisions { flex: none; display: flex; flex-direction: column; gap: 1rem; padding: 0.75rem 0 1rem; border-bottom: 1px solid var(--muted); }
+.voice-decision__q { color: var(--act); margin: 0 0 0.4rem; font-weight: normal; letter-spacing: 0.08em; }
+.voice-fork__options { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.6rem; }
+.voice-option { display: flex; flex-direction: column; gap: 0.2rem; text-align: left; border: 1px solid var(--muted); padding: 0.5rem 0.65rem; }
+.voice-option:hover { border-color: var(--act); }
+.voice-option.is-on { border-color: var(--act); background: var(--act-wash); }
+.voice-option__name { color: var(--act); }
+.voice-option__costs { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.6rem; margin: 0.3rem 0 0; }
+.voice-option__costs dt { color: var(--muted); }
+.voice-option__costs dd { margin: 0; }
+.voice-subs { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 0.8rem; }
+.voice-decision { border: 1px dashed var(--muted); padding: 0.5rem 0.7rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.voice-choice { display: grid; grid-template-columns: 1.2rem minmax(8rem, auto) 1fr; gap: 0.5rem; text-align: left; padding: 0.15rem 0; align-items: baseline; }
+.voice-choice__mark { color: var(--act); }
+.voice-choice__name { color: var(--muted); }
+.voice-choice.is-on .voice-choice__name { color: var(--line); }
+.voice-choice:hover .voice-choice__name { color: var(--act); }
+.voice-choice__what { color: var(--muted); }
+.voice-choice__warn { color: var(--line); }
+.voice-step { flex: none; display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem 0; }
+.voice-step__commands { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; }

@@ -10,9 +10,11 @@ import { readerFields } from '../lib/readers'
 import { guideHref, SCHEMATICS, startGuide, useGuide } from '../lib/guide'
 import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
+import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
+import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
-export const TAB_NAME = { data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
+export const TAB_NAME = { models: 'models', merge: 'merge', data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
 type Tab = keyof typeof TAB_NAME
 
 /** What a step fills in on its tab when a student arrives from the card: the names the card has chosen. */
@@ -21,6 +23,10 @@ export interface Fill {
   data?: { pick: string; newName?: string }
   /** the Train tab: the set, the adapter's name, the base, the max sequence length */
   train?: { data: string; name: string; base: string; maxSeq?: number }
+  /** the Modelfile tab: the model a new variant starts from */
+  modelfile?: { base: string }
+  /** the Prefer tab: the preference set, and the model it starts from */
+  prefer?: { data: string; model: string }
 }
 
 /** One note of a step's walkthrough: the control it points at (its flag's id, or a data-guide marker) and what it says. */
@@ -44,6 +50,8 @@ export interface Step {
   fill?: Fill
   /** the walkthrough on its tab, a note at a time; a step without notes shows its commands in the guide bar */
   notes?: Note[]
+  /** the box it sits on in the Start map (FlowMap's node id), for a project's schematic */
+  node?: string
 }
 
 /** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
@@ -70,7 +78,25 @@ export interface Project {
   limits?: string
   steps: Step[]
   gesture?: GestureFacts
+  /** a character's voice, followed as a project: the route the decisions draw */
+  voice?: VoiceFacts
 }
+
+/** What a character's voice schematic shows: the steps of the route chosen, and what the decisions can choose from. */
+export interface VoiceFacts {
+  approach: Approach
+  /** the route's steps, in order, for the approach and the decisions under it */
+  steps: Step[]
+  /** the texts there are to draft rows from: raw/<name> or uploads/<file> */
+  texts: { id: string; source?: string }[]
+  /** the Ollama models there are, with their size in bytes */
+  ollama: { name: string; size: number }[]
+  /** voices trained by imitating, on the chosen base */
+  voices: string[]
+}
+
+/** How many pairs a preference set needs before Prefer: 40 made the README's concise set work; 30 is the least we ask. */
+const PAIRS = 30
 
 interface Raw {
   folder: string
@@ -85,6 +111,8 @@ interface Adapter {
   name: string
   data: string
   base: string
+  /** lora, dora, full, or dpo for a Prefer run */
+  method?: string
 }
 interface Gesture {
   folder: string
@@ -124,6 +152,12 @@ interface Have {
   research: { folder: string; created?: string; files: string[] }[]
   /** texts uploaded for drafting rows from (data draft --from uploads/…) */
   texts: string[]
+  /** the Ollama models, with their size in bytes */
+  ollama: { name: string; size: number }[]
+  /** blends made on the Merge tab */
+  merges: { folder: string; created?: string; a: string; b: string; base: string }[]
+  /** days of chat log, each a file in workspace/chat */
+  chatLogs: number
 }
 
 async function readHave(): Promise<Have> {
@@ -140,6 +174,11 @@ async function readHave(): Promise<Have> {
     readManifests<{ created?: string }>('research'),
     listDir('uploads'),
     readManifests<Gesture>('examples/gestures'),
+  ])
+  const [ollama, merges, chat] = await Promise.all([
+    listModels().catch(() => []),
+    readManifests<Have['merges'][number]>('merges'),
+    listDir('chat'),
   ])
   const models = await Promise.all(
     mfs
@@ -177,6 +216,9 @@ async function readHave(): Promise<Have> {
     outputs,
     gestures,
     exampleGestures,
+    ollama: ollama.map((m) => ({ name: m.name, size: m.size })),
+    merges,
+    chatLogs: chat.filter((f) => f.name.endsWith('.jsonl')).length,
     texts: uploads.filter((u) => /\.(txt|md)$/.test(u.name)).map((u) => `uploads/${u.name}`),
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
@@ -194,7 +236,101 @@ const KEEP = { studio: 150, voice: 100 }
 const last = <T extends { created?: unknown }>(xs: T[]): T | undefined => [...xs].sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? ''))).pop()
 
 /** The projects, with each step's commands filled in and marked done from what the workspace has. */
-function projects(h: Have, choice: GestureChoices): Project[] {
+/**
+ * A character's voice as a route: the steps the chosen approach takes through
+ * the tabs, each on its box of the Start map, with its command filled in from
+ * the decisions and the workspace, and done when the workspace has what it makes.
+ */
+function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
+  const texts = [...h.raw.filter((r) => !r.columns?.length).map((r) => ({ id: `raw/${r.folder}`, source: r.source })), ...h.texts.map((t) => ({ id: t }))]
+  const chosen = c.texts.filter((t) => texts.some((x) => x.id === t))
+  const fromText = (d: DatasetManifest) => d.format !== 'preference' && !!d.inputs?.some((i) => texts.some((t) => i === `workspace/${t.id}`))
+  const writingSets = h.data.filter(fromText)
+  // the rows: the set drafted from the chosen texts, or else the latest made from any text
+  const first = (chosen[0] ?? texts[0]?.id ?? 'raw/<name>').split('/').pop()!.replace(/\.(txt|md)$/, '')
+  // rows written by hand have no text as their input: found by the name the route gives them
+  const rowsSet = writingSets.find((d) => chosen.length > 0 && chosen.every((t) => d.inputs?.includes(`workspace/${t}`))) ?? h.data.find((d) => d.folder === `${first}-qa`) ?? last(writingSets)
+  const rows = rowsSet?.folder ?? `${first}-qa`
+  const short = c.trainBase.includes('1.7B') ? '1.7b' : '360m'
+  const voices = h.adapters.filter((a) => a.method !== 'dpo' && a.base === c.trainBase && (writingSets.some((d) => d.folder === a.data) || a.data === rowsSet?.folder))
+  const voice = voices.find((a) => a.data === rows) ?? last(voices)
+  const voiceName = voice?.folder ?? `${rows}-${short}`
+  const exported = (adapter: string) => h.models.some((m) => m.adapter === adapter)
+  const count = rowsSet ? (c.rows === 'draft' ? kept(rowsSet).kept : rowsSet.counts.train + rowsSet.counts.valid) : 0
+
+  const imitate: Step[] = [
+    {
+      name: say('projects.voice.mode.texts'),
+      tab: 'data',
+      node: 'words',
+      commands: [joinWords(['data', 'raw', 'gutenberg', '<book number>', '<name>'])],
+      done: chosen.length > 0,
+      result: chosen.length ? chosen.join(' · ') : say('projects.voice.mode.noTexts'),
+    },
+    {
+      name: c.rows === 'draft' ? say('projects.voice.rows') : say('projects.voice.mode.corrections'),
+      tab: 'data',
+      node: 'data',
+      commands:
+        c.rows === 'draft'
+          ? (chosen.length ? chosen : ['raw/<name>']).map((t) => joinWords(['data', 'draft', rows, '--from', t, '--count', '150', '--model', 'qwen3:4b']))
+          : [joinWords(['data', 'new', rows]), `data append ${rows} '<row json>' --source corrections`],
+      done: count >= KEEP.voice,
+      result: say('projects.voice.mode.rows', { n: count, target: KEEP.voice }),
+      fill: rowsSet ? { data: { pick: rows } } : { data: { pick: 'new', newName: rows } },
+    },
+    { name: say('projects.voice.train'), tab: 'train', node: 'train', commands: [joinWords(['train', voiceName, '--data', rows, '--base', c.trainBase])], done: !!voice, fill: { train: { data: rows, name: voiceName, base: c.trainBase } } },
+    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', voiceName])], done: !!voice && exported(voice.folder) },
+  ]
+
+  // lean toward better: pairs chosen in Chat, then DPO on the base or on the voice trained above
+  const prefSets = h.data.filter((d) => d.format === 'preference')
+  const prefs = last(prefSets)?.folder ?? `${c.preferFrom === 'voice' ? voiceName : 'voice'}-prefs`
+  const prefSet = prefSets.find((d) => d.folder === prefs)
+  const pairs = prefSet ? prefSet.counts.train + prefSet.counts.valid : 0
+  const startFrom = c.preferFrom === 'voice' ? `workspace/fused/${voiceName}` : c.trainBase
+  const dpo = h.adapters.find((a) => a.method === 'dpo' && a.data === prefs)
+  const dpoName = dpo?.folder ?? `${prefs}-dpo`
+  const prefer: Step[] = [
+    ...(c.preferFrom === 'voice' ? imitate : []),
+    { name: say('projects.voice.mode.pick'), tab: 'chat', node: 'chat', commands: [], done: h.chatLogs > 0 || pairs > 0 },
+    {
+      name: say('projects.voice.mode.pairs'),
+      tab: 'data',
+      node: 'data',
+      commands: [joinWords(['data', 'new', prefs, '--format', 'preference']), joinWords(['data', 'split', prefs, '--valid', '0.2'])],
+      done: pairs >= PAIRS && !!prefSet?.counts.valid,
+      result: say('projects.voice.mode.pairCount', { n: pairs, target: PAIRS }),
+      fill: prefSet ? { data: { pick: prefs } } : { data: { pick: 'new', newName: prefs } },
+    },
+    { name: say('projects.voice.mode.prefer'), tab: 'prefer', node: 'prefer', commands: [joinWords(['prefer', dpoName, '--data', prefs, '--model', startFrom])], done: !!dpo, fill: { prefer: { data: prefs, model: startFrom } } },
+    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', dpoName])], done: !!dpo && exported(dpo.folder) },
+  ]
+
+  // blend two: two voices on one base, then the merge
+  const [a, b] = voices.slice(-2).map((v) => v.folder)
+  const merge = h.merges.find((m) => voices.some((v) => v.folder === m.a) && voices.some((v) => v.folder === m.b))
+  const mergeName = merge?.folder ?? `${a ?? 'voice-a'}-${b ?? 'voice-b'}-blend`
+  const blend: Step[] = [
+    ...imitate.slice(0, 3),
+    { name: say('projects.voice.mode.second'), tab: 'train', node: 'train', commands: [joinWords(['train', '<second voice>', '--data', '<its rows>', '--base', c.trainBase])], done: voices.length >= 2, result: say('projects.voice.mode.voices', { n: voices.length }) },
+    { name: say('projects.voice.mode.merge'), tab: 'merge', node: 'merge', commands: [joinWords(['merge', mergeName, '--a', a ?? '<voice a>', '--b', b ?? '<voice b>', '--t', '0.5'])], done: !!merge },
+    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', mergeName])], done: !!merge && exported(merge.folder) },
+  ]
+
+  // change with words: the base in Ollama, then the Modelfile
+  const here = h.ollama.some((m) => m.name === c.modelfileBase || m.name === `${c.modelfileBase}:latest`)
+  const variants = h.models.filter((m) => !m.adapter)
+  const modelfile: Step[] = [
+    { name: say('projects.voice.mode.pull'), tab: 'models', node: 'models', commands: [joinWords(['ollama', 'pull', c.modelfileBase])], done: here },
+    { name: say('projects.voice.modelfile'), tab: 'modelfile', node: 'modelfile', commands: [joinWords(['ollama', 'create', '<name>', '-f', 'workspace/modelfiles/<name>.Modelfile'])], done: variants.length > 0, fill: { modelfile: { base: c.modelfileBase } } },
+  ]
+
+  const steps = { modelfile, imitate, prefer, blend }[c.approach]
+  return { approach: c.approach, steps, texts, ollama: h.ollama, voices: voices.map((v) => v.folder) }
+}
+
+function projects(h: Have, choice: GestureChoices, voice: VoiceChoices): Project[] {
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -345,6 +481,7 @@ function projects(h: Have, choice: GestureChoices): Project[] {
         { name: say('projects.voice.train'), tab: 'train', commands: [joinWords(['train', voiceAdapter, '--data', rows, '--base', SMALL])], done: voiceAdapters.length > 0 },
         { name: say('projects.voice.export'), tab: 'adapters', commands: [joinWords(['export', voiceAdapter])], done: h.models.some((m) => voiceAdapters.some((a) => a.folder === m.adapter)) },
       ],
+      voice: voiceRoute(h, voice),
     },
     {
       id: 'research',
@@ -438,14 +575,18 @@ const STATE_WORDS = { done: () => say('projects.step.done'), todo: () => say('pr
 export function useProjects(): Project[] | null {
   const [have, setHave] = useState<Have | null>(null)
   const choice = useGestureChoices()
+  const voice = useVoiceChoices()
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
-  return have && projects(have, choice)
+  return have && projects(have, choice, voice)
 }
+
+/** The steps a project follows in project mode: its route, where its decisions draw one; else its card's steps. */
+export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.steps
 
 /** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
 export function stepNumber(steps: Step[], i: number) {
@@ -479,7 +620,11 @@ export default function ProjectsPanel() {
                     {p.title}
                   </h3>
                   {SCHEMATICS.has(p.id) && (
-                    <button type="button" className="act-button project__mode" onClick={() => startGuide(p.id, Math.max(1, p.steps.findIndex((s) => !s.done) + 1 || p.steps.length), p.steps[0].tab, true)}>
+                    <button type="button" className="act-button project__mode" onClick={() => {
+                      const route = routeOf(p)
+                      const n = route.findIndex((s) => !s.done) + 1 || route.length
+                      startGuide(p.id, n, route[n - 1].tab, true)
+                    }}>
                       {say('projects.mode.start')}
                     </button>
                   )}
@@ -511,11 +656,12 @@ export default function ProjectsPanel() {
                         <span className="project-step__body">
                           <span className="project-step__name">{s.name}</span>
                           <a
-                            href={guideHref(p.id, i + 1, s.tab, SCHEMATICS.has(p.id))}
+                            href={guideHref(p.id, i + 1, s.tab, p.id === 'gesture')}
                             className="text-link project-step__tab"
                             onClick={(e) => {
                               e.preventDefault()
-                              startGuide(p.id, i + 1, s.tab, SCHEMATICS.has(p.id))
+                              // the voice card's own steps are its two ways; in project mode its route comes from its decisions
+                              startGuide(p.id, i + 1, s.tab, p.id === 'gesture')
                             }}
                           >
                             {say('projects.step.open', { tab: TAB_NAME[s.tab] })}

@@ -10,14 +10,14 @@ import type { ExplainId } from '../explain/text'
  * one picture, so the angles stay 45°.
  */
 
-const W = 150 // node width
+export const W = 150 // node width
 /** Everything drawn, in the SVG's units: what "fit" shows. */
 const CONTENT = { x: 40, y: 20, w: 1156, h: 920 } // the bottom 70 are room for the echo
 const MIN_W = 360 // closest zoom, in units across
 const MAX_W = 4000 // furthest
-const H = 44 // node height
+export const H = 44 // node height
 
-interface Node {
+export interface Node {
   id: string
   n?: string
   x: number
@@ -49,7 +49,7 @@ interface Node {
  */
 const COLUMNS: [number, string][] = [[60, 'bring'], [300, 'prepare'], [590, 'how it learns'], [820, 'make it a model'], [1000, 'use it']]
 
-const NODES: Node[] = [
+export const NODES: Node[] = [
   { id: 'models', n: '1', x: 60, y: 80, caption: 'every kind starts here' },
   { id: 'words', name: 'your words', x: 60, y: 190, caption: 'questions and answers', kind: 'input', to: 'data', flag: 'map.words' },
   { id: 'pictures', name: 'photos + words', x: 60, y: 300, caption: 'what each photo shows', kind: 'input', to: 'data', flag: 'map.pictures' },
@@ -80,7 +80,7 @@ const NODES: Node[] = [
 /** The projects, named in their row on the map, in two lines so the echo in the corner never covers them. */
 const PROJECTS = ['ask a table · gesture controller · cut-out tool', 'a character\'s voice · research bot · models for a multi-agent studio']
 
-type P = [number, number]
+export type P = [number, number]
 
 /**
  * From a to b: across, one 45° bend, across. When the drop is steeper than the
@@ -99,7 +99,7 @@ function route(a: P, b: P): P[] {
   return [a, [a[0], a[1] + Math.sign(dy) * v], b]
 }
 
-interface Wire {
+export interface Wire {
   from: string
   to: string
   label: string
@@ -111,7 +111,7 @@ interface Wire {
   soon?: boolean
 }
 
-const WIRES: Wire[] = [
+export const WIRES: Wire[] = [
   // the language models: the change loop
   { from: 'models', to: 'chat', label: 'use it as it is', points: [[135, 80], [135, 62], [1075, 62], [1075, 72]], at: [605, 56], anchor: 'middle' },
   { from: 'models', to: 'modelfile', label: 'a model', points: [[210, 102], [300, 102]], at: [218, 96], anchor: 'start' },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { TrainParams } from '@shared/recipes'
 import { useTheme } from './hooks/useTheme'
 import Chat from './components/Chat'
@@ -15,8 +15,9 @@ import AboutPanel from './components/AboutPanel'
 import ProjectsPanel, { type Fill } from './components/ProjectsPanel'
 import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
+import VoiceMode, { VoiceDecisions, VoiceStep } from './components/VoiceMode'
 import { leaveMode, useGuide } from './lib/guide'
-import { useProjects } from './components/ProjectsPanel'
+import { routeOf, useProjects } from './components/ProjectsPanel'
 import { say } from './text/say'
 import LookPanel from './components/LookPanel'
 import VoicePanel from './components/VoicePanel'
@@ -89,8 +90,8 @@ export default function App() {
   const guide = useGuide()
   const projects = useProjects()
   const followed = guide?.mode ? projects?.find((p) => p.id === guide.project) : undefined
-  const modeStep = followed?.steps[guide!.step - 1]
-  const mode = followed && modeStep ? { project: followed, step: guide!.step } : null
+  const modeStep = followed && (routeOf(followed)[guide!.step - 1] ?? routeOf(followed).at(-1))
+  const mode = followed && modeStep ? { project: followed, step: Math.min(guide!.step, routeOf(followed).length) } : null
   const panel: Panel = mode ? modeStep!.tab : tabPanel
   const [folded, setFolded] = useState(true)
   const [chatRequest, setChatRequest] = useState<{ models: (string | null)[]; n: number }>()
@@ -121,8 +122,18 @@ export default function App() {
       const { data, ...params } = f.train
       setTrainData((r) => ({ data, params, n: (r?.n ?? 0) + 1 }))
     }
+    if (f.modelfile) setModelfileFrom((r) => ({ model: f.modelfile!.base, n: (r?.n ?? 0) + 1 }))
+    if (f.prefer) setPreferData((r) => ({ ...f.prefer!, n: (r?.n ?? 0) + 1 }))
   }, [])
-  const [preferData, setPreferData] = useState<{ data: string; n: number }>()
+  // project mode: fill in the route's names on the tab, once each time a step is opened (the guide bar does it outside the mode)
+  const filledStep = useRef('')
+  useEffect(() => {
+    const key = mode ? `${mode.project.id}:${mode.step}:${modeStep?.name}` : ''
+    if (!mode || filledStep.current === key) return
+    filledStep.current = key
+    if (modeStep?.fill) fill(modeStep.fill)
+  }, [mode, modeStep, fill])
+  const [preferData, setPreferData] = useState<{ data: string; n: number; model?: string }>()
   /** Data → "use it": open Train or Prefer with that dataset chosen. */
   const sendDataset = (data: string, way: 'train' | 'prefer') => {
     ;(way === 'train' ? setTrainData : setPreferData)((r?: { n: number }) => ({ data, n: (r?.n ?? 0) + 1 }))
@@ -139,7 +150,7 @@ export default function App() {
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
           <span className="label label--name">Variable Machine</span>
           <span className="label project-top__name">{say('projects.mode.project', { project: mode.project.title })}</span>
-          <span className="label label--muted">{say('projects.guide.step', { n: mode.step, of: mode.project.steps.length })}</span>
+          <span className="label label--muted">{say('projects.guide.step', { n: mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />
           <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
@@ -174,7 +185,13 @@ export default function App() {
       </header>
       )}
       <main className={`shell__main ${mode ? 'shell__main--project' : ''}`.trim()}>
-        {mode ? (
+        {mode?.project.voice ? (
+          <>
+            <VoiceMode project={mode.project} step={mode.step} />
+            <VoiceDecisions project={mode.project} />
+            <VoiceStep step={modeStep!} n={mode.step} />
+          </>
+        ) : mode ? (
           <>
             <ProjectMode project={mode.project} step={mode.step} />
             <h2 className="label project-open">{say('projects.mode.open', { n: mode.step, name: modeStep!.name })}</h2>

@@ -930,3 +930,347 @@ Named {got}, the most votes of the {k} nearest: right. {right} of {of} set-aside
 `projects.sim.after.wrong`
 
 Named {got}, but it was {label}: record more examples of each, or make the gestures more different. {right} of {of} set-aside examples were named right.
+
+
+## Project mode: a character's voice
+
+The voice card followed as a project. Its schematic is the Start map's top band, with the route the decisions draw lit and numbered; under it, the decisions, each option with what it costs and what it changes.
+
+## Project mode: the route's steps
+
+### Step: the texts
+`projects.voice.mode.texts`
+
+bring in the texts the voice is drawn from: one or more books, or your own writing
+
+### Step: the texts, before any is chosen
+`projects.voice.mode.noTexts`
+
+no text chosen yet: choose one or more under the texts, below
+
+### Step: rows written by hand
+`projects.voice.mode.corrections`
+
+write rows by hand: a question, and the answer in the character's voice
+
+### Step: rows, how many
+`projects.voice.mode.rows`
+
+{n} of {target} rows
+
+### Step: export
+`projects.voice.mode.export`
+
+export it into Ollama, and talk to it in Chat
+
+### Step: pick in Chat
+`projects.voice.mode.pick`
+
+in Chat, put two models side by side and pick the better answer, again and again
+
+### Step: pairs
+`projects.voice.mode.pairs`
+
+turn the picks into pairs on the Data tab, then split them
+
+### Step: pairs, how many
+`projects.voice.mode.pairCount`
+
+{n} of {target} pairs
+
+### Step: prefer
+`projects.voice.mode.prefer`
+
+lean toward the chosen answers
+
+### Step: a second voice
+`projects.voice.mode.second`
+
+train a second voice on the same base: its own text and rows
+
+### Step: a second voice, how many
+`projects.voice.mode.voices`
+
+{n} voices on this base
+
+### Step: merge
+`projects.voice.mode.merge`
+
+blend the two voices
+
+### Step: the base, for a Modelfile
+`projects.voice.mode.pull`
+
+get the base into Ollama
+
+### The route folded into a line, for a screen reader
+`projects.voice.mode.line`
+
+the route, step by step
+
+### What the route ends in
+`projects.voice.mode.out`
+
+a model of your own, in Chat
+
+### A step done on its tab, with no command
+`projects.voice.mode.inTab`
+
+this step is done on the tab below: each answer you pick is echoed in the terminal
+
+## Project mode: the decisions
+
+### The decisions, for a screen reader
+`projects.voice.decisions`
+
+the decisions: each changes the route, or what you end up with
+
+### Decision: approach
+`projects.voice.decision.approach`
+
+how the model changes
+
+### Decision: base
+`projects.voice.decision.base`
+
+the base model
+
+### Decision: where prefer starts
+`projects.voice.decision.from`
+
+prefer starts from
+
+### Decision: the texts
+`projects.voice.decision.texts`
+
+the texts: choose one or more
+
+### Decision: who writes the rows
+`projects.voice.decision.rows`
+
+who writes the rows
+
+### Cost: time
+`projects.voice.cost.time`
+
+time
+
+### Cost: disk
+`projects.voice.cost.disk`
+
+disk
+
+### Cost: what it needs
+`projects.voice.cost.needs`
+
+needs
+
+### Cost: what it changes
+`projects.voice.cost.changes`
+
+changes
+
+### Approach: change with words
+`projects.voice.approach.modelfile`
+
+change with words
+
+### Change with words: its tab
+`projects.voice.approach.modelfile.tab`
+
+Modelfile
+
+### Change with words: time
+`projects.voice.approach.modelfile.time`
+
+about 5 minutes
+
+### Change with words: disk
+`projects.voice.approach.modelfile.disk`
+
+a few KB: a variant shares its base's weights
+
+### Change with words: needs
+`projects.voice.approach.modelfile.needs`
+
+a paragraph of instructions
+
+### Change with words: changes
+`projects.voice.approach.modelfile.changes`
+
+The model is told how to sound before every answer; its numbers don't change. Quick to try and to undo.
+
+### Approach: imitate
+`projects.voice.approach.imitate`
+
+imitate
+
+### Imitate: its tab
+`projects.voice.approach.imitate.tab`
+
+Train (LoRA)
+
+### Imitate: time
+`projects.voice.approach.imitate.time`
+
+about 30 minutes, most of it reading drafts
+
+### Imitate: disk
+`projects.voice.approach.imitate.disk`
+
+about 0.7 GB for the base, and 0.7 GB more for the exported copy (360M)
+
+### Imitate: needs
+`projects.voice.approach.imitate.needs`
+
+100 rows kept from the texts
+
+### Imitate: changes
+`projects.voice.approach.imitate.changes`
+
+The numbers learn the writer's phrasing; what it knows stays the base's. A model of your own, to package or blend.
+
+### Approach: lean toward better
+`projects.voice.approach.prefer`
+
+lean toward better
+
+### Lean toward better: its tab
+`projects.voice.approach.prefer.tab`
+
+Prefer (DPO)
+
+### Lean toward better: time
+`projects.voice.approach.prefer.time`
+
+about 20 minutes picking answers, then the run (not timed yet)
+
+### Lean toward better: disk
+`projects.voice.approach.prefer.disk`
+
+as for imitate
+
+### Lean toward better: needs
+`projects.voice.approach.prefer.needs`
+
+30 pairs or more, picked in Chat
+
+### Lean toward better: changes
+`projects.voice.approach.prefer.changes`
+
+It leans toward the kind of answer you picked, such as shorter or more in character, without learning new phrasing. On a 40-pair set asking for short answers, answers it hadn't seen went from about 800 characters to about 180.
+
+### Approach: blend two
+`projects.voice.approach.blend`
+
+blend two
+
+### Blend two: its tab
+`projects.voice.approach.blend.tab`
+
+Merge
+
+### Blend two: time
+`projects.voice.approach.blend.time`
+
+two imitate runs, then seconds for the blend
+
+### Blend two: disk
+`projects.voice.approach.blend.disk`
+
+two adapters, and a blend twice the size of one
+
+### Blend two: needs
+`projects.voice.approach.blend.needs`
+
+two voices trained on the same base
+
+### Blend two: changes
+`projects.voice.approach.blend.changes`
+
+A voice between two writers: exactly (1 − t)·A + t·B, with t set on the Merge tab.
+
+### Base: the 360M
+`projects.voice.base.small`
+
+0.7 GB download · about 0.8 GB to train · any Mac, 8 GB included · 200 steps in about 2½ minutes (M1 Pro)
+
+### Base: the 1.7B
+`projects.voice.base.large`
+
+3.4 GB download · about 8 GB to train · slower, better results · this Mac has {memory} GB
+
+### Base: too big for this Mac
+`projects.voice.base.tooBig`
+
+too big for this Mac's {memory} GB
+
+### Base: in Ollama
+`projects.voice.base.here`
+
+{gb} GB, in Ollama
+
+### Base: to pull
+`projects.voice.base.pull`
+
+about {gb} GB to pull
+
+### Prefer from: the base
+`projects.voice.from.base`
+
+the base
+
+### Prefer from: the base, what it means
+`projects.voice.from.base.about`
+
+it leans the base toward your picks
+
+### Prefer from: your voice
+`projects.voice.from.voice`
+
+your trained voice
+
+### Prefer from: your voice, what it means
+`projects.voice.from.voice.about`
+
+imitate first, then prefer on its exported copy: the route takes both
+
+### Texts: none yet
+`projects.voice.texts.none`
+
+No texts in the workspace yet: step 1 brings one in.
+
+### Texts: your own
+`projects.voice.texts.yours`
+
+your own writing, uploaded
+
+### Texts: a book
+`projects.voice.texts.book`
+
+brought in from {source}
+
+### Texts: more
+`projects.voice.texts.more`
+
+More texts: a book from Project Gutenberg, or a .txt of your own, on the Data tab (step 1). The rows are drafted from every text chosen.
+
+### Rows: drafted
+`projects.voice.rows.draft`
+
+a model drafts them
+
+### Rows: drafted, what it costs
+`projects.voice.rows.draft.about`
+
+qwen3:4b drafts 150 rows from each text, and you keep, edit or reject each: about 20 minutes of reading
+
+### Rows: by hand
+`projects.voice.rows.corrections`
+
+you write them
+
+### Rows: by hand, what it costs
+`projects.voice.rows.corrections.about`
+
+slower, and closest to the voice you mean: each row is yours
