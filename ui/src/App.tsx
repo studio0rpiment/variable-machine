@@ -14,6 +14,10 @@ import StartPanel from './components/StartPanel'
 import AboutPanel from './components/AboutPanel'
 import ProjectsPanel, { type Fill } from './components/ProjectsPanel'
 import GuideBar from './components/GuideBar'
+import ProjectMode, { ProjectSim } from './components/ProjectMode'
+import { leaveMode, useGuide } from './lib/guide'
+import { useProjects } from './components/ProjectsPanel'
+import { say } from './text/say'
 import LookPanel from './components/LookPanel'
 import VoicePanel from './components/VoicePanel'
 import MovePanel from './components/MovePanel'
@@ -80,7 +84,15 @@ function panelFromHash(): Panel {
  */
 export default function App() {
   const { theme, toggle } = useTheme()
-  const [panel, setPanel] = useState<Panel>(panelFromHash)
+  const [tabPanel, setPanel] = useState<Panel>(panelFromHash)
+  // project mode: a card with a schematic, followed as a project; only its step's tab shows, under the schematic
+  const guide = useGuide()
+  const projects = useProjects()
+  const followed = guide?.mode ? projects?.find((p) => p.id === guide.project) : undefined
+  const modeStep = followed?.steps[guide!.step - 1]
+  const mode = followed && modeStep ? { project: followed, step: guide!.step } : null
+  const panel: Panel = mode ? modeStep!.tab : tabPanel
+  const [folded, setFolded] = useState(true)
   const [chatRequest, setChatRequest] = useState<{ models: (string | null)[]; n: number }>()
   const [modelfileFrom, setModelfileFrom] = useState<{ model: string; n: number }>()
 
@@ -122,7 +134,19 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
+    <div className={`shell ${mode && folded ? 'shell--folded' : ''}`.trim()}>
+      {mode ? (
+        <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
+          <span className="label label--name">Variable Machine</span>
+          <span className="label project-top__name">{say('projects.mode.project', { project: mode.project.title })}</span>
+          <span className="label label--muted">{say('projects.guide.step', { n: mode.step, of: mode.project.steps.length })}</span>
+          <span className="project-top__fill" />
+          <ThemeToggle mode={theme.mode} onToggle={toggle} />
+          <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
+            {say('projects.mode.leave')}
+          </button>
+        </header>
+      ) : (
       <header className="shell__top">
         <span className="label label--name">Variable Machine</span>
         <nav className="shell__nav" aria-label="panels">
@@ -148,8 +172,16 @@ export default function App() {
         <FlagsToggle />
         <ThemeToggle mode={theme.mode} onToggle={toggle} />
       </header>
-      <main className="shell__main">
-        <GuideBar panel={panel} onFill={fill} />
+      )}
+      <main className={`shell__main ${mode ? 'shell__main--project' : ''}`.trim()}>
+        {mode ? (
+          <>
+            <ProjectMode project={mode.project} step={mode.step} />
+            <h2 className="label project-open">{say('projects.mode.open', { n: mode.step, name: modeStep!.name })}</h2>
+          </>
+        ) : (
+          <GuideBar panel={panel} onFill={fill} />
+        )}
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'start'}>
           <StartPanel />
         </div>
@@ -187,7 +219,8 @@ export default function App() {
           <SharePanel />
         </div>
         <div className="panel-slot" hidden={panel !== 'gesture'}>
-          <MovePanel active={panel === 'gesture'} />
+          <MovePanel active={panel === 'gesture'} only={mode?.project.id === 'gesture' ? mode.step : undefined} />
+          {mode && <ProjectSim project={mode.project} />}
         </div>
         <div className="panel-slot" hidden={panel !== 'speech'}>
           <VoicePanel active={panel === 'speech'} />
@@ -196,7 +229,7 @@ export default function App() {
           <LookPanel />
         </div>
       </main>
-      <Terminal theme={theme} />
+      <Terminal theme={theme} folded={!!mode && folded} onFold={mode ? setFolded : undefined} />
     </div>
   )
 }

@@ -7,7 +7,9 @@ import { listDir, readFile, readManifests } from '../lib/workspace'
 import CommandPreview from './CommandPreview'
 import { rich, say } from '../text/say'
 import { readerFields } from '../lib/readers'
-import { guideHref, startGuide, useGuide } from '../lib/guide'
+import { guideHref, SCHEMATICS, startGuide, useGuide } from '../lib/guide'
+import { trackerOf, type Tracker } from '@shared/gesture'
+import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
 export const TAB_NAME = { data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
@@ -44,6 +46,22 @@ export interface Step {
   notes?: Note[]
 }
 
+/** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
+export interface GestureFacts {
+  /** the set the steps are about; made says whether it exists yet */
+  set: string
+  made: boolean
+  /** what it follows: the set's tracker, or the choice for a new set */
+  tracker: Tracker
+  /** the set is a copy of an example set: its gestures came recorded */
+  example: boolean
+  /** the example sets, by name, for each tracker */
+  exampleSets: { folder: string; tracker: Tracker }[]
+  counts: Record<string, number>
+  trained?: { k: number; examples: number; check: { heldOut: number; correct: number } }
+  sent: boolean
+}
+
 export interface Project {
   id: string
   title: string
@@ -51,6 +69,7 @@ export interface Project {
   get: string
   limits?: string
   steps: Step[]
+  gesture?: GestureFacts
 }
 
 interface Raw {
@@ -70,8 +89,9 @@ interface Adapter {
 interface Gesture {
   folder: string
   created?: string
+  tracker?: string
   counts: Record<string, number>
-  trained?: unknown
+  trained?: GestureFacts['trained']
   sent?: unknown
 }
 interface Output {
@@ -96,6 +116,8 @@ interface Have {
   photo: string | null
   outputs: Output[]
   gestures: Gesture[]
+  /** the example gesture sets Variable Machine comes with */
+  exampleGestures: Gesture[]
   /** `reader check` results: the reader's scores, then the stand-in's */
   readerChecks: { dataset: string; model: string; at: string; n: number; scores: { model: string; right: number; fields: number; rows: number; ms: number }[] }[]
   /** research folders, with the files each has (screen.json, reading-list.md) */
@@ -105,7 +127,7 @@ interface Have {
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, uploads] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, uploads, exampleGestures] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -117,6 +139,7 @@ async function readHave(): Promise<Have> {
     readManifests<Gesture>('gestures'),
     readManifests<{ created?: string }>('research'),
     listDir('uploads'),
+    readManifests<Gesture>('examples/gestures'),
   ])
   const models = await Promise.all(
     mfs
@@ -153,6 +176,7 @@ async function readHave(): Promise<Have> {
     photo: photo && `images/${set}/${photo}`,
     outputs,
     gestures,
+    exampleGestures,
     texts: uploads.filter((u) => /\.(txt|md)$/.test(u.name)).map((u) => `uploads/${u.name}`),
     research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
   }
@@ -170,7 +194,7 @@ const KEEP = { studio: 150, voice: 100 }
 const last = <T extends { created?: unknown }>(xs: T[]): T | undefined => [...xs].sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? ''))).pop()
 
 /** The projects, with each step's commands filled in and marked done from what the workspace has. */
-function projects(h: Have): Project[] {
+function projects(h: Have, choice: GestureChoices): Project[] {
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -197,8 +221,13 @@ function projects(h: Have): Project[] {
   const gestures = h.gestures
   const recorded = gestures.filter((g) => Object.values(g.counts ?? {}).filter((n) => n >= 5).length >= 2)
   const trained = gestures.filter((g) => g.trained)
-  const gset = last(trained)?.folder ?? last(recorded)?.folder ?? last(gestures)?.folder ?? 'my-hands'
-  const gcounts = Object.entries(gestures.find((g) => g.folder === gset)?.counts ?? {})
+  // the set chosen on the gesture tab: steps 2 to 5 are about it; none while a new set is being made
+  const gnow = gestures.find((g) => g.folder === choice.set)
+  // the name the commands use: the chosen set, else the furthest along
+  const gset = gnow?.folder ?? last(trained)?.folder ?? last(recorded)?.folder ?? last(gestures)?.folder ?? 'my-hands'
+  const gcounts = Object.entries(gnow?.counts ?? {})
+  // what it follows: the set's tracker once it is made; before, the choice for a new set
+  const gtracker: Tracker = gnow ? trackerOf(gnow.tracker ?? 'hands') : choice.tracker
 
   // cut-out: the tool, a set of photos, a cut-out
   const cutouts = h.outputs.filter((o) => o.items?.some((i) => i.tool === 'cutout'))
@@ -264,18 +293,28 @@ function projects(h: Have): Project[] {
       does: say('projects.gesture.does'),
       get: say('projects.gesture.get'),
       steps: [
-        { name: say('projects.gesture.tracker'), tab: 'gesture', commands: ['model get hands'], done: h.tools.includes('hands') },
-        { name: say('projects.gesture.set'), tab: 'gesture', commands: [joinWords(['gesture', 'new', gset, '--tracker', 'hands'])], done: gestures.length > 0 },
+        { name: say('projects.gesture.tracker'), tab: 'gesture', commands: [`model get ${gtracker}`], done: h.tools.includes(gtracker) },
+        { name: say('projects.gesture.set'), tab: 'gesture', commands: [joinWords(['gesture', 'new', gset, '--tracker', gtracker])], done: !!gnow },
         {
           name: say('projects.gesture.record'),
           tab: 'gesture',
           commands: [],
-          done: recorded.length > 0,
+          done: !!gnow && recorded.includes(gnow),
           result: say('projects.gesture.check', { counts: gcounts.length ? gcounts.map(([k, n]) => `${k} ${n}`).join(' · ') : say('projects.gesture.none') }),
         },
-        { name: say('projects.gesture.train'), tab: 'gesture', commands: [joinWords(['gesture', 'train', gset])], done: trained.length > 0 },
-        { name: say('projects.gesture.send'), tab: 'gesture', commands: [joinWords(['gesture', 'send', gset, '--port', '9000'])], done: gestures.some((g) => g.sent) },
+        { name: say('projects.gesture.train'), tab: 'gesture', commands: [joinWords(['gesture', 'train', gset])], done: !!gnow?.trained },
+        { name: say('projects.gesture.send'), tab: 'gesture', commands: [joinWords(['gesture', 'send', gset, '--port', '9000'])], done: !!gnow?.sent },
       ],
+      gesture: {
+        set: gnow?.folder ?? '',
+        made: !!gnow,
+        tracker: gtracker,
+        example: !!gnow && h.exampleGestures.some((x) => x.folder === gset),
+        exampleSets: h.exampleGestures.map((x) => ({ folder: x.folder, tracker: trackerOf(x.tracker ?? 'hands') })),
+        counts: gnow?.counts ?? {},
+        trained: gnow?.trained,
+        sent: !!gnow?.sent,
+      },
     },
     {
       id: 'cutout',
@@ -398,13 +437,14 @@ const STATE_WORDS = { done: () => say('projects.step.done'), todo: () => say('pr
 /** The projects, read from the workspace and read again whenever it changes: for the tab, and for the guide bar. */
 export function useProjects(): Project[] | null {
   const [have, setHave] = useState<Have | null>(null)
+  const choice = useGestureChoices()
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
     useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
-  return have && projects(have)
+  return have && projects(have, choice)
 }
 
 /** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
@@ -438,7 +478,13 @@ export default function ProjectsPanel() {
                   <h3 className="manifest__name" id={`project-${p.id}`}>
                     {p.title}
                   </h3>
+                  {SCHEMATICS.has(p.id) && (
+                    <button type="button" className="act-button project__mode" onClick={() => startGuide(p.id, Math.max(1, p.steps.findIndex((s) => !s.done) + 1 || p.steps.length), p.steps[0].tab, true)}>
+                      {say('projects.mode.start')}
+                    </button>
+                  )}
                 </header>
+                {SCHEMATICS.has(p.id) && <p className="label label--muted">{say('projects.mode.about')}</p>}
                 <dl className="project__about">
                   <dt className="label label--muted">{say('projects.card.does')}</dt>
                   <dd>{p.does}</dd>
@@ -465,11 +511,11 @@ export default function ProjectsPanel() {
                         <span className="project-step__body">
                           <span className="project-step__name">{s.name}</span>
                           <a
-                            href={guideHref(p.id, i + 1, s.tab)}
+                            href={guideHref(p.id, i + 1, s.tab, SCHEMATICS.has(p.id))}
                             className="text-link project-step__tab"
                             onClick={(e) => {
                               e.preventDefault()
-                              startGuide(p.id, i + 1, s.tab)
+                              startGuide(p.id, i + 1, s.tab, SCHEMATICS.has(p.id))
                             }}
                           >
                             {say('projects.step.open', { tab: TAB_NAME[s.tab] })}

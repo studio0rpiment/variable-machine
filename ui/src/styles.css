@@ -1036,3 +1036,68 @@ img.move-view__picture { transform: none; }
 .guide-note__ways { display: flex; gap: 1rem; }
 .project.is-followed { border-color: var(--line); }
 .project-step.is-followed .project-step__name { text-decoration: underline; text-underline-offset: 0.2rem; }
+
+/* ---- project mode: the schematic in place of the tabs (ProjectMode.tsx) ---- */
+.shell--folded { grid-template-rows: auto minmax(0, 1fr) auto; }
+.project-top { gap: 1.25rem; }
+.project-top__name { color: var(--act); }
+.project-top__fill { flex: 1; }
+.shell__top .project-top__leave { color: var(--act); text-decoration: underline dotted 1px; text-underline-offset: 0.3em; }
+.shell__top .project-top__leave:hover { color: var(--line); }
+.shell__main--project { overflow-y: auto; }
+.shell__main--project .panel-slot { flex: none; overflow: visible; }
+.shell__main--project .panel { padding-top: 0; }
+.project-open { flex: none; color: var(--act); margin: 0.25rem 0 0.5rem; font-weight: normal; }
+.schematic { flex: none; margin: 0; padding: 0.5rem 0 0; border-bottom: 1px solid var(--muted); }
+.schematic__svg { display: block; width: 100%; max-width: 80rem; height: auto; max-height: 17rem; font-family: var(--font); }
+.schematic__column { fill: var(--muted); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.schematic__box { fill: var(--bg); stroke: var(--muted); stroke-width: 1.25; }
+.schematic__box--input { stroke: var(--muted); }
+.schematic__input { fill: var(--line); font-size: 13px; }
+.schematic__name { fill: var(--muted); font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
+.schematic__caption { fill: var(--muted); font-size: 11px; }
+.schematic__step { cursor: pointer; outline: none; }
+.schematic__step.is-done .schematic__box { stroke: var(--line); }
+.schematic__step.is-done .schematic__name { fill: var(--line); }
+.schematic__step.is-now .schematic__box { stroke: var(--act); stroke-dasharray: 4 3; }
+.schematic__step.is-now .schematic__name, .schematic__step.is-now .schematic__caption { fill: var(--act); }
+.schematic__step.is-open .schematic__box { fill: var(--act-wash); stroke-width: 2.5; }
+.schematic__step.is-skipped .schematic__box { stroke-dasharray: 1 4; stroke-linecap: round; }
+.schematic__step:hover .schematic__box, .schematic__step:focus-visible .schematic__box { stroke: var(--act); fill: var(--act-wash); }
+.schematic__wire, .schematic__wire polyline { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+.schematic__wire.is-route polyline { stroke: var(--line); }
+.schematic__tip { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+.schematic__label { fill: var(--line); font-size: 10.5px; }
+.schematic__use { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; }
+.schematic__use.is-done { stroke: var(--act); stroke-dasharray: none; }
+.schematic__stem { stroke: var(--muted); stroke-width: 1; }
+.schematic__diamond { fill: var(--bg); stroke: var(--line); stroke-width: 1; }
+.schematic__question { fill: var(--muted); font-size: 11px; }
+.schematic__note { fill: var(--muted); font-style: italic; }
+.schematic__option { fill: var(--muted); font-size: 12px; outline: none; }
+.schematic__option.is-on { fill: var(--line); }
+.schematic__option.is-live { fill: var(--act); cursor: pointer; text-decoration: underline dotted 1px; }
+.schematic__option.is-live:hover, .schematic__option.is-live:focus-visible { fill: var(--line); }
+.schematic__names { cursor: pointer; }
+.schematic__key { fill: var(--muted); font-size: 10.5px; }
+.move-layout--only { grid-template-columns: minmax(0, 44rem); }
+.move-layout--only .move-studio { position: static; max-height: none; overflow: visible; }
+.sim { border: 1px dashed var(--muted); padding: 0.6rem 0.8rem; margin: 0 0 2rem; max-width: 72rem; }
+.sim__head { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; align-items: baseline; }
+.sim__title { color: var(--line); text-transform: uppercase; letter-spacing: 0.08em; }
+.sim__ways { display: flex; gap: 1rem; margin-left: auto; }
+.sim__ways .text-button { color: var(--act); }
+.sim__stations { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.6rem; }
+.sim__station { border: 1px solid var(--muted); padding: 0.45rem 0.6rem; min-height: 5rem; display: flex; flex-direction: column; gap: 0.3rem; color: var(--muted); }
+.sim__station.is-past { color: var(--line); }
+.sim__station.is-at { border-color: var(--act); color: var(--line); }
+.sim__station.is-at .sim__station-title { color: var(--act); }
+.sim__osc { color: var(--act); }
+.sim__result { margin: 0.6rem 0 0; }
+.dock--folded { min-height: 0; grid-template-rows: auto; padding-top: 0.35rem; padding-bottom: 0.35rem; }
+.dock__folded { display: flex; align-items: center; gap: 0.75rem; }
+.dock__last { flex: 1; color: var(--act); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock [hidden] { display: none; }
+.project__mode { margin-left: auto; }
+.move-layout--step4 .move-view, .move-layout--step4 .move-camera-off { display: none; }
+.move-layout--only .move-use > h3 { display: none; } /* the tab numbers its parts; in project mode the schematic numbers the steps */

@@ -529,3 +529,404 @@ on {n} rows set aside: {scores}
 `projects.studio.result`
 
 {model} {right}% of fields right, {rows}% of rows, {s}s a row
+
+
+## Project mode
+
+A card with a schematic (the gesture controller, so far) can be followed as a project: the tabs go, and the schematic of that project alone is the way round it. Its input, its steps, the decisions a student makes and its output; under it, only the parts of the tab the open step uses, then the simulation, which follows one example from the camera to the OSC message.
+
+### Start it, on the card
+`projects.mode.start`
+
+follow it as a project →
+
+### Start it, what it does
+`projects.mode.about`
+
+Shows only what this project uses, as a schematic. The rest of Variable Machine is one click away.
+
+### The top line, for a screen reader
+`projects.mode.label`
+
+project mode
+
+### The top line: the project
+`projects.mode.project`
+
+project · {project}
+
+### The open step, over its parts
+`projects.mode.open`
+
+step {n} · {name}
+
+### Leave project mode
+`projects.mode.leave`
+
+all of Variable Machine →
+
+### Leave project mode: what it does
+`projects.mode.leave.about`
+
+Every tab comes back; the guide bar keeps your step.
+
+### The folded terminal: open it
+`projects.mode.terminal.open`
+
+open the terminal ▴
+
+### The folded terminal: fold it again
+`projects.mode.terminal.fold`
+
+fold the terminal ▾
+
+### The folded terminal, before any command
+`projects.mode.terminal.none`
+
+each command shows here as it runs
+
+## Project mode: the schematic
+
+### The schematic, for a screen reader
+`projects.schematic.label`
+
+the schematic of the {project}: its input, its steps, its decisions and its output
+
+### Column: input
+`projects.schematic.input`
+
+input
+
+### Column: steps
+`projects.schematic.steps`
+
+steps
+
+### Column: output
+`projects.schematic.output`
+
+output
+
+### The input
+`projects.schematic.camera`
+
+the camera
+
+### The input, under it
+`projects.schematic.cameraAbout`
+
+points, never video
+
+### The output
+`projects.schematic.patch`
+
+your patch
+
+### The output, under it
+`projects.schematic.patchAbout`
+
+listens for OSC
+
+### Box 1
+`projects.schematic.box1`
+
+tracker
+
+### Box 2
+`projects.schematic.box2`
+
+set
+
+### Box 3
+`projects.schematic.box3`
+
+record
+
+### Box 4
+`projects.schematic.box4`
+
+train
+
+### Box 5
+`projects.schematic.box5`
+
+send
+
+### A box's state: the next to do
+`projects.schematic.now`
+
+now
+
+### A box's state: after the next
+`projects.schematic.waiting`
+
+waiting
+
+### A box's state: gone round
+`projects.schematic.skipped`
+
+skipped
+
+### Hands
+`projects.schematic.hands`
+
+hands
+
+### A body
+`projects.schematic.body`
+
+a body
+
+### Box 1, under it
+`projects.schematic.tracker`
+
+follows {what}
+
+### Box 2, under it, before the set is made
+`projects.schematic.newSet`
+
+a new set
+
+### Box 3, under it, with the example set
+`projects.schematic.recordedAlready`
+
+already recorded
+
+### Box 4, under it, once trained
+`projects.schematic.trained`
+
+{correct} of {heldOut} named right
+
+### Box 4, under it, before
+`projects.schematic.untrained`
+
+not trained yet
+
+### Box 5, under it, once sent
+`projects.schematic.sent`
+
+sending as OSC
+
+### Box 5, under it, before
+`projects.schematic.port`
+
+not sent yet
+
+### The way round step 3
+`projects.schematic.skip`
+
+its gestures come recorded
+
+### The key, line 1, beside a diamond
+`projects.schematic.key1`
+
+a decision: it changes
+
+### The key, line 2
+`projects.schematic.key2`
+
+the steps after it
+
+### The key, line 3
+`projects.schematic.key3`
+
+click a box: open its step
+
+## Project mode: the decisions
+
+### What it follows
+`projects.decision.follows`
+
+what it follows
+
+### What it follows, once the set is made
+`projects.decision.fixed`
+
+(the set's, now it is made)
+
+### Whose examples
+`projects.decision.whose`
+
+whose examples
+
+### Whose examples: the example set
+`projects.decision.example`
+
+the example set
+
+### Whose examples: copying the example set
+`projects.decision.copying`
+
+copying…
+
+### Whose examples: your own
+`projects.decision.own`
+
+your own
+
+### The gesture names
+`projects.decision.names`
+
+the gesture names
+
+### The gesture names, before any
+`projects.decision.namesNone`
+
+you name them as you record
+
+### Recorded from
+`projects.decision.source`
+
+recorded from
+
+### Recorded from: the camera
+`projects.decision.camera`
+
+the camera
+
+### Recorded from: a photo
+`projects.decision.photo`
+
+a photo
+
+## Project mode: the simulation
+
+### The simulation, for a screen reader
+`projects.sim.label`
+
+the simulation: one example, from the camera to the OSC message
+
+### Its title
+`projects.sim.title`
+
+follow one example
+
+### Before training: what it follows
+`projects.sim.before`
+
+what will happen once it is trained, with a made-up example
+
+### After training: what it follows
+`projects.sim.after`
+
+what happened to example {nth} of {label}, one of {aside} set aside when it was trained
+
+### The set, before it has a name
+`projects.sim.yourSet`
+
+your-set
+
+### A gesture, before any has a name
+`projects.sim.aName`
+
+a-gesture
+
+### Station 1
+`projects.sim.points`
+
+the points
+
+### Station 2
+`projects.sim.stored`
+
+the stored example
+
+### Station 3
+`projects.sim.vote`
+
+the neighbours vote
+
+### Station 4
+`projects.sim.sent`
+
+the name sent
+
+### Station 1, before: hands
+`projects.sim.points.hands`
+
+the tracker finds 21 points on each hand in the picture
+
+### Station 1: a body
+`projects.sim.points.body`
+
+the tracker finds 33 points on the body
+
+### Station 1, after: one hand
+`projects.sim.points.one`
+
+21 points, on one hand
+
+### Station 1, after: two hands
+`projects.sim.points.two`
+
+42 points, on two hands
+
+### Station 2, before
+`projects.sim.stored.will`
+
+{n} numbers: the shape, not where it is in the picture
+
+### Station 2, after
+`projects.sim.stored.real`
+
+{n} numbers: … {first} …
+
+### Station 3, before
+`projects.sim.vote.will`
+
+the {k} stored examples nearest to it each vote for their gesture's name
+
+### Station 3, after
+`projects.sim.vote.real`
+
+{votes}, of the {k} nearest
+
+### Step
+`projects.sim.step`
+
+step ›
+
+### Again
+`projects.sim.again`
+
+from the start
+
+### Play
+`projects.sim.play`
+
+play
+
+### Pause
+`projects.sim.pause`
+
+pause
+
+### Another example
+`projects.sim.another`
+
+another example
+
+### Under way
+`projects.sim.underWay`
+
+press step › to go on to the next station
+
+### The result, before training
+`projects.sim.before.result`
+
+Nothing is named until step 4 trains the model: until then there are no stored examples to vote.
+
+### The result, while the model is read
+`projects.sim.reading`
+
+reading the trained model…
+
+### The result: named right
+`projects.sim.after.right`
+
+Named {got}, the most votes of the {k} nearest: right. {right} of {of} set-aside examples were named right.
+
+### The result: named wrong
+`projects.sim.after.wrong`
+
+Named {got}, but it was {label}: record more examples of each, or make the gestures more different. {right} of {of} set-aside examples were named right.
