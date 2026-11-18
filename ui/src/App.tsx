@@ -17,6 +17,7 @@ import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep } from './components/VoiceMode'
 import { leaveMode, useGuide } from './lib/guide'
+import { PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
 import { say } from './text/say'
 import LookPanel from './components/LookPanel'
@@ -128,7 +129,8 @@ export default function App() {
   // project mode: fill in the route's names on the tab, once each time a step is opened (the guide bar does it outside the mode)
   const filledStep = useRef('')
   useEffect(() => {
-    const key = mode ? `${mode.project.id}:${mode.step}:${modeStep?.name}` : ''
+    // the step's names change as it runs (a set made by the first draft is then opened), so they are part of the key
+    const key = mode ? `${mode.project.id}:${mode.step}:${JSON.stringify(modeStep?.fill ?? null)}` : ''
     if (!mode || filledStep.current === key) return
     filledStep.current = key
     if (modeStep?.fill) fill(modeStep.fill)
@@ -199,6 +201,8 @@ export default function App() {
         ) : (
           <GuideBar panel={panel} onFill={fill} />
         )}
+        {/* project mode, on a route with parts: the tab shows only the parts its step uses */}
+        <PartsProvider value={mode?.project.voice ? (modeStep?.parts ?? null) : null}>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'start'}>
           <StartPanel />
         </div>
@@ -245,6 +249,7 @@ export default function App() {
         <div className="panel-slot" hidden={panel !== 'segmentation'}>
           <LookPanel />
         </div>
+        </PartsProvider>
       </main>
       <Terminal theme={theme} folded={!!mode && folded} onFold={mode ? setFolded : undefined} />
     </div>

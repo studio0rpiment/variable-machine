@@ -22,6 +22,7 @@ import { OpenDataCard, TemplateCard } from './OpenData'
 import { HfCard, UploadCard } from './DataBringIn'
 import { PapersCard } from './PapersCard'
 import { say } from '../text/say'
+import { Part } from '../lib/parts'
 import { Linked } from '../explain/Linked'
 import { describeDataset } from '@shared/datasetAbout'
 import { glide as glideAs, moving } from '../lib/moving'
@@ -183,15 +184,18 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
 
   return (
     <section className="panel mf" aria-label="data">
-      <header className="mf__intro">
+      <Part id="data.intro">
+<header className="mf__intro">
         <h1 className="start__title">{DATA_INTRO.title}</h1>
         <p className="start__text">{DATA_INTRO.text}</p>
       </header>
+</Part>
       <div ref={topRef} className="mf-top" />
 
       {!selected ? (
         <>
-          <Explained id="data.choose">
+          <Part id="data.choose">
+<Explained id="data.choose">
             <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>1 · choose a dataset, or make a new one</h2>
           </Explained>
           <p className="mf-next">Then you'll see what's in it, get it ready, and use it to train a model. To find others, on Hugging Face or anywhere, choose "make a new one": it shows where to look and how to bring them in.</p>
@@ -223,13 +227,15 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
               </div>
             </>
           )}
+</Part>
         </>
       ) : (
         <div className="mf-studio">
           <div className="mf-studio__main">
             {selected === NEW || !current ? (
               <>
-                <div className="mf-chosen" style={glide(NEW)}>
+                <Part id="data.newIntro">
+<div className="mf-chosen" style={glide(NEW)}>
                   <span className="mf-preset__group label label--muted">a new dataset</span>
                   <span className="mf-chosen__title">make a new one</span>
                   <span className="mf-chosen__blurb">Bring in one you found, start from a collection or a book, or start empty. Once it exists it opens here, ready to check, split and use.</span>
@@ -252,54 +258,72 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                     </dl>
                   </div>
                 </details>
-                <div className="data-way">
+</Part>
+                <Part id="data.hf">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{BRING.hf.title}</h2>
                   <p className="mf-next">
                     <Linked text={BRING.hf.when} />
                   </p>
                   <HfCard busy={busy === 'hf'} onRun={(line, name) => void run('hf', line).then(created(name))} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.file">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{BRING.file.title}</h2>
                   <p className="mf-next">
                     <Linked text={BRING.file.when} />
                   </p>
                   <UploadCard busy={busy === 'file'} onRun={(line, name) => void run('file', line).then(created(name))} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.search">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{OPEN.search.title}</h2>
                   <p className="mf-next">
                     <Linked text={OPEN.search.when} />
                   </p>
                   <OpenDataCard busy={busy === 'opendata'} onRun={(line, raw) => void run('opendata', line).then(() => setNewTable(raw))} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.papers">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{say('data.papers.title')}</h2>
                   <p className="mf-next">{say('data.papers.when')}</p>
                   <p className="mf-next">{say('data.papers.limits')}</p>
                   <PapersCard onTrain={(d) => onUse?.(d, 'train')} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.table">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{TABLE.ask.title}</h2>
                   <p className="mf-next">{TABLE.ask.when}</p>
                   <TableAskWay prefer={newTable} onMade={(name) => choose(name)} rowsTitle={TABLE.rows.title} rowsWhen={TABLE.rows.when} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.template">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{OPEN.template.title}</h2>
                   <p className="mf-next">{OPEN.template.when}</p>
                   <TemplateCard busy={busy === 'template'} prefer={newTable} onRun={(line, name) => void run('template', line).then(created(name))} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.import">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{MAKE.import.title}</h2>
                   <p className="mf-next">{MAKE.import.when}</p>
                   <ImportCard busy={busy === 'import'} onRun={(line, name) => void run('import', line).then(created(name))} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.raw">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{MAKE.raw.title}</h2>
                   <p className="mf-next">{MAKE.raw.when}</p>
                   <RawCard busy={busy === 'raw'} onRun={(line) => void run('raw', line)} />
                 </div>
-                <div className="data-way">
+</Part>
+                <Part id="data.empty">
+<div className="data-way">
                   <h2 className="panel__title label mf-lead-plain">{MAKE.empty.title}</h2>
                   <p className="mf-next">{MAKE.empty.when}</p>
                   <Manifest name="empty dataset" lines={[`chat: ${KINDS.chat.about}`, `preference: ${KINDS.preference.about}`, `picture: ${KINDS.picture.about}`]}>
@@ -321,18 +345,22 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                     </Explained>
                   </Manifest>
                 </div>
+</Part>
               </>
             ) : (
               <>
-                <div className="mf-chosen" style={glide(current.name)}>
+                <Part id="data.chosen">
+<div className="mf-chosen" style={glide(current.name)}>
                   <span className="mf-preset__group label label--muted">
                     {kindOf(current).group} · for {kindOf(current).use}
                   </span>
                   <span className="mf-chosen__title">{current.name}</span>
                   <span className="mf-chosen__blurb">{kindOf(current).about}</span>
                 </div>
+</Part>
 
-                <section className="mf-part" aria-label="what's in it">
+                <Part id="data.contents">
+<section className="mf-part" aria-label="what's in it">
                   <Explained id="data.contents">
                     <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>what's in it</h2>
                   </Explained>
@@ -427,8 +455,10 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                     </Explained>
                   </div>
                 </section>
+</Part>
 
-                <section className="mf-part" aria-label="get it ready">
+                <Part id="data.ready">
+<section className="mf-part" aria-label="get it ready">
                   <Explained id="data.ready">
                     <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>2 · get it ready: check it, count it, split it</h2>
                   </Explained>
@@ -462,8 +492,10 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                     </NextBox>
                   </div>
                 </section>
+</Part>
 
-                <section className="mf-part" aria-label="use it">
+                <Part id="data.use">
+<section className="mf-part" aria-label="use it">
                   <Explained id="data.use">
                     <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>3 · use it</h2>
                   </Explained>
@@ -484,48 +516,60 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                     <p className="mf-next">{current.counts.train < 2 ? 'It needs a few more rows first: add some below.' : 'Split it first (step 2): training needs some rows set aside to test with.'}</p>
                   )}
                 </section>
+</Part>
 
                 {isPref ? (
-                  <section className="mf-part" aria-label="add pairs">
+                  <Part id="data.pairs">
+<section className="mf-part" aria-label="add pairs">
                     <Explained id="data.more">
                       <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>add pairs from the chat log</h2>
                     </Explained>
                     <PreferenceBuilder dataset={current.name} existing={pairs} />
                   </section>
+</Part>
                 ) : isPicture ? (
-                  <section className="mf-part" aria-label="add pictures">
+                  <Part id="data.pictures">
+<section className="mf-part" aria-label="add pictures">
                     <Explained id="data.more">
                       <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>add rows: a photo, a question, and the answer you want</h2>
                     </Explained>
                     <PictureRows dataset={current.name} />
                   </section>
+</Part>
                 ) : (
-                  <section className="mf-part" aria-label="write more rows">
+                  <Part id="data.more">
+<section className="mf-part" aria-label="write more rows">
                     <Explained id="data.more">
                       <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>write more rows: a model writes, you keep the good ones</h2>
                     </Explained>
                     <DataGenerator dataset={current.name} examples={examples} />
                   </section>
+</Part>
                 )}
 
                 {(current.format ?? 'chat') === 'chat' && (
-                  <section className="mf-part" aria-label={say('data.drafts.title')}>
+                  <Part id="data.drafts">
+<section className="mf-part" aria-label={say('data.drafts.title')}>
                     <h2 className="panel__title label mf-lead-plain">{say('data.drafts.title')}</h2>
                     <DataDrafts dataset={current.name} train={files.train} />
                   </section>
+</Part>
                 )}
 
-                <section className="mf-part" aria-label="rows">
+                <Part id="data.rows">
+<section className="mf-part" aria-label="rows">
                   <Explained id="data.rows">
                     <h2 className="panel__title label mf-lead-plain mf-flagged" tabIndex={0}>the rows</h2>
                   </Explained>
                   <DataRows train={files.train} valid={files.valid} format={current.format ?? 'chat'} dataset={current.name} />
                 </section>
+</Part>
               </>
             )}
           </div>
 
-          <nav className="mf-rail" aria-label="other datasets">
+          <Part id="data.rail">
+<nav className="mf-rail" aria-label="other datasets">
             <Explained id="data.all">
               <button type="button" className="text-button mf-rail__all" onClick={() => choose('')}>
                 all datasets
@@ -534,6 +578,7 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
             {sets.filter((s) => s.name !== selected).map((s) => railItem(s.name, kindOf(s).group, s.name))}
             {selected !== NEW && railItem(NEW, 'a new dataset', 'make a new one')}
           </nav>
+</Part>
         </div>
       )}
     </section>

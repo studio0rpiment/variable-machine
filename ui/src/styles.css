@@ -1156,3 +1156,6 @@ img.move-view__picture { transform: none; }
 .voice-choice__warn { color: var(--line); }
 .voice-step { flex: none; display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem 0; }
 .voice-step__commands { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; }
+/* a part of a tab (lib/parts.tsx): no box of its own, so the tab's layout is as before */
+.part:not([hidden]) { display: contents; }
+.part[hidden] { display: none; }

@@ -182,7 +182,7 @@ export const WORDS = {
   "projects.voice.mode.texts": "bring in the texts the voice is drawn from: one or more books, or your own writing",
   "projects.voice.mode.noTexts": "no text chosen yet: choose one or more under the texts, below",
   "projects.voice.mode.corrections": "write rows by hand: a question, and the answer in the character's voice",
-  "projects.voice.mode.rows": "{n} of {target} rows",
+  "projects.voice.mode.rows": "{n} of {target} rows · then split them, so some are set aside to test with",
   "projects.voice.mode.export": "export it into Ollama, and talk to it in Chat",
   "projects.voice.mode.pick": "in Chat, put two models side by side and pick the better answer, again and again",
   "projects.voice.mode.pairs": "turn the picks into pairs on the Data tab, then split them",

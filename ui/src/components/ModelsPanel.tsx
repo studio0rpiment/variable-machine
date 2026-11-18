@@ -17,6 +17,7 @@ import { TrackerCard } from './MovePanel'
 import { VoiceCard } from './VoicePanel'
 import ToolCard, { KindLine } from './ToolCard'
 import Loading, { DownloadWait } from './Loading'
+import { Part } from '../lib/parts'
 
 interface Progress {
   status: string
@@ -400,6 +401,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
 
   return (
     <section className="panel" aria-label="models">
+      <Part id="models">
       <h2 className="panel__title label">start with these four</h2>
       <p className="models-intro">
         <KindLine kind="writes" />
@@ -510,6 +512,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
           <VoiceCard key={m.name} m={m} />
         ))}
       </div>
+      </Part>
     </section>
   )
 }

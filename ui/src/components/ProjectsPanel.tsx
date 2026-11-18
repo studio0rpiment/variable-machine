@@ -52,6 +52,8 @@ export interface Step {
   notes?: Note[]
   /** the box it sits on in the Start map (FlowMap's node id), for a project's schematic */
   node?: string
+  /** project mode: the parts of its tab it uses (lib/parts.tsx); the tab's other marked parts hide. Unset: the whole tab */
+  parts?: string[]
 }
 
 /** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
@@ -266,6 +268,8 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
       commands: [joinWords(['data', 'raw', 'gutenberg', '<book number>', '<name>'])],
       done: chosen.length > 0,
       result: chosen.length ? chosen.join(' · ') : say('projects.voice.mode.noTexts'),
+      fill: { data: { pick: 'new' } },
+      parts: ['data.raw'],
     },
     {
       name: c.rows === 'draft' ? say('projects.voice.rows') : say('projects.voice.mode.corrections'),
@@ -273,14 +277,17 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
       node: 'data',
       commands:
         c.rows === 'draft'
-          ? (chosen.length ? chosen : ['raw/<name>']).map((t) => joinWords(['data', 'draft', rows, '--from', t, '--count', '150', '--model', 'qwen3:4b']))
-          : [joinWords(['data', 'new', rows]), `data append ${rows} '<row json>' --source corrections`],
-      done: count >= KEEP.voice,
+          ? [...(chosen.length ? chosen : ['raw/<name>']).map((t) => joinWords(['data', 'draft', rows, '--from', t, '--count', '150', '--model', 'qwen3:4b'])), joinWords(['data', 'split', rows, '--valid', '0.15'])]
+          : [joinWords(['data', 'new', rows]), `data append ${rows} '<row json>' --source corrections`, joinWords(['data', 'split', rows, '--valid', '0.15'])],
+      // Train takes a set once some rows are set aside to test with
+      done: count >= KEEP.voice && !!rowsSet?.split,
       result: say('projects.voice.mode.rows', { n: count, target: KEEP.voice }),
       fill: rowsSet ? { data: { pick: rows } } : { data: { pick: 'new', newName: rows } },
+      // drafted: the drafts to read, and the rows kept; by hand: the rows, and the generator's rows to edit and keep
+      parts: c.rows === 'draft' ? ['data.chosen', 'data.drafts', 'data.ready', 'data.rows'] : ['data.chosen', 'data.more', 'data.ready', 'data.rows'],
     },
-    { name: say('projects.voice.train'), tab: 'train', node: 'train', commands: [joinWords(['train', voiceName, '--data', rows, '--base', c.trainBase])], done: !!voice, fill: { train: { data: rows, name: voiceName, base: c.trainBase } } },
-    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', voiceName])], done: !!voice && exported(voice.folder) },
+    { name: say('projects.voice.train'), tab: 'train', node: 'train', commands: [joinWords(['train', voiceName, '--data', rows, '--base', c.trainBase])], done: !!voice, fill: { train: { data: rows, name: voiceName, base: c.trainBase } }, parts: [] },
+    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', voiceName])], done: !!voice && exported(voice.folder), parts: [] },
   ]
 
   // lean toward better: pairs chosen in Chat, then DPO on the base or on the voice trained above
@@ -302,9 +309,10 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
       done: pairs >= PAIRS && !!prefSet?.counts.valid,
       result: say('projects.voice.mode.pairCount', { n: pairs, target: PAIRS }),
       fill: prefSet ? { data: { pick: prefs } } : { data: { pick: 'new', newName: prefs } },
+      parts: ['data.chosen', 'data.pairs', 'data.ready'],
     },
-    { name: say('projects.voice.mode.prefer'), tab: 'prefer', node: 'prefer', commands: [joinWords(['prefer', dpoName, '--data', prefs, '--model', startFrom])], done: !!dpo, fill: { prefer: { data: prefs, model: startFrom } } },
-    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', dpoName])], done: !!dpo && exported(dpo.folder) },
+    { name: say('projects.voice.mode.prefer'), tab: 'prefer', node: 'prefer', commands: [joinWords(['prefer', dpoName, '--data', prefs, '--model', startFrom])], done: !!dpo, fill: { prefer: { data: prefs, model: startFrom } }, parts: [] },
+    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', dpoName])], done: !!dpo && exported(dpo.folder), parts: [] },
   ]
 
   // blend two: two voices on one base, then the merge
@@ -313,17 +321,17 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
   const mergeName = merge?.folder ?? `${a ?? 'voice-a'}-${b ?? 'voice-b'}-blend`
   const blend: Step[] = [
     ...imitate.slice(0, 3),
-    { name: say('projects.voice.mode.second'), tab: 'train', node: 'train', commands: [joinWords(['train', '<second voice>', '--data', '<its rows>', '--base', c.trainBase])], done: voices.length >= 2, result: say('projects.voice.mode.voices', { n: voices.length }) },
-    { name: say('projects.voice.mode.merge'), tab: 'merge', node: 'merge', commands: [joinWords(['merge', mergeName, '--a', a ?? '<voice a>', '--b', b ?? '<voice b>', '--t', '0.5'])], done: !!merge },
-    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', mergeName])], done: !!merge && exported(merge.folder) },
+    { name: say('projects.voice.mode.second'), tab: 'train', node: 'train', commands: [joinWords(['train', '<second voice>', '--data', '<its rows>', '--base', c.trainBase])], done: voices.length >= 2, result: say('projects.voice.mode.voices', { n: voices.length }), parts: [] },
+    { name: say('projects.voice.mode.merge'), tab: 'merge', node: 'merge', commands: [joinWords(['merge', mergeName, '--a', a ?? '<voice a>', '--b', b ?? '<voice b>', '--t', '0.5'])], done: !!merge, parts: [] },
+    { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', mergeName])], done: !!merge && exported(merge.folder), parts: [] },
   ]
 
   // change with words: the base in Ollama, then the Modelfile
   const here = h.ollama.some((m) => m.name === c.modelfileBase || m.name === `${c.modelfileBase}:latest`)
   const variants = h.models.filter((m) => !m.adapter)
   const modelfile: Step[] = [
-    { name: say('projects.voice.mode.pull'), tab: 'models', node: 'models', commands: [joinWords(['ollama', 'pull', c.modelfileBase])], done: here },
-    { name: say('projects.voice.modelfile'), tab: 'modelfile', node: 'modelfile', commands: [joinWords(['ollama', 'create', '<name>', '-f', 'workspace/modelfiles/<name>.Modelfile'])], done: variants.length > 0, fill: { modelfile: { base: c.modelfileBase } } },
+    { name: say('projects.voice.mode.pull'), tab: 'models', node: 'models', commands: [joinWords(['ollama', 'pull', c.modelfileBase])], done: here, parts: [] },
+    { name: say('projects.voice.modelfile'), tab: 'modelfile', node: 'modelfile', commands: [joinWords(['ollama', 'create', '<name>', '-f', 'workspace/modelfiles/<name>.Modelfile'])], done: variants.length > 0, fill: { modelfile: { base: c.modelfileBase } }, parts: [] },
   ]
 
   const steps = { modelfile, imitate, prefer, blend }[c.approach]

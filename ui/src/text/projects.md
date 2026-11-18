@@ -956,7 +956,7 @@ write rows by hand: a question, and the answer in the character's voice
 ### Step: rows, how many
 `projects.voice.mode.rows`
 
-{n} of {target} rows
+{n} of {target} rows · then split them, so some are set aside to test with
 
 ### Step: export
 `projects.voice.mode.export`

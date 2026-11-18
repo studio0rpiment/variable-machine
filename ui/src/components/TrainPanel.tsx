@@ -20,6 +20,7 @@ import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
 import { Explained } from '../explain/Explained'
+import { Part } from '../lib/parts'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
@@ -264,6 +265,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         )
       )}
 
+      <Part id="train.runs">
       <h2 className="panel__title label">runs · workspace/runs</h2>
       <div className="cards">
         {runs.map((r) => (
@@ -287,6 +289,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         ))}
         {runs.length === 0 && <p className="label label--muted">no runs yet</p>}
       </div>
+      </Part>
     </section>
   )
 }

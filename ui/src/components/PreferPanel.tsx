@@ -19,6 +19,7 @@ import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
 import { Explained } from '../explain/Explained'
+import { Part } from '../lib/parts'
 
 interface RunManifest {
   name: string
@@ -240,6 +241,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
         </>
       )}
 
+      <Part id="prefer.runs">
       <h2 className="panel__title label">preference runs · workspace/runs</h2>
       <div className="cards">
         {runs.map((r) => (
@@ -263,6 +265,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
         ))}
         {runs.length === 0 && <p className="label label--muted">no preference runs yet</p>}
       </div>
+      </Part>
     </section>
   )
 }
