@@ -284,7 +284,7 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
       result: say('projects.voice.mode.rows', { n: count, target: KEEP.voice }),
       fill: rowsSet ? { data: { pick: rows } } : { data: { pick: 'new', newName: rows } },
       // drafted: the drafts to read, and the rows kept; by hand: the rows, and the generator's rows to edit and keep
-      parts: c.rows === 'draft' ? ['data.chosen', 'data.drafts', 'data.ready', 'data.rows'] : ['data.chosen', 'data.more', 'data.ready', 'data.rows'],
+      parts: c.rows === 'draft' ? ['data.chosen', 'data.drafts', 'data.rows', 'data.ready'] : ['data.chosen', 'data.more', 'data.rows', 'data.ready'],
     },
     { name: say('projects.voice.train'), tab: 'train', node: 'train', commands: [joinWords(['train', voiceName, '--data', rows, '--base', c.trainBase])], done: !!voice, fill: { train: { data: rows, name: voiceName, base: c.trainBase } }, parts: [] },
     { name: say('projects.voice.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', voiceName])], done: !!voice && exported(voice.folder), parts: [] },
