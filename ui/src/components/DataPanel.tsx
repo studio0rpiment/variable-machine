@@ -290,9 +290,11 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
 </Part>
                 <Part id="data.papers">
 <div className="data-way">
+                  <Part id="papers.intro">
                   <h2 className="panel__title label mf-lead-plain">{say('data.papers.title')}</h2>
                   <p className="mf-next">{say('data.papers.when')}</p>
                   <p className="mf-next">{say('data.papers.limits')}</p>
+                  </Part>
                   <PapersCard onTrain={(d) => onUse?.(d, 'train')} />
                 </div>
 </Part>

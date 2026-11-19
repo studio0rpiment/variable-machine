@@ -16,6 +16,7 @@ import ProjectsPanel, { type Fill, type Step } from './components/ProjectsPanel'
 import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep, ZoomToggle } from './components/VoiceMode'
+import ResearchMode, { ResearchDecisions } from './components/ResearchMode'
 import { leaveMode, useGuide } from './lib/guide'
 import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
@@ -94,8 +95,10 @@ export default function App() {
   const modeStep = followed && (routeOf(followed)[guide!.step - 1] ?? routeOf(followed).at(-1))
   const mode = followed && modeStep ? { project: followed, step: Math.min(guide!.step, routeOf(followed).length) } : null
   const panel: Panel = mode ? modeStep!.tab : tabPanel
+  /** a route on one long page, under its schematic: a character's voice, the research bot */
+  const longPage = !!(mode?.project.voice || mode?.project.research)
   const [folded, setFolded] = useState(true)
-  /** a voice route is one long page: the step whose section is in view */
+  /** a route on one long page (voice, the research bot): the step whose section is in view */
   const [stepInView, setStepInView] = useState(1)
   /** the folded schematic: the whole route (FULL pressed) or zoomed in on the step (ZOOM) */
   const [whole, setWhole] = useState(false)
@@ -135,11 +138,11 @@ export default function App() {
   useEffect(() => {
     // the step's names change as it runs (a set made by the first draft is then opened), so they are part of the key
     const key = mode ? `${mode.project.id}:${mode.step}:${JSON.stringify(modeStep?.fill ?? null)}` : ''
-    // a voice route's page fills each step's own copy of its tab instead (StepTab)
-    if (!mode || mode.project.voice || filledStep.current === key) return
+    // a long page fills each step's own copy of its tab instead (StepTab)
+    if (!mode || longPage || filledStep.current === key) return
     filledStep.current = key
     if (modeStep?.fill) fill(modeStep.fill)
-  }, [mode, modeStep, fill])
+  }, [mode, modeStep, fill, longPage])
   const [preferData, setPreferData] = useState<{ data: string; n: number; model?: string }>()
   /** Data → "use it": open Train or Prefer with that dataset chosen. */
   const sendDataset = (data: string, way: 'train' | 'prefer') => {
@@ -157,13 +160,13 @@ export default function App() {
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
           <span className="label label--name">Variable Machine</span>
           <span className="label project-top__name">{say('projects.mode.project', { project: mode.project.title })}</span>
-          <span className="label label--muted">{say('projects.guide.step', { n: mode.project.voice ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
+          <span className="label label--muted">{say('projects.guide.step', { n: longPage ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />
           <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
             {say('projects.mode.leave')}
           </button>
-          {mode.project.voice && <ZoomToggle whole={whole} onToggle={() => setWhole(!whole)} />}
+          {longPage && <ZoomToggle whole={whole} onToggle={() => setWhole(!whole)} />}
         </header>
       ) : (
       <header className="shell__top">
@@ -193,10 +196,19 @@ export default function App() {
       </header>
       )}
       <main className={`shell__main ${mode ? 'shell__main--project' : ''}`.trim()}>
-        {mode?.project.voice ? (
+        {mode && longPage ? (
           <>
-            <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} />
-            <VoiceDecisions project={mode.project} />
+            {mode.project.research ? (
+              <>
+                <ResearchMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} />
+                <ResearchDecisions project={mode.project} />
+              </>
+            ) : (
+              <>
+                <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} />
+                <VoiceDecisions project={mode.project} />
+              </>
+            )}
             {/* the whole route on one page: each step, then its own copy of its tab, showing only the parts the step uses */}
             {routeOf(mode.project).map((s, i) => (
               <section key={`${i}-${s.tab}`} className="voice-page__step" data-step={i + 1}>
@@ -217,8 +229,8 @@ export default function App() {
         ) : (
           <GuideBar panel={panel} onFill={fill} />
         )}
-        {/* the tabs, one each; a voice route's page has its own copies instead */}
-        <div className="panel-slots" hidden={!!mode?.project.voice}>
+        {/* the tabs, one each; a long page has its own copies instead */}
+        <div className="panel-slots" hidden={longPage}>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'start'}>
           <StartPanel />
         </div>
@@ -274,7 +286,7 @@ export default function App() {
 
 let fills = 0
 /**
- * A step's own copy of its tab, for a voice route's long page, filled with the
+ * A step's own copy of its tab, for a route's long page, filled with the
  * names the step has chosen. A new fill (a set made by the first draft, say)
  * gets a new number, so the tab takes it.
  */
@@ -300,6 +312,8 @@ function StepTab({ step, onUse, chatWith, chatPair, chatModels, editModelfile, c
       return <AdaptersPanel onChatPair={chatPair} />
     case 'merge':
       return <MergePanel onChatModels={chatModels} />
+    case 'share':
+      return <SharePanel />
     case 'chat':
       return (
         <div className="voice-page__chat">

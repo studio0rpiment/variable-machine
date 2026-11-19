@@ -15,12 +15,12 @@ In the text, a word in braces, like `{n}`, is filled in by the page; `code`, *it
 ### Heading
 `data.papers.title`
 
-papers and articles: a reading list on a topic, and a judge of what's relevant
+papers and articles: a reading list on a topic, and a point of view on what's relevant
 
 ### When to use it
 `data.papers.when`
 
-For research: give a topic and two to five papers or articles you already know are relevant. A model writes searches; search code finds real papers in OpenAlex, Semantic Scholar, arXiv and Crossref, posts in the feeds you name, and the papers your seeds cite and are cited by. The model then screens them, keep or skip with a reason, and you change any you disagree with. You get a reading list and BibTeX, and your decisions become a training set for a judge of relevance that sees it your way.
+For research: give a topic and two to five papers or articles you already know are relevant. A model writes searches; search code finds real papers in OpenAlex, Semantic Scholar, arXiv and Crossref, posts in the feeds you name, and the papers your seeds cite and are cited by. The model then screens them, keep or skip with a reason, and you change any you disagree with. You get a reading list and BibTeX, and your decisions can become a training set for a point of view: a small model that judges relevance the way you do.
 
 ### What it can't do
 `data.papers.limits`
@@ -119,7 +119,7 @@ screen
 ### Screen
 `data.papers.screen` flag
 
-First nomic-embed-text compares every item with your seeds and topic, so the closest come first. Then the model reads the 40 closest, title and abstract, and answers keep or skip with one line why. The rest are skipped by similarity alone, and say so. Change any decision you disagree with: yours wins, and yours are what a judge learns from.
+First nomic-embed-text compares every item with your seeds and topic, so the closest come first. Then the model reads the 40 closest, title and abstract, and answers keep or skip with one line why. The rest are skipped by similarity alone, and say so. Change any decision you disagree with: yours wins, and yours are what a point of view learns from.
 
 ### Which items to show
 `data.papers.show`
@@ -184,7 +184,7 @@ undo
 ### Your decision
 `data.papers.decide` flag
 
-Your decision, over the screen's: it runs papers decide, which shows in the terminal. Keep what you'd read for this topic; skip what you wouldn't. The judge you train learns from these, so decide the ones the model got wrong as well as the ones it got right.
+Your decision, over the screen's: it runs papers decide, which shows in the terminal. Keep what you'd read for this topic; skip what you wouldn't. A point of view you train learns from these, so decide the ones the model got wrong as well as the ones it got right.
 
 ### Its abstract
 `data.papers.abstract`
@@ -243,15 +243,15 @@ check the model against your decisions
 
 the model agrees with you on {agree} of {n} ({pct}%); similarity alone on {sim}
 
-### Judge set
+### Point of view set
 `data.papers.judge.run`
 
 make a training set from the decisions
 
-### Judge set
+### Point of view set
 `data.papers.judge` flag
 
-Your decisions, and the model's where you left them, become a training set: each row is the topic, a title and abstract, and the answer, keep or skip with a line why. Where you overrode the model, a second set holds pairs (your decision chosen, the model's rejected) for Prefer. Split it, then train a small model on it: a relevance judge that a package's research.js runs on new searches.
+Your decisions, and the model's where you left them, become a training set: each row is the topic, a title and abstract, and the answer, keep or skip with a line why. Where you overrode the model, a second set holds pairs (your decision chosen, the model's rejected) for Prefer. Split it, then train a small model on it: a point of view, which screens new searches here, or anywhere through a package's research.js.
 
 ### Split
 `data.papers.split.run`

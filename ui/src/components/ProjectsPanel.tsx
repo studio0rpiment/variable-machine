@@ -11,6 +11,7 @@ import { guideHref, SCHEMATICS, startGuide, useGuide } from '../lib/guide'
 import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
+import { useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
 import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -84,6 +85,20 @@ export interface Project {
   gesture?: GestureFacts
   /** a character's voice, followed as a project: the route the decisions draw */
   voice?: VoiceFacts
+  /** the research bot, followed as a project: the route the decisions draw */
+  research?: ResearchFacts
+}
+
+/** What the research bot's schematic shows: the route's steps, and what the decisions can choose from. */
+export interface ResearchFacts {
+  steps: Step[]
+  /** the research folder followed, if there is one yet */
+  folder?: ResearchFolder
+  folders: string[]
+  /** the Ollama models there are, with their size in bytes */
+  ollama: { name: string; size: number }[]
+  /** the point of view made, once it is in Ollama */
+  view?: string
 }
 
 /** What a character's voice schematic shows: the steps of the route chosen, and what the decisions can choose from. */
@@ -152,8 +167,8 @@ interface Have {
   exampleGestures: Gesture[]
   /** `reader check` results: the reader's scores, then the stand-in's */
   readerChecks: { dataset: string; model: string; at: string; n: number; scores: { model: string; right: number; fields: number; rows: number; ms: number }[] }[]
-  /** research folders, with the files each has (screen.json, reading-list.md) */
-  research: { folder: string; created?: string; files: string[] }[]
+  /** research folders, with the files each has (screen.json, reading-list.md), and what screen.json holds */
+  research: ResearchFolder[]
   /** texts uploaded for drafting rows from (data draft --from uploads/…) */
   texts: string[]
   /** the Ollama models, with their size in bytes */
@@ -175,7 +190,7 @@ async function readHave(): Promise<Have> {
     listDir('images'),
     readManifests<Output>('outputs'),
     readManifests<Gesture>('gestures'),
-    readManifests<{ created?: string }>('research'),
+    readManifests<{ created?: string; runs?: unknown[] }>('research'),
     listDir('uploads'),
     readManifests<Gesture>('examples/gestures'),
   ])
@@ -224,7 +239,48 @@ async function readHave(): Promise<Have> {
     merges,
     chatLogs: chat.filter((f) => f.name.endsWith('.jsonl')).length,
     texts: uploads.filter((u) => /\.(txt|md)$/.test(u.name)).map((u) => `uploads/${u.name}`),
-    research: await Promise.all(research.map(async (r) => ({ folder: r.folder, created: r.created, files: (await listDir(`research/${r.folder}`)).map((f) => f.name) }))),
+    research: await Promise.all(research.map(readResearch)),
+  }
+}
+
+/** A research folder: its files, how many searches it has had, and what its screen.json says. */
+export interface ResearchFolder {
+  folder: string
+  created?: string
+  files: string[]
+  runs: number
+  /** items a model screened (not those skipped by similarity alone) */
+  screened: number
+  /** items you decided yourself, and of those, where you overrode the screener */
+  mine: number
+  overrides: number
+  /** items with a summary */
+  summaries: number
+  /** the models that screened items here */
+  by: string[]
+}
+
+async function readResearch(r: { folder: string; created?: string; runs?: unknown[] }): Promise<ResearchFolder> {
+  const files = (await listDir(`research/${r.folder}`)).map((f) => f.name)
+  type D = { screen?: { decision: string; by: string }; student?: { decision: string }; summary?: unknown[] }
+  let screen: Record<string, D> = {}
+  try {
+    screen = JSON.parse((await readFile(`research/${r.folder}/screen.json`)) ?? '{}') as Record<string, D>
+  } catch {
+    // a half-written screen.json: read again on the next change
+  }
+  const ds = Object.values(screen)
+  const byModel = ds.filter((d) => d.screen && d.screen.by !== 'nomic-embed-text')
+  return {
+    folder: r.folder,
+    created: r.created,
+    files,
+    runs: r.runs?.length ?? 0,
+    screened: byModel.length,
+    mine: ds.filter((d) => d.student).length,
+    overrides: byModel.filter((d) => d.student && d.student.decision !== d.screen!.decision).length,
+    summaries: ds.filter((d) => d.summary?.length).length,
+    by: [...new Set(byModel.map((d) => d.screen!.by))],
   }
 }
 
@@ -357,7 +413,135 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
   return { approach: c.approach, steps, texts, ollama: h.ollama, voices: voices.map((v) => v.folder) }
 }
 
-function projects(h: Have, choice: GestureChoices, voice: VoiceChoices): Project[] {
+/** How many of your own decisions a point of view needs: papers judge takes 10; 30 overrides make enough pairs for Prefer. */
+const VIEW_DECIDED = 10
+
+/**
+ * The research bot as a route: the steps the decisions draw, each on its box
+ * of the research bot's schematic (ResearchMode), with its command filled in
+ * from the decisions and the workspace, and done when the workspace has what
+ * it makes. Every route ends where the research bot is used: a reading list.
+ */
+function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
+  // the research followed: the one chosen under "which research"; none while a new one is still to be searched
+  const folder = c.folder ? h.research.find((r) => r.folder === c.folder) : undefined
+  const name = folder?.folder ?? c.folder ?? ''
+  const at = name || '<name>'
+  const here = (m: string) => h.ollama.some((x) => x.name === m || x.name === `${m}:latest`)
+  const flag = (k: string, v: string, fallback: string) => (v === fallback ? [] : [k, v])
+  const parts = (...p: string[]) => ['data.papers', 'papers.pick', ...p]
+  const listed = !!folder?.files.includes('reading-list.md')
+
+  const need = [...new Set([c.writer, 'nomic-embed-text', c.screener, ...(c.summaries ? [c.summariser] : [])])]
+  const steps: Step[] = [
+    {
+      name: say('projects.research.mode.models'),
+      tab: 'models',
+      node: 'models',
+      commands: need.map((m) => joinWords(['ollama', 'pull', m])),
+      done: need.every(here),
+      result: need.filter((m) => !here(m)).length ? say('projects.research.mode.missing', { models: need.filter((m) => !here(m)).join(', ') }) : undefined,
+      parts: [],
+    },
+    {
+      name: say('projects.research.mode.search'),
+      tab: 'data',
+      node: 'search',
+      commands: folder
+        ? [joinWords(['papers', 'search', name, ...flag('--model', c.writer, 'qwen3:4b')])]
+        : [joinWords(['papers', 'search', at, '--topic', '<topic>', '--seed', '<doi>', '--seed', '<doi>', ...(c.sources.includes('feeds') ? ['--feed', '<address>'] : []), ...flag('--model', c.writer, 'qwen3:4b')])],
+      done: !!folder,
+      result: folder ? say('projects.research.mode.searched', { folder: name, runs: folder.runs }) : undefined,
+      fill: { data: { pick: 'new' } },
+      parts: parts('papers.intro', 'papers.search'),
+    },
+    {
+      name: say('projects.research.mode.screen'),
+      tab: 'data',
+      node: 'screen',
+      commands: [joinWords(['papers', 'screen', at, ...flag('--top', String(c.top), '40'), ...flag('--model', c.screener, 'qwen3:4b')])],
+      done: !!folder?.screened,
+      result: folder ? say('projects.research.mode.screened', { n: folder.screened }) : undefined,
+      fill: { data: { pick: 'new' } },
+      parts: parts('papers.about', 'papers.screen'),
+    },
+    {
+      name: say('projects.research.mode.decide'),
+      tab: 'data',
+      node: 'you',
+      commands: [joinWords(['papers', 'decide', at, '<key>', 'keep']), joinWords(['papers', 'decide', at, '<key>', 'skip'])],
+      done: !folder ? false : c.take === 'list' ? folder.mine > 0 : c.trainFrom === 'all' ? folder.mine >= VIEW_DECIDED : folder.overrides >= PAIRS,
+      result: folder ? say('projects.research.mode.decided', { mine: folder.mine, overrides: folder.overrides, target: c.take === 'list' ? 1 : c.trainFrom === 'all' ? VIEW_DECIDED : PAIRS }) : undefined,
+      fill: { data: { pick: 'new' } },
+      parts: parts('papers.items'),
+    },
+    ...(c.summaries
+      ? [
+          {
+            name: say('projects.research.mode.summarise'),
+            tab: 'data' as const,
+            node: 'list',
+            commands: [joinWords(['papers', 'summarise', at, ...flag('--model', c.summariser, 'qwen3:4b')])],
+            done: !!folder?.summaries,
+            fill: { data: { pick: 'new' } },
+            parts: parts('papers.list'),
+          },
+        ]
+      : []),
+    {
+      name: c.take === 'list' ? say('projects.research.mode.read') : say('projects.research.mode.list'),
+      tab: 'data',
+      node: 'list',
+      commands: [joinWords(['papers', 'list', at])],
+      done: listed,
+      fill: { data: { pick: 'new' } },
+      parts: parts('papers.list'),
+    },
+  ]
+  if (c.take === 'list') return { steps, folder, folders: h.research.map((r) => r.folder), ollama: h.ollama }
+
+  // a point of view: your decisions as a set, then trained on all of them (Train) or only on where you overrode the screener (Prefer)
+  const set = `${at}-view`
+  const prefs = `${set}-prefs`
+  const short = c.base.includes('1.7B') ? '1.7b' : '360m'
+  const sets = h.data.filter((d) => d.research?.folder === name)
+  const viewSet = sets.find((d) => d.format === 'chat')
+  const prefSet = sets.find((d) => d.format === 'preference')
+  const trainOn = c.trainFrom === 'all' ? viewSet : prefSet
+  const adapter = h.adapters.find((a) => a.data === trainOn?.folder && a.base === c.base && (c.trainFrom === 'all') === (a.method !== 'dpo'))
+  const pov = adapter?.folder ?? (c.trainFrom === 'all' ? `${viewSet?.folder ?? set}-${short}` : `${prefSet?.folder ?? prefs}-${short}`)
+  const model = adapter && h.models.find((m) => m.adapter === adapter.folder)?.model
+  const use = model ?? pov
+  steps.push({
+    name: say('projects.research.mode.set'),
+    tab: 'data',
+    node: 'data',
+    commands: [joinWords(['papers', 'judge', at, set]), joinWords(['data', 'split', viewSet?.folder ?? set, '--valid', '0.2']), ...(c.trainFrom === 'overrides' ? [joinWords(['data', 'split', prefSet?.folder ?? prefs, '--valid', '0.2'])] : [])],
+    done: !!trainOn?.split,
+    result: viewSet ? say('projects.research.mode.setMade', { rows: viewSet.counts.train + viewSet.counts.valid, pairs: prefSet ? prefSet.counts.train + prefSet.counts.valid : 0 }) : undefined,
+    fill: { data: { pick: 'new' } },
+    parts: parts('papers.judge'),
+  })
+  if (c.trainFrom === 'all')
+    steps.push({ name: say('projects.research.mode.train'), tab: 'train', node: 'train', commands: [joinWords(['train', pov, '--data', viewSet?.folder ?? set, '--base', c.base])], done: !!adapter, fill: { train: { data: viewSet?.folder ?? set, name: pov, base: c.base } }, parts: [] })
+  else
+    steps.push({ name: say('projects.research.mode.prefer'), tab: 'prefer', node: 'prefer', commands: [joinWords(['prefer', pov, '--data', prefSet?.folder ?? prefs, '--model', c.base])], done: !!adapter, fill: { prefer: { data: prefSet?.folder ?? prefs, model: c.base } }, parts: [] })
+  steps.push({ name: say('projects.research.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', pov])], done: !!model, result: model, parts: [] })
+  if (c.folderOfItsOwn)
+    steps.push({ name: say('projects.research.mode.package'), tab: 'share', node: 'share', commands: [joinWords(['package', use]), joinWords(['zip', `packages/${use}`])], done: !!model && h.packages.includes(model), parts: [] })
+  steps.push({
+    name: say('projects.research.mode.use'),
+    tab: 'data',
+    node: 'list',
+    commands: [joinWords(['papers', 'search', at]), joinWords(['papers', 'screen', at, '--model', use]), joinWords(['papers', 'list', at])],
+    done: !!model && !!folder?.by.includes(model),
+    fill: { data: { pick: 'new' } },
+    parts: parts('papers.items', 'papers.list'),
+  })
+  return { steps, folder, folders: h.research.map((r) => r.folder), ollama: h.ollama, view: model }
+}
+
+function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices): Project[] {
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -404,7 +588,7 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices): Project
   const judges = h.adapters.filter((a) => judgeSets.some((d) => d.folder === a.data))
   const judgeModels = h.models.filter((m) => judges.some((a) => a.folder === m.adapter))
   const topic = last(topics)?.folder ?? '<name>'
-  const judgeSet = last(judgeSets)?.folder ?? `${topic}-judge`
+  const judgeSet = last(judgeSets)?.folder ?? `${topic}-view`
   const judge = last(judges)?.folder ?? `${judgeSet}-360m`
   const judgeModel = last(judgeModels)?.model ?? judge
 
@@ -525,6 +709,7 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices): Project
         { name: say('projects.research.export'), tab: 'adapters', commands: [joinWords(['export', judge])], done: judgeModels.length > 0 },
         { name: say('projects.research.package'), tab: 'share', commands: [joinWords(['package', judgeModel]), joinWords(['zip', `packages/${judgeModel}`])], done: judgeModels.some((m) => h.packages.includes(m.model)) },
       ],
+      research: researchRoute(h, research),
     },
     {
       id: 'studio',
@@ -603,17 +788,18 @@ export function useProjects(): Project[] | null {
   const [have, setHave] = useState<Have | null>(null)
   const choice = useGestureChoices()
   const voice = useVoiceChoices()
+  const research = useResearchChoices()
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || /^research\/[^/]+\/(screen\.json|reading-list\.md)$/.test(e.path) || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
-  return have && projects(have, choice, voice)
+  return have && projects(have, choice, voice, research)
 }
 
 /** The steps a project follows in project mode: its route, where its decisions draw one; else its card's steps. */
-export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.steps
+export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.steps
 
 /** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
 export function stepNumber(steps: Step[], i: number) {

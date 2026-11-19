@@ -366,7 +366,7 @@ Finds papers, articles and Substack posts on a topic. Search code finds real ite
 ### What you end up with
 `projects.research.get`
 
-a reading list with why each item is relevant, a BibTeX file, a library of everything seen so a rerun shows only what's new, and a relevance judge trained on your own decisions
+a reading list with why each item is relevant, a BibTeX file, a library of everything seen so a rerun shows only what's new, and, if you train one, a point of view: a small model trained on your own decisions
 
 ### What it can't do
 `projects.research.limits`
@@ -388,20 +388,20 @@ screen them: keep or skip, with a reason; change any you disagree with
 
 make the reading list and BibTeX
 
-### Step: judge set
+### Step: the point of view's set
 `projects.research.judge`
 
-turn your decisions into a training set
+turn your decisions into a training set for a point of view
 
-### Step: train judge
+### Step: train the point of view
 `projects.research.trainJudge`
 
-train a relevance judge on it
+train a point of view on it: a small model that judges relevance the way you do
 
 ### Step: export
 `projects.research.export`
 
-export the judge into Ollama
+export the point of view into Ollama
 
 ### Step: package
 `projects.research.package`
@@ -1304,3 +1304,641 @@ you write them
 `projects.voice.rows.corrections.about`
 
 slower, and closest to the voice you mean: each row is yours
+
+## Project mode: the research bot
+
+The research bot's card followed as a project. Its schematic is the Start map opened up: the project opens on the Start map's top band, and in about a second PAPERS opens into its sources and the pipeline that reads them, and MODELS into one model per role. Under it, the decisions, in groups; options that are planned but not built show, and can't be chosen yet.
+
+### Decisions, for a screen reader
+`projects.research.decisions`
+
+the research bot's decisions
+
+### Not built yet
+`projects.research.notBuilt`
+
+not built yet
+
+### Papers, opened: what the faint sources are
+`projects.research.mode.soon`
+
+faint: not chosen, or not built yet
+
+### Group: what it finds
+`projects.research.group.find`
+
+what it finds: where it searches, and with what access
+
+### Group: who reads it
+`projects.research.group.read`
+
+who reads it: a model for each role, and how much it reads
+
+### Group: the point of view
+`projects.research.group.view`
+
+the point of view
+
+### Decision: what you take away
+`projects.research.decision.take`
+
+what you take away
+
+### Option: a reading list
+`projects.research.take.list`
+
+a reading list
+
+### Option: a reading list, its tab
+`projects.research.take.list.tab`
+
+Data: papers and articles
+
+### Option: a reading list, time
+`projects.research.take.list.time`
+
+not timed: the searches (they wait on the network), then the screener reading the closest items, a few seconds each
+
+### Option: a reading list, disk
+`projects.research.take.list.disk`
+
+the models below, if they aren't here: about 3 GB as chosen first
+
+### Option: a reading list, needs
+`projects.research.take.list.needs`
+
+a topic, and two to five papers or articles you already know are relevant
+
+### Option: a reading list, changes
+`projects.research.take.list.changes`
+
+No model changes. Real items only, found by search code; why each was kept; BibTeX; a library, so a rerun shows only what's new.
+
+### Option: a point of view
+`projects.research.take.view`
+
+a point of view
+
+### Option: a point of view, its tabs
+`projects.research.take.view.tab`
+
++ Train or Prefer, Adapters
+
+### Option: a point of view, time
+`projects.research.take.view.time`
+
+the list, then training a small model on your decisions (not timed: a set this size trains in minutes on 360M)
+
+### Option: a point of view, disk
+`projects.research.take.view.disk`
+
++ about 0.7 GB for the base, + about 0.7 GB for the point of view in Ollama (360M)
+
+### Option: a point of view, needs
+`projects.research.take.view.needs`
+
+at least 10 decisions of your own; 30 places where you overrode the screener, to train on those alone
+
+### Option: a point of view, changes
+`projects.research.take.view.changes`
+
+A small model that judges relevance the way you do. It becomes the screener on the next search, here or, packaged, anywhere. For a class, the students' decisions can be pooled into one.
+
+### Decision: which research
+`projects.research.decision.folder`
+
+which research
+
+### Which research: a new one
+`projects.research.folder.new`
+
+a new one
+
+### Which research: a new one, about
+`projects.research.folder.newAbout`
+
+a topic and its seeds, searched for the first time
+
+### Which research: one here
+`projects.research.folder.here`
+
+in workspace/research: search it again, and only what's new comes in
+
+### Decision: where it searches
+`projects.research.decision.sources`
+
+where it searches
+
+### Source: scholarship
+`projects.research.source.scholarship`
+
+scholarship
+
+### Source: scholarship, about
+`projects.research.source.scholarship.about`
+
+OpenAlex, Semantic Scholar and Crossref, in every field; arXiv; and the seeds' citations, both ways
+
+### Source: patents
+`projects.research.source.patents`
+
+patents
+
+### Source: patents, about
+`projects.research.source.patents.about`
+
+US patents from 1790, each fetched by its number with its text; British and German ones from the 1800s, by title, date and inventor
+
+### Source: archives
+`projects.research.source.archives`
+
+archives
+
+### Source: archives, about
+`projects.research.source.archives.about`
+
+the Internet Archive's full text: books, journals, trade press, the Patent Office's Official Gazette
+
+### Source: newspapers
+`projects.research.source.newspapers`
+
+newspapers
+
+### Source: newspapers, about
+`projects.research.source.newspapers.about`
+
+the Library of Congress: US newspapers, 1756–1963, searched word by word
+
+### Source: Europeana
+`projects.research.source.europeana`
+
+Europeana
+
+### Source: Europeana, about
+`projects.research.source.europeana.about`
+
+Europeana: books, newspapers and objects from European libraries and museums; needs a free key
+
+### Source: feeds
+`projects.research.source.feeds`
+
+feeds
+
+### Source: feeds, about
+`projects.research.source.feeds.about`
+
+a Substack or a blog, by its feed address (name.substack.com/feed)
+
+### Sources combine
+`projects.research.sources.combine`
+
+Choose any: each is searched, and what they find goes into one library and one reading list. An item found in several places is one entry, with every place it was found.
+
+### Decision: fields to pair
+`projects.research.decision.fields`
+
+fields to pair
+
+### Field: the humanities
+`projects.research.field.humanities`
+
+the humanities
+
+### Field: the humanities, about
+`projects.research.field.humanities.about`
+
+history, art, music, philosophy, media studies
+
+### Field: the sciences
+`projects.research.field.sciences`
+
+the sciences
+
+### Field: the sciences, about
+`projects.research.field.sciences.about`
+
+physics, acoustics, physiology, psychology
+
+### Field: technology
+`projects.research.field.technology`
+
+technology
+
+### Field: technology, about
+`projects.research.field.technology.about`
+
+engineering, computer science, inventions
+
+### Fields, about
+`projects.research.fields.about`
+
+Searches are written for each field, and each gets its own share of what the screener reads. An item's field is the source's own label, never the model's; items with two or more are bridges.
+
+### Decision: your library
+`projects.research.decision.library`
+
+your library
+
+### Library: its proxy
+`projects.research.library.proxy`
+
+its proxy, for links
+
+### Library: its proxy, about
+`projects.research.library.proxy.about`
+
+every link in the reading list opens through your library's proxy; you sign in yourself, in your browser
+
+### Library: keys
+`projects.research.library.keys`
+
+keys you hold
+
+### Library: keys, about
+`projects.research.library.keys.about`
+
+a key a source or a publisher gave you, kept in a file on this Mac, never in the workspace you share
+
+### Library: your own copies
+`projects.research.library.copies`
+
+your own copies
+
+### Library: your own copies, about
+`projects.research.library.copies.about`
+
+PDFs you downloaded through the library: the screener and summariser read their full text
+
+### Decision: a model for each role
+`projects.research.decision.models`
+
+a model for each role
+
+### Role: writer
+`projects.research.role.writer`
+
+writer
+
+### Role: writer, what it does
+`projects.research.role.writer.does`
+
+writes the searches from the topic and the seeds
+
+### Role: ranker
+`projects.research.role.ranker`
+
+ranker
+
+### Role: ranker, what it does
+`projects.research.role.ranker.does`
+
+compares each item with the topic and the seeds, so the closest come first
+
+### Role: screener
+`projects.research.role.screener`
+
+screener
+
+### Role: screener, what it does
+`projects.research.role.screener.does`
+
+keep or skip, with a line why: a model's point of view, not a fact
+
+### Role: summariser
+`projects.research.role.summariser`
+
+summariser
+
+### Role: summariser, what it does
+`projects.research.role.summariser.does`
+
+claims from what you kept, each quoting the text it rests on, or left out
+
+### Models and memory
+`projects.research.models.memory`
+
+This Mac has {memory} GB. qwen3:4b is 2.5 GB and wants 16 GB or more; qwen3:1.7b is 1.4 GB, quicker and looser. A ! marks a model too large for this Mac.
+
+### Decision: how many the screener reads
+`projects.research.decision.top`
+
+how many the screener reads
+
+### How many: the number
+`projects.research.top.n`
+
+the closest {n}
+
+### How many: 40
+`projects.research.top.40`
+
+the rest are skipped by closeness alone, and say so
+
+### How many: 100
+`projects.research.top.100`
+
+about 2½ times as long; enough to override 30
+
+### How many: 200
+`projects.research.top.200`
+
+the longest; the most decisions for a point of view
+
+### Decision: compare two screeners
+`projects.research.decision.compare`
+
+compare two screeners
+
+### Compare: no
+`projects.research.compare.no`
+
+one screener
+
+### Compare: no, about
+`projects.research.compare.no.about`
+
+the model chosen above
+
+### Compare: yes
+`projects.research.compare.yes`
+
+two, side by side
+
+### Compare: yes, about
+`projects.research.compare.yes.about`
+
+a second screener reads the same items; you see where they disagree, and how often each agrees with you
+
+### Decision: summaries
+`projects.research.decision.summaries`
+
+summaries
+
+### Summaries: none
+`projects.research.summaries.none`
+
+none
+
+### Summaries: none, about
+`projects.research.summaries.none.about`
+
+the list says why each was kept
+
+### Summaries: from abstracts
+`projects.research.summaries.abstracts`
+
+from abstracts
+
+### Summaries: from abstracts, about
+`projects.research.summaries.abstracts.about`
+
+kept items free to read, with an abstract: papers summarise
+
+### Summaries: from the full text
+`projects.research.summaries.full`
+
+from the full text
+
+### Summaries: from the full text, about
+`projects.research.summaries.full.about`
+
+items whose source has the text: the archives' scans, patents, your own copies
+
+### Decision: how the point of view is trained
+`projects.research.decision.trainFrom`
+
+how the point of view is trained
+
+### Trained from all your decisions
+`projects.research.trainFrom.all`
+
+from all your decisions
+
+### Trained from all your decisions, about
+`projects.research.trainFrom.all.about`
+
+Train imitates every keep and skip, yours and the screener's where you left them: your whole point of view, with some of the screener's in it where you agreed.
+
+### Trained from your overrides
+`projects.research.trainFrom.overrides`
+
+from where you overrode the screener
+
+### Trained from your overrides, about
+`projects.research.trainFrom.overrides.about`
+
+Prefer learns only the places you disagreed: your point of view against this screener's. Few examples, all disputed; change the screener and what it learned means something else.
+
+### Decision: the base
+`projects.research.decision.base`
+
+the base it is trained on
+
+### Decision: where it runs
+`projects.research.decision.runs`
+
+where the point of view runs
+
+### Where it runs: here
+`projects.research.runs.here`
+
+here
+
+### Where it runs: here, about
+`projects.research.runs.here.about`
+
+it is the screener on each new search: papers screen --model
+
+### Where it runs: a folder of its own
+`projects.research.runs.folder`
+
+here, and a folder of its own
+
+### Where it runs: a folder of its own, about
+`projects.research.runs.folder.about`
+
+package: the model, research.js and the topic; zip it; node research.js runs the whole loop anywhere with Ollama
+
+## Project mode: the research bot's schematic
+
+### Replay the unfolding
+`projects.research.mode.replay`
+
+◂ from the Start map
+
+### New on the Start map
+`projects.research.mode.newBox`
+
+new on the start map
+
+### Papers, opened: its head
+`projects.research.mode.headPapers`
+
+papers · where it searches
+
+### Models, opened: its head
+`projects.research.mode.headModels`
+
+models · one per role
+
+### Lane: inside models
+`projects.research.mode.laneModels`
+
+inside models: a model for each role
+
+### Lane: inside papers
+`projects.research.mode.lanePapers`
+
+inside papers: what finds and reads the items
+
+### Lane: the point of view
+`projects.research.mode.laneView`
+
+the point of view: your decisions become a model
+
+### The point of view becomes the screener
+`projects.research.mode.becomes`
+
+your point of view becomes the screener
+
+### Caption: search code
+`projects.research.mode.capSearch`
+
+finds every item
+
+### Caption: rank
+`projects.research.mode.capRank`
+
+closest first
+
+### Caption: screen
+`projects.research.mode.capScreen`
+
+keep or skip, and why
+
+### Caption: you decide
+`projects.research.mode.capYou`
+
+keep or skip each
+
+### Caption: reading list
+`projects.research.mode.capList`
+
+what you get
+
+### Caption: data
+`projects.research.mode.capData`
+
+your decisions as rows
+
+### Caption: train
+`projects.research.mode.capTrain`
+
+imitate them all
+
+### Caption: prefer
+`projects.research.mode.capPrefer`
+
+lean toward your side
+
+### Caption: adapters
+`projects.research.mode.capAdapters`
+
+export: a point of view
+
+### Caption: share
+`projects.research.mode.capShare`
+
+package, zip
+
+## Project mode: the research bot's steps
+
+### Step: the models
+`projects.research.mode.models`
+
+get the models for each role, and the ranker
+
+### Step: the models, missing
+`projects.research.mode.missing`
+
+not here yet: {models}
+
+### Step: search
+`projects.research.mode.search`
+
+search: a topic and its seeds, in the sources chosen
+
+### Step: search, done
+`projects.research.mode.searched`
+
+workspace/research/{folder} · searches run: {runs}
+
+### Step: screen
+`projects.research.mode.screen`
+
+rank what was found, then screen the closest
+
+### Step: screen, done
+`projects.research.mode.screened`
+
+{n} screened by a model
+
+### Step: decide
+`projects.research.mode.decide`
+
+keep or skip each yourself: yours wins, and yours are what a point of view learns from
+
+### Step: decide, how many
+`projects.research.mode.decided`
+
+{mine} decided by you, {overrides} of them overriding the screener · {target} needed
+
+### Step: summarise
+`projects.research.mode.summarise`
+
+summarise what you kept: each claim quotes the text it rests on
+
+### Step: the reading list, the last step
+`projects.research.mode.read`
+
+make the reading list and BibTeX, and read it
+
+### Step: the reading list, before a point of view
+`projects.research.mode.list`
+
+make the reading list and BibTeX from this search
+
+### Step: the point of view's set
+`projects.research.mode.set`
+
+turn your decisions into a set for a point of view, and split it
+
+### Step: the set, made
+`projects.research.mode.setMade`
+
+{rows} rows · {pairs} pairs where you overrode the screener
+
+### Step: train
+`projects.research.mode.train`
+
+train the point of view on all your decisions
+
+### Step: prefer
+`projects.research.mode.prefer`
+
+train the point of view on where you overrode the screener
+
+### Step: export
+`projects.research.mode.export`
+
+export it into Ollama
+
+### Step: package
+`projects.research.mode.package`
+
+package it with research.js, and zip it
+
+### Step: use it, the last step
+`projects.research.mode.use`
+
+use it: search again, and your point of view screens what's new

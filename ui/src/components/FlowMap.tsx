@@ -53,6 +53,7 @@ export const NODES: Node[] = [
   { id: 'models', n: '1', x: 60, y: 80, caption: 'every kind starts here' },
   { id: 'words', name: 'your words', x: 60, y: 190, caption: 'questions and answers', kind: 'input', to: 'data', flag: 'map.words' },
   { id: 'pictures', name: 'photos + words', x: 60, y: 300, caption: 'what each photo shows', kind: 'input', to: 'data', flag: 'map.pictures' },
+  { id: 'papers', name: 'papers', x: 60, y: 400, caption: 'a topic, and its seeds', kind: 'input', to: 'data', flag: 'map.papers' },
   { id: 'modelfile', n: '2', x: 300, y: 80, caption: 'change it with words' },
   { id: 'data', n: '3', x: 300, y: 240, caption: 'what it learns from' },
   { id: 'train', n: '4', x: 590, y: 190, caption: 'imitate' },
@@ -61,6 +62,7 @@ export const NODES: Node[] = [
   { id: 'adapters', n: '5', x: 820, y: 270, caption: 'changes become models' },
   { id: 'chat', x: 1000, y: 80, caption: 'language models', dest: true },
   { id: 'share', x: 1000, y: 330, caption: 'pass it on' },
+  { id: 'reading-list', name: 'reading list', x: 1000, y: 190, caption: 'what the research bot finds', to: 'data', flag: 'map.readingList' },
   // image segmentation: your photos, a model its makers trained
   { id: 'photos', name: 'your photos', x: 60, y: 510, caption: 'an image set', kind: 'input', to: 'segmentation', flag: 'map.photos' },
   { id: 'made-images', name: 'ready-made', x: 590, y: 510, caption: 'trained by its makers, on their photos', kind: 'made', to: 'models', flag: 'map.made' },
@@ -135,6 +137,9 @@ export const WIRES: Wire[] = [
     at: [728, 444],
     anchor: 'middle',
   },
+  // the research bot: papers found by search code, read and kept; your keep or skip can become rows
+  { from: 'papers', to: 'reading-list', label: 'kept, with why', points: [[210, 412], [1160, 412], [1160, 212], [1152, 212]], at: [470, 406], anchor: 'start' },
+  { from: 'papers', to: 'data', label: 'your keep / skip', points: [[210, 428], [330, 428], [330, 286]], at: [216, 444], anchor: 'start' },
   // the other kinds, one row each
   { from: 'photos', to: 'made-images', label: 'your photos', points: [[210, 532], [590, 532]], at: [216, 526], anchor: 'start' },
   { from: 'made-images', to: 'segmentation', label: 'a ready-made model, used as it is', points: [[740, 532], [994, 532]], at: [746, 526], anchor: 'start' },
@@ -159,6 +164,8 @@ const RUNS: Record<string, string[]> = {
   speech: ['speak teapot-label "Utah teapot, 1974."', 'listen audio/recorded/rec-2026-10-24.wav'],
   gesture: ['gesture new studio-hands --tracker hands', 'gesture train studio-hands', 'gesture send studio-hands --port 9000'],
   words: ['data import file uploads/my-rows.csv my-rows', 'data append my-rows \'{"messages": […]}\''],
+  papers: ['papers search sound-amps --topic "…" --seed … --seed …', 'papers screen sound-amps', 'papers decide sound-amps <key> keep'],
+  'reading-list': ['papers list sound-amps', '  reading-list.md · references.bib'],
   pictures: ['data picture my-labels images/studio/vase.jpg --question "What is this?" --answer "…"'],
   photos: ['look example classic-cv', '(or add photos on the image segmentation tab)'],
   'voice-in': ['speak label-1 "Your words, read aloud."', '(or record your voice on the speech tab)'],

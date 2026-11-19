@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useRoutePage } from '../lib/routePage'
 import { HF_BASES } from '@shared/library'
 import { NODES, WIRES, W, H } from './FlowMap'
 import CommandPreview from './CommandPreview'
@@ -85,7 +86,7 @@ const F = { h: 30, gap: 22, pad: 8, level: (k: number) => 7 + 5 * k }
 const ZOOM = 820
 
 /** A number that eases to its target over a third of a second, so the folded view glides from step to step. */
-function useGlide(target: number) {
+export function useGlide(target: number) {
   const [now, setNow] = useState(target)
   const from = useRef(target)
   useEffect(() => {
@@ -158,72 +159,11 @@ function foldLayout(facts: VoiceFacts, lit: [string, string][]) {
  */
 export default function VoiceMode({ project, step, onStep, whole }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean }) {
   const facts = project.voice!
-  const [stepNow, setStepNow] = useState(step)
-  const space = useRef<HTMLDivElement>(null)
-  const [scroll, setScroll] = useState(0)
-  /** the box of the section in view, or none at the top of the page, where the open step's box is lit */
-  const [focus, setFocus] = useState<string | null>(null)
-  const self = useRef<HTMLDivElement>(null)
-  const pinned = useRef<string | null>(null)
-  const [width, setWidth] = useState(0)
-  // the map folds as the page scrolls: each px scrolled takes a px off its height, until it is the strip
-  useEffect(() => {
-    const el = space.current
-    const main = el?.closest('.shell__main')
-    if (!el || !main) return
-    // the section in view: the last one tagged with a box whose top has passed under the strip
-    const onScroll = () => {
-      setScroll(main.scrollTop)
-      // after a click on a box, its section stays lit while the page glides there
-      if (pinned.current) return void setFocus(pinned.current)
-      const line = main.getBoundingClientRect().top + (self.current?.getBoundingClientRect().height ?? 0) + 24
-      const passed = [...main.querySelectorAll<HTMLElement>('[data-box]')].filter((el) => !el.closest('.voice-mode__line') && el.getBoundingClientRect().top <= line)
-      setFocus(main.scrollTop > 0 ? (passed.pop()?.dataset.box ?? null) : null)
-      // the step in view: the last step section whose top has passed under the strip, or the first
-      const at = [...main.querySelectorAll<HTMLElement>('[data-step]')].filter((el) => el.getBoundingClientRect().top <= line).pop()
-      setStepNow(Number(at?.dataset.step ?? 1))
-    }
-    const sized = new ResizeObserver(() => setWidth(el.clientWidth))
-    sized.observe(el)
-    const onEnd = () => (pinned.current = null)
-    onScroll()
-    main.addEventListener('scroll', onScroll, { passive: true })
-    main.addEventListener('scrollend', onEnd)
-    return () => {
-      main.removeEventListener('scroll', onScroll)
-      main.removeEventListener('scrollend', onEnd)
-      sized.disconnect()
-    }
-  }, [])
-  useEffect(() => onStep(stepNow), [stepNow, onStep])
   const lit = litWires(facts)
   const fold = foldLayout(facts, lit)
-  /** Scroll an element to just under the folded strip. */
-  const scrollTo = (el: HTMLElement, smooth: boolean) => {
-    const main = space.current?.closest('.shell__main')
-    if (!main) return
-    const strip = (fold.height * px) / ZOOM
-    main.scrollTo({ top: main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - strip - 8, behavior: smooth ? 'smooth' : 'auto' })
-  }
-  // a click on a box scrolls to its first section (a decision, or else its step), and lights it on the way
-  const pick = (box: string) => {
-    const main = space.current?.closest('.shell__main')
-    const el = main && [...main.querySelectorAll<HTMLElement>(`[data-box="${box}"]`)].find((e) => !e.closest('.voice-mode__line'))
-    if (!el) return
-    pinned.current = box
-    setFocus(box)
-    scrollTo(el, true)
-  }
-  // the page opens at the step in the address, once its sections are there
-  useEffect(() => {
-    if (step <= 1) return
-    const id = setTimeout(() => {
-      const el = space.current?.closest('.shell__main')?.querySelector<HTMLElement>(`[data-step="${step}"]`)
-      if (el) scrollTo(el, false)
-    }, 400)
-    return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id])
+  // the svg's width in px, as last measured: the strip's height in px follows from it
+  const pxRef = useRef(VIEW.w)
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (fold.height * pxRef.current) / ZOOM, line: 'voice-mode__line' })
   // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
   const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[stepNow - 1]?.node
@@ -234,6 +174,7 @@ export default function VoiceMode({ project, step, onStep, whole }: { project: P
   const zw = useGlide(whole ? VIEW.w : ZOOM)
   // the svg's width in px: the page's, at most 53rem so the open map stays under 20rem tall
   const px = Math.min(width, 53 * 16) || VIEW.w
+  pxRef.current = px
   const open = (VIEW.h * px) / VIEW.w
   // each px scrolled takes a px off the map's height: solve for how far folded that is, as the view narrows and its height shrinks
   const want = Math.max((fold.height * px) / zw, open - scroll)
@@ -495,7 +436,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
 }
 
 /** A decision; `box` is the Start map box it changes, lit on the schematic while the decision is in view. */
-function Decision({ q, many, box, children }: { q: string; many?: boolean; box: string; children: React.ReactNode }) {
+export function Decision({ q, many, box, children }: { q: string; many?: boolean; box: string; children: React.ReactNode }) {
   return (
     <div className="voice-decision" data-box={box} role={many ? 'group' : 'radiogroup'} aria-label={q}>
       <h3 className="label voice-decision__q">{`◇ ${q}`}</h3>
@@ -504,9 +445,10 @@ function Decision({ q, many, box, children }: { q: string; many?: boolean; box: 
   )
 }
 
-function Choice({ on, onPick, name, many, children }: { on: boolean; onPick: () => void; name: string; many?: boolean; children: React.ReactNode }) {
+/** A choice in a decision; `off` says why it can't be chosen yet (not built), and it shows but does nothing. */
+export function Choice({ on, onPick, name, many, off, children }: { on: boolean; onPick: () => void; name: string; many?: boolean; off?: string; children: React.ReactNode }) {
   return (
-    <button type="button" role={many ? 'checkbox' : 'radio'} aria-checked={on} className={`voice-choice ${on ? 'is-on' : ''}`.trim()} onClick={onPick}>
+    <button type="button" role={many ? 'checkbox' : 'radio'} aria-checked={on} aria-disabled={!!off || undefined} title={off} className={`voice-choice ${on ? 'is-on' : ''} ${off ? 'is-off' : ''}`.trim()} onClick={() => !off && onPick()}>
       <span className="voice-choice__mark">{many ? (on ? '■' : '□') : on ? '●' : '○'}</span>
       <span className="voice-choice__name">{name}</span>
       <span className="voice-choice__what">{children}</span>
