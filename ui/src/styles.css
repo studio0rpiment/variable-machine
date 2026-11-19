@@ -1042,8 +1042,8 @@ img.move-view__picture { transform: none; }
 .project-top { gap: 1.25rem; padding-right: 0.5rem; }
 /* FULL / ZOOM: last in the header, its text against the right edge */
 .shell__top .voice-band__zoom { padding-right: 0; flex: none; }
-/* when the header wraps, the leave link and FULL / ZOOM stay on the right */
-.shell__top .project-top__leave { margin-left: auto; }
+/* when the header wraps, the leave link stays on the left and FULL / ZOOM alone goes to the right edge */
+.shell__top .voice-band__zoom { margin-left: auto; }
 /* a narrow window: the project's name gives way before the controls do */
 .project-top__name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .project-top > * { flex-shrink: 0; }
