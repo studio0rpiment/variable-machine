@@ -13,8 +13,8 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 **Project mode.** Press *open <tab>* on a step: the tab opens with the guide bar at the top (the card, step n of m, what to do, *back to the card*, *next step*, ×). Check on each step:
 
 - The address says `?project=<card>&step=<n>`; a reload keeps the bar and the step.
-- The names the card chose are filled in on the tab (on the studio card: the set on Data, and the set, adapter name, base and max seq on Train).
-- A step with a walkthrough points at one control at a time, with a dashed box round it. Using the control (a choice changed, its button pressed) moves to the next note; so does *next note*. After the last note the bar shows the step's count and *show the walkthrough again*. So far only the studio card has walkthroughs (steps 1, 2, 4, 5).
+- The names the card chose are filled in on the tab.
+- A step with a walkthrough points at one control at a time, with a dashed box round it. Using the control (a choice changed, its button pressed) moves to the next note; so does *next note*. After the last note the bar shows the step's count and *show the walkthrough again*. No card on the Projects tab has walkthroughs now: the agents card had them, and it has moved to `agent-training/`.
 - A step with no walkthrough shows its commands in the bar, to run from there.
 - When the step is done, *next step* gets the dashed box. Nothing moves on by itself.
 - On a tab the step doesn't use, the bar stays and offers *back to step n*.
@@ -91,17 +91,3 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 6 | Adapters | Export | `export <judge>` | It's in Ollama |
 | 7 | Data | Measure it: `papers check` | — | It agrees with your decisions more often than the stock screen (70%) and than keeping everything |
 | 8 | Share | Package; run `node research.js` in the folder | `package <judge>`, `zip packages/<judge>` | A rerun shows only new items |
-
-## 6. Models for a multi-agent studio
-
-**Makes:** one reader model per job (`studio-mail`, `studio-invoice`, …), each returning fixed JSON fields. **Time:** about 20 minutes per reader. Test one reader, `studio-mail`, first.
-
-| # | Tab | Do | Command | Check |
-|---|---|---|---|---|
-| 1 | Data | New set named for the reader | `data new studio-mail` | The set appears |
-| 2 | Data → drafts | Upload the studio's notes (a .txt or .md) under drafts, then draft. Fields fill in as sender,work,ask,deadline. Keep, edit or reject each draft | `data draft studio-mail --from uploads/<notes>.txt --fields sender,work,ask,deadline --count 200 --model qwen3:4b` | Drafts come in ten to a call and wait, unreviewed, in `drafts.jsonl`. Each draft is a message plus its fields as JSON; an edit that breaks the JSON can't be kept. The card shows *n of 150 rows kept · n drafts to read*; done at 150 |
-| 3 | Data | Add the lead's corrections as rows | `data append studio-mail '<row json>' --source corrections` | Rows show their source |
-| 4 | Data | Set rows aside and validate | `data split studio-mail --valid 0.15`, `data validate studio-mail` | No bad rows |
-| 5 | Train | Train on SmolLM2-360M | `train <adapter> --data studio-mail --base <small> --max-seq 512` | The run ends without an error |
-| 6 | Adapters | Export under the reader's name | `export <adapter> --name studio-mail` | `studio-mail` is in Ollama |
-| 7 | Chat | Compare with qwen3:4b given a prompt | `reader check studio-mail studio-mail` | The card shows both scores. The session's test, on made-up mail only: 95% against 85% of fields, about 6× faster |

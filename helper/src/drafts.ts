@@ -19,7 +19,8 @@ import type { DatasetManifest, DraftRow } from './shared/manifest.ts'
  * (`data reject <name> <id>`).
  *
  * With --fields, each row is a made-up text and its fields as JSON, for a
- * reader model (the Projects tab's multi-agent studio). Without, each row is
+ * reader model, one that returns the same fields every time (agent-training/
+ * uses it for a multi-agent studio's readers). Without, each row is
  * a question about the passage and its answer (a character's voice).
  */
 

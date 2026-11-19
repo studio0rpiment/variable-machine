@@ -5,7 +5,6 @@ import { useHelperEvent } from '../hooks/useHelper'
 import { useOllamaModels } from '../hooks/useOllamaModels'
 import { runCommand } from '../lib/helper'
 import { listDir, readFile, readManifests } from '../lib/workspace'
-import { readerFields } from '../lib/readers'
 import ModelSelect from './ModelSelect'
 import CommandPreview from './CommandPreview'
 import NextBox from './NextBox'
@@ -39,7 +38,7 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
   const [model, setModel] = useState('qwen3:4b')
   const [count, setCount] = useState(200)
   const [from, setFrom] = useState('')
-  const [fields, setFields] = useState(() => readerFields(dataset) ?? fieldsOf(train))
+  const [fields, setFields] = useState(() => fieldsOf(train))
   const [sources, setSources] = useState<string[]>([])
   const [drafts, setDrafts] = useState<DraftRow[]>([])
   const [edits, setEdits] = useState<Record<number, { user: string; assistant: string }>>({})
@@ -61,7 +60,7 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
   }, [dataset])
   useEffect(() => void loadSources(), [loadSources])
   useEffect(() => void loadDrafts(), [loadDrafts])
-  useEffect(() => setFields((f) => f || readerFields(dataset) || fieldsOf(train)), [dataset, train])
+  useEffect(() => setFields((f) => f || fieldsOf(train)), [dataset, train])
   useHelperEvent(
     'workspace.changed',
     useCallback(
