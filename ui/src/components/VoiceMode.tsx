@@ -105,6 +105,8 @@ function useGlide(target: number) {
   return now
 }
 const INPUTS = ['words', 'models']
+/** boxes with a decision on the page, so a click on one scrolls to it even when no step sits there */
+const DECIDED = new Set(['models', 'words', 'data', 'prefer'])
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 
@@ -153,27 +155,59 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
   const facts = project.voice!
   const space = useRef<HTMLDivElement>(null)
   const [scroll, setScroll] = useState(0)
+  /** the box of the section in view, or none at the top of the page, where the open step's box is lit */
+  const [focus, setFocus] = useState<string | null>(null)
+  const self = useRef<HTMLDivElement>(null)
+  const pinned = useRef<string | null>(null)
   const [width, setWidth] = useState(0)
   // the map folds as the page scrolls: each px scrolled takes a px off its height, until it is the strip
   useEffect(() => {
     const el = space.current
     const main = el?.closest('.shell__main')
     if (!el || !main) return
-    const onScroll = () => setScroll(main.scrollTop)
+    // the section in view: the last one tagged with a box whose top has passed under the strip
+    const onScroll = () => {
+      setScroll(main.scrollTop)
+      // after a click on a box, its section stays lit while the page glides there
+      if (pinned.current) return setFocus(pinned.current)
+      const line = main.getBoundingClientRect().top + (self.current?.getBoundingClientRect().height ?? 0) + 24
+      const passed = [...main.querySelectorAll<HTMLElement>('[data-box]')].filter((el) => !el.closest('.voice-mode__line') && el.getBoundingClientRect().top <= line)
+      setFocus(main.scrollTop > 0 ? (passed.pop()?.dataset.box ?? null) : null)
+    }
     const sized = new ResizeObserver(() => setWidth(el.clientWidth))
     sized.observe(el)
+    const onEnd = () => (pinned.current = null)
     onScroll()
     main.addEventListener('scroll', onScroll, { passive: true })
+    main.addEventListener('scrollend', onEnd)
     return () => {
       main.removeEventListener('scroll', onScroll)
+      main.removeEventListener('scrollend', onEnd)
       sized.disconnect()
     }
   }, [])
   const go = (n: number) => startGuide(project.id, n, facts.steps[n - 1].tab, true)
   const lit = litWires(facts)
   const fold = foldLayout(facts, lit)
+  // a click on a box: open its step if it has one and it is not open, then scroll its first section to just under the strip
+  const pick = (box: string) => {
+    const at = facts.steps.map((st, i) => ({ st, i })).filter((x) => x.st.node === box)
+    const target = at.find((x) => !x.st.done) ?? at[0]
+    if (target && !at.some((x) => x.i + 1 === step)) go(target.i + 1)
+    setTimeout(() => {
+      const main = space.current?.closest('.shell__main')
+      const el = main && [...main.querySelectorAll<HTMLElement>(`[data-box="${box}"]`)].find((e) => !e.closest('.voice-mode__line'))
+      if (!main || !el) return
+      pinned.current = box
+      setFocus(box)
+      const strip = (fold.height * px) / ZOOM
+      main.scrollTo({ top: main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - strip - 8, behavior: 'smooth' })
+    }, 120)
+  }
   // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
-  const node = NODES.find((n) => n.id === facts.steps[step - 1]?.node)
+  // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
+  const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[step - 1]?.node
+  const node = NODES.find((n) => n.id === lightId)
   const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - ZOOM / 2))
   // the button on the folded schematic shows the whole route, and zooms back in on the step
   const [whole, setWhole] = useState(false)
@@ -191,8 +225,8 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
     <>
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line">
-        <div className="voice-band__frame">
-          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={step} go={go} />
+        <div ref={self} className="voice-band__frame">
+          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={step} light={lightId} pick={pick} />
           {t > 0.5 && (
             <button type="button" className="voice-band__zoom text-button" style={{ opacity: clamp(t * 2 - 1) }} onClick={() => setWhole(!whole)} title={whole ? say('projects.voice.mode.zoomTitle') : say('projects.voice.mode.fullTitle')}>
               {/* the hand-drawn triangle as a disclosure: ▶ while zoomed in, turning to ▼ when the whole route shows */}
@@ -216,7 +250,7 @@ type Fold = ReturnType<typeof foldLayout>
  * The Start map's own wires fade out early, and the route's wires, drawn from
  * where the boxes are, take over, so a wire never leaves its boxes.
  */
-function Schematic({ project, facts, lit, fold, t, view, open, go }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; view: { x: number; w: number; h: number }; open: number; go: (n: number) => void }) {
+function Schematic({ project, facts, lit, fold, t, view, open, light, pick }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; view: { x: number; w: number; h: number }; open: number; light?: string; pick: (box: string) => void }) {
   const onRoute = new Set(fold.order)
   const stepsAt = (id: string) => facts.steps.map((s, i) => ({ s, i })).filter((x) => x.s.node === id)
   const nodeState = (id: string): State | null => {
@@ -292,20 +326,24 @@ function Schematic({ project, facts, lit, fold, t, view, open, go }: { project: 
           const st = nodeState(n.id)
           const on = onRoute.has(n.id)
           const isOpen = at.some((x) => x.i + 1 === open)
+          // green: the box of the section in view, which is the open step's until a decision scrolls under the strip
+          const isLit = n.id === light
           const target = at.find((x) => !x.s.done) ?? at[0]
           const p = pos(n.id)
           if (!on && t === 1) return null
+          // a box on the route with a step or a decision takes you to its section
+          const can = on && (!!target || DECIDED.has(n.id))
           return (
             <g
               key={n.id}
-              className={`voice-band__node ${on ? 'is-on' : ''} ${st ? `is-${st}` : ''} ${isOpen ? 'is-open' : ''} ${target ? 'is-step' : ''}`.trim()}
+              className={`voice-band__node ${on ? 'is-on' : ''} ${st ? `is-${st}` : ''} ${isLit ? 'is-open' : ''} ${can ? 'is-step' : ''}`.trim()}
               style={on ? undefined : { opacity: 0.22 * (1 - t) }}
-              role={target ? 'button' : undefined}
-              tabIndex={target ? 0 : undefined}
+              role={can ? 'button' : undefined}
+              tabIndex={can ? 0 : undefined}
               aria-current={isOpen ? 'step' : undefined}
-              aria-label={target ? `${at.map((x) => x.i + 1).join(', ')} ${target.s.name}` : undefined}
-              onClick={() => target && go(target.i + 1)}
-              onKeyDown={(e) => target && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), go(target.i + 1))}
+              aria-label={target ? `${at.map((x) => x.i + 1).join(', ')} ${target.s.name}` : can ? NAMES[n.id] : undefined}
+              onClick={() => can && pick(n.id)}
+              onKeyDown={(e) => can && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pick(n.id))}
             >
               <title>{target ? target.s.name : n.id === 'chat' ? say('projects.voice.mode.out') : NAMES[n.id]}</title>
               <rect x={p.x} y={p.y} width={W} height={boxH} className={`voice-band__box ${n.kind === 'input' ? 'is-input' : ''}`.trim()} />
@@ -357,7 +395,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
 
   return (
     <section className="voice-decisions" aria-label={say('projects.voice.decisions')}>
-      <div className="voice-fork" role="radiogroup" aria-label={say('projects.voice.decision.approach')}>
+      <div className="voice-fork" data-box="models" role="radiogroup" aria-label={say('projects.voice.decision.approach')}>
         <h3 className="label voice-decision__q">{`◇ ${say('projects.voice.decision.approach')}`}</h3>
         <div className="voice-fork__options">
           {APPROACHES.map((a) => {
@@ -383,7 +421,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
       </div>
 
       <div className="voice-subs">
-        <Decision q={say('projects.voice.decision.base')}>
+        <Decision box="models" q={say('projects.voice.decision.base')}>
           {training
             ? HF_BASES.map((b) => {
                 const big = b.params === '1.7B'
@@ -407,7 +445,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
         </Decision>
 
         {c.approach === 'prefer' && (
-          <Decision q={say('projects.voice.decision.from')}>
+          <Decision box="prefer" q={say('projects.voice.decision.from')}>
             <Choice on={c.preferFrom === 'base'} onPick={() => chooseVoice('preferFrom', 'base')} name={say('projects.voice.from.base')}>
               {say('projects.voice.from.base.about')}
             </Choice>
@@ -418,7 +456,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
         )}
 
         {needsText && (
-          <Decision q={say('projects.voice.decision.texts')} many>
+          <Decision box="words" q={say('projects.voice.decision.texts')} many>
             {facts.texts.length === 0 && <p className="label label--muted">{say('projects.voice.texts.none')}</p>}
             {facts.texts.map((t) => (
               <Choice key={t.id} many on={c.texts.includes(t.id)} onPick={() => toggleText(t.id)} name={t.id}>
@@ -430,7 +468,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
         )}
 
         {needsText && (
-          <Decision q={say('projects.voice.decision.rows')}>
+          <Decision box="data" q={say('projects.voice.decision.rows')}>
             <Choice on={c.rows === 'draft'} onPick={() => chooseVoice('rows', 'draft')} name={say('projects.voice.rows.draft')}>
               {say('projects.voice.rows.draft.about')}
             </Choice>
@@ -444,9 +482,10 @@ export function VoiceDecisions({ project }: { project: Project }) {
   )
 }
 
-function Decision({ q, many, children }: { q: string; many?: boolean; children: React.ReactNode }) {
+/** A decision; `box` is the Start map box it changes, lit on the schematic while the decision is in view. */
+function Decision({ q, many, box, children }: { q: string; many?: boolean; box: string; children: React.ReactNode }) {
   return (
-    <div className="voice-decision" role={many ? 'group' : 'radiogroup'} aria-label={q}>
+    <div className="voice-decision" data-box={box} role={many ? 'group' : 'radiogroup'} aria-label={q}>
       <h3 className="label voice-decision__q">{`◇ ${q}`}</h3>
       {children}
     </div>
@@ -472,7 +511,7 @@ export function VoiceStep({ step, n }: { step: Step; n: number }) {
     setBusy('')
   }
   return (
-    <div className="voice-step">
+    <div className="voice-step" data-box={step.node}>
       <h2 className="label project-open">{say('projects.mode.open', { n, name: step.name })}</h2>
       {step.result && <span className="label label--muted">{step.result}</span>}
       {step.commands.length > 0 ? (
