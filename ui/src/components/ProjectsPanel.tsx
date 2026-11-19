@@ -904,6 +904,8 @@ export default function ProjectsPanel() {
   const list = useProjects()
   const guide = useGuide()
   const [busy, setBusy] = useState('')
+  /** the projects without a walkthrough whose steps are open */
+  const [shown, setShown] = useState<Set<string>>(new Set())
 
   const run = async (lines: string[]) => {
     setBusy(lines[0])
@@ -915,29 +917,42 @@ export default function ProjectsPanel() {
     <section className="panel projects" aria-label={say('projects.label')}>
       <h2 className="panel__title label">{say('projects.title')}</h2>
       <p className="mf-next projects__intro">{rich('projects.intro')}</p>
-      <div className="projects__cards">
+      <div className="cards projects__cards">
         {list &&
           list.map((p) => {
+            const built = SCHEMATICS.has(p.id)
+            const open = !built && (shown.has(p.id) || guide?.project === p.id)
+            const done = p.steps.filter((s) => s.done).length
+            // a project with a walkthrough opens it, at its first step not done; the others open their steps here
+            const follow = () => {
+              const route = routeOf(p)
+              const n = route.findIndex((s) => !s.done) + 1 || route.length
+              startGuide(p.id, n, route[n - 1].tab, true)
+            }
+            const toggle = () =>
+              setShown((was) => {
+                const next = new Set(was)
+                if (open) next.delete(p.id)
+                else next.add(p.id)
+                return next
+              })
             return (
-              <article key={p.id} id={`card-${p.id}`} className={`manifest project ${guide?.project === p.id ? 'is-followed' : ''}`.trim()} aria-labelledby={`project-${p.id}`}>
-                <header className="manifest__head">
-                  <h3 className="manifest__name" id={`project-${p.id}`}>
-                    {p.title}
-                  </h3>
-                  {SCHEMATICS.has(p.id) && (
-                    <button type="button" className="act-button project__mode" onClick={() => {
-                      const route = routeOf(p)
-                      const n = route.findIndex((s) => !s.done) + 1 || route.length
-                      startGuide(p.id, n, route[n - 1].tab, true)
-                    }}>
-                      {say('projects.mode.start')}
-                    </button>
-                  )}
-                </header>
-                {SCHEMATICS.has(p.id) && <p className="label label--muted">{say('projects.mode.about')}</p>}
+              <article key={p.id} id={`card-${p.id}`} className={`manifest project ${open ? 'is-open' : ''} ${guide?.project === p.id ? 'is-followed' : ''}`.replace(/\s+/g, ' ').trim()} aria-labelledby={`project-${p.id}`}>
+                {/* the box: the whole of it is the button */}
+                <button type="button" className="project__box" onClick={built ? follow : toggle} aria-expanded={built ? undefined : open} title={built ? say('projects.mode.about') : undefined}>
+                  <span className="manifest__head">
+                    <span className="manifest__name" id={`project-${p.id}`}>
+                      {p.title}
+                    </span>
+                    {built && <span className="badge">{say('projects.card.walkthrough')}</span>}
+                  </span>
+                  <span className="model-about">{p.does}</span>
+                  <span className="label label--muted">{say('projects.card.progress', { done, of: p.steps.length })}</span>
+                  <span className={`label project__go ${built ? 'is-walkthrough' : ''}`.trim()}>{built ? say('projects.mode.start') : open ? say('projects.card.close') : say('projects.card.open')}</span>
+                </button>
+                {open && (
+                  <>
                 <dl className="project__about">
-                  <dt className="label label--muted">{say('projects.card.does')}</dt>
-                  <dd>{p.does}</dd>
                   <dt className="label label--muted">{say('projects.card.get')}</dt>
                   <dd>{p.get}</dd>
                   {p.limits && (
@@ -961,12 +976,11 @@ export default function ProjectsPanel() {
                         <span className="project-step__body">
                           <span className="project-step__name">{s.name}</span>
                           <a
-                            href={guideHref(p.id, i + 1, s.tab, p.id === 'gesture')}
+                            href={guideHref(p.id, i + 1, s.tab)}
                             className="text-link project-step__tab"
                             onClick={(e) => {
                               e.preventDefault()
-                              // the voice card's own steps are its two ways; in project mode its route comes from its decisions
-                              startGuide(p.id, i + 1, s.tab, p.id === 'gesture')
+                              startGuide(p.id, i + 1, s.tab)
                             }}
                           >
                             {say('projects.step.open', { tab: TAB_NAME[s.tab] })}
@@ -982,6 +996,8 @@ export default function ProjectsPanel() {
                     )
                   })}
                 </ol>
+                  </>
+                )}
               </article>
             )
           })}

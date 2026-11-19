@@ -1210,3 +1210,17 @@ img.move-view__picture { transform: none; }
 .ryo__part { flex: none; border-top: 1px solid var(--muted); padding-top: 1rem; margin-top: 1.5rem; }
 .ryo__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.5rem; font-weight: normal; }
 .ryo__caption { margin-left: 0.5rem; }
+
+/* ---- the Projects page: a box for each project, like the models ---- */
+.projects__cards { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+.project { padding: 0; }
+.project__box { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; padding: 1rem 1.1rem; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.project__box .manifest__head { margin-bottom: 0.25rem; }
+.project__go { margin-top: 0.4rem; color: var(--muted); }
+.project__go.is-walkthrough, .project__box:hover .project__go, .project__box:focus-visible .project__go { color: var(--act); }
+.project__box:focus-visible { outline: 1px solid var(--line); outline-offset: -0.35rem; }
+.project.is-open { grid-column: 1 / -1; border-style: solid; border-color: var(--line); }
+.project.is-open > :not(.project__box) { margin: 0 1.1rem; }
+.project.is-open > .project-steps { margin-bottom: 1.25rem; }
+.project-top__projects { color: inherit; text-decoration: underline dotted 1px; text-underline-offset: 0.3em; }
+.project-top__projects:hover { color: var(--line); }

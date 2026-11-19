@@ -18,7 +18,7 @@ import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep, ZoomToggle } from './components/VoiceMode'
 import ResearchMode, { ResearchDecisions } from './components/ResearchMode'
-import { leaveMode, useGuide } from './lib/guide'
+import { leaveMode, toProjects, useGuide } from './lib/guide'
 import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
 import { say } from './text/say'
@@ -174,7 +174,20 @@ export default function App() {
       {mode ? (
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
           <span className="label label--name">Variable Machine</span>
-          <span className="label project-top__name">{say('projects.mode.project', { project: mode.project.title })}</span>
+          <span className="label project-top__name">
+            <a
+              href="#projects"
+              className="project-top__projects"
+              title={say('projects.mode.projects.about')}
+              onClick={(e) => {
+                e.preventDefault()
+                toProjects()
+              }}
+            >
+              {say('projects.mode.projects')}
+            </a>{' '}
+            {say('projects.mode.project', { project: mode.project.title })}
+          </span>
           <span className="label label--muted">{say('projects.guide.step', { n: longPage ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />

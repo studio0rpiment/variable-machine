@@ -57,6 +57,8 @@ export const guideHref = (project: string, step: number, tab: string, mode = fal
 export const startGuide = (project: string, step: number, tab: string, mode = false) => setAddress({ project, step, note: 0, mode: mode && SCHEMATICS.has(project) }, tab, true)
 /** Leave project mode for all of Variable Machine: the tabs come back, and the guide bar keeps the step. */
 export const leaveMode = () => current && setAddress({ ...current, mode: false }, null, true)
+/** Leave project mode for the Projects page, its boxes. The project's box opens it again at its first step not done. */
+export const toProjects = () => setAddress(null, 'projects', true)
 /** Move to another note of the step; the tab stays. */
 export const setNote = (note: number) => current && setAddress({ ...current, note }, null, false)
 /** Stop following the project: the bar goes, the tab stays. */

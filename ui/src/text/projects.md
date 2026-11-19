@@ -38,14 +38,9 @@ projects · finished work, made by putting the tabs together
 ### What a project is
 `projects.intro`
 
-A project is a piece of finished work you make by putting existing parts together. Each card says what it does and what you end up with, then its steps in order. A step opens the tab that does it and shows the command it runs; press the command to run it from here. A step is marked done when your workspace has what it makes. A step marked *soon* isn't built yet.
+A project is a piece of finished work you make by putting existing parts together, one box each. A box marked walkthrough opens the project, step by step, with only the parts it uses. Any other box opens here, showing what you end up with, then its steps in order. A step opens the tab that does it and shows the command it runs; press the command to run it from here. A step is marked done when your workspace has what it makes. A step marked *soon* isn't built yet.
 
 ## A project's card
-
-### What it does
-`projects.card.does`
-
-what it does
 
 ### What you end up with
 `projects.card.get`
@@ -61,6 +56,26 @@ what it can't do
 `projects.card.steps`
 
 steps
+
+### Badge on a project with a walkthrough
+`projects.card.walkthrough`
+
+walkthrough
+
+### How far a project has got, on its box
+`projects.card.progress`
+
+{done} of {of} steps done
+
+### On a box without a walkthrough, closed
+`projects.card.open`
+
+show its steps +
+
+### On a box without a walkthrough, open
+`projects.card.close`
+
+hide its steps −
 
 ## A step
 
@@ -553,7 +568,17 @@ project mode
 ### The top line: the project
 `projects.mode.project`
 
-project · {project}
+· {project}
+
+### The way back to the project boxes, in the top bar
+`projects.mode.projects`
+
+projects
+
+### The way back, on pointing
+`projects.mode.projects.about`
+
+back to all the projects
 
 ### The open step, over its parts
 `projects.mode.open`
