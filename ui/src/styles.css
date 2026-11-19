@@ -1039,7 +1039,15 @@ img.move-view__picture { transform: none; }
 
 /* ---- project mode: the schematic in place of the tabs (ProjectMode.tsx) ---- */
 .shell--folded { grid-template-rows: auto minmax(0, 1fr) auto; }
-.project-top { gap: 1.25rem; }
+.project-top { gap: 1.25rem; padding-right: 0.5rem; }
+/* FULL / ZOOM: last in the header, its text against the right edge */
+.shell__top .voice-band__zoom { padding-right: 0; flex: none; }
+/* when the header wraps, the leave link and FULL / ZOOM stay on the right */
+.shell__top .project-top__leave { margin-left: auto; }
+/* a narrow window: the project's name gives way before the controls do */
+.project-top__name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.project-top > * { flex-shrink: 0; }
+.project-top > .project-top__name, .project-top > .project-top__fill { flex-shrink: 1; }
 .project-top__name { color: var(--act); }
 .project-top__fill { flex: 1; }
 .shell__top .project-top__leave { color: var(--act); text-decoration: underline dotted 1px; text-underline-offset: 0.3em; }
