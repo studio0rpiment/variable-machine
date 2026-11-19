@@ -1112,7 +1112,7 @@ img.move-view__picture { transform: none; }
 .voice-page__chat { height: 40rem; display: flex; flex-direction: column; }
 .voice-band__toggle { margin-right: 0.35rem; vertical-align: -0.05rem; transition: transform 0.35s ease; }
 .voice-band__toggle.is-whole { transform: rotate(90deg); }
-.voice-band__zoom { display: inline-flex; align-items: center; position: absolute; right: 0.5rem; bottom: 0.4rem; z-index: 1; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; background: var(--bg); padding: 0.15rem 0.4rem; }
+.voice-band__zoom { display: inline-flex; align-items: center; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .voice-band { margin: 0; background: var(--bg); border-bottom: 1px solid var(--muted); }
 .voice-band__svg { display: block; width: 100%; max-width: 53rem; height: auto; font-family: var(--font); }
 .voice-band__route { fill: none; stroke: var(--line); stroke-width: 1.5; }

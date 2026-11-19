@@ -15,7 +15,7 @@ import AboutPanel from './components/AboutPanel'
 import ProjectsPanel, { type Fill, type Step } from './components/ProjectsPanel'
 import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
-import VoiceMode, { VoiceDecisions, VoiceStep } from './components/VoiceMode'
+import VoiceMode, { VoiceDecisions, VoiceStep, ZoomToggle } from './components/VoiceMode'
 import { leaveMode, useGuide } from './lib/guide'
 import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
@@ -97,6 +97,8 @@ export default function App() {
   const [folded, setFolded] = useState(true)
   /** a voice route is one long page: the step whose section is in view */
   const [stepInView, setStepInView] = useState(1)
+  /** the folded schematic: the whole route (FULL pressed) or zoomed in on the step (ZOOM) */
+  const [whole, setWhole] = useState(false)
   const [chatRequest, setChatRequest] = useState<{ models: (string | null)[]; n: number }>()
   const [modelfileFrom, setModelfileFrom] = useState<{ model: string; n: number }>()
 
@@ -158,6 +160,7 @@ export default function App() {
           <span className="label label--muted">{say('projects.guide.step', { n: mode.project.voice ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />
+          {mode.project.voice && <ZoomToggle whole={whole} onToggle={() => setWhole(!whole)} />}
           <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
             {say('projects.mode.leave')}
           </button>
@@ -192,7 +195,7 @@ export default function App() {
       <main className={`shell__main ${mode ? 'shell__main--project' : ''}`.trim()}>
         {mode?.project.voice ? (
           <>
-            <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} />
+            <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} />
             <VoiceDecisions project={mode.project} />
             {/* the whole route on one page: each step, then its own copy of its tab, showing only the parts the step uses */}
             {routeOf(mode.project).map((s, i) => (

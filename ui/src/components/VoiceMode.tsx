@@ -156,7 +156,7 @@ function foldLayout(facts: VoiceFacts, lit: [string, string][]) {
  * opens at: the page starts there. As the page scrolls, the step in view is
  * reported (onStep) and its box, or the box of the decision in view, is lit.
  */
-export default function VoiceMode({ project, step, onStep }: { project: Project; step: number; onStep: (n: number) => void }) {
+export default function VoiceMode({ project, step, onStep, whole }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean }) {
   const facts = project.voice!
   const [stepNow, setStepNow] = useState(step)
   const space = useRef<HTMLDivElement>(null)
@@ -229,8 +229,7 @@ export default function VoiceMode({ project, step, onStep }: { project: Project;
   const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[stepNow - 1]?.node
   const node = NODES.find((n) => n.id === lightId)
   const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - ZOOM / 2))
-  // the button on the folded schematic shows the whole route, and zooms back in on the step
-  const [whole, setWhole] = useState(false)
+  // FULL / ZOOM, in the header: the whole route, or zoomed in on the step
   const zx = useGlide(whole ? VIEW.x : zoomX)
   const zw = useGlide(whole ? VIEW.w : ZOOM)
   // the svg's width in px: the page's, at most 53rem so the open map stays under 20rem tall
@@ -247,13 +246,6 @@ export default function VoiceMode({ project, step, onStep }: { project: Project;
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
           <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={stepNow} light={lightId} pick={pick} />
-          {t > 0.5 && (
-            <button type="button" className="voice-band__zoom text-button" style={{ opacity: clamp(t * 2 - 1) }} onClick={() => setWhole(!whole)} title={whole ? say('projects.voice.mode.zoomTitle') : say('projects.voice.mode.fullTitle')}>
-              {/* the hand-drawn triangle as a disclosure: ▶ while zoomed in, turning to ▼ when the whole route shows */}
-              <Icon name="triangle-a" direction="r90" size={0.7} className={`voice-band__toggle ${whole ? 'is-whole' : ''}`.trim()} />
-              {whole ? say('projects.voice.mode.zoom') : say('projects.voice.mode.full')}
-            </button>
-          )}
         </div>
       </div>
       {/* holds the open map's place in the page; the map draws over it */}
@@ -544,5 +536,16 @@ export function VoiceStep({ step, n }: { step: Step; n: number }) {
         <span className="label label--muted">{say('projects.voice.mode.inTab')}</span>
       )}
     </div>
+  )
+}
+
+/** FULL / ZOOM, for the header: the folded schematic shows the whole route, or zooms in on the step in view. */
+export function ZoomToggle({ whole, onToggle }: { whole: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="voice-band__zoom text-button" onClick={onToggle} title={whole ? say('projects.voice.mode.zoomTitle') : say('projects.voice.mode.fullTitle')}>
+      {/* the hand-drawn triangle as a disclosure: ▶ while zoomed in, turning to ▼ when the whole route shows */}
+      <Icon name="triangle-a" direction="r90" size={0.7} className={`voice-band__toggle ${whole ? 'is-whole' : ''}`.trim()} />
+      {whole ? say('projects.voice.mode.zoom') : say('projects.voice.mode.full')}
+    </button>
   )
 }
