@@ -1105,13 +1105,18 @@ img.move-view__picture { transform: none; }
 /* ---- project mode: a character's voice (VoiceMode.tsx) ---- */
 .voice-mode { flex: none; }
 .voice-mode__line { position: sticky; top: 0; height: 0; z-index: 3; }
-.route-line { list-style: none; margin: 0; padding: 0.45rem 0; display: flex; flex-wrap: wrap; gap: 0.2rem 0; align-items: baseline; background: var(--bg); border-bottom: 1px solid var(--muted); }
-.route-line__step { display: flex; align-items: baseline; }
-.route-line__step + .route-line__step::before, .route-line__end::before { content: '→'; color: var(--muted); margin: 0 0.6rem; }
-.route-line__step .text-button { color: var(--muted); }
-.route-line__step.is-done .text-button { color: var(--line); }
-.route-line__step.is-now .text-button { color: var(--act); }
-.route-line__step.is-open .text-button { text-decoration: underline; text-underline-offset: 0.3em; }
+.route-strip { padding: 0.4rem 0; background: var(--bg); border-bottom: 1px solid var(--muted); overflow-x: auto; }
+.route-strip__svg { display: block; font-family: var(--font); }
+.route-strip__wire { fill: none; stroke: var(--line); stroke-width: 1.25; }
+.route-strip__box { fill: var(--bg); stroke: var(--muted); stroke-width: 1.25; }
+.route-strip__name { fill: var(--line); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.route-strip__num { fill: var(--muted); font-size: 10.5px; }
+.route-strip__node.is-step { cursor: pointer; outline: none; }
+.route-strip__node.is-done .route-strip__box { stroke: var(--line); }
+.route-strip__node.is-now .route-strip__box { stroke: var(--act); stroke-dasharray: 4 3; }
+.route-strip__node.is-open .route-strip__box { fill: var(--act); stroke: var(--act); stroke-dasharray: none; }
+.route-strip__node.is-open .route-strip__name, .route-strip__node.is-open .route-strip__num { fill: var(--bg); }
+.route-strip__node.is-step:hover:not(.is-open) .route-strip__box, .route-strip__node.is-step:focus-visible:not(.is-open) .route-strip__box { stroke: var(--act); fill: var(--act-wash); }
 .voice-band { margin: 0; padding: 0.25rem 0 0.5rem; border-bottom: 1px solid var(--muted); }
 .voice-band__svg { display: block; width: 100%; max-width: 72rem; height: auto; max-height: 20rem; font-family: var(--font); }
 .voice-band__wire polyline { fill: none; stroke: var(--muted); stroke-width: 1; opacity: 0.25; }

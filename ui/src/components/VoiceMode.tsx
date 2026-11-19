@@ -14,7 +14,7 @@ import type { Project, Step, VoiceFacts } from './ProjectsPanel'
  * band, every box where the Start map has it: the route the decisions draw is
  * lit, numbered step by step, and every other box stays as a faint outline, so
  * the student sees where the project sits in all of Variable Machine. Once the
- * page scrolls, the map folds into one line of the route's steps. Under it,
+ * page scrolls, the map folds into a strip of the route's boxes, as flat as they go. Under it,
  * the decisions: each option says what it costs and what it changes, and
  * choosing one redraws the route.
  */
@@ -95,7 +95,7 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
     <>
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line" aria-hidden={!folded}>
-        {folded && <RouteLine facts={facts} open={step} go={go} />}
+        {folded && <RouteStrip facts={facts} open={step} go={go} />}
       </div>
       <div ref={self} className={`voice-mode ${folded ? 'is-folded' : ''}`.trim()}>
         <StartBand project={project} facts={facts} open={step} go={go} />
@@ -104,26 +104,122 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
   )
 }
 
-/** The route as one line, for while the page is scrolled: each step, its state, a click to open it. */
-function RouteLine({ facts, open, go }: { facts: VoiceFacts; open: number; go: (n: number) => void }) {
+/** Sizes of the folded strip, in px of its viewBox (the svg is sized in rem at 1px = 1/16 rem). */
+const S = { w: 104, h: 26, gap: 30, row: 36, pad: 4 }
+const INPUTS = ['words', 'models']
+
+/**
+ * The route folded, for while the page is scrolled: the same boxes, as flat as
+ * they go. The inputs the route starts from (your words, a base model) sit one
+ * above the other at the left; every other box on the route sits on one line
+ * between them, in the order the route reaches it. A wire that runs forward to
+ * the next box is straight; one that skips a box or runs back arcs round. The
+ * box of the open step is green; a click opens a box's step.
+ */
+function RouteStrip({ facts, open, go }: { facts: VoiceFacts; open: number; go: (n: number) => void }) {
+  const lit = litWires(facts)
+  const inputs = INPUTS.filter((id) => lit.some(([a]) => a === id) || facts.steps.some((st) => st.node === id))
+  const two = inputs.length === 2
+  // the line: every box the route reaches, in the order the wires reach it; a lone input leads it
+  const line: string[] = two ? [] : [...inputs]
+  for (const id of [...lit.flat(), ...facts.steps.map((st) => st.node ?? '')]) if (id && !line.includes(id) && !(two && INPUTS.includes(id))) line.push(id)
+  const left = two ? S.w + S.gap : 0
+  const midY = two ? S.row : 0
+  const at: Record<string, { x: number; y: number }> = {}
+  line.forEach((id, i) => (at[id] = { x: left + i * (S.w + S.gap), y: midY }))
+  if (two) {
+    at.words = { x: 0, y: 0 }
+    at.models = { x: 0, y: 2 * S.row }
+  }
+  const vw = left + line.length * (S.w + S.gap) - S.gap
+  // wires that arc round the line, each a level further out so none lie on another
+  const isArc = (a: string, b: string) => !!at[a] && !!at[b] && !(two && INPUTS.includes(a)) && !(at[b].y === at[a].y && at[b].x === at[a].x + S.w + S.gap)
+  const backs = lit.filter(([a, b]) => isArc(a, b) && at[b].x < at[a].x)
+  const skips = lit.filter(([a, b]) => isArc(a, b) && at[b].x > at[a].x)
+  const level = (k: number) => 7 + 6 * k
+  const over = two ? 0 : backs.length ? level(backs.length - 1) : 0
+  const under = two ? 0 : skips.length ? level(skips.length - 1) : 0
+  const vh = (two ? 2 * S.row : 0) + S.h
+  const top = -S.pad - over
+  const height = vh + 2 * S.pad + over + under
+
+  const path = (a: string, b: string) => {
+    const A = at[a]
+    const B = at[b]
+    if (!A || !B) return ''
+    const midA = A.y + S.h / 2
+    const midB = B.y + S.h / 2
+    // from an input to the line: right of the input, then up or down to the box's middle, then in
+    if (two && INPUTS.includes(a)) {
+      const x = A.x + S.w
+      const turn = B.x === left ? x + S.gap / 2 : B.x + S.w / 2
+      return B.x === left ? `M${x},${midA} H${turn} V${midB} H${B.x}` : `M${x},${midA} H${turn} V${a === 'words' ? B.y : B.y + S.h}`
+    }
+    if (A.y === B.y && B.x === A.x + S.w + S.gap) return `M${A.x + S.w},${midA} H${B.x}`
+    // round the line: a step back arcs over the top, a skip forward under the bottom
+    const back = B.x < A.x
+    const k = (back ? backs : skips).findIndex(([x, z]) => x === a && z === b)
+    const y = back ? A.y - level(k) : A.y + S.h + level(k)
+    const from = A.x + S.w / 2 + (back ? -10 : 10)
+    const to = B.x + S.w / 2 + (back ? 10 : -10)
+    return `M${from},${back ? A.y : A.y + S.h} V${y} H${to} V${back ? B.y : B.y + S.h}`
+  }
+
+  const stepsAt = (id: string) => facts.steps.map((st, i) => ({ st, i })).filter((x) => x.st.node === id)
   return (
-    <ol className="route-line" aria-label={say('projects.voice.mode.line')}>
-      {facts.steps.map((s, i) => (
-        <li key={`${i}-${s.name}`} className={`route-line__step is-${stateOf(facts.steps, i)} ${open === i + 1 ? 'is-open' : ''}`.trim()}>
-          <button type="button" className="text-button" onClick={() => go(i + 1)} aria-current={open === i + 1 ? 'step' : undefined} title={s.name}>
-            {`${i + 1} ${NAMES[s.node ?? ''] ?? s.tab}`}
-          </button>
-        </li>
-      ))}
-      <li className="route-line__end label label--muted">{say('projects.voice.mode.out')}</li>
-    </ol>
+    <nav className="route-strip" aria-label={say('projects.voice.mode.line')}>
+      <svg viewBox={`${-S.pad} ${top} ${vw + 2 * S.pad} ${height}`} style={{ width: `${(vw + 2 * S.pad) / 16}rem`, height: `${height / 16}rem` }} className="route-strip__svg">
+        <defs>
+          <marker id="strip-end" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0.5 L7.5 4 L0 7.5" className="voice-band__tip" />
+          </marker>
+        </defs>
+        {lit.map(([a, b]) => (
+          <path key={`${a}-${b}`} d={path(a, b)} className="route-strip__wire" markerEnd="url(#strip-end)" />
+        ))}
+        {Object.entries(at).map(([id, p]) => {
+          const steps = stepsAt(id)
+          const states = steps.map((x) => stateOf(facts.steps, x.i))
+          const st: State | null = !steps.length ? null : states.includes('now') ? 'now' : states.every((x) => x === 'done') ? 'done' : 'waiting'
+          const isOpen = steps.some((x) => x.i + 1 === open)
+          const target = steps.find((x) => !x.st.done) ?? steps[0]
+          return (
+            <g
+              key={id}
+              className={`route-strip__node ${st ? `is-${st}` : ''} ${isOpen ? 'is-open' : ''} ${target ? 'is-step' : ''}`.trim()}
+              role={target ? 'button' : undefined}
+              tabIndex={target ? 0 : undefined}
+              aria-current={isOpen ? 'step' : undefined}
+              aria-label={target ? `${steps.map((x) => x.i + 1).join(', ')} ${target.st.name}` : NAMES[id]}
+              onClick={() => target && go(target.i + 1)}
+              onKeyDown={(e) => target && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), go(target.i + 1))}
+            >
+              <title>{target ? target.st.name : id === 'chat' ? say('projects.voice.mode.out') : NAMES[id]}</title>
+              <rect x={p.x} y={p.y} width={S.w} height={S.h} className="route-strip__box" />
+              <text x={p.x + 8} y={p.y + S.h / 2 + 4} className="route-strip__name">
+                {NAMES[id] ?? id}
+              </text>
+              {steps.length > 0 && (
+                <text x={p.x + S.w - 7} y={p.y + S.h / 2 + 4} textAnchor="end" className="route-strip__num">
+                  {st === 'done' && !isOpen ? '✓' : steps.map((x) => x.i + 1).join('·')}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+    </nav>
   )
 }
+
+/** The wires the route lights: a route that trains a voice first (prefer on your trained voice) lights the imitate wires too. */
+const litWires = (facts: VoiceFacts) =>
+  facts.approach === 'prefer' && facts.steps.some((st) => st.node === 'words') ? [...LIT.imitate, ...LIT.prefer] : LIT[facts.approach]
 
 /** The Start map's top band, with the route lit and numbered. */
 function StartBand({ project, facts, open, go }: { project: Project; facts: VoiceFacts; open: number; go: (n: number) => void }) {
   // a route that trains a voice first (prefer on your trained voice) lights the imitate wires too
-  const lit = facts.approach === 'prefer' && facts.steps.some((s) => s.node === 'words') ? [...LIT.imitate, ...LIT.prefer] : LIT[facts.approach]
+  const lit = litWires(facts)
   const onRoute = new Set(facts.steps.map((s) => s.node).concat(lit.flat()))
   const stepsAt = (id: string) => facts.steps.map((s, i) => ({ s, i })).filter((x) => x.s.node === id)
   const nodeState = (id: string): State | null => {
