@@ -27,6 +27,8 @@ export interface Fill {
   modelfile?: { base: string }
   /** the Prefer tab: the preference set, and the model it starts from */
   prefer?: { data: string; model: string }
+  /** the Chat tab: the models to put in its columns, in order; null leaves a column as it is */
+  chat?: { models: (string | null)[] }
 }
 
 /** One note of a step's walkthrough: the control it points at (its flag's id, or a data-guide marker) and what it says. */
@@ -334,7 +336,24 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
     { name: say('projects.voice.modelfile'), tab: 'modelfile', node: 'modelfile', commands: [joinWords(['ollama', 'create', '<name>', '-f', 'workspace/modelfiles/<name>.Modelfile'])], done: variants.length > 0, fill: { modelfile: { base: c.modelfileBase } }, parts: [] },
   ]
 
-  const steps = { modelfile, imitate, prefer, blend }[c.approach]
+  // the end of every route: the model made, in Chat; a variant beside the model it was made from
+  const made: Record<Approach, string | undefined> = {
+    imitate: voice && h.models.find((m) => m.adapter === voice.folder)?.model,
+    prefer: dpo && h.models.find((m) => m.adapter === dpo.folder)?.model,
+    blend: merge && h.models.find((m) => m.adapter === merge.folder)?.model,
+    modelfile: last(variants)?.model,
+  }
+  const out = made[c.approach]
+  const talk: Step = {
+    name: say('projects.voice.mode.talk'),
+    tab: 'chat',
+    node: 'chat',
+    commands: [],
+    done: !!out && h.chatLogs > 0,
+    result: out ?? say('projects.voice.mode.noModel'),
+    fill: out ? { chat: { models: c.approach === 'modelfile' ? [c.modelfileBase, out] : [null, out] } } : undefined,
+  }
+  const steps = [...{ modelfile, imitate, prefer, blend }[c.approach], talk]
   return { approach: c.approach, steps, texts, ollama: h.ollama, voices: voices.map((v) => v.folder) }
 }
 

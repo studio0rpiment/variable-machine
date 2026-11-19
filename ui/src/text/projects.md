@@ -961,7 +961,17 @@ write rows by hand: a question, and the answer in the character's voice
 ### Step: export
 `projects.voice.mode.export`
 
-export it into Ollama, and talk to it in Chat
+export it into Ollama, as a model of your own
+
+### Step, the last of every route: the model made, in Chat
+`projects.voice.mode.talk`
+
+talk to it in Chat
+
+### That step's result, before there is a model to talk to
+`projects.voice.mode.noModel`
+
+no model yet: the steps above make it
 
 ### Step: pick in Chat
 `projects.voice.mode.pick`
@@ -1036,7 +1046,7 @@ a model of your own, in Chat
 ### A step done on its tab, with no command
 `projects.voice.mode.inTab`
 
-this step is done on the tab below: each answer you pick is echoed in the terminal
+this step has no command: it is done in the tab below
 
 ## Project mode: the decisions
 

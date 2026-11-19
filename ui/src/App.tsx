@@ -160,10 +160,10 @@ export default function App() {
           <span className="label label--muted">{say('projects.guide.step', { n: mode.project.voice ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />
-          {mode.project.voice && <ZoomToggle whole={whole} onToggle={() => setWhole(!whole)} />}
           <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
             {say('projects.mode.leave')}
           </button>
+          {mode.project.voice && <ZoomToggle whole={whole} onToggle={() => setWhole(!whole)} />}
         </header>
       ) : (
       <header className="shell__top">
@@ -303,7 +303,7 @@ function StepTab({ step, onUse, chatWith, chatPair, chatModels, editModelfile, c
     case 'chat':
       return (
         <div className="voice-page__chat">
-          <Chat request={chatRequest} />
+          <Chat request={f?.chat ? { models: f.chat.models, n } : chatRequest} />
         </div>
       )
     default:
