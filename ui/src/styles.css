@@ -1105,20 +1105,9 @@ img.move-view__picture { transform: none; }
 /* ---- project mode: a character's voice (VoiceMode.tsx) ---- */
 .voice-mode { flex: none; }
 .voice-mode__line { position: sticky; top: 0; height: 0; z-index: 3; }
-.route-strip { padding: 0.4rem 0; background: var(--bg); border-bottom: 1px solid var(--muted); overflow-x: auto; }
-.route-strip__svg { display: block; font-family: var(--font); }
-.route-strip__wire { fill: none; stroke: var(--line); stroke-width: 1.25; }
-.route-strip__box { fill: var(--bg); stroke: var(--muted); stroke-width: 1.25; }
-.route-strip__name { fill: var(--line); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-.route-strip__num { fill: var(--muted); font-size: 10.5px; }
-.route-strip__node.is-step { cursor: pointer; outline: none; }
-.route-strip__node.is-done .route-strip__box { stroke: var(--line); }
-.route-strip__node.is-now .route-strip__box { stroke: var(--act); stroke-dasharray: 4 3; }
-.route-strip__node.is-open .route-strip__box { fill: var(--act); stroke: var(--act); stroke-dasharray: none; }
-.route-strip__node.is-open .route-strip__name, .route-strip__node.is-open .route-strip__num { fill: var(--bg); }
-.route-strip__node.is-step:hover:not(.is-open) .route-strip__box, .route-strip__node.is-step:focus-visible:not(.is-open) .route-strip__box { stroke: var(--act); fill: var(--act-wash); }
-.voice-band { margin: 0; padding: 0.25rem 0 0.5rem; border-bottom: 1px solid var(--muted); }
-.voice-band__svg { display: block; width: 100%; max-width: 72rem; height: auto; max-height: 20rem; font-family: var(--font); }
+.voice-band { margin: 0; background: var(--bg); border-bottom: 1px solid var(--muted); }
+.voice-band__svg { display: block; width: 100%; max-width: 53rem; height: auto; font-family: var(--font); }
+.voice-band__route { fill: none; stroke: var(--line); stroke-width: 1.5; }
 .voice-band__wire polyline { fill: none; stroke: var(--muted); stroke-width: 1; opacity: 0.25; }
 .voice-band__wire.is-lit polyline { stroke: var(--line); stroke-width: 1.5; opacity: 1; }
 .voice-band__tip { fill: none; stroke: var(--muted); stroke-width: 1.25; }
@@ -1130,14 +1119,16 @@ img.move-view__picture { transform: none; }
 .voice-band__box.is-input { stroke-dasharray: none; }
 .voice-band__node.is-done .voice-band__box { stroke: var(--line); }
 .voice-band__node.is-now .voice-band__box { stroke: var(--act); stroke-dasharray: 4 3; }
-.voice-band__node.is-open .voice-band__box { fill: var(--act-wash); stroke-width: 2.5; }
-.voice-band__node.is-step:hover .voice-band__box, .voice-band__node.is-step:focus-visible .voice-band__box { stroke: var(--act); fill: var(--act-wash); }
+.voice-band__node.is-open .voice-band__box { fill: var(--act); stroke: var(--act); stroke-dasharray: none; }
+.voice-band__node.is-open .voice-band__name, .voice-band__node.is-open .voice-band__num { fill: var(--bg); }
+.voice-band__node.is-step:not(.is-open):hover .voice-band__box, .voice-band__node.is-step:not(.is-open):focus-visible .voice-band__box { stroke: var(--act); fill: var(--act-wash); }
 .voice-band__name { fill: var(--muted); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
 .voice-band__node.is-on .voice-band__name { fill: var(--line); }
 .voice-band__node.is-now .voice-band__name { fill: var(--act); }
 .voice-band__num { fill: var(--act); font-size: 13px; }
 .voice-band__caption { fill: var(--muted); font-size: 11.5px; }
 .voice-band__node.is-now .voice-band__caption { fill: var(--act); }
+.voice-band__node.is-open .voice-band__name, .voice-band__node.is-open .voice-band__num { fill: var(--bg); }
 .voice-band__fork polygon { fill: var(--bg); stroke: var(--act); stroke-width: 1.25; }
 .voice-band__fork text { fill: var(--act); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
 .voice-decisions { flex: none; display: flex; flex-direction: column; gap: 1rem; padding: 0.75rem 0 1rem; border-bottom: 1px solid var(--muted); }

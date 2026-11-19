@@ -13,8 +13,10 @@ import type { Project, Step, VoiceFacts } from './ProjectsPanel'
  * Project mode for a character's voice. The schematic is the Start map's top
  * band, every box where the Start map has it: the route the decisions draw is
  * lit, numbered step by step, and every other box stays as a faint outline, so
- * the student sees where the project sits in all of Variable Machine. Once the
- * page scrolls, the map folds into a strip of the route's boxes, as flat as they go. Under it,
+ * the student sees where the project sits in all of Variable Machine. As the
+ * page scrolls, the map folds, a px of height for each px scrolled, into a strip
+ * that stays at the top: each box of the route keeps its x and slides to one
+ * of three rows, and the boxes off the route fade. Under it,
  * the decisions: each option says what it costs and what it changes, and
  * choosing one redraws the route.
  */
@@ -76,151 +78,103 @@ const stateOf = (steps: Step[], i: number): State => {
   return steps[i].done ? 'done' : i === now ? 'now' : 'waiting'
 }
 
-export default function VoiceMode({ project, step }: { project: Project; step: number }) {
-  const facts = project.voice!
-  const [folded, setFolded] = useState(false)
-  const self = useRef<HTMLDivElement>(null)
-  // fold into a line once most of the map has scrolled away; the line takes no room, so nothing under it moves
-  useEffect(() => {
-    const main = self.current?.closest('.shell__main')
-    if (!main) return
-    const onScroll = () => setFolded(main.scrollTop > (self.current?.querySelector('.voice-band')?.clientHeight ?? 200) * 0.6)
-    onScroll()
-    main.addEventListener('scroll', onScroll, { passive: true })
-    return () => main.removeEventListener('scroll', onScroll)
-  }, [])
-  const go = (n: number) => startGuide(project.id, n, facts.steps[n - 1].tab, true)
-
-  return (
-    <>
-      {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
-      <div className="voice-mode__line" aria-hidden={!folded}>
-        {folded && <RouteStrip facts={facts} open={step} go={go} />}
-      </div>
-      <div ref={self} className={`voice-mode ${folded ? 'is-folded' : ''}`.trim()}>
-        <StartBand project={project} facts={facts} open={step} go={go} />
-      </div>
-    </>
-  )
-}
-
-/** Sizes of the folded strip, in px of its viewBox (the svg is sized in rem at 1px = 1/16 rem). */
-const S = { w: 104, h: 26, gap: 30, row: 36, pad: 4 }
+/** Sizes of the folded strip, in units of the Start map's viewBox. */
+const F = { h: 30, gap: 22, pad: 8, level: (k: number) => 7 + 5 * k }
 const INPUTS = ['words', 'models']
-
-/**
- * The route folded, for while the page is scrolled: the same boxes, as flat as
- * they go. The inputs the route starts from (your words, a base model) sit one
- * above the other at the left; every other box on the route sits on one line
- * between them, in the order the route reaches it. A wire that runs forward to
- * the next box is straight; one that skips a box or runs back arcs round. The
- * box of the open step is green; a click opens a box's step.
- */
-function RouteStrip({ facts, open, go }: { facts: VoiceFacts; open: number; go: (n: number) => void }) {
-  const lit = litWires(facts)
-  const inputs = INPUTS.filter((id) => lit.some(([a]) => a === id) || facts.steps.some((st) => st.node === id))
-  const two = inputs.length === 2
-  // the line: every box the route reaches, in the order the wires reach it; a lone input leads it
-  const line: string[] = two ? [] : [...inputs]
-  for (const id of [...lit.flat(), ...facts.steps.map((st) => st.node ?? '')]) if (id && !line.includes(id) && !(two && INPUTS.includes(id))) line.push(id)
-  const left = two ? S.w + S.gap : 0
-  const midY = two ? S.row : 0
-  const at: Record<string, { x: number; y: number }> = {}
-  line.forEach((id, i) => (at[id] = { x: left + i * (S.w + S.gap), y: midY }))
-  if (two) {
-    at.words = { x: 0, y: 0 }
-    at.models = { x: 0, y: 2 * S.row }
-  }
-  const vw = left + line.length * (S.w + S.gap) - S.gap
-  // wires that arc round the line, each a level further out so none lie on another
-  const isArc = (a: string, b: string) => !!at[a] && !!at[b] && !(two && INPUTS.includes(a)) && !(at[b].y === at[a].y && at[b].x === at[a].x + S.w + S.gap)
-  const backs = lit.filter(([a, b]) => isArc(a, b) && at[b].x < at[a].x)
-  const skips = lit.filter(([a, b]) => isArc(a, b) && at[b].x > at[a].x)
-  const level = (k: number) => 7 + 6 * k
-  const over = two ? 0 : backs.length ? level(backs.length - 1) : 0
-  const under = two ? 0 : skips.length ? level(skips.length - 1) : 0
-  const vh = (two ? 2 * S.row : 0) + S.h
-  const top = -S.pad - over
-  const height = vh + 2 * S.pad + over + under
-
-  const path = (a: string, b: string) => {
-    const A = at[a]
-    const B = at[b]
-    if (!A || !B) return ''
-    const midA = A.y + S.h / 2
-    const midB = B.y + S.h / 2
-    // from an input to the line: right of the input, then up or down to the box's middle, then in
-    if (two && INPUTS.includes(a)) {
-      const x = A.x + S.w
-      const turn = B.x === left ? x + S.gap / 2 : B.x + S.w / 2
-      return B.x === left ? `M${x},${midA} H${turn} V${midB} H${B.x}` : `M${x},${midA} H${turn} V${a === 'words' ? B.y : B.y + S.h}`
-    }
-    if (A.y === B.y && B.x === A.x + S.w + S.gap) return `M${A.x + S.w},${midA} H${B.x}`
-    // round the line: a step back arcs over the top, a skip forward under the bottom
-    const back = B.x < A.x
-    const k = (back ? backs : skips).findIndex(([x, z]) => x === a && z === b)
-    const y = back ? A.y - level(k) : A.y + S.h + level(k)
-    const from = A.x + S.w / 2 + (back ? -10 : 10)
-    const to = B.x + S.w / 2 + (back ? 10 : -10)
-    return `M${from},${back ? A.y : A.y + S.h} V${y} H${to} V${back ? B.y : B.y + S.h}`
-  }
-
-  const stepsAt = (id: string) => facts.steps.map((st, i) => ({ st, i })).filter((x) => x.st.node === id)
-  return (
-    <nav className="route-strip" aria-label={say('projects.voice.mode.line')}>
-      <svg viewBox={`${-S.pad} ${top} ${vw + 2 * S.pad} ${height}`} style={{ width: `${(vw + 2 * S.pad) / 16}rem`, height: `${height / 16}rem` }} className="route-strip__svg">
-        <defs>
-          <marker id="strip-end" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0 0.5 L7.5 4 L0 7.5" className="voice-band__tip" />
-          </marker>
-        </defs>
-        {lit.map(([a, b]) => (
-          <path key={`${a}-${b}`} d={path(a, b)} className="route-strip__wire" markerEnd="url(#strip-end)" />
-        ))}
-        {Object.entries(at).map(([id, p]) => {
-          const steps = stepsAt(id)
-          const states = steps.map((x) => stateOf(facts.steps, x.i))
-          const st: State | null = !steps.length ? null : states.includes('now') ? 'now' : states.every((x) => x === 'done') ? 'done' : 'waiting'
-          const isOpen = steps.some((x) => x.i + 1 === open)
-          const target = steps.find((x) => !x.st.done) ?? steps[0]
-          return (
-            <g
-              key={id}
-              className={`route-strip__node ${st ? `is-${st}` : ''} ${isOpen ? 'is-open' : ''} ${target ? 'is-step' : ''}`.trim()}
-              role={target ? 'button' : undefined}
-              tabIndex={target ? 0 : undefined}
-              aria-current={isOpen ? 'step' : undefined}
-              aria-label={target ? `${steps.map((x) => x.i + 1).join(', ')} ${target.st.name}` : NAMES[id]}
-              onClick={() => target && go(target.i + 1)}
-              onKeyDown={(e) => target && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), go(target.i + 1))}
-            >
-              <title>{target ? target.st.name : id === 'chat' ? say('projects.voice.mode.out') : NAMES[id]}</title>
-              <rect x={p.x} y={p.y} width={S.w} height={S.h} className="route-strip__box" />
-              <text x={p.x + 8} y={p.y + S.h / 2 + 4} className="route-strip__name">
-                {NAMES[id] ?? id}
-              </text>
-              {steps.length > 0 && (
-                <text x={p.x + S.w - 7} y={p.y + S.h / 2 + 4} textAnchor="end" className="route-strip__num">
-                  {st === 'done' && !isOpen ? '✓' : steps.map((x) => x.i + 1).join('·')}
-                </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
-    </nav>
-  )
-}
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+const clamp = (x: number) => Math.min(1, Math.max(0, x))
 
 /** The wires the route lights: a route that trains a voice first (prefer on your trained voice) lights the imitate wires too. */
 const litWires = (facts: VoiceFacts) =>
   facts.approach === 'prefer' && facts.steps.some((st) => st.node === 'words') ? [...LIT.imitate, ...LIT.prefer] : LIT[facts.approach]
 
-/** The Start map's top band, with the route lit and numbered. */
-function StartBand({ project, facts, open, go }: { project: Project; facts: VoiceFacts; open: number; go: (n: number) => void }) {
-  // a route that trains a voice first (prefer on your trained voice) lights the imitate wires too
+/**
+ * Where each box of the route goes when the map folds: the same x as on the
+ * Start map, and one of three rows. The two inputs the route starts from keep
+ * their order on the Start map: a base model on the top row, your words on the
+ * bottom one. Every other box sits on the middle row, unless a box already
+ * holds its x there, and then it moves to the bottom row. A lone input leads
+ * the middle row.
+ */
+function foldLayout(facts: VoiceFacts, lit: [string, string][]) {
+  const order: string[] = []
+  for (const id of [...lit.flat(), ...facts.steps.map((st) => st.node ?? '')]) if (id && BAND.has(id) && !order.includes(id)) order.push(id)
+  const two = INPUTS.every((id) => order.includes(id))
+  const x = (id: string) => NODES.find((n) => n.id === id)!.x
+  const row: Record<string, number> = {}
+  for (const id of order) {
+    if (two && id === 'models') row[id] = 0
+    else if (two && id === 'words') row[id] = 2
+    else row[id] = order.some((o) => o !== id && row[o] === 1 && x(o) === x(id)) ? 2 : 1
+  }
+  // only the rows in use, packed
+  const used = [...new Set(Object.values(row))].sort()
+  const middle = used.length === 1
+  // a one-row strip arcs its wires round above and below; more rows arc through the gaps
+  // wires along one row that cannot run straight: back to an earlier box, or past a box between
+  const between = (a: string, b: string) => order.some((o) => o !== a && o !== b && row[o] === row[a] && x(o) > Math.min(x(a), x(b)) && x(o) < Math.max(x(a), x(b)))
+  const backs = lit.filter(([a, b]) => row[a] === row[b] && x(b) < x(a))
+  const skips = lit.filter(([a, b]) => row[a] === row[b] && x(b) > x(a) && between(a, b))
+  const over = middle && backs.length ? F.level(backs.length - 1) : 0
+  const under = middle && skips.length ? F.level(skips.length - 1) : 0
+  // rows far enough apart for the wires that run back over the middle row
+  const gap = Math.max(F.gap, backs.length ? F.level(backs.length - 1) + 10 : 0)
+  const top = VIEW.y + F.pad + over
+  const y = Object.fromEntries(order.map((id) => [id, top + used.indexOf(row[id]) * (F.h + gap)]))
+  const height = F.pad * 2 + over + under + used.length * F.h + (used.length - 1) * gap
+  return { order, row, x, y, height, backs, skips }
+}
+
+export default function VoiceMode({ project, step }: { project: Project; step: number }) {
+  const facts = project.voice!
+  const space = useRef<HTMLDivElement>(null)
+  const [scroll, setScroll] = useState(0)
+  const [width, setWidth] = useState(0)
+  // the map folds as the page scrolls: each px scrolled takes a px off its height, until it is the strip
+  useEffect(() => {
+    const el = space.current
+    const main = el?.closest('.shell__main')
+    if (!el || !main) return
+    const onScroll = () => setScroll(main.scrollTop)
+    const sized = new ResizeObserver(() => setWidth(el.clientWidth))
+    sized.observe(el)
+    onScroll()
+    main.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      main.removeEventListener('scroll', onScroll)
+      sized.disconnect()
+    }
+  }, [])
+  const go = (n: number) => startGuide(project.id, n, facts.steps[n - 1].tab, true)
   const lit = litWires(facts)
-  const onRoute = new Set(facts.steps.map((s) => s.node).concat(lit.flat()))
+  const fold = foldLayout(facts, lit)
+  // px per unit of the map, at most 53rem wide so the open map stays under 20rem tall
+  const scale = Math.min(width, 53 * 16) / VIEW.w || 1
+  const height = Math.max(fold.height, VIEW.h - scroll / scale)
+  const t = clamp((VIEW.h - height) / (VIEW.h - fold.height))
+
+  return (
+    <>
+      {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
+      <div className="voice-mode__line">
+        <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} height={height} open={step} go={go} />
+      </div>
+      {/* holds the open map's place in the page; the map draws over it */}
+      <div ref={space} className="voice-mode" style={{ height: `${(VIEW.h * scale) / 16}rem` }} />
+    </>
+  )
+}
+
+type Fold = ReturnType<typeof foldLayout>
+
+/**
+ * The schematic, from the Start map's band (t = 0) to the folded strip (t = 1).
+ * Every box on the route keeps its x and slides to its row; the rest fade.
+ * The Start map's own wires fade out early, and the route's wires, drawn from
+ * where the boxes are, take over, so a wire never leaves its boxes.
+ */
+function Schematic({ project, facts, lit, fold, t, height, open, go }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; height: number; open: number; go: (n: number) => void }) {
+  const onRoute = new Set(fold.order)
   const stepsAt = (id: string) => facts.steps.map((s, i) => ({ s, i })).filter((x) => x.s.node === id)
   const nodeState = (id: string): State | null => {
     const at = stepsAt(id)
@@ -229,55 +183,99 @@ function StartBand({ project, facts, open, go }: { project: Project; facts: Voic
     return states.includes('now') ? 'now' : states.every((x) => x === 'done') ? 'done' : 'waiting'
   }
   const isLit = (from: string, to: string) => lit.some(([a, b]) => a === from && b === to)
+  const boxH = lerp(H, F.h, t)
+  const pos = (id: string) => {
+    const n = NODES.find((m) => m.id === id)!
+    return { x: n.x, y: onRoute.has(id) ? lerp(n.y, fold.y[id], t) : n.y }
+  }
+  const early = clamp(1 - t * 3)
+
+  // the route's wires, from where the boxes are now
+  const wire = (a: string, b: string) => {
+    const A = pos(a)
+    const B = pos(b)
+    const h = boxH
+    const sameRow = fold.row[a] === fold.row[b]
+    const back = fold.backs.some(([p, q]) => p === a && q === b)
+    const skip = fold.skips.some(([p, q]) => p === a && q === b)
+    if (sameRow && (back || skip)) {
+      const k = (back ? fold.backs : fold.skips).findIndex(([p, q]) => p === a && q === b)
+      const y = back ? Math.min(A.y, B.y) - F.level(k) : Math.max(A.y, B.y) + h + F.level(k)
+      const from = A.x + W / 2 + (back ? -12 : 12)
+      const to = B.x + W / 2 + (back ? 12 : -12)
+      return `M${from},${back ? A.y : A.y + h} V${y} H${to} V${back ? B.y : B.y + h}`
+    }
+    if (sameRow) {
+      const mid = (A.x + W + B.x) / 2
+      return `M${A.x + W},${A.y + h / 2} H${mid} V${B.y + h / 2} H${B.x}`
+    }
+    const below = fold.row[b] > fold.row[a]
+    // across rows: along its own row first, if nothing on that row is in the way
+    const clear = !fold.order.some((o) => o !== a && o !== b && fold.row[o] === fold.row[a] && fold.x(o) > A.x && fold.x(o) < B.x + W / 2)
+    if (B.x > A.x + W && clear) return `M${A.x + W},${A.y + h / 2} H${B.x + W / 2 + 14} V${below ? B.y : B.y + h}`
+    // otherwise down or up first, entering low on the box's side so it meets no wire along that row
+    return `M${A.x + W / 2 - 14},${below ? A.y + h : A.y} V${B.y + h * 0.75} H${B.x > A.x ? B.x : B.x + W}`
+  }
 
   return (
-    <figure className="voice-band" aria-label={say('projects.schematic.label', { project: project.title })}>
-      <svg viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`} className="voice-band__svg">
+    <figure className="voice-band" aria-label={t === 1 ? say('projects.voice.mode.line') : say('projects.schematic.label', { project: project.title })}>
+      <svg viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${height}`} className="voice-band__svg">
         <defs>
           <marker id="voice-end" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
             <path d="M0 0.5 L7.5 4 L0 7.5" className="voice-band__tip" />
           </marker>
         </defs>
-        {WIRES.filter((w) => BAND.has(w.from) && BAND.has(w.to)).map((w) => {
-          const on = isLit(w.from, w.to)
-          return (
-            <g key={`${w.from}-${w.to}-${w.label}`} className={`voice-band__wire ${on ? 'is-lit' : ''}`.trim()}>
-              <polyline points={w.points.map((p) => p.join(',')).join(' ')} markerEnd="url(#voice-end)" />
-              {on && (
-                <text x={w.at[0]} y={w.at[1]} textAnchor={w.anchor ?? 'start'} className="voice-band__label">
-                  {w.label}
-                </text>
-              )}
-            </g>
-          )
-        })}
+        {/* the Start map's wires, as it draws them; they give way to the route's as the map folds */}
+        {early > 0 &&
+          WIRES.filter((w) => BAND.has(w.from) && BAND.has(w.to)).map((w) => {
+            const on = isLit(w.from, w.to)
+            return (
+              <g key={`${w.from}-${w.to}-${w.label}`} className={`voice-band__wire ${on ? 'is-lit' : ''}`.trim()} style={{ opacity: early }}>
+                <polyline points={w.points.map((p) => p.join(',')).join(' ')} markerEnd="url(#voice-end)" />
+                {on && (
+                  <text x={w.at[0]} y={w.at[1]} textAnchor={w.anchor ?? 'start'} className="voice-band__label">
+                    {w.label}
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        {t > 0 &&
+          lit.map(([a, b]) => (
+            <path key={`${a}-${b}`} d={wire(a, b)} className="voice-band__route" style={{ opacity: clamp(t * 3) }} markerEnd="url(#voice-end)" />
+          ))}
         {NODES.filter((n) => BAND.has(n.id)).map((n) => {
           const at = stepsAt(n.id)
           const st = nodeState(n.id)
           const on = onRoute.has(n.id)
           const isOpen = at.some((x) => x.i + 1 === open)
           const target = at.find((x) => !x.s.done) ?? at[0]
+          const p = pos(n.id)
+          if (!on && t === 1) return null
           return (
             <g
               key={n.id}
               className={`voice-band__node ${on ? 'is-on' : ''} ${st ? `is-${st}` : ''} ${isOpen ? 'is-open' : ''} ${target ? 'is-step' : ''}`.trim()}
+              style={on ? undefined : { opacity: 0.22 * (1 - t) }}
               role={target ? 'button' : undefined}
               tabIndex={target ? 0 : undefined}
+              aria-current={isOpen ? 'step' : undefined}
               aria-label={target ? `${at.map((x) => x.i + 1).join(', ')} ${target.s.name}` : undefined}
               onClick={() => target && go(target.i + 1)}
               onKeyDown={(e) => target && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), go(target.i + 1))}
             >
-              <rect x={n.x} y={n.y} width={W} height={H} className={`voice-band__box ${n.kind === 'input' ? 'is-input' : ''}`.trim()} />
-              <text x={n.x + 12} y={n.y + H / 2 + 5} className="voice-band__name">
+              <title>{target ? target.s.name : n.id === 'chat' ? say('projects.voice.mode.out') : NAMES[n.id]}</title>
+              <rect x={p.x} y={p.y} width={W} height={boxH} className={`voice-band__box ${n.kind === 'input' ? 'is-input' : ''}`.trim()} />
+              <text x={p.x + 12} y={p.y + boxH / 2 + 5} className="voice-band__name">
                 {n.name ?? n.id}
               </text>
               {at.length > 0 && (
-                <text x={n.x + W - 10} y={n.y + H / 2 + 5} textAnchor="end" className="voice-band__num">
-                  {at.map((x) => x.i + 1).join(' · ')}
+                <text x={p.x + W - 10} y={p.y + boxH / 2 + 5} textAnchor="end" className="voice-band__num">
+                  {st === 'done' && !isOpen && t === 1 ? '✓' : at.map((x) => x.i + 1).join(' · ')}
                 </text>
               )}
-              {on && (
-                <text x={n.x} y={n.y + H + 16} className="voice-band__caption">
+              {on && early > 0 && (
+                <text x={p.x} y={p.y + boxH + 16} className="voice-band__caption" style={{ opacity: early }}>
                   {st ? STATE_WORDS[st]() : n.id === 'chat' ? say('projects.voice.mode.out') : ''}
                 </text>
               )}
@@ -285,18 +283,18 @@ function StartBand({ project, facts, open, go }: { project: Project; facts: Voic
           )
         })}
         {/* the approach: a fork where the routes leave the models box */}
-        <g className="voice-band__fork">
-          <polygon points="72,146 82,156 72,166 62,156" />
-          <text x={90} y={161}>
-            {`◇ ${APPROACH_WORDS[facts.approach]().name}`}
-          </text>
-        </g>
+        {early > 0 && (
+          <g className="voice-band__fork" style={{ opacity: early }}>
+            <polygon points="72,146 82,156 72,166 62,156" />
+            <text x={90} y={161}>
+              {`◇ ${APPROACH_WORDS[facts.approach]().name}`}
+            </text>
+          </g>
+        )}
       </svg>
     </figure>
   )
 }
-
-// ---- the decisions ----
 
 const GB = (bytes: number) => (bytes / 2 ** 30).toFixed(1)
 
