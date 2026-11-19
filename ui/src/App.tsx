@@ -213,12 +213,12 @@ export default function App() {
           <>
             {mode.project.research ? (
               <>
-                <ResearchMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} />
+                <ResearchMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} onZoom={() => setWhole(false)} />
                 <ResearchDecisions project={mode.project} />
               </>
             ) : (
               <>
-                <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} />
+                <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} onZoom={() => setWhole(false)} />
                 <VoiceDecisions project={mode.project} />
               </>
             )}

@@ -148,7 +148,7 @@ function drawn(facts: ResearchFacts, view: boolean, overrides: boolean, pack: bo
 }
 
 /** The schematic over the research bot's page: unfolds when opened, folds into the strip as the page scrolls. */
-export default function ResearchMode({ project, step, onStep, whole }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean }) {
+export default function ResearchMode({ project, step, onStep, whole, onZoom }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean; onZoom: () => void }) {
   const facts = project.research!
   const c = useResearchChoices()
   const view = c.take === 'view'
@@ -189,7 +189,7 @@ export default function ResearchMode({ project, step, onStep, whole }: { project
     <>
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} B={B} route={route} u={u} f={f} view={v} light={lightId} pick={(box) => pick(DECIDED_AT[box] ?? box)} />
+          <Schematic project={project} B={B} route={route} u={u} f={f} view={v} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(DECIDED_AT[box] ?? box) }} />
           {f < 0.5 && u === 1 && (
             <button type="button" className="text-button research-band__replay" onClick={() => setPlayed((n) => n + 1)} style={{ opacity: 1 - f * 2 }}>
               {say('projects.research.mode.replay')}

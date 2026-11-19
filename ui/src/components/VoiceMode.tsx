@@ -157,7 +157,7 @@ function foldLayout(facts: VoiceFacts, lit: [string, string][]) {
  * opens at: the page starts there. As the page scrolls, the step in view is
  * reported (onStep) and its box, or the box of the decision in view, is lit.
  */
-export default function VoiceMode({ project, step, onStep, whole }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean }) {
+export default function VoiceMode({ project, step, onStep, whole, onZoom }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean; onZoom: () => void }) {
   const facts = project.voice!
   const lit = litWires(facts)
   const fold = foldLayout(facts, lit)
@@ -186,7 +186,7 @@ export default function VoiceMode({ project, step, onStep, whole }: { project: P
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={stepNow} light={lightId} pick={pick} />
+          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={stepNow} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(box) }} />
         </div>
       </div>
       {/* holds the open map's place in the page; the map draws over it */}
