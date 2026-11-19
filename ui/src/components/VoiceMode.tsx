@@ -80,6 +80,29 @@ const stateOf = (steps: Step[], i: number): State => {
 
 /** Sizes of the folded strip, in units of the Start map's viewBox. */
 const F = { h: 30, gap: 22, pad: 8, level: (k: number) => 7 + 5 * k }
+/** How wide the folded view is, in units of the Start map: the open step's box and its neighbours. */
+const ZOOM = 820
+
+/** A number that eases to its target over a third of a second, so the folded view glides from step to step. */
+function useGlide(target: number) {
+  const [now, setNow] = useState(target)
+  const from = useRef(target)
+  useEffect(() => {
+    const start = performance.now()
+    const a = from.current
+    let frame = 0
+    const tick = (time: number) => {
+      const k = clamp((time - start) / 350)
+      const v = a + (target - a) * (1 - (1 - k) ** 3)
+      from.current = v
+      setNow(v)
+      if (k < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [target])
+  return now
+}
 const INPUTS = ['words', 'models']
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
@@ -148,19 +171,26 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
   const go = (n: number) => startGuide(project.id, n, facts.steps[n - 1].tab, true)
   const lit = litWires(facts)
   const fold = foldLayout(facts, lit)
-  // px per unit of the map, at most 53rem wide so the open map stays under 20rem tall
-  const scale = Math.min(width, 53 * 16) / VIEW.w || 1
-  const height = Math.max(fold.height, VIEW.h - scroll / scale)
-  const t = clamp((VIEW.h - height) / (VIEW.h - fold.height))
+  // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
+  const node = NODES.find((n) => n.id === facts.steps[step - 1]?.node)
+  const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - ZOOM / 2))
+  const zx = useGlide(zoomX)
+  // the svg's width in px: the page's, at most 53rem so the open map stays under 20rem tall
+  const px = Math.min(width, 53 * 16) || VIEW.w
+  const open = (VIEW.h * px) / VIEW.w
+  // each px scrolled takes a px off the map's height: solve for how far folded that is, as the view narrows and its height shrinks
+  const want = Math.max((fold.height * px) / ZOOM, open - scroll)
+  const t = clamp((want * VIEW.w - px * VIEW.h) / (px * (fold.height - VIEW.h) - want * (ZOOM - VIEW.w)))
+  const view = { x: lerp(VIEW.x, zx, t), w: lerp(VIEW.w, ZOOM, t), h: lerp(VIEW.h, fold.height, t) }
 
   return (
     <>
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line">
-        <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} height={height} open={step} go={go} />
+        <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={step} go={go} />
       </div>
       {/* holds the open map's place in the page; the map draws over it */}
-      <div ref={space} className="voice-mode" style={{ height: `${(VIEW.h * scale) / 16}rem` }} />
+      <div ref={space} className="voice-mode" style={{ height: `${open / 16}rem` }} />
     </>
   )
 }
@@ -173,7 +203,7 @@ type Fold = ReturnType<typeof foldLayout>
  * The Start map's own wires fade out early, and the route's wires, drawn from
  * where the boxes are, take over, so a wire never leaves its boxes.
  */
-function Schematic({ project, facts, lit, fold, t, height, open, go }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; height: number; open: number; go: (n: number) => void }) {
+function Schematic({ project, facts, lit, fold, t, view, open, go }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; view: { x: number; w: number; h: number }; open: number; go: (n: number) => void }) {
   const onRoute = new Set(fold.order)
   const stepsAt = (id: string) => facts.steps.map((s, i) => ({ s, i })).filter((x) => x.s.node === id)
   const nodeState = (id: string): State | null => {
@@ -219,7 +249,7 @@ function Schematic({ project, facts, lit, fold, t, height, open, go }: { project
 
   return (
     <figure className="voice-band" aria-label={t === 1 ? say('projects.voice.mode.line') : say('projects.schematic.label', { project: project.title })}>
-      <svg viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${height}`} className="voice-band__svg">
+      <svg viewBox={`${view.x} ${VIEW.y} ${view.w} ${view.h}`} className="voice-band__svg">
         <defs>
           <marker id="voice-end" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
             <path d="M0 0.5 L7.5 4 L0 7.5" className="voice-band__tip" />
