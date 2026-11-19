@@ -174,20 +174,30 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
   // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
   const node = NODES.find((n) => n.id === facts.steps[step - 1]?.node)
   const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - ZOOM / 2))
-  const zx = useGlide(zoomX)
+  // the button on the folded schematic shows the whole route, and zooms back in on the step
+  const [whole, setWhole] = useState(false)
+  const zx = useGlide(whole ? VIEW.x : zoomX)
+  const zw = useGlide(whole ? VIEW.w : ZOOM)
   // the svg's width in px: the page's, at most 53rem so the open map stays under 20rem tall
   const px = Math.min(width, 53 * 16) || VIEW.w
   const open = (VIEW.h * px) / VIEW.w
   // each px scrolled takes a px off the map's height: solve for how far folded that is, as the view narrows and its height shrinks
-  const want = Math.max((fold.height * px) / ZOOM, open - scroll)
-  const t = clamp((want * VIEW.w - px * VIEW.h) / (px * (fold.height - VIEW.h) - want * (ZOOM - VIEW.w)))
-  const view = { x: lerp(VIEW.x, zx, t), w: lerp(VIEW.w, ZOOM, t), h: lerp(VIEW.h, fold.height, t) }
+  const want = Math.max((fold.height * px) / zw, open - scroll)
+  const t = clamp((want * VIEW.w - px * VIEW.h) / (px * (fold.height - VIEW.h) - want * (zw - VIEW.w)))
+  const view = { x: lerp(VIEW.x, zx, t), w: lerp(VIEW.w, zw, t), h: lerp(VIEW.h, fold.height, t) }
 
   return (
     <>
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line">
-        <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={step} go={go} />
+        <div className="voice-band__frame">
+          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={step} go={go} />
+          {t > 0.5 && (
+            <button type="button" className="voice-band__zoom text-button" style={{ opacity: clamp(t * 2 - 1) }} onClick={() => setWhole(!whole)} title={whole ? say('projects.voice.mode.zoomTitle') : say('projects.voice.mode.fullTitle')}>
+              {whole ? say('projects.voice.mode.zoom') : say('projects.voice.mode.full')}
+            </button>
+          )}
+        </div>
       </div>
       {/* holds the open map's place in the page; the map draws over it */}
       <div ref={space} className="voice-mode" style={{ height: `${open / 16}rem` }} />

@@ -1105,6 +1105,8 @@ img.move-view__picture { transform: none; }
 /* ---- project mode: a character's voice (VoiceMode.tsx) ---- */
 .voice-mode { flex: none; }
 .voice-mode__line { position: sticky; top: 0; height: 0; z-index: 3; }
+.voice-band__frame { position: relative; }
+.voice-band__zoom { position: absolute; left: min(53rem, 100%); transform: translateX(-100%); bottom: 0.4rem; z-index: 1; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; background: var(--bg); padding: 0.15rem 0.4rem; }
 .voice-band { margin: 0; background: var(--bg); border-bottom: 1px solid var(--muted); }
 .voice-band__svg { display: block; width: 100%; max-width: 53rem; height: auto; font-family: var(--font); }
 .voice-band__route { fill: none; stroke: var(--line); stroke-width: 1.5; }

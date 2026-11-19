@@ -1008,6 +1008,26 @@ get the base into Ollama
 
 the route, step by step
 
+### The button on the folded schematic, while it is zoomed in on the step
+`projects.voice.mode.full`
+
+full
+
+### What that button does
+`projects.voice.mode.fullTitle`
+
+show the whole route
+
+### The button on the folded schematic, while it shows the whole route
+`projects.voice.mode.zoom`
+
+zoom
+
+### What that button does
+`projects.voice.mode.zoomTitle`
+
+zoom in on the step you are working on
+
 ### What the route ends in
 `projects.voice.mode.out`
 
