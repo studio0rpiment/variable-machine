@@ -482,9 +482,10 @@ export function VoiceStep({ step, n }: { step: Step; n: number }) {
 }
 
 /** FULL / ZOOM, for the header: the folded schematic shows the whole route, or zooms in on the step in view. */
-export function ZoomToggle({ whole, onToggle }: { whole: boolean; onToggle: () => void }) {
+export function ZoomToggle({ whole, onToggle, titles }: { whole: boolean; onToggle: () => void; titles?: { full: string; zoom: string } }) {
+  const t = titles ?? { full: say('projects.voice.mode.fullTitle'), zoom: say('projects.voice.mode.zoomTitle') }
   return (
-    <button type="button" className="voice-band__zoom text-button" onClick={onToggle} title={whole ? say('projects.voice.mode.zoomTitle') : say('projects.voice.mode.fullTitle')}>
+    <button type="button" className="voice-band__zoom text-button" onClick={onToggle} title={whole ? t.zoom : t.full}>
       {/* the hand-drawn triangle as a disclosure: ▶ while zoomed in, turning to ▼ when the whole route shows */}
       <Icon name="triangle-a" direction="r90" size={0.7} className={`voice-band__toggle ${whole ? 'is-whole' : ''}`.trim()} />
       {whole ? say('projects.voice.mode.zoom') : say('projects.voice.mode.full')}

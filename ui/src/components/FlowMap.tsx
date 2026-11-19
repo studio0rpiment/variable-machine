@@ -189,9 +189,20 @@ interface Props {
   pageScroll?: boolean
   /** what the echo says while nothing is pointed at and the terminal is quiet; the website shows nothing */
   idle?: string[]
+  /**
+   * Roll Your Own: the part of the map to show, set from outside (the map
+   * folding into the strip as the page scrolls). It can't be dragged or zoomed
+   * then, a scroll scrolls the page, and the tools and the echo go.
+   */
+  view?: { x: number; y: number; w: number; h: number }
+  /** the box lit solid: the part of the page in view */
+  light?: string | null
+  /** a click on a box, given where it leads (its tab), in place of following its link */
+  onPick?: (to: string) => void
 }
 
-export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'] }: Props) {
+export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'], view, light, onPick }: Props) {
+  const held = !!view
   const [hot, setHot] = useState<string | null>(null)
   const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : idle
 
@@ -255,6 +266,7 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
   // Wheel: a pinch (or ⌘/ctrl + wheel) zooms; a plain scroll pans. Native listener, so it can stop the page scrolling.
   useEffect(() => {
     const el = svg.current!
+    if (held) return // the page scrolls; the map follows it
     const onWheel = (e: WheelEvent) => {
       if (pageScroll && !e.ctrlKey && !e.metaKey) return // let the page scroll
       e.preventDefault()
@@ -265,12 +277,12 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [zoomAt, pageScroll])
+  }, [zoomAt, pageScroll, held])
 
   // Drag to pan, from anywhere; a drag that started on a node doesn't also open its tab.
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; far: boolean } | null>(null)
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 || held) return
     drag.current = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y, far: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -298,11 +310,11 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
   const wasDrag = useRef(false)
 
   return (
-    <figure className="flow" aria-label="map of the tabs and what flows between them" ref={box}>
+    <figure className={`flow ${held ? 'flow--held' : ''}`.trim()} aria-label="map of the tabs and what flows between them" ref={box}>
       <svg
         ref={svg}
         className="flow__svg"
-        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+        viewBox={view ? `${view.x} ${view.y} ${view.w} ${view.h}` : `${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
         role="img"
         aria-label="The tabs of Variable Machine and what each passes to the next"
         onPointerDown={onPointerDown}
@@ -365,7 +377,15 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
             <Explained key={n.id} id={n.flag ?? (`panel.${n.id}` as ExplainId)} svg module=".flow">
               <a
                 href={linkTo(n.to ?? n.id)}
-                className={`flow__node ${n.kind ? `flow__node--${n.kind}` : ''} ${hot === n.id ? 'is-hot' : ''}`.trim()}
+                className={`flow__node ${n.kind ? `flow__node--${n.kind}` : ''} ${hot === n.id ? 'is-hot' : ''} ${light === n.id ? 'is-lit' : ''}`.replace(/\s+/g, ' ').trim()}
+                aria-current={light === n.id ? 'location' : undefined}
+                onClick={
+                  onPick &&
+                  ((e) => {
+                    e.preventDefault()
+                    onPick(n.to ?? n.id)
+                  })
+                }
                 onPointerEnter={() => setHot(n.id)}
                 onPointerLeave={() => setHot(null)}
                 onFocus={() => setHot(n.id)}
@@ -409,6 +429,8 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           )
         })}
       </svg>
+      {!held && (
+      <>
       <div className="flow__tools" role="group" aria-label="view">
         <button type="button" className="text-button" onClick={fit} aria-label="fit the whole map to the space">
           fit
@@ -428,6 +450,8 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           </span>
         ))}
       </pre>
+      </>
+      )}
     </figure>
   )
 }

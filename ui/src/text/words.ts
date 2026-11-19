@@ -4,6 +4,15 @@
  * written over. Use them with say() and rich() from ./say.
  */
 export const WORDS = {
+  "shared.modes": "two ways to work: a project card, or all of Variable Machine",
+  "shared.mode.projects": "projects",
+  "shared.mode.projects.about": "the project cards: finished work, one card each, followed step by step",
+  "shared.mode.roll": "roll your own",
+  "shared.mode.roll.about": "all of Variable Machine on one page, with the Start map as the way round it",
+  "shared.mode.about": "about",
+  "shared.roll.map": "the Start map: a box goes to its part of the page",
+  "shared.roll.fullTitle": "show the whole map",
+  "shared.roll.zoomTitle": "zoom in on the part you are in",
   "projects.label": "projects",
   "projects.title": "projects · finished work, made by putting the tabs together",
   "projects.intro": "A project is a piece of finished work you make by putting existing parts together. Each card says what it does and what you end up with, then its steps in order. A step opens the tab that does it and shows the command it runs; press the command to run it from here. A step is marked done when your workspace has what it makes. A step marked *soon* isn't built yet.",
