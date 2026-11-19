@@ -3,9 +3,9 @@ import { HF_BASES } from '@shared/library'
 import { NODES, WIRES, W, H } from './FlowMap'
 import CommandPreview from './CommandPreview'
 import { Icon } from '../icons'
+import { startGuide } from '../lib/guide'
 import { runCommand } from '../lib/helper'
 import { useHelperState } from '../hooks/useHelper'
-import { startGuide } from '../lib/guide'
 import { APPROACHES, chooseVoice, toggleText, useVoiceChoices, type Approach } from '../lib/voiceChoices'
 import { say } from '../text/say'
 import type { Project, Step, VoiceFacts } from './ProjectsPanel'
@@ -151,8 +151,14 @@ function foldLayout(facts: VoiceFacts, lit: [string, string][]) {
   return { order, row, x, y, height, backs, skips }
 }
 
-export default function VoiceMode({ project, step }: { project: Project; step: number }) {
+/**
+ * The schematic over a voice route's page. `step` is the step the address
+ * opens at: the page starts there. As the page scrolls, the step in view is
+ * reported (onStep) and its box, or the box of the decision in view, is lit.
+ */
+export default function VoiceMode({ project, step, onStep }: { project: Project; step: number; onStep: (n: number) => void }) {
   const facts = project.voice!
+  const [stepNow, setStepNow] = useState(step)
   const space = useRef<HTMLDivElement>(null)
   const [scroll, setScroll] = useState(0)
   /** the box of the section in view, or none at the top of the page, where the open step's box is lit */
@@ -169,10 +175,13 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
     const onScroll = () => {
       setScroll(main.scrollTop)
       // after a click on a box, its section stays lit while the page glides there
-      if (pinned.current) return setFocus(pinned.current)
+      if (pinned.current) return void setFocus(pinned.current)
       const line = main.getBoundingClientRect().top + (self.current?.getBoundingClientRect().height ?? 0) + 24
       const passed = [...main.querySelectorAll<HTMLElement>('[data-box]')].filter((el) => !el.closest('.voice-mode__line') && el.getBoundingClientRect().top <= line)
       setFocus(main.scrollTop > 0 ? (passed.pop()?.dataset.box ?? null) : null)
+      // the step in view: the last step section whose top has passed under the strip, or the first
+      const at = [...main.querySelectorAll<HTMLElement>('[data-step]')].filter((el) => el.getBoundingClientRect().top <= line).pop()
+      setStepNow(Number(at?.dataset.step ?? 1))
     }
     const sized = new ResizeObserver(() => setWidth(el.clientWidth))
     sized.observe(el)
@@ -186,27 +195,38 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
       sized.disconnect()
     }
   }, [])
-  const go = (n: number) => startGuide(project.id, n, facts.steps[n - 1].tab, true)
+  useEffect(() => onStep(stepNow), [stepNow, onStep])
   const lit = litWires(facts)
   const fold = foldLayout(facts, lit)
-  // a click on a box: open its step if it has one and it is not open, then scroll its first section to just under the strip
-  const pick = (box: string) => {
-    const at = facts.steps.map((st, i) => ({ st, i })).filter((x) => x.st.node === box)
-    const target = at.find((x) => !x.st.done) ?? at[0]
-    if (target && !at.some((x) => x.i + 1 === step)) go(target.i + 1)
-    setTimeout(() => {
-      const main = space.current?.closest('.shell__main')
-      const el = main && [...main.querySelectorAll<HTMLElement>(`[data-box="${box}"]`)].find((e) => !e.closest('.voice-mode__line'))
-      if (!main || !el) return
-      pinned.current = box
-      setFocus(box)
-      const strip = (fold.height * px) / ZOOM
-      main.scrollTo({ top: main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - strip - 8, behavior: 'smooth' })
-    }, 120)
+  /** Scroll an element to just under the folded strip. */
+  const scrollTo = (el: HTMLElement, smooth: boolean) => {
+    const main = space.current?.closest('.shell__main')
+    if (!main) return
+    const strip = (fold.height * px) / ZOOM
+    main.scrollTo({ top: main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - strip - 8, behavior: smooth ? 'smooth' : 'auto' })
   }
+  // a click on a box scrolls to its first section (a decision, or else its step), and lights it on the way
+  const pick = (box: string) => {
+    const main = space.current?.closest('.shell__main')
+    const el = main && [...main.querySelectorAll<HTMLElement>(`[data-box="${box}"]`)].find((e) => !e.closest('.voice-mode__line'))
+    if (!el) return
+    pinned.current = box
+    setFocus(box)
+    scrollTo(el, true)
+  }
+  // the page opens at the step in the address, once its sections are there
+  useEffect(() => {
+    if (step <= 1) return
+    const id = setTimeout(() => {
+      const el = space.current?.closest('.shell__main')?.querySelector<HTMLElement>(`[data-step="${step}"]`)
+      if (el) scrollTo(el, false)
+    }, 400)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id])
   // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
-  const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[step - 1]?.node
+  const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[stepNow - 1]?.node
   const node = NODES.find((n) => n.id === lightId)
   const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - ZOOM / 2))
   // the button on the folded schematic shows the whole route, and zooms back in on the step
@@ -226,7 +246,7 @@ export default function VoiceMode({ project, step }: { project: Project; step: n
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={step} light={lightId} pick={pick} />
+          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={stepNow} light={lightId} pick={pick} />
           {t > 0.5 && (
             <button type="button" className="voice-band__zoom text-button" style={{ opacity: clamp(t * 2 - 1) }} onClick={() => setWhole(!whole)} title={whole ? say('projects.voice.mode.zoomTitle') : say('projects.voice.mode.fullTitle')}>
               {/* the hand-drawn triangle as a disclosure: ▶ while zoomed in, turning to ▼ when the whole route shows */}

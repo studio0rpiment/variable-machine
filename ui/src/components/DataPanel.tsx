@@ -22,7 +22,7 @@ import { OpenDataCard, TemplateCard } from './OpenData'
 import { HfCard, UploadCard } from './DataBringIn'
 import { PapersCard } from './PapersCard'
 import { say } from '../text/say'
-import { Part } from '../lib/parts'
+import { Part, useInProject } from '../lib/parts'
 import { Linked } from '../explain/Linked'
 import { describeDataset } from '@shared/datasetAbout'
 import { glide as glideAs, moving } from '../lib/moving'
@@ -79,9 +79,11 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
   /** '' shows every dataset as a card; NEW shows the ways to make one; otherwise the chosen dataset's name. */
   const choose = (name: string) => moving(() => setSelected(name))
   const topRef = useRef<HTMLDivElement>(null)
+  const inProject = useInProject()
   useLayoutEffect(() => {
     // A block, not an arrow's value: newer browsers return a promise from scrollIntoView, and React would take it for a clean-up.
-    topRef.current?.scrollIntoView({ block: selected ? 'start' : 'nearest' })
+    // in project mode the tab is a section of a long page, which it must not scroll
+    if (!inProject) topRef.current?.scrollIntoView({ block: selected ? 'start' : 'nearest' })
   }, [selected])
 
   // The watcher says what changed; re-read only what is affected.

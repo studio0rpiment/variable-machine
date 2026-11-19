@@ -12,13 +12,17 @@ import { createContext, useContext, type CSSProperties, type ReactNode } from 'r
 const Parts = createContext<string[] | null>(null)
 
 export const PartsProvider = Parts.Provider
+/** A step that uses its whole tab. */
+export const ALL_PARTS = ['*']
+/** True inside project mode, where a tab sits in a page and should not scroll that page by itself. */
+export const useInProject = () => useContext(Parts) !== null
 
 export function Part({ id, children }: { id: string; children: ReactNode }) {
   const show = useContext(Parts)
   const at = show ? show.indexOf(id) : -1
   const style = at >= 0 ? ({ '--part-order': at + 1 } as CSSProperties) : undefined
   return (
-    <div className="part" data-part={id} hidden={!!show && at < 0} style={style}>
+    <div className="part" data-part={id} hidden={!!show && !show.includes('*') && at < 0} style={style}>
       {children}
     </div>
   )

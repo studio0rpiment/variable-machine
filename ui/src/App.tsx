@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TrainParams } from '@shared/recipes'
 import { useTheme } from './hooks/useTheme'
 import Chat from './components/Chat'
@@ -12,12 +12,12 @@ import PreferPanel from './components/PreferPanel'
 import SharePanel from './components/SharePanel'
 import StartPanel from './components/StartPanel'
 import AboutPanel from './components/AboutPanel'
-import ProjectsPanel, { type Fill } from './components/ProjectsPanel'
+import ProjectsPanel, { type Fill, type Step } from './components/ProjectsPanel'
 import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep } from './components/VoiceMode'
 import { leaveMode, useGuide } from './lib/guide'
-import { PartsProvider } from './lib/parts'
+import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
 import { say } from './text/say'
 import LookPanel from './components/LookPanel'
@@ -95,6 +95,8 @@ export default function App() {
   const mode = followed && modeStep ? { project: followed, step: Math.min(guide!.step, routeOf(followed).length) } : null
   const panel: Panel = mode ? modeStep!.tab : tabPanel
   const [folded, setFolded] = useState(true)
+  /** a voice route is one long page: the step whose section is in view */
+  const [stepInView, setStepInView] = useState(1)
   const [chatRequest, setChatRequest] = useState<{ models: (string | null)[]; n: number }>()
   const [modelfileFrom, setModelfileFrom] = useState<{ model: string; n: number }>()
 
@@ -131,7 +133,8 @@ export default function App() {
   useEffect(() => {
     // the step's names change as it runs (a set made by the first draft is then opened), so they are part of the key
     const key = mode ? `${mode.project.id}:${mode.step}:${JSON.stringify(modeStep?.fill ?? null)}` : ''
-    if (!mode || filledStep.current === key) return
+    // a voice route's page fills each step's own copy of its tab instead (StepTab)
+    if (!mode || mode.project.voice || filledStep.current === key) return
     filledStep.current = key
     if (modeStep?.fill) fill(modeStep.fill)
   }, [mode, modeStep, fill])
@@ -152,7 +155,7 @@ export default function App() {
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
           <span className="label label--name">Variable Machine</span>
           <span className="label project-top__name">{say('projects.mode.project', { project: mode.project.title })}</span>
-          <span className="label label--muted">{say('projects.guide.step', { n: mode.step, of: routeOf(mode.project).length })}</span>
+          <span className="label label--muted">{say('projects.guide.step', { n: mode.project.voice ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />
           <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
@@ -189,9 +192,19 @@ export default function App() {
       <main className={`shell__main ${mode ? 'shell__main--project' : ''}`.trim()}>
         {mode?.project.voice ? (
           <>
-            <VoiceMode project={mode.project} step={mode.step} />
+            <VoiceMode project={mode.project} step={mode.step} onStep={setStepInView} />
             <VoiceDecisions project={mode.project} />
-            <VoiceStep step={modeStep!} n={mode.step} />
+            {/* the whole route on one page: each step, then its own copy of its tab, showing only the parts the step uses */}
+            {routeOf(mode.project).map((s, i) => (
+              <section key={`${i}-${s.tab}`} className="voice-page__step" data-step={i + 1}>
+                <VoiceStep step={s} n={i + 1} />
+                <PartsProvider value={s.parts ?? ALL_PARTS}>
+                  <StepTab step={s} onUse={sendDataset} chatWith={chatWith} chatPair={chatPair} chatModels={chatModels} editModelfile={editModelfile} chatRequest={chatRequest} />
+                </PartsProvider>
+              </section>
+            ))}
+            {/* room after the last step, so it too can scroll up under the strip */}
+            <div className="voice-page__end" />
           </>
         ) : mode ? (
           <>
@@ -201,8 +214,8 @@ export default function App() {
         ) : (
           <GuideBar panel={panel} onFill={fill} />
         )}
-        {/* project mode, on a route with parts: the tab shows only the parts its step uses */}
-        <PartsProvider value={mode?.project.voice ? (modeStep?.parts ?? null) : null}>
+        {/* the tabs, one each; a voice route's page has its own copies instead */}
+        <div className="panel-slots" hidden={!!mode?.project.voice}>
         <div className="panel-slot panel-slot--fill" hidden={panel !== 'start'}>
           <StartPanel />
         </div>
@@ -249,11 +262,50 @@ export default function App() {
         <div className="panel-slot" hidden={panel !== 'segmentation'}>
           <LookPanel />
         </div>
-        </PartsProvider>
+        </div>
       </main>
       <Terminal theme={theme} folded={!!mode && folded} onFold={mode ? setFolded : undefined} />
     </div>
   )
+}
+
+let fills = 0
+/**
+ * A step's own copy of its tab, for a voice route's long page, filled with the
+ * names the step has chosen. A new fill (a set made by the first draft, say)
+ * gets a new number, so the tab takes it.
+ */
+function StepTab({ step, onUse, chatWith, chatPair, chatModels, editModelfile, chatRequest }: { step: Step; onUse: (data: string, way: 'train' | 'prefer') => void; chatWith: (model: string) => void; chatPair: (a: string, b: string) => void; chatModels: (models: (string | null)[]) => void; editModelfile: (model: string) => void; chatRequest?: { models: (string | null)[]; n: number } }) {
+  const key = JSON.stringify(step.fill ?? null)
+  const n = useMemo(() => ++fills, [key])
+  const f = step.fill
+  const toAdapters = () => {}
+  switch (step.tab) {
+    case 'data':
+      return <DataPanel onUse={onUse} pick={f?.data && { ...f.data, n }} />
+    case 'train': {
+      const { data, ...params } = f?.train ?? { data: '' }
+      return <TrainPanel onAdapters={toAdapters} onChatPair={chatPair} onChat={chatWith} withData={f?.train && { data, params, n }} />
+    }
+    case 'prefer':
+      return <PreferPanel onAdapters={toAdapters} onChatPair={chatPair} onChat={chatWith} withData={f?.prefer && { ...f.prefer, n }} />
+    case 'modelfile':
+      return <ModelfilePanel startFrom={f?.modelfile && { model: f.modelfile.base, n }} onChatPair={chatPair} />
+    case 'models':
+      return <ModelsPanel onChat={chatWith} onModelfile={editModelfile} />
+    case 'adapters':
+      return <AdaptersPanel onChatPair={chatPair} />
+    case 'merge':
+      return <MergePanel onChatModels={chatModels} />
+    case 'chat':
+      return (
+        <div className="voice-page__chat">
+          <Chat request={chatRequest} />
+        </div>
+      )
+    default:
+      return null
+  }
 }
 
 /** Turn the explanation flags off (and on again), for when you know your way around. */

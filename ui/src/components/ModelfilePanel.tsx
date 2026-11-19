@@ -16,7 +16,7 @@ import AnswerColumn, { EMPTY, type Answer } from './AnswerColumn'
 import CommandPreview from './CommandPreview'
 import ModelSelect from './ModelSelect'
 import Manifest from './Manifest'
-import { Part } from '../lib/parts'
+import { Part, useInProject } from '../lib/parts'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const bare = (tag: string) => tag.replace(/:latest$/, '')
@@ -155,10 +155,12 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
 
   // Bring the top of what just changed into view before the new layout is captured, so cards glide to where they will be seen.
   const topRef = useRef<HTMLDivElement>(null)
+  const inProject = useInProject()
   const chosenKey = chosen === null ? '' : chosen === 'own' ? 'own' : chosen.id
   useLayoutEffect(() => {
     // Once chosen, the intro has done its job: the chosen card goes to the top so the answers below it are in view.
-    topRef.current?.scrollIntoView({ block: chosen ? 'start' : 'nearest' })
+    // in project mode the tab is a section of a long page, which it must not scroll
+    if (!inProject) topRef.current?.scrollIntoView({ block: chosen ? 'start' : 'nearest' })
   }, [chosenKey])
 
   /** The student's own variants: Modelfiles this tab wrote (not the ones Export writes for trained models). */
