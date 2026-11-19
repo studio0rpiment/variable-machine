@@ -33,7 +33,7 @@ const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const within = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 const noStep = () => {}
 
-export default function RollYourOwn({ whole, onFocus, children }: { whole: boolean; onFocus: (part: string | null) => void; children?: ReactNode }) {
+export default function RollYourOwn({ whole, onZoom, onFocus, children }: { whole: boolean; onZoom: () => void; onFocus: (part: string | null) => void; children?: ReactNode }) {
   const pxRef = useRef(MAX_PX)
   const { space, self, scroll, focus, width, pick } = useRoutePage({ step: 1, project: 'roll', onStep: noStep, stripPx: () => (STRIP * pxRef.current) / zoomFor(pxRef.current), line: 'ryo__line' })
   const px = Math.min(width, MAX_PX) || MAX_PX
@@ -74,6 +74,8 @@ export default function RollYourOwn({ whole, onFocus, children }: { whole: boole
   const view = { x: lerp(VIEW.x, zx, t), y: lerp(VIEW.y, zy, t), w: lerp(VIEW.w, ZOOM, t), h: lerp(VIEW.h, STRIP, t) }
 
   const onPick = (to: string) => {
+    // with the whole map open (FULL), a click on a box closes it back to the strip, zoomed in on that box
+    if (whole) onZoom()
     if (!isPart(to)) return void (location.hash = to) // the projects row: the Projects mode
     history.replaceState(null, '', `${location.pathname}${location.search}#${to}`)
     pick(to)

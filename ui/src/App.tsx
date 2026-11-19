@@ -287,7 +287,7 @@ export default function App() {
             </div>
             {/* Roll Your Own: every tab on one long page, under the Start map, which folds into the strip at the top */}
             <div className="ryo-page" hidden={view !== 'roll'}>
-              <RollYourOwn whole={wholeMap} onFocus={setInView}>
+              <RollYourOwn whole={wholeMap} onZoom={() => setWholeMap(false)} onFocus={setInView}>
                 <GuideBar panel={panel} onFill={fill} />
               </RollYourOwn>
               <PartsProvider value={ALL_PARTS}>
