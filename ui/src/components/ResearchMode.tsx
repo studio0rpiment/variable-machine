@@ -4,7 +4,7 @@ import { NODES, WIRES, W, H } from './FlowMap'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
-import { BUILT_SOURCES, chooseResearch, ROLE_MODELS, SOURCES, toggleSource, useResearchChoices, type Source } from '../lib/researchChoices'
+import { BUILT_SOURCES, chooseResearch, FIELD_LIST, LIBRARY_LIST, RANKERS, ROLE_MODELS, SOURCES, toggleIn, toggleSource, useResearchChoices, type Field, type Library, type Source } from '../lib/researchChoices'
 import { say } from '../text/say'
 import type { Project, ResearchFacts, Step } from './ProjectsPanel'
 
@@ -110,16 +110,16 @@ const TAKE = {
   list: () => ({ name: say('projects.research.take.list'), tab: say('projects.research.take.list.tab'), time: say('projects.research.take.list.time'), disk: say('projects.research.take.list.disk'), needs: say('projects.research.take.list.needs'), changes: say('projects.research.take.list.changes') }),
   view: () => ({ name: say('projects.research.take.view'), tab: say('projects.research.take.view.tab'), time: say('projects.research.take.view.time'), disk: say('projects.research.take.view.disk'), needs: say('projects.research.take.view.needs'), changes: say('projects.research.take.view.changes') }),
 }
-const FIELDS = [
-  () => [say('projects.research.field.humanities'), say('projects.research.field.humanities.about')],
-  () => [say('projects.research.field.sciences'), say('projects.research.field.sciences.about')],
-  () => [say('projects.research.field.technology'), say('projects.research.field.technology.about')],
-]
-const LIBRARY = [
-  () => [say('projects.research.library.proxy'), say('projects.research.library.proxy.about')],
-  () => [say('projects.research.library.keys'), say('projects.research.library.keys.about')],
-  () => [say('projects.research.library.copies'), say('projects.research.library.copies.about')],
-]
+const FIELDS: Record<Field, () => [string, string]> = {
+  humanities: () => [say('projects.research.field.humanities'), say('projects.research.field.humanities.about')],
+  sciences: () => [say('projects.research.field.sciences'), say('projects.research.field.sciences.about')],
+  technology: () => [say('projects.research.field.technology'), say('projects.research.field.technology.about')],
+}
+const LIBRARY: Record<Library, () => [string, string]> = {
+  proxy: () => [say('projects.research.library.proxy'), say('projects.research.library.proxy.about')],
+  keys: () => [say('projects.research.library.keys'), say('projects.research.library.keys.about')],
+  copies: () => [say('projects.research.library.copies'), say('projects.research.library.copies.about')],
+}
 const TOP: [number, () => string][] = [
   [40, () => say('projects.research.top.40')],
   [100, () => say('projects.research.top.100')],
@@ -255,7 +255,7 @@ function Schematic({ project, B, route, u, f, view, light, pick }: { project: Pr
     return st.includes('now') ? 'now' : st.every((x) => x === 'done') ? 'done' : 'waiting'
   }
   const line = (pts: P[], cls: string, o: number, key: string) => o > 0.01 && <polyline key={key} points={pts.map((p) => p.join(',')).join(' ')} className={cls} style={{ opacity: o }} markerEnd={cls.includes('use') ? undefined : 'url(#research-end)'} />
-  const modelName = (id: string) => (id === 'writer' ? c.writer : id === 'screener' ? (route.facts.view && route.facts.steps.at(-1)?.done ? route.facts.view : c.screener) : id === 'summariser' ? c.summariser : B[id].name)
+  const modelName = (id: string) => (id === 'writer' ? c.writer : id === 'screener' ? (route.facts.view && route.facts.steps.at(-1)?.done ? route.facts.view : c.screener) : id === 'summariser' ? c.summariser : id === 'ranker' ? c.ranker : B[id].name)
 
   // the wires of the opened schematic and of the strip, drawn from where the boxes are
   const wires = []
@@ -397,7 +397,7 @@ function Schematic({ project, B, route, u, f, view, light, pick }: { project: Pr
 
 const GB = (bytes: number) => (bytes / 2 ** 30).toFixed(1)
 /** Download sizes, for the models a role can be when they aren't here yet. */
-const SIZE: Record<string, number> = { 'qwen3:4b': 2.5, 'qwen3:1.7b': 1.4, 'nomic-embed-text': 0.3 }
+const SIZE: Record<string, number> = { 'qwen3:4b': 2.5, 'qwen3:1.7b': 1.4, 'nomic-embed-text': 0.3, 'mxbai-embed-large': 0.7 }
 
 /** The decisions under the schematic, in three groups: what you take away, what it finds, who reads it; and the point of view, when the route makes one. */
 export function ResearchDecisions({ project }: { project: Project }) {
@@ -411,12 +411,12 @@ export function ResearchDecisions({ project }: { project: Project }) {
     const here = facts.ollama.find((x) => x.name === m || x.name === `${m}:latest`)
     return here ? Number(GB(here.size)) : (SIZE[m] ?? 0)
   }
-  const modelRow = (role: 'writer' | 'screener' | 'summariser', what: string) => (
+  const modelRow = (role: 'writer' | 'screener' | 'summariser' | 'secondScreener' | 'ranker', what: string, name = ROLE[role as 'writer']?.(), models = ROLE_MODELS) => (
     <div className="research-role">
-      <span className="research-role__name">{ROLE[role]()}</span>
+      <span className="research-role__name">{name}</span>
       <span className="research-role__what">{what}</span>
       <span className="research-role__models">
-        {ROLE_MODELS.map((m) => {
+        {models.map((m) => {
           const gb = size(m)
           const here = facts.ollama.some((x) => x.name === m || x.name === `${m}:latest`)
           return (
@@ -482,10 +482,10 @@ export function ResearchDecisions({ project }: { project: Project }) {
           <p className="research-note">{say('projects.research.sources.combine')}</p>
         </Decision>
         <Decision box="papers" q={say('projects.research.decision.fields')} many>
-          {FIELDS.map((w) => {
-            const [name, about] = w()
+          {FIELD_LIST.map((k) => {
+            const [name, about] = FIELDS[k]()
             return (
-              <Choice key={name} many on={false} onPick={() => {}} name={name} off={say('projects.research.notBuilt')}>
+              <Choice key={k} many on={c.fields.includes(k)} onPick={() => toggleIn('fields', k)} name={name}>
                 {about}
               </Choice>
             )
@@ -493,14 +493,15 @@ export function ResearchDecisions({ project }: { project: Project }) {
           <p className="research-note">{say('projects.research.fields.about')}</p>
         </Decision>
         <Decision box="papers" q={say('projects.research.decision.library')} many>
-          {LIBRARY.map((w) => {
-            const [name, about] = w()
+          {LIBRARY_LIST.map((k) => {
+            const [name, about] = LIBRARY[k]()
             return (
-              <Choice key={name} many on={false} onPick={() => {}} name={name} off={say('projects.research.notBuilt')}>
+              <Choice key={k} many on={c.library.includes(k)} onPick={() => toggleIn('library', k)} name={name}>
                 {about}
               </Choice>
             )
           })}
+          <p className="research-note">{say('projects.research.library.never')}</p>
         </Decision>
       </div>
 
@@ -508,16 +509,9 @@ export function ResearchDecisions({ project }: { project: Project }) {
       <div className="voice-subs">
         <Decision box="models" q={say('projects.research.decision.models')}>
           {modelRow('writer', say('projects.research.role.writer.does'))}
-          <div className="research-role">
-            <span className="research-role__name">{say('projects.research.role.ranker')}</span>
-            <span className="research-role__what">{say('projects.research.role.ranker.does')}</span>
-            <span className="research-role__models">
-              <button type="button" className="research-role__model is-on" aria-checked role="radio">
-                nomic-embed-text
-              </button>
-            </span>
-          </div>
+          {modelRow('ranker', say('projects.research.role.ranker.does'), say('projects.research.role.ranker'), RANKERS)}
           {modelRow('screener', say('projects.research.role.screener.does'))}
+          {c.second && modelRow('secondScreener', say('projects.research.role.second.does'), say('projects.research.role.second'))}
           {c.summaries && modelRow('summariser', say('projects.research.role.summariser.does'))}
           <p className="research-note">{say('projects.research.models.memory', { memory })}</p>
         </Decision>
@@ -529,10 +523,10 @@ export function ResearchDecisions({ project }: { project: Project }) {
           ))}
         </Decision>
         <Decision box="screen" q={say('projects.research.decision.compare')}>
-          <Choice on onPick={() => {}} name={say('projects.research.compare.no')}>
+          <Choice on={!c.second} onPick={() => chooseResearch('second', false)} name={say('projects.research.compare.no')}>
             {say('projects.research.compare.no.about')}
           </Choice>
-          <Choice on={false} onPick={() => {}} name={say('projects.research.compare.yes')} off={say('projects.research.notBuilt')}>
+          <Choice on={c.second} onPick={() => chooseResearch('second', true)} name={say('projects.research.compare.yes')}>
             {say('projects.research.compare.yes.about')}
           </Choice>
         </Decision>
@@ -540,10 +534,10 @@ export function ResearchDecisions({ project }: { project: Project }) {
           <Choice on={!c.summaries} onPick={() => chooseResearch('summaries', false)} name={say('projects.research.summaries.none')}>
             {say('projects.research.summaries.none.about')}
           </Choice>
-          <Choice on={c.summaries} onPick={() => chooseResearch('summaries', true)} name={say('projects.research.summaries.abstracts')}>
+          <Choice on={c.summaries && !c.fullText} onPick={() => (chooseResearch('summaries', true), chooseResearch('fullText', false))} name={say('projects.research.summaries.abstracts')}>
             {say('projects.research.summaries.abstracts.about')}
           </Choice>
-          <Choice on={false} onPick={() => {}} name={say('projects.research.summaries.full')} off={say('projects.research.notBuilt')}>
+          <Choice on={c.summaries && c.fullText} onPick={() => (chooseResearch('summaries', true), chooseResearch('fullText', true))} name={say('projects.research.summaries.full')}>
             {say('projects.research.summaries.full.about')}
           </Choice>
         </Decision>
@@ -553,6 +547,14 @@ export function ResearchDecisions({ project }: { project: Project }) {
         <>
           <h3 className="label label--muted research-group">{say('projects.research.group.view')}</h3>
           <div className="voice-subs">
+            <Decision box="data" q={say('projects.research.decision.whose')}>
+              <Choice on={c.whose === 'mine'} onPick={() => chooseResearch('whose', 'mine')} name={say('projects.research.whose.mine')}>
+                {say('projects.research.whose.mine.about')}
+              </Choice>
+              <Choice on={c.whose === 'class'} onPick={() => chooseResearch('whose', 'class')} name={say('projects.research.whose.class')}>
+                {say('projects.research.whose.class.about')}
+              </Choice>
+            </Decision>
             <Decision box="data" q={say('projects.research.decision.trainFrom')}>
               <Choice on={c.trainFrom === 'all'} onPick={() => chooseResearch('trainFrom', 'all')} name={say('projects.research.trainFrom.all')}>
                 {say('projects.research.trainFrom.all.about')}

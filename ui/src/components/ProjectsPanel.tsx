@@ -11,7 +11,7 @@ import { guideHref, SCHEMATICS, startGuide, useGuide } from '../lib/guide'
 import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
-import { useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
+import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
 import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -171,6 +171,8 @@ interface Have {
   research: ResearchFolder[]
   /** texts uploaded for drafting rows from (data draft --from uploads/…) */
   texts: string[]
+  /** PDFs uploaded, for the research bot to read in full (papers add) */
+  pdfs: string[]
   /** the Ollama models, with their size in bytes */
   ollama: { name: string; size: number }[]
   /** blends made on the Merge tab */
@@ -190,7 +192,7 @@ async function readHave(): Promise<Have> {
     listDir('images'),
     readManifests<Output>('outputs'),
     readManifests<Gesture>('gestures'),
-    readManifests<{ created?: string; runs?: unknown[] }>('research'),
+    readManifests<{ created?: string; runs?: unknown[]; pooled?: string[] }>('research'),
     listDir('uploads'),
     readManifests<Gesture>('examples/gestures'),
   ])
@@ -239,6 +241,7 @@ async function readHave(): Promise<Have> {
     merges,
     chatLogs: chat.filter((f) => f.name.endsWith('.jsonl')).length,
     texts: uploads.filter((u) => /\.(txt|md)$/.test(u.name)).map((u) => `uploads/${u.name}`),
+    pdfs: uploads.filter((u) => /\.pdf$/i.test(u.name)).map((u) => `uploads/${u.name}`),
     research: await Promise.all(research.map(readResearch)),
   }
 }
@@ -258,11 +261,19 @@ export interface ResearchFolder {
   summaries: number
   /** the models that screened items here */
   by: string[]
+  /** items a second screener read (papers screen --as second) */
+  second: number
+  /** items summarised from their full text (papers summarise --full-text) */
+  fullText: number
+  /** your own copies in the library (papers add) */
+  added: number
+  /** a class's pool: the students' research folders (papers pool) */
+  pooled?: string[]
 }
 
-async function readResearch(r: { folder: string; created?: string; runs?: unknown[] }): Promise<ResearchFolder> {
+async function readResearch(r: { folder: string; created?: string; runs?: unknown[]; pooled?: string[] }): Promise<ResearchFolder> {
   const files = (await listDir(`research/${r.folder}`)).map((f) => f.name)
-  type D = { screen?: { decision: string; by: string }; student?: { decision: string }; summary?: unknown[] }
+  type D = { screen?: { decision: string; by: string; similarity?: true }; student?: { decision: string }; second?: unknown; summary?: { from: string }[] }
   let screen: Record<string, D> = {}
   try {
     screen = JSON.parse((await readFile(`research/${r.folder}/screen.json`)) ?? '{}') as Record<string, D>
@@ -270,7 +281,9 @@ async function readResearch(r: { folder: string; created?: string; runs?: unknow
     // a half-written screen.json: read again on the next change
   }
   const ds = Object.values(screen)
-  const byModel = ds.filter((d) => d.screen && d.screen.by !== 'nomic-embed-text')
+  // read by a model: not skipped by similarity alone (the ranker's name has "embed" in it)
+  const byModel = ds.filter((d) => d.screen && !d.screen.similarity && !/embed/i.test(d.screen.by))
+  const library = files.includes('library.jsonl') ? ((await readFile(`research/${r.folder}/library.jsonl`)) ?? '') : ''
   return {
     folder: r.folder,
     created: r.created,
@@ -281,6 +294,10 @@ async function readResearch(r: { folder: string; created?: string; runs?: unknow
     overrides: byModel.filter((d) => d.student && d.student.decision !== d.screen!.decision).length,
     summaries: ds.filter((d) => d.summary?.length).length,
     by: [...new Set(byModel.map((d) => d.screen!.by))],
+    second: ds.filter((d) => d.second).length,
+    fullText: ds.filter((d) => d.summary?.some((c) => /page|characters|full text/.test(c.from))).length,
+    added: (library.match(/"local":/g) ?? []).length,
+    ...(r.pooled && { pooled: r.pooled }),
   }
 }
 
@@ -432,7 +449,11 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
   const parts = (...p: string[]) => ['data.papers', 'papers.pick', ...p]
   const listed = !!folder?.files.includes('reading-list.md')
 
-  const need = [...new Set([c.writer, 'nomic-embed-text', c.screener, ...(c.summaries ? [c.summariser] : [])])]
+  const need = [...new Set([c.writer, c.ranker, c.screener, ...(c.second ? [c.secondScreener] : []), ...(c.summaries ? [c.summariser] : [])])]
+  // the sources besides scholarship, each its own flag; fields, comma-separated; both given on every run, since a run's flags replace the last run's
+  const sourceFlags = c.sources.flatMap((s) => SOURCE_FLAG[s] ?? [])
+  const fieldFlags = c.fields.length ? ['--fields', FIELD_LIST.filter((x) => c.fields.includes(x)).join(',')] : []
+  const lib = (k: 'proxy' | 'keys' | 'copies') => c.library.includes(k)
   const steps: Step[] = [
     {
       name: say('projects.research.mode.models'),
@@ -443,28 +464,71 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
       result: need.filter((m) => !here(m)).length ? say('projects.research.mode.missing', { models: need.filter((m) => !here(m)).join(', ') }) : undefined,
       parts: [],
     },
+    ...(lib('keys')
+      ? [
+          {
+            name: say('projects.research.mode.keys'),
+            tab: 'data' as const,
+            node: 'papers',
+            commands: ['papers keys'],
+            // the keys file is outside the workspace, where this page can't look: the step is done once the search has run, keys or not
+            done: !!folder,
+            result: say('projects.research.mode.keysResult'),
+            fill: { data: { pick: 'new' } },
+            parts: parts('papers.intro'),
+          },
+        ]
+      : []),
     {
       name: say('projects.research.mode.search'),
       tab: 'data',
       node: 'search',
       commands: folder
-        ? [joinWords(['papers', 'search', name, ...flag('--model', c.writer, 'qwen3:4b')])]
-        : [joinWords(['papers', 'search', at, '--topic', '<topic>', '--seed', '<doi>', '--seed', '<doi>', ...(c.sources.includes('feeds') ? ['--feed', '<address>'] : []), ...flag('--model', c.writer, 'qwen3:4b')])],
+        ? [joinWords(['papers', 'search', name, ...sourceFlags, ...fieldFlags, ...flag('--model', c.writer, 'qwen3:4b')])]
+        : [joinWords(['papers', 'search', at, '--topic', '<topic>', '--seed', '<doi>', '--seed', '<doi>', ...(c.sources.includes('feeds') ? ['--feed', '<address>'] : []), ...sourceFlags, ...(c.sources.includes('patents') ? ['--patent', '<number>'] : []), ...fieldFlags, ...flag('--model', c.writer, 'qwen3:4b')])],
       done: !!folder,
       result: folder ? say('projects.research.mode.searched', { folder: name, runs: folder.runs }) : undefined,
       fill: { data: { pick: 'new' } },
       parts: parts('papers.intro', 'papers.search'),
     },
+    ...(lib('copies')
+      ? [
+          {
+            name: say('projects.research.mode.add'),
+            tab: 'data' as const,
+            node: 'papers',
+            commands: (h.pdfs.length ? h.pdfs : ['uploads/<file>.pdf']).slice(0, 3).map((p) => joinWords(['papers', 'add', at, p])),
+            done: !!folder?.added,
+            result: folder ? say('projects.research.mode.added', { n: folder.added }) : undefined,
+            fill: { data: { pick: 'new' } },
+            parts: parts('papers.items'),
+          },
+        ]
+      : []),
     {
       name: say('projects.research.mode.screen'),
       tab: 'data',
       node: 'screen',
-      commands: [joinWords(['papers', 'screen', at, ...flag('--top', String(c.top), '40'), ...flag('--model', c.screener, 'qwen3:4b')])],
+      commands: [joinWords(['papers', 'screen', at, ...flag('--top', String(c.top), '40'), ...flag('--model', c.screener, 'qwen3:4b'), ...flag('--embed', c.ranker, 'nomic-embed-text')])],
       done: !!folder?.screened,
       result: folder ? say('projects.research.mode.screened', { n: folder.screened }) : undefined,
       fill: { data: { pick: 'new' } },
       parts: parts('papers.about', 'papers.screen'),
     },
+    ...(c.second
+      ? [
+          {
+            name: say('projects.research.mode.second'),
+            tab: 'data' as const,
+            node: 'screen',
+            commands: [joinWords(['papers', 'screen', at, '--as', 'second', '--model', c.secondScreener])],
+            done: !!folder?.second,
+            result: folder ? say('projects.research.mode.secondRead', { n: folder.second }) : undefined,
+            fill: { data: { pick: 'new' } },
+            parts: parts('papers.screen'),
+          },
+        ]
+      : []),
     {
       name: say('projects.research.mode.decide'),
       tab: 'data',
@@ -475,14 +539,27 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
       fill: { data: { pick: 'new' } },
       parts: parts('papers.items'),
     },
+    ...(c.second
+      ? [
+          {
+            name: say('projects.research.mode.check'),
+            tab: 'data' as const,
+            node: 'you',
+            commands: [joinWords(['papers', 'check', at])],
+            done: !!folder?.files.includes('check.json'),
+            fill: { data: { pick: 'new' } },
+            parts: parts('papers.items'),
+          },
+        ]
+      : []),
     ...(c.summaries
       ? [
           {
-            name: say('projects.research.mode.summarise'),
+            name: c.fullText ? say('projects.research.mode.summariseFull') : say('projects.research.mode.summarise'),
             tab: 'data' as const,
             node: 'list',
-            commands: [joinWords(['papers', 'summarise', at, ...flag('--model', c.summariser, 'qwen3:4b')])],
-            done: !!folder?.summaries,
+            commands: [joinWords(['papers', 'summarise', at, ...(c.fullText ? ['--full-text'] : []), ...flag('--model', c.summariser, 'qwen3:4b')])],
+            done: c.fullText ? !!folder?.fullText : !!folder?.summaries,
             fill: { data: { pick: 'new' } },
             parts: parts('papers.list'),
           },
@@ -492,7 +569,7 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
       name: c.take === 'list' ? say('projects.research.mode.read') : say('projects.research.mode.list'),
       tab: 'data',
       node: 'list',
-      commands: [joinWords(['papers', 'list', at])],
+      commands: [joinWords(['papers', 'list', at, ...(lib('proxy') ? ['--proxy', '<your library’s prefix>'] : []), ...(c.fields.length > 1 ? ['--bridges-first'] : [])])],
       done: listed,
       fill: { data: { pick: 'new' } },
       parts: parts('papers.list'),
@@ -500,11 +577,26 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
   ]
   if (c.take === 'list') return { steps, folder, folders: h.research.map((r) => r.folder), ollama: h.ollama }
 
-  // a point of view: your decisions as a set, then trained on all of them (Train) or only on where you overrode the screener (Prefer)
-  const set = `${at}-view`
+  // a class: the students' decisions pooled into one folder first, and the point of view learns from that
+  const pool = c.whose === 'class' ? h.research.find((r) => r.pooled?.includes(name)) : undefined
+  const from = c.whose === 'class' ? (pool?.folder ?? `${at}-class`) : at
+  if (c.whose === 'class')
+    steps.push({
+      name: say('projects.research.mode.pool'),
+      tab: 'data',
+      node: 'you',
+      commands: [joinWords(['unzip', 'shared/research-<classmate>.zip']), joinWords(['papers', 'pool', from, '--from', at, ...(pool?.pooled?.filter((p) => p !== name).flatMap((p) => ['--from', p]) ?? ['--from', '<classmate>'])]), joinWords(['papers', 'check', from])],
+      done: !!pool,
+      result: pool ? say('projects.research.mode.pooled', { n: pool.pooled!.length, decided: pool.mine }) : undefined,
+      fill: { data: { pick: 'new' } },
+      parts: parts('papers.items'),
+    })
+
+  // a point of view: the decisions as a set, then trained on all of them (Train) or only on where they overrode the screener (Prefer)
+  const set = `${from}-view`
   const prefs = `${set}-prefs`
   const short = c.base.includes('1.7B') ? '1.7b' : '360m'
-  const sets = h.data.filter((d) => d.research?.folder === name)
+  const sets = h.data.filter((d) => d.research?.folder === (c.whose === 'class' ? from : name))
   const viewSet = sets.find((d) => d.format === 'chat')
   const prefSet = sets.find((d) => d.format === 'preference')
   const trainOn = c.trainFrom === 'all' ? viewSet : prefSet
@@ -516,7 +608,7 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
     name: say('projects.research.mode.set'),
     tab: 'data',
     node: 'data',
-    commands: [joinWords(['papers', 'judge', at, set]), joinWords(['data', 'split', viewSet?.folder ?? set, '--valid', '0.2']), ...(c.trainFrom === 'overrides' ? [joinWords(['data', 'split', prefSet?.folder ?? prefs, '--valid', '0.2'])] : [])],
+    commands: [joinWords(['papers', 'judge', from, set]), joinWords(['data', 'split', viewSet?.folder ?? set, '--valid', '0.2']), ...(c.trainFrom === 'overrides' ? [joinWords(['data', 'split', prefSet?.folder ?? prefs, '--valid', '0.2'])] : [])],
     done: !!trainOn?.split,
     result: viewSet ? say('projects.research.mode.setMade', { rows: viewSet.counts.train + viewSet.counts.valid, pairs: prefSet ? prefSet.counts.train + prefSet.counts.valid : 0 }) : undefined,
     fill: { data: { pick: 'new' } },

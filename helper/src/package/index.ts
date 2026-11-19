@@ -107,7 +107,7 @@ async function researchPackage(model: string, mf: string, adapter: Adapter, data
   if (!m) return print(`package: workspace/research/${folder} isn't here; the judge's topic comes from it`), false
   const dir = ws('packages', model)
   if (!(await copyModel(dir, model, mf, adapter, `judges relevance to "${topic}"`))) return false
-  const config: ResearchConfig = { topic, judge: model, writer: WRITER, embed: EMBED, ollama: 'http://127.0.0.1:11434', seeds: m.seeds, feeds: m.feeds, queries: m.queries, top: 40, per: 10 }
+  const config: ResearchConfig = { topic, judge: model, writer: WRITER, embed: m.embed ?? EMBED, ollama: 'http://127.0.0.1:11434', seeds: m.seeds, feeds: m.feeds, queries: m.queries, top: 40, per: 10, ...(m.more?.length && { more: m.more as ResearchConfig['more'] }), ...(m.patents?.length && { patents: m.patents }) }
   await fs.writeFile(path.join(dir, 'research.json'), JSON.stringify(config, null, 2) + '\n')
   // the library, with the decisions made so far, so research.js shows only what is new and the reading list keeps what was kept
   const screen = (await readJson<Record<string, Decision>>(path.join(r, 'screen.json'))) ?? {}

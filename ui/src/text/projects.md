@@ -371,7 +371,7 @@ a reading list with why each item is relevant, a BibTeX file, a library of every
 ### What it can't do
 `projects.research.limits`
 
-It reads abstracts, not paywalled full text. There is no official Substack search: a Substack or a blog comes in by its feed address (name.substack.com/feed).
+It reads abstracts, the archives' and newspapers' passages and the start of each patent; it reads a full text only when one is free to read or you add your own copy, and never through your library's proxy. US patents come in by number only: Google Patents forbids automated search. Searches are written in today's words, so old newspapers and gazettes are reached only where the words match. There is no official Substack search: a Substack or a blog comes in by its feed address (name.substack.com/feed).
 
 ### Step: search
 `projects.research.search`
@@ -1447,7 +1447,7 @@ patents
 ### Source: patents, about
 `projects.research.source.patents.about`
 
-US patents from 1790, each fetched by its number with its text; British and German ones from the 1800s, by title, date and inventor
+US patents, each fetched from Google Patents by its number, with the start of its text; the numbers come from the archives' and newspapers' pages, or from you (--patent). British and German ones need a key: not built yet
 
 ### Source: archives
 `projects.research.source.archives`
@@ -1569,6 +1569,11 @@ your own copies
 
 PDFs you downloaded through the library: the screener and summariser read their full text
 
+### Library: what is never done
+`projects.research.library.never`
+
+Variable Machine never fetches through your library and never keeps a password: you sign in yourself, in your browser. Keys stay in a file in your Library on this Mac (papers keys), outside the workspace, so a zip never carries them.
+
 ### Decision: a model for each role
 `projects.research.decision.models`
 
@@ -1613,6 +1618,16 @@ summariser
 `projects.research.role.summariser.does`
 
 claims from what you kept, each quoting the text it rests on, or left out
+
+### Role: second screener
+`projects.research.role.second`
+
+second screener
+
+### Role: second screener, what it does
+`projects.research.role.second.does`
+
+reads the same items as the first: where the two disagree, your decision settles it
 
 ### Models and memory
 `projects.research.models.memory`
@@ -1703,6 +1718,31 @@ from the full text
 `projects.research.summaries.full.about`
 
 items whose source has the text: the archives' scans, patents, your own copies
+
+### Decision: whose decisions
+`projects.research.decision.whose`
+
+whose decisions it learns from
+
+### Whose: yours
+`projects.research.whose.mine`
+
+yours
+
+### Whose: yours, about
+`projects.research.whose.mine.about`
+
+the point of view holds your sense of what is relevant
+
+### Whose: the class, pooled
+`projects.research.whose.class`
+
+the class, pooled
+
+### Whose: the class, about
+`projects.research.whose.class.about`
+
+every student's decisions on the same topic, pooled: an item is kept when most of those who decided kept it; a tie stays undecided. papers check sets each student against the pool
 
 ### Decision: how the point of view is trained
 `projects.research.decision.trainFrom`
@@ -1883,6 +1923,51 @@ rank what was found, then screen the closest
 
 {n} screened by a model
 
+### Step: keys
+`projects.research.mode.keys`
+
+put any keys you hold in their file: papers keys shows where, and which are set
+
+### Step: keys, done
+`projects.research.mode.keysResult`
+
+the file is outside the workspace, so this page can't see it: papers keys says which keys are set
+
+### Step: your own copies
+`projects.research.mode.add`
+
+add your own PDFs (put them in uploads on the Files tab first): each is read in full, every page
+
+### Step: your own copies, done
+`projects.research.mode.added`
+
+{n} of your own copies in the library
+
+### Step: the second screener
+`projects.research.mode.second`
+
+the second screener reads the same items as the first
+
+### Step: the second screener, done
+`projects.research.mode.secondRead`
+
+{n} read by the second screener
+
+### Step: compare the screeners
+`projects.research.mode.check`
+
+compare the two screeners with your decisions: how often each agrees with you, and with the other
+
+### Step: pool the class
+`projects.research.mode.pool`
+
+bring in your classmates' research folders (each zipped on the Share tab), then pool every student's decisions into the class's
+
+### Step: pool the class, done
+`projects.research.mode.pooled`
+
+{n} students pooled · {decided} items with a pooled decision
+
 ### Step: decide
 `projects.research.mode.decide`
 
@@ -1897,6 +1982,11 @@ keep or skip each yourself: yours wins, and yours are what a point of view learn
 `projects.research.mode.summarise`
 
 summarise what you kept: each claim quotes the text it rests on
+
+### Step: summarise from the full text
+`projects.research.mode.summariseFull`
+
+summarise what you kept from its full text: each claim quotes the text and says where (a page)
 
 ### Step: the reading list, the last step
 `projects.research.mode.read`
