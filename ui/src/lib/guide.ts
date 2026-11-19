@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * Project mode: the project and step a student is following, from a card on
- * the Projects tab. It lives in the address (?project=voice&step=2&note=1),
+ * the Projects tab. It lives in the address (?project=studio&step=2&note=1),
  * so a reload or a shared link keeps it; the tab stays in the hash, as before.
  * step counts every step on the card from 1; note is the walkthrough's place
  * in that step (0 is the first note). mode=project is project mode: the

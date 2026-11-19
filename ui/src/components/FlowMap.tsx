@@ -80,7 +80,7 @@ export const NODES: Node[] = [
 ]
 
 /** The projects, named in their row on the map, in two lines so the echo in the corner never covers them. */
-const PROJECTS = ['ask a table · gesture controller · cut-out tool', 'a character\'s voice · research bot']
+const PROJECTS = ['ask a table · gesture controller · cut-out tool', 'a character\'s voice · research bot · models for a multi-agent studio']
 
 export type P = [number, number]
 

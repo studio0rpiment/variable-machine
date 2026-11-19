@@ -929,7 +929,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     case 'picture':
       return picture(name, pos[1], opts, line)
     case 'draft':
-      // a voice's rows set is made by its first draft
+      // a voice's rows set is made by its first draft; a studio's reader set by data new
       return draft(name, () => ensureDataset(name, line), opts, line, writeManifest)
     case 'reject': {
       const m = await readManifest(name)
