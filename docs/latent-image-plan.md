@@ -332,3 +332,35 @@ The walkthrough opens on an example, as the dream reading opens on its demo deck
 **What it showed:** the latent image of the roll is a table by a window with something on a plate: the coffee, the windowsills and the food together, in no picture. The three cat pictures' centre is 0.76 spreads from the roll's, further out than every one of 500 random choices of three, so the room sets the punctum beside it; under Lacan it put the Wikipedia article on the mirror stage and Holmes's mirror ("the man beholdeth himself in the glass and goeth his way").
 
 **Tested** on port 4842, 2026-11-20, every command through the tool: `latent example example-roll` (45 pictures in 23 minutes, about 28 s each on 32 GB, with the prior's minute); `latent crop … --grid` (15, 15, 15); four texts with `data raw`; `latent make` (axis 1 across halves 0.45: a sketch at 45 pictures); `latent train` (800 steps, 31 minutes); `latent gallery`; `latent room` with five texts (1,440 passages, 71 s); a draw in the room (about 50 s). Plato's *Sophist* didn't come in: Project Gutenberg answered 503 twice, so the texts step stays undone until it does.
+
+## 12. More ways to make the picture, themes, and the walk (2026-11-20)
+
+**Four ways to make the set's picture**, side by side on the make step (`latent make` makes all four; `latent ways <name>` adds the two new ones to a latent image made before):
+
+1. **The drawing:** the centre of the encoder's numbers, decoded (trained on the set's look, if chosen).
+2. **The pixel average:** every pixel of every picture averaged: the baseline.
+3. **The composite:** the pixel average of the 10 pictures nearest the centre, as Galton composited faces (1878) and Jason Salavon averages photographs. Sharper than the average of all: the cups and plates show through.
+4. **The average in the decoder's codes:** every picture put into the decoder's own codes (MoVQ), averaged there, and decoded. On the example it comes out an almost even grey: the codes cancel. That is the finding: the decoder's codes hold where things are, so they don't average into a picture; the encoder's numbers hold what things are, so they do.
+
+![The drawing (trained), the pixel average, the composite of the 10 nearest, and the average in the decoder's codes](images/latent-example-ways.jpg)
+
+**Themes** (`latent themes <name> [--themes N]`): what recurs in the set. The pictures are grouped by their numbers (k-means on the cosine; without `--themes`, the number of groups that splits the set most clearly, by silhouette). For each theme: a composite of its pictures, its centre drawn, and four words for it, read by Kandinsky's text encoder (the prior's half that reads words: the words of a vocabulary of about 250 things a photo roll holds, "a photo of …", that name this theme more than the whole set). Without the prior, the themes come without words. On the example: things on a table, coffee (23 pictures); the sea (9); nights and concerts (7); the cat (6). The set's own words: dark, light, art, person, close up.
+
+![The four themes: each as a composite of its pictures, then its centre drawn](images/latent-example-themes.jpg)
+
+**The walk** (`latent walk <name> --to …`): an animation from the latent image out to a target and back, drawn frame by frame (24 frames, about 20 s each with the trained decoder: 8 minutes), as a looping WebP. Every frame is drawn from the same noise, so only the numbers change, along the arc between the two (slerp), and the picture moves rather than flickers. The decision "where the walk goes":
+
+- **to a theme** (`theme-1`, the largest, by default): from what the set shares to what it keeps coming back to;
+- **to the set's own words** (`words`): the words the themes step read, turned back into the encoder's numbers by the prior: the set described, then the description drawn;
+- **to a sentence** (`"…"`): the student's own words, through the prior;
+- **to one picture** (`picture-12`): from the picture no one took to one that was taken.
+
+![The walk to theme 4: the bread on the table turns into the cat](images/latent-example-walk-theme-4.jpg)
+
+![The walk to theme 1, things on a table: the latent image barely moves, being near it already](images/latent-example-walk-theme-1.jpg)
+
+**What the words walk did:** the set's words ("dark, light, art, person, close up") drew a made-up woman's face, though the example's prompts hold no faces: the words name a person no picture shows. It is left out of this document by the example's own rule (no one made up who could be taken for someone); it is in `workspace/latents/example-roll-pictures/walks/words.webp`. Worth showing in class beside Lacan.
+
+**Tested** on port 4842, 2026-11-20: `latent ways` and `latent themes` through the tool; a 6-frame walk through the tool (124 s); three 24-frame walks run straight from Python (theme 1, theme 4, words: about 8 minutes each); the walkthrough's make, themes and walk steps showing them.
+
+**Not built:** words in other languages; a walk between two themes; a walk on the pixel side (the pixel average dissolving into a theme's composite), which needs no model and could sit beside the drawn walk.
