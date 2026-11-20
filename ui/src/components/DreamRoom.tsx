@@ -18,13 +18,13 @@ interface Response {
 
 /**
  * The room: the page the installation's screen shows, full screen, apart from
- * the card (#room/<name>). Four rows of cards, one row for each quality; the
+ * the card (#room/<name>; #room/<name>/trained uses the trained reader and style). Four rows of cards, one row for each quality; the
  * visitor touches one card in each row, then asks for the reading. The page
  * runs `dream choose` and `dream respond`, the commands the card shows, with
  * the decisions made on the card (in this browser), and shows the response:
  * made ahead of time if it was, at once; made now if not, in about a minute.
  */
-export default function DreamRoom({ name }: { name: string }) {
+export default function DreamRoom({ name, trained = false }: { name: string; trained?: boolean }) {
   const [deck, setDeck] = useState<Deck | null | undefined>(undefined)
   const [pick, setPick] = useState<Partial<Record<Quality, number>>>({})
   const [words, setWords] = useState('')
@@ -43,7 +43,7 @@ export default function DreamRoom({ name }: { name: string }) {
     const flag = (k: string, v: string | number, fallback: string | number) => (v === fallback ? [] : [k, String(v)])
     const ok =
       (await runCommand(joinWords(['dream', 'choose', name, ...QUALITIES.flatMap((q) => [`--${q}`, String(pick[q])]), ...(words.trim() ? ['--dream', words.trim()] : [])]))) &&
-      (await runCommand(joinWords(['dream', 'respond', name, ...flag('--model', c.writer, 'qwen3:4b'), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(c.readWords ? ['--read-words'] : [])])))
+      (await runCommand(joinWords(['dream', 'respond', name, ...(trained ? ['--model', c.reader] : flag('--model', c.writer, 'qwen3:4b')), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(trained && c.style === 'drawings' ? ['--style', `latents/${c.styleName}`] : []), ...(c.readWords ? ['--read-words'] : [])])))
     const latest = ok ? (JSON.parse((await readFile(`dreams/${name}/latest.json`)) ?? 'null') as { response: string } | null) : null
     const r = latest ? (JSON.parse((await readFile(latest.response)) ?? 'null') as Response | null) : null
     setBusy(false)

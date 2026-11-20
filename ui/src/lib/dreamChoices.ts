@@ -25,6 +25,12 @@ export type LibraryText = (typeof LIBRARY)[number]
 export const WRITERS = ['qwen3:4b', 'qwen3:1.7b', 'none']
 /** The models that can find a combination's nearest passages. */
 export const EMBEDDERS = ['nomic-embed-text', 'mxbai-embed-large']
+/** The trained dream reader: the bases it can be trained from (all Apache 2.0); the Qwen2.5 bases write Chinese, SmolLM2 English only. */
+export const READER_BASES = ['Qwen/Qwen2.5-0.5B-Instruct', 'Qwen/Qwen2.5-1.5B-Instruct', 'HuggingFaceTB/SmolLM2-360M-Instruct']
+/** How the trained reader's rows are read: each one read on the Data tab first, or all kept unread. */
+export type Rows = 'read' | 'keep'
+/** The style of the variations: Kandinsky as it is, or with a LoRA trained on someone's own drawings. */
+export type Style = 'none' | 'drawings'
 
 export interface DreamChoices {
   /** the dream folder followed (workspace/dreams/<name>) */
@@ -47,6 +53,16 @@ export interface DreamChoices {
   readWords: boolean
   /** the combination the one-combination step makes and shows, who-what-when-where */
   combination: Record<Quality, number>
+  /** the trained reader: the model whose readings it learns from (the teacher), the base it is trained from, its rows' set, and its name */
+  teacher: string
+  base: string
+  rows: Rows
+  readerSet: string
+  reader: string
+  /** the style: none, or drawings (an image set) made into a latent image and trained */
+  style: Style
+  drawings: string
+  styleName: string
 }
 
 const KEY = 'variable-machine.dream'
@@ -64,6 +80,14 @@ const DEFAULTS: DreamChoices = {
   ahead: 'all',
   readWords: false,
   combination: { who: 1, what: 1, when: 1, where: 1 },
+  teacher: 'qwen3:4b',
+  base: 'Qwen/Qwen2.5-0.5B-Instruct',
+  rows: 'read',
+  readerSet: 'dream-readings',
+  reader: 'dream-reader',
+  style: 'drawings',
+  drawings: 'her-drawings',
+  styleName: 'her-style',
 }
 
 let choices: DreamChoices = DEFAULTS

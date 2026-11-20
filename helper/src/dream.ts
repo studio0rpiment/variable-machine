@@ -8,6 +8,10 @@ import { IMAGE_EXT, encoderModel } from './shared/kinds.ts'
 import { PY_ENV, UV_DREAM } from './shared/recipes.ts'
 import { joinWords } from './shared/quote.ts'
 import { hasModel } from './papers.ts'
+import { ensureDataset, modelLicense, writeManifest } from './data.ts'
+import { draftsFile, readDrafts, tally } from './drafts.ts'
+import { simpleRow, type ChatRow } from './shared/chatRow.ts'
+import type { DraftRow } from './shared/manifest.ts'
 
 /**
  * `dream …`: a dream installation. Four cards for each quality (who, what,
@@ -20,8 +24,9 @@ import { hasModel } from './papers.ts'
  *   dream cards <prefix>                                       a demo deck, drawn from prompts: images/<prefix>-who … -where
  *   dream deck <name> --who images/<set> --what … --when … --where …   the deck: workspace/dreams/<name>/
  *   dream guide <name> raw/<text> uploads/<file> … [--embed nomic-embed-text]   the guide texts
- *   dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none]
- *   dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior]
+ *   dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none] [--again]
+ *   dream rows <name> <set> [--by qwen3:4b] [--keep]            the readings as training rows: drafts to read, or kept at once
+ *   dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior] [--style <latent>] [--again]
  *   dream choose <name> --who 1 --what 3 --when 2 --where 4 [--dream "…"]
  *   dream respond <name> [--model …] [--with …] [--variations 2] [--read-words]
  *
@@ -112,15 +117,26 @@ async function state(name: string) {
   const combos = await fs.readdir(ws('dreams', name, 'combinations')).catch(() => [] as string[])
   let interpreted = 0
   let drawn = 0
+  let styled = 0
+  const byModel: Record<string, number> = {}
   for (const c of combos) {
-    if (await exists(ws('dreams', name, 'combinations', c, 'interpretation.json'))) interpreted++
+    const r = await readJson<{ model: string | null }>(ws('dreams', name, 'combinations', c, 'interpretation.json'))
+    if (r) {
+      interpreted++
+      if (r.model) byModel[r.model] = (byModel[r.model] ?? 0) + 1
+    }
     if (await exists(ws('dreams', name, 'combinations', c, 'v1.png'))) drawn++
+    const v = await readJson<{ variations: { style?: string }[] }>(ws('dreams', name, 'combinations', c, 'variations.json'))
+    if (v?.variations.some((x) => x.style)) styled++
   }
   return {
     ...(deck && { sets: Object.fromEntries(QUALITIES.map((q) => [q, deck.qualities[q].folder.replace(/^images\//, '')])), combinations: deck.combinations }),
     ...(guide && { guide: guide.texts.map((t) => t.from) }),
     interpreted,
     drawn,
+    // which model wrote the readings, and how many combinations are drawn in a style: the trained card's steps follow these
+    byModel,
+    styled,
   }
 }
 
@@ -209,43 +225,133 @@ function combo(opts: Record<string, string>, usage: string): { argv: string[]; l
 
 /** `dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none]`. */
 async function interpret(args: string[], line: string): Promise<boolean> {
-  const { pos, opts } = flags(args, ['all'])
+  const { pos, opts } = flags(args, ['all', 'again'])
   const [name] = pos
-  const usage = `usage: dream interpret <name> (--combination 1-2-3-4 | --all) [--model ${DREAM_MODEL}|none]   (who-what-when-where card numbers; --all: every combination not interpreted yet, about 25 s each)`
+  const usage = `usage: dream interpret <name> (--combination 1-2-3-4 | --all) [--model ${DREAM_MODEL}|none] [--again]   (who-what-when-where card numbers; --all: every combination not interpreted yet, about 25 s each; --again: every one again, with this model)`
   const model = opts.model ?? DREAM_MODEL
-  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['all', 'combination', 'model'].includes(o)) || !/^[\w.:/-]+$/.test(model)) return print(usage), false
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['all', 'again', 'combination', 'model'].includes(o)) || !/^[\w.:/-]+$/.test(model)) return print(usage), false
   const c = combo(opts, usage)
   if (!c) return false
   if (!(await exists(ws('dreams', name, 'guide.json')))) return print(`dream interpret: no guide texts for ${name}; dream guide ${name} raw/<text> … first`), false
   if (model !== 'none' && !(await hasModel(model))) return print(`dream interpret needs ${model} in Ollama: ollama pull ${model}, or --model none for the passages alone`), false
   if (opts.all) {
     const n = (await readJson<Deck>(ws('dreams', name, 'deck.json')))?.combinations ?? 256
-    print(`  ${n} combinations at about 25 s each: up to ${Math.round((n * 25) / 60)} minutes. Those interpreted already are kept; stop it any time and run it again to go on`)
+    print(
+      opts.again
+        ? `  ${n} combinations again with ${model}: the readings there now are replaced (those made into rows with dream rows are in their data set)`
+        : `  ${n} combinations at about 25 s each: up to ${Math.round((n * 25) / 60)} minutes. Those interpreted already are kept; stop it any time and run it again to go on`,
+    )
   }
-  const argv = [...UV_DREAM, 'python', SCRIPT, 'interpret', `workspace/dreams/${name}`, ...c.argv, '--model', model]
-  return run('dream-interpret', name, argv, line, [], { name, combination: c.label, model }, async () => {
+  const argv = [...UV_DREAM, 'python', SCRIPT, 'interpret', `workspace/dreams/${name}`, ...c.argv, '--model', model, ...(opts.again ? ['--again'] : [])]
+  return run('dream-interpret', name, argv, line, [], { name, combination: c.label, model, again: !!opts.again }, async () => {
     if (!opts.all) print(`  open it: http://localhost:${port()}/api/workspace/file?path=${encodeURIComponent(`dreams/${name}/combinations/${opts.combination}/page.html`)}`)
   })
 }
 
 /** `dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior]`. */
 async function draw(args: string[], line: string): Promise<boolean> {
-  const { pos, opts } = flags(args, ['all'])
+  const { pos, opts } = flags(args, ['all', 'again'])
   const [name] = pos
-  const usage = 'usage: dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior]   (cards: the four cards mixed; prior: the cards and the interpretation\'s picture sentence, through Kandinsky\'s prior)'
+  const usage = 'usage: dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior] [--style latents/<name>] [--again]   (cards: the four cards mixed; prior: the cards and the interpretation\'s picture sentence, through Kandinsky\'s prior; style: drawn with the LoRA latent train made from someone\'s drawings; again: drawn again where there are pictures already)'
   const variations = opts.variations === undefined ? 2 : Number(opts.variations)
   const way = opts.with ?? 'cards'
-  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['all', 'combination', 'variations', 'with'].includes(o)) || !Number.isInteger(variations) || variations < 1 || variations > 8 || !['cards', 'prior'].includes(way)) return print(usage), false
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['all', 'again', 'combination', 'variations', 'with', 'style'].includes(o)) || !Number.isInteger(variations) || variations < 1 || variations > 8 || !['cards', 'prior'].includes(way)) return print(usage), false
   const c = combo(opts, usage)
   if (!c) return false
+  const style = await styleOf(opts.style, 'dream draw')
+  if (style === false) return false
   if (!(await exists(ws('dreams', name, 'deck.json')))) return print(`dream draw: no deck in workspace/dreams/${name}`), false
   if (!(await need('kandinsky', ...(way === 'prior' ? ['kandinsky-prior'] : [])))) return false
   if (opts.all) {
     const n = (await readJson<Deck>(ws('dreams', name, 'deck.json')))?.combinations ?? 256
     print(`  ${n * variations} pictures at about 20 s each: up to ${Math.round((n * variations * 20) / 60)} minutes. Those drawn already are kept; stop it any time and run it again to go on`)
   }
-  const argv = [...UV_DREAM, 'python', SCRIPT, 'draw', `workspace/dreams/${name}`, ...c.argv, '--variations', String(variations), '--with', way]
-  return run('dream-draw', name, argv, line, [], { name, combination: c.label, variations, with: way })
+  const argv = [...UV_DREAM, 'python', SCRIPT, 'draw', `workspace/dreams/${name}`, ...c.argv, '--variations', String(variations), '--with', way, ...(style ? ['--style', `workspace/${style}`] : []), ...(opts.again ? ['--again'] : [])]
+  return run('dream-draw', name, argv, line, [], { name, combination: c.label, variations, with: way, ...(style && { style }) })
+}
+
+/** A style: latents/<name> with the LoRA latent train made. Null for none; false (said why) when it isn't there. */
+async function styleOf(given: string | undefined, cmd: string): Promise<string | null | false> {
+  if (given === undefined) return null
+  const name = /^(?:workspace\/)?latents\/([a-z0-9][a-z0-9._-]{0,63})\/?$/.exec(given)?.[1]
+  if (!name) return print(`${cmd}: --style is latents/<name>, a latent image trained on drawings (latent make <name> images/<drawings>, then latent train <name>)`), false
+  if (!(await exists(ws('latents', name, 'lora.safetensors')))) return print(`${cmd}: latents/${name} isn't trained yet: latent train ${name}`), false
+  return `latents/${name}`
+}
+
+/**
+ * `dream rows <name> <set> [--by qwen3:4b] [--keep]`: every reading the model
+ * wrote, as a training row: the question dream interpret asked it (the four
+ * cards and the nearest passages) and the answer it gave, as JSON. A small
+ * model trained on them learns to answer the same question the same way.
+ * Without --keep they are drafts, read on the Data tab (keep, edit or reject
+ * each); with --keep they go into train.jsonl at once, unread.
+ */
+async function rows(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args, ['keep'])
+  const [name, set] = pos
+  const by = opts.by ?? DREAM_MODEL
+  if (!name || !NAME.test(name) || !set || !NAME.test(set) || pos.length !== 2 || Object.keys(opts).some((o) => !['by', 'keep'].includes(o)) || !/^[\w.:/-]+$/.test(by)) {
+    print(`usage: dream rows <name> <set> [--by ${DREAM_MODEL}] [--keep]   (the readings ${DREAM_MODEL} wrote for workspace/dreams/<name>, as rows of workspace/data/<set>: drafts to read on the Data tab, or with --keep into train.jsonl at once)`)
+    return false
+  }
+  const combos = (await fs.readdir(ws('dreams', name, 'combinations')).catch(() => [] as string[])).filter((c) => COMBINATION.test(c)).sort()
+  if (!combos.length) return print(`dream rows: nothing interpreted in workspace/dreams/${name}; dream interpret ${name} --all first`), false
+  const found: { combination: string; row: ChatRow }[] = []
+  let older = 0
+  let others = 0
+  for (const c of combos) {
+    const r = await readJson<{ model: string | null; asked?: string; answer?: unknown }>(ws('dreams', name, 'combinations', c, 'interpretation.json'))
+    if (!r?.model) continue
+    if (r.model !== by) others++
+    else if (!r.asked || !r.answer) older++
+    // the question as dream.py sends it, /no_think and all, so the trained model is asked exactly what it learned
+    else found.push({ combination: c, row: simpleRow(`${r.asked} /no_think`, JSON.stringify(r.answer)) })
+  }
+  if (older) print(`  ${older} reading${older === 1 ? ' was' : 's were'} written before readings kept their question and answer; dream interpret ${name} --all --again --model ${by} makes them again`)
+  if (others) print(`  ${others} reading${others === 1 ? ' is' : 's are'} by another model, left out (--by names the model whose readings to use)`)
+  if (!found.length) return print(`dream rows: no readings by ${by} to make rows of`), false
+  const m = await ensureDataset(set, line)
+  if ((m.format ?? 'chat') !== 'chat') return print(`dream rows: ${set} is a ${m.format} dataset; readings are chat rows`), false
+  const drafts = await readDrafts(set)
+  const lines = async (f: string) => (await fs.readFile(ws('data', set, f), 'utf8').catch(() => '')).split('\n').filter(Boolean).map((l) => (JSON.parse(l) as ChatRow).messages.find((x) => x.role === 'user')?.content)
+  const seen = new Set([...drafts.map((d) => d.row.messages.find((x) => x.role === 'user')?.content), ...(await lines('train.jsonl')), ...(await lines('valid.jsonl'))])
+  const fresh = found.filter((f) => !seen.has(f.row.messages.find((x) => x.role === 'user')!.content))
+  if (!fresh.length) return print(`  every reading by ${by} is in ${set} already`), true
+  let id = drafts.reduce((a, d) => Math.max(a, d.id), 0)
+  const made: DraftRow[] = fresh.map((f) => ({ id: ++id, state: opts.keep ? 'kept' : 'unreviewed', model: by, from: `dreams/${name}/combinations/${f.combination}`, row: f.row }))
+  await fs.appendFile(draftsFile(set), made.map((d) => JSON.stringify(d)).join('\n') + '\n')
+  if (opts.keep) {
+    await fs.appendFile(ws('data', set, 'train.jsonl'), fresh.map((f) => JSON.stringify(f.row)).join('\n') + '\n')
+    m.counts.train += fresh.length
+  }
+  m.drafts = tally([...drafts, ...made])
+  // the rows are the model's words, written from the guide texts' passages: both are its sources
+  let s = m.sources.find((x) => x.id === by)
+  if (!s) {
+    const lic = await modelLicense(by)
+    s = { id: by, kind: 'generated', license: lic.license, licenseChecked: lic.checked, rows: 0, about: `readings written for workspace/dreams/${name} (dream interpret)` }
+    m.sources.push(s)
+  }
+  if (opts.keep) s.rows += fresh.length
+  const guide = await readJson<{ texts: { from: string }[] }>(ws('dreams', name, 'guide.json'))
+  for (const t of guide?.texts ?? []) {
+    if (!m.inputs.includes(`workspace/${t.from}`)) m.inputs.push(`workspace/${t.from}`)
+    if (m.sources.some((x) => x.id === t.from)) continue
+    const raw = await readJson<{ license?: string; licenseChecked?: boolean }>(ws(t.from, 'manifest.json'))
+    m.sources.push({ id: t.from, kind: 'import', license: raw?.license ?? (t.from.startsWith('uploads/') ? 'yours' : 'see its manifest'), licenseChecked: !!raw?.licenseChecked, rows: 0, about: 'a guide text: its passages are in every row' })
+  }
+  if (!m.inputs.includes(`workspace/dreams/${name}`)) m.inputs.push(`workspace/dreams/${name}`)
+  m.dream = { folder: `dreams/${name}`, by }
+  m.about ??= `Dream readings: the question dream interpret asks (four cards, and the nearest passages of the guide texts) and the answer ${by} gave, as JSON, from workspace/dreams/${name}.`
+  if (m.command.at(-1) !== line) m.command.push(line)
+  await writeManifest(m)
+  broadcast({ type: 'workspace.changed', path: `data/${set}/manifest.json`, kind: 'change' })
+  if (opts.keep) {
+    print(`  ◂ ${fresh.length} rows → workspace/data/${set}/train.jsonl, kept unread · ${m.counts.train} in all`)
+    print(`  next: data split ${set} --valid 0.2, then train <name> --data ${set} --base <base> --max-seq 3072`)
+  } else print(`  ◂ ${fresh.length} drafts → workspace/data/${set}/drafts.jsonl · ${m.drafts.unreviewed} to read: keep, edit or reject each one on the Data tab`)
+  return true
 }
 
 /** `dream choose <name> --who 1 --what 3 --when 2 --where 4 [--dream "…"]`: a visitor's combination, into choice.json. */
@@ -278,15 +384,17 @@ async function respond(args: string[], line: string): Promise<boolean> {
   const model = opts.model ?? DREAM_MODEL
   const variations = opts.variations === undefined ? 2 : Number(opts.variations)
   const way = opts.with ?? 'cards'
-  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['model', 'with', 'variations', 'read-words'].includes(o)) || !/^[\w.:/-]+$/.test(model) || !['cards', 'prior'].includes(way) || !Number.isInteger(variations) || variations < 1 || variations > 8) {
-    print(`usage: dream respond <name> [--model ${DREAM_MODEL}|none] [--with cards|prior] [--variations 2] [--read-words]   (what was made ahead of time is shown at once; the rest is made now. --read-words: the visitor's words are read into a new interpretation)`)
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['model', 'with', 'variations', 'read-words', 'style'].includes(o)) || !/^[\w.:/-]+$/.test(model) || !['cards', 'prior'].includes(way) || !Number.isInteger(variations) || variations < 1 || variations > 8) {
+    print(`usage: dream respond <name> [--model ${DREAM_MODEL}|none] [--with cards|prior] [--variations 2] [--read-words] [--style latents/<name>]   (what was made ahead of time is shown at once; the rest is made now. --read-words: the visitor's words are read into a new interpretation)`)
     return false
   }
+  const style = await styleOf(opts.style, 'dream respond')
+  if (style === false) return false
   if (!(await exists(ws('dreams', name, 'choice.json')))) return print(`dream respond: nothing chosen yet; dream choose ${name} --who 1 --what 1 --when 1 --where 1`), false
   if (!(await need('kandinsky', ...(way === 'prior' ? ['kandinsky-prior'] : [])))) return false
   if (model !== 'none' && !(await hasModel(model))) print(`  ${model} isn't in Ollama, so a combination not interpreted ahead gets the passages alone: ollama pull ${model}`)
   const out = `workspace/dreams/${name}`
-  const argv = [...UV_DREAM, 'python', SCRIPT, 'respond', out, '--model', model, '--with', way, '--variations', String(variations), ...(opts['read-words'] ? ['--read-words'] : [])]
+  const argv = [...UV_DREAM, 'python', SCRIPT, 'respond', out, '--model', model, '--with', way, '--variations', String(variations), ...(opts['read-words'] ? ['--read-words'] : []), ...(style ? ['--style', `workspace/${style}`] : [])]
   return run('dream-respond', name, argv, line, [`${out}/latest.json`], { name, model, with: way }, async () => {
     const latest = await readJson<{ response: string }>(ws('dreams', name, 'latest.json'))
     const r = latest && (await readJson<{ page: string }>(ws(latest.response)))
@@ -300,9 +408,10 @@ export async function dreamCommand(args: string[], line: string): Promise<boolea
   if (sub === 'deck') return deck(rest, line)
   if (sub === 'guide') return guide(rest, line)
   if (sub === 'interpret') return interpret(rest, line)
+  if (sub === 'rows') return rows(rest, line)
   if (sub === 'draw') return draw(rest, line)
   if (sub === 'choose') return choose(rest)
   if (sub === 'respond') return respond(rest, line)
-  print('usage: dream cards <prefix> | dream deck <name> --who images/<set> … | dream guide <name> raw/<text> … | dream interpret <name> (--combination 1-2-3-4 | --all) | dream draw <name> (--combination … | --all) [--with cards|prior] | dream choose <name> --who n --what n --when n --where n | dream respond <name>')
+  print('usage: dream cards <prefix> | dream deck <name> --who images/<set> … | dream guide <name> raw/<text> … | dream interpret <name> (--combination 1-2-3-4 | --all) [--again] | dream rows <name> <set> [--keep] | dream draw <name> (--combination … | --all) [--with cards|prior] | dream choose <name> --who n --what n --when n --where n | dream respond <name>')
   return false
 }

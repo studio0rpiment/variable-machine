@@ -117,7 +117,7 @@ function combinedLicense(sources: DataSource[]) {
   return names.length ? names.join(' + ') : sources.length ? 'generated (see sources)' : 'none yet'
 }
 
-async function writeManifest(m: DatasetManifest) {
+export async function writeManifest(m: DatasetManifest) {
   m.license = combinedLicense(m.sources)
   await fs.writeFile(path.join(dir(m.name), 'manifest.json'), JSON.stringify(m, null, 2) + '\n')
 }
@@ -126,7 +126,7 @@ function recordCommand(m: DatasetManifest, line: string) {
   if (m.command.at(-1) !== line) m.command.push(line)
 }
 
-async function ensureDataset(name: string, line: string, format: DataFormat = 'chat'): Promise<DatasetManifest> {
+export async function ensureDataset(name: string, line: string, format: DataFormat = 'chat'): Promise<DatasetManifest> {
   const existing = await readManifest(name)
   if (existing) return { ...existing, format: existing.format ?? 'chat' }
   await fs.mkdir(dir(name), { recursive: true })
@@ -723,7 +723,7 @@ async function count(name: string, line: string): Promise<boolean> {
 }
 
 /** Model licenses for generated rows, read from Ollama once per model. */
-async function modelLicense(model: string): Promise<{ license: string; checked: boolean }> {
+export async function modelLicense(model: string): Promise<{ license: string; checked: boolean }> {
   try {
     const res = await ollamaPost('/api/show', { model })
     const s = (await res.json()) as { license?: string | string[] }

@@ -80,6 +80,8 @@ export interface HfBase {
 export const HF_BASES: HfBase[] = [
   { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The same tiny assistant as smollm2:360m, in the format training needs. The default starting point: quick to train on any 16GB Mac.', architecture: 'llama', template: 'chatml', params: '360M', loraGB: 2, layers: 32, runsAs: 'smollm2:360m' },
   { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The larger SmolLM2, in the format training needs. Better results, but slower, and it needs more memory.', architecture: 'llama', template: 'chatml', params: '1.7B', loraGB: 8, layers: 24, runsAs: 'smollm2:1.7b' },
+  { id: 'Qwen/Qwen2.5-0.5B-Instruct', license: 'Apache 2.0', maker: 'Alibaba Qwen, 2024', builtFor: 'A tiny assistant that writes Chinese as well as English. For a model that answers in both, as the dream reader does.', architecture: 'qwen2', template: 'chatml', params: '0.5B', loraGB: 3, layers: 24, runsAs: 'qwen2.5:0.5b' },
+  { id: 'Qwen/Qwen2.5-1.5B-Instruct', license: 'Apache 2.0', maker: 'Alibaba Qwen, 2024', builtFor: 'The larger of the two Qwen2.5 bases offered (the 3B is under a research licence, so it is not): better Chinese, slower to train.', architecture: 'qwen2', template: 'chatml', params: '1.5B', loraGB: 6, layers: 28, runsAs: 'qwen2.5:1.5b' },
 ]
 
 export interface DataSourceInfo {

@@ -77,8 +77,9 @@ const HELP = `commands
   dream cards <prefix>                            16 demo cards drawn from prompts (Kandinsky's prior): workspace/images/<prefix>-who … -where
   dream deck <name> --who images/<set> --what … --when … --where …   a dream installation's deck, 4 cards a quality: workspace/dreams/<name>/
   dream guide <name> raw/<text> [uploads/<file>.txt …]   the texts its combinations are interpreted with
-  dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none]   a combination's interpretation, from the guide texts
-  dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior]   its variations, drawn by Kandinsky
+  dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none] [--again]   a combination's interpretation, from the guide texts
+  dream rows <name> <set> [--by qwen3:4b] [--keep]   the readings as training rows for a dream reader of your own
+  dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior] [--style latents/<name>] [--again]   its variations, drawn by Kandinsky
   dream choose <name> --who n --what n --when n --where n [--dream "…"]   a visitor's combination
   dream respond <name> [--read-words]             its interpretation and variations, made ahead or now; the room page is #room/<name>
   model get siglip                                a picture encoder for image moods: workspace/tools/siglip/

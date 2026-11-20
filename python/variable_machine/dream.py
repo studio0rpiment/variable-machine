@@ -3,9 +3,9 @@
     python python/variable_machine/dream.py cards <image folder prefix>
     python python/variable_machine/dream.py deck <dream folder> --who <folder> --what <folder> --when <folder> --where <folder>
     python python/variable_machine/dream.py guide <dream folder> <text> [<text> …] [--embed nomic-embed-text]
-    python python/variable_machine/dream.py interpret <dream folder> (--combination 1-2-3-4 | --all) [--model qwen3:4b]
-    python python/variable_machine/dream.py draw <dream folder> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior]
-    python python/variable_machine/dream.py respond <dream folder> [--model qwen3:4b] [--with cards|prior] [--variations 2] [--read-words]
+    python python/variable_machine/dream.py interpret <dream folder> (--combination 1-2-3-4 | --all) [--model qwen3:4b] [--again]
+    python python/variable_machine/dream.py draw <dream folder> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior] [--style <latent folder>] [--again]
+    python python/variable_machine/dream.py respond <dream folder> [--model qwen3:4b] [--with cards|prior] [--variations 2] [--read-words] [--style <latent folder>]
 
 All paths are relative to the repo root. Nothing here downloads anything.
 
@@ -40,6 +40,12 @@ The models, each a choice:
   finds the passages of the other guide texts nearest a combination.
 - **A language model in Ollama** (qwen3:4b, Apache 2.0, by default; --model
   none for no reading) writes the interpretation, in English and Chinese.
+  Each interpretation keeps the question asked and the answer given, so
+  dream rows can make training rows of them: a small model trained on them
+  (train, export) is then named with --model, and --again interprets every
+  combination again with it.
+- **A style**: with --style workspace/latents/<name>, the decoder draws with
+  the LoRA latent train made from someone's own drawings, in their look.
 
 What it is not: the guide texts are what the student chose, and the language
 model is a reader of them, not a diviner. The pages say so.
@@ -466,13 +472,16 @@ def interpret_one(out: Path, d: dict, g: dict, c: dict[str, int], model: str, wo
     said = None
     if model != "none" and found:
         named = list(dict.fromkeys(title_of(f["from"]) for f in found))
-        said = ask(model, PROMPT.format(
+        asked = PROMPT.format(
             cards="\n".join(f"- {q} ({ZH[q]}): {describe(cards_[q])}" for q in QUALITIES),
             dream=f'\nThey said of their dream: "{words}"' if words else "",
             passages="\n".join(f"[{i + 1}] ({title_of(f['from'])}) {f['text']}" for i, f in enumerate(found)),
             texts=", ".join(named),
-        ))
+        )
+        said = ask(model, asked)
     if said:
+        # the question and the model's own answer, as they were: dream rows makes training rows of them
+        answer = {k: v for k, v in said.items() if k != "reading"}
         parts = [text_of(x.get("sentence", "")) for x in said.get("by_text", []) if isinstance(x, dict)] + [text_of(said.get("together", ""))]
         said["reading"] = " ".join(dict.fromkeys(p.strip() for p in parts if p.strip()))
     return {
@@ -485,6 +494,7 @@ def interpret_one(out: Path, d: dict, g: dict, c: dict[str, int], model: str, wo
         "picture": text_of(said.get("picture", "")) if said else "a dream of " + ", ".join(describe(cards_[q]) for q in QUALITIES),
         "used": said.get("used", []) if said else [],
         "model": model if said else None,
+        **({"asked": asked, "answer": answer} if said else {}),
         "guide": [t["from"] for t in g["texts"]],
         "made": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
@@ -504,10 +514,10 @@ def chosen(d: dict, key: str | None, every: bool) -> list[dict[str, int]]:
     return [c]
 
 
-def interpret(out: Path, key: str | None, every: bool, model: str) -> None:
+def interpret(out: Path, key: str | None, every: bool, model: str, again: bool = False) -> None:
     d, g = read(out)
     combos = chosen(d, key, every)
-    made = [c for c in combos if every and (out / "combinations" / key_of(c) / "interpretation.json").exists()]
+    made = [c for c in combos if every and not again and (out / "combinations" / key_of(c) / "interpretation.json").exists()]
     combos = [c for c in combos if c not in made]
     if made:
         say(f"  {len(made)} interpreted already, kept; {len(combos)} to go")
@@ -542,11 +552,12 @@ def weights_for(v: int) -> dict[str, float]:
     return {q: LEAD if q == lead else (1 - LEAD) / 3 for q in QUALITIES}
 
 
-def draw(out: Path, key: str | None, every: bool, variations: int, way: str) -> None:
+def draw(out: Path, key: str | None, every: bool, variations: int, way: str, style: Path | None = None, again: bool = False) -> None:
+    """With a style (a latent folder trained by latent train), the decoder draws with its LoRA: the look of the drawings it learned."""
     import torch
 
     d, _ = read(out)
-    combos = [c for c in chosen(d, key, every) if not (every and (out / "combinations" / key_of(c) / f"v{variations}.png").exists())]
+    combos = [c for c in chosen(d, key, every) if not (every and not again and (out / "combinations" / key_of(c) / f"v{variations}.png").exists())]
     if not combos:
         return say("  every combination has its variations already")
     z = np.load(out / "embeddings.npz")
@@ -578,7 +589,12 @@ def draw(out: Path, key: str | None, every: bool, variations: int, way: str) -> 
             for v in range(variations):
                 w = weights_for(v)
                 jobs.append((c, v, sum(w[q] * unit(K[idx(c, q)]) for q in QUALITIES), None, "", w))
-    dec = L.decoder()
+    lora = style / "lora.safetensors" if style else None
+    if lora and not lora.exists():
+        sys.exit(f"dream draw: {style} has no lora.safetensors; latent train {style.name} first")
+    dec = L.decoder(lora=lora)
+    if lora:
+        say(f"  drawing in the style of {style}: the decoder with its LoRA")
     t0 = time.time()
     for k, (c, v, e, neg, sentence, w) in enumerate(jobs, 1):
         cdir = out / "combinations" / key_of(c)
@@ -593,7 +609,7 @@ def draw(out: Path, key: str | None, every: bool, variations: int, way: str) -> 
         im.save(cdir / f"v{v + 1}.png")
         meta_p = cdir / "variations.json"
         meta = json.loads(meta_p.read_text()) if meta_p.exists() else {"variations": []}
-        meta["variations"] = [x for x in meta["variations"] if x["file"] != f"v{v + 1}.png"] + [{"file": f"v{v + 1}.png", "with": way, "leads": QUALITIES[v % 4], "weights": {q: round(x, 3) for q, x in w.items()}, **({"sentence": sentence, "sentenceWeight": SENTENCE} if way == "prior" else {})}]
+        meta["variations"] = [x for x in meta["variations"] if x["file"] != f"v{v + 1}.png"] + [{"file": f"v{v + 1}.png", "with": way, "leads": QUALITIES[v % 4], "weights": {q: round(x, 3) for q, x in w.items()}, **({"style": rel(style)} if style else {}), **({"sentence": sentence, "sentenceWeight": SENTENCE} if way == "prior" else {})}]
         meta["variations"].sort(key=lambda x: x["file"])
         meta_p.write_text(json.dumps(meta, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         left = (time.time() - t0) / k * (len(jobs) - k)
@@ -605,7 +621,7 @@ def draw(out: Path, key: str | None, every: bool, variations: int, way: str) -> 
 # ---------------------------------------------------------------- respond
 
 
-def respond(out: Path, model: str, way: str, variations: int, read_words: bool) -> None:
+def respond(out: Path, model: str, way: str, variations: int, read_words: bool, style: Path | None = None) -> None:
     choice = json.loads((out / "choice.json").read_text(encoding="utf-8"))
     d, g = read(out)
     c = {q: int(choice[q]) for q in QUALITIES}
@@ -625,7 +641,7 @@ def respond(out: Path, model: str, way: str, variations: int, read_words: bool) 
             ip.write_text(json.dumps(r, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     if not (cdir / "v1.png").exists():
         say(f"  {key}: drawing now")
-        draw(out, key, False, variations, way)
+        draw(out, key, False, variations, way, style)
     else:
         say(f"  {key}: drawn ahead of time")
     n = len(list((out / "responses").glob("*"))) + 1 if (out / "responses").exists() else 1
@@ -653,7 +669,7 @@ def write_page(out: Path, cdir: Path) -> None:
     e = html.escape
     img = lambda p, size=320: f'<img src="{thumb(open_image(p), size)}" alt="">' if p.exists() else ""  # noqa: E731
     cards_ = "".join(f'<figure>{img(ws(r["cards"][q]["file"]))}<figcaption><b>{q} {ZH[q]} · {r["cards"][q]["n"]}</b> {e(r["cards"][q].get("title") or "")} <span class=c>{e(", ".join(w["en"] + " " + w["zh"] for w in r["cards"][q]["words"]))}</span></figcaption></figure>' for q in QUALITIES)
-    vars_ = "".join(f'<figure>{img(cdir / v["file"], 512)}<figcaption>{e(v["file"])} · led by {e(v["leads"])} · {e(v["with"])}{" · with the sentence (" + str(int(v["sentenceWeight"] * 100)) + "%)" if v.get("sentence") else ""}</figcaption></figure>' for v in meta["variations"])
+    vars_ = "".join(f'<figure>{img(cdir / v["file"], 512)}<figcaption>{e(v["file"])} · led by {e(v["leads"])} · {e(v["with"])}{" · with the sentence (" + str(int(v["sentenceWeight"] * 100)) + "%)" if v.get("sentence") else ""}{" · in the style of " + e(v["style"]) if v.get("style") else ""}</figcaption></figure>' for v in meta["variations"])
     used = set(r.get("used") or [])
     ps = "".join(f'<li class="{"u" if (i + 1) in used else ""}"><b>[{i + 1}] {e(ws(p["from"]).name)}</b> <span class=c>{e(p["about"])}</span><br>{e(p["text"][:600])}</li>' for i, p in enumerate(r["passages"]))
     who = f"Written by {e(r['model'])}, a language model, from the passages below and nothing else; the passages it used are marked." if r.get("model") else "No reading: no language model was chosen, or it didn't answer. The passages stand alone."
@@ -685,12 +701,13 @@ def main(argv: list[str]) -> None:
     def opt(name: str, default: str | None = None) -> str | None:
         return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else default
 
-    flags_with_values = {"--who", "--what", "--when", "--where", "--embed", "--combination", "--model", "--variations", "--with"}
+    flags_with_values = {"--who", "--what", "--when", "--where", "--embed", "--combination", "--model", "--variations", "--with", "--style"}
     pos = [a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or argv[i - 1] not in flags_with_values)]
     cmd = pos[0] if pos else ""
     way = opt("--with", "cards")
     if way not in ("cards", "prior"):
         sys.exit("dream: --with is cards or prior")
+    style = Path(opt("--style")) if opt("--style") else None
     if cmd == "cards" and len(pos) == 2:
         cards(pos[1])
     elif cmd == "deck" and len(pos) == 2 and all(opt(f"--{q}") for q in QUALITIES):
@@ -698,11 +715,11 @@ def main(argv: list[str]) -> None:
     elif cmd == "guide" and len(pos) >= 3:
         guide(Path(pos[1]), pos[2:], opt("--embed", EMBED))
     elif cmd == "interpret" and len(pos) == 2:
-        interpret(Path(pos[1]), opt("--combination"), "--all" in argv, opt("--model", "qwen3:4b"))
+        interpret(Path(pos[1]), opt("--combination"), "--all" in argv, opt("--model", "qwen3:4b"), "--again" in argv)
     elif cmd == "draw" and len(pos) == 2:
-        draw(Path(pos[1]), opt("--combination"), "--all" in argv, int(opt("--variations", "2")), way)
+        draw(Path(pos[1]), opt("--combination"), "--all" in argv, int(opt("--variations", "2")), way, style, "--again" in argv)
     elif cmd == "respond" and len(pos) == 2:
-        respond(Path(pos[1]), opt("--model", "qwen3:4b"), way, int(opt("--variations", "2")), "--read-words" in argv)
+        respond(Path(pos[1]), opt("--model", "qwen3:4b"), way, int(opt("--variations", "2")), "--read-words" in argv, style)
     else:
         sys.exit(__doc__.split("\n\n")[1])
 

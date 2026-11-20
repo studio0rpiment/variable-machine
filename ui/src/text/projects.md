@@ -758,6 +758,283 @@ last response: {path}
 
 open the room
 
+## Dream reader, trained
+
+### Name
+`projects.dreamTrained.title`
+
+dream reader, trained · 訓練解夢
+
+### What it does
+`projects.dreamTrained.does`
+
+The same dream installation, made with models the student trains. A ready-made language model, the teacher, interprets all 256 combinations from the guide texts she chose. Its readings become training rows, which she reads, edits or rejects on the Data tab. A small model of her choosing is trained on the rows she keeps, exported to Ollama, and reads every combination again: the dream reader is now hers. Kandinsky 2.2 draws the variations, and someone's own drawings, made into a latent image and trained (a LoRA, a small set of added weights), give them that person's style. The room uses both, and the reader can be packaged to share.
+
+### What you end up with
+`projects.dreamTrained.get`
+
+A dream reader of your own in Ollama, trained on readings you kept; a style of your own for Kandinsky, trained on your drawings; all 256 combinations interpreted and drawn with them; the room; and a package of the reader with its rows and where they came from.
+
+### What it can't do
+`projects.dreamTrained.limits`
+
+The trained reader learns to answer as the teacher did, from the same passages: it is no better a reader than the teacher, only smaller and hers, and with a few hundred rows it can still repeat itself or drift. Keeping a reading means agreeing to train on it. The style learns a look from 12 to about 100 drawings, not a drawing hand: Kandinsky still draws. Only Kandinsky 2.2 can be trained here; other diffusion models are listed with what they would need. Training the reader takes about 20 minutes on 16 GB of memory, the style about 20 minutes, and drawing all 256 again about 3 hours.
+
+### The teacher's readings
+`projects.dreamTrained.mode.teacher`
+
+{teacher} interprets every combination
+
+### The teacher's readings, so far
+`projects.dreamTrained.mode.teacherResult`
+
+{n} of {total} read by {teacher}
+
+### The rows
+`projects.dreamTrained.mode.rows`
+
+the readings become rows; keep the ones to train on
+
+### The rows, so far
+`projects.dreamTrained.mode.rowsResult`
+
+{kept} kept of {target} to train on · {unread} to read
+
+### Train the reader
+`projects.dreamTrained.mode.train`
+
+train the dream reader on the rows
+
+### Export the reader
+`projects.dreamTrained.mode.export`
+
+export it to Ollama
+
+### The reader reads again
+`projects.dreamTrained.mode.again`
+
+{reader} interprets every combination again
+
+### The reader's readings, so far
+`projects.dreamTrained.mode.againResult`
+
+{n} of {total} read by {reader}
+
+### The drawings
+`projects.dreamTrained.mode.drawings`
+
+the drawings become a style
+
+### The drawings, so far
+`projects.dreamTrained.mode.drawingsResult`
+
+{n} drawings · {trained}
+
+### The style is trained
+`projects.dreamTrained.mode.trainedYes`
+
+trained
+
+### The style is not trained yet
+`projects.dreamTrained.mode.trainedNo`
+
+not trained yet
+
+### The drawings, not enough yet
+`projects.dreamTrained.mode.drawingsNeed`
+
+{n} drawings: 12 at the least, 30 or more for its axes
+
+### Draw in the style
+`projects.dreamTrained.mode.draw`
+
+draw every combination
+
+### Drawn, so far
+`projects.dreamTrained.mode.drawResult`
+
+{drawn} of {total} drawn · {styled} in the style
+
+### Package the reader
+`projects.dreamTrained.mode.package`
+
+package the reader to share
+
+### The schematic: the teacher
+`projects.dreamTrained.box.roleTeacher`
+
+the teacher
+
+### The schematic: the rows box
+`projects.dreamTrained.box.rows`
+
+rows
+
+### The schematic: under the rows
+`projects.dreamTrained.box.capRows`
+
+readings you keep
+
+### The schematic: under train
+`projects.dreamTrained.box.capTrain`
+
+a small model learns
+
+### The schematic: under export
+`projects.dreamTrained.box.capExport`
+
+into Ollama
+
+### The schematic: under package
+`projects.dreamTrained.box.capShare`
+
+to share
+
+### The schematic: the drawings box
+`projects.dreamTrained.box.drawings`
+
+drawings
+
+### The schematic: under the drawings
+`projects.dreamTrained.box.capDrawings`
+
+someone's own
+
+### The schematic: the style box
+`projects.dreamTrained.box.style`
+
+style
+
+### The schematic: under the style
+`projects.dreamTrained.box.capStyle`
+
+Kandinsky with a LoRA
+
+### The schematic: the training lane
+`projects.dreamTrained.box.laneTrain`
+
+what you train
+
+### The teacher, what it does
+`projects.dreamTrained.teacher.does`
+
+reads every combination first; the reader learns from what it writes
+
+### The base, its name
+`projects.dreamTrained.base.name`
+
+the reader
+
+### The base, what it does
+`projects.dreamTrained.base.does`
+
+the small model you train; Qwen2.5 writes Chinese and English, SmolLM2 English only
+
+### A base, on hover
+`projects.dreamTrained.base.title`
+
+{base}: Apache 2.0; downloaded when training starts
+
+### Which rows to train on
+`projects.dreamTrained.decision.rows`
+
+which readings does the reader learn from?
+
+### Read each one
+`projects.dreamTrained.rows.read`
+
+the ones I keep
+
+### Read each one, about
+`projects.dreamTrained.rows.read.about`
+
+Each reading is a draft on the Data tab: keep it, edit it first, or reject it. The reader learns only what you kept; 100 is enough to start.
+
+### Keep them all
+`projects.dreamTrained.rows.keep`
+
+all of them, unread
+
+### Keep them all, about
+`projects.dreamTrained.rows.keep.about`
+
+Every reading goes into training at once. Quicker, but the reader learns the teacher's mistakes too.
+
+### Which diffusion model
+`projects.dreamTrained.decision.diffusion`
+
+which diffusion model draws?
+
+### Stable Diffusion 1.5
+`projects.dreamTrained.diffusion.sd15`
+
+Stable Diffusion 1.5
+
+### Stable Diffusion 1.5, about
+`projects.dreamTrained.diffusion.sd15.about`
+
+Draws from words only, so the cards would reach it through the reading's picture sentence. 4 GB; CreativeML OpenRAIL-M, a licence with use limits.
+
+### Stable Diffusion 1.5, why not yet
+`projects.dreamTrained.diffusion.sd15.off`
+
+Not in Variable Machine yet: it needs its own drawing and style training.
+
+### FLUX.1 schnell
+`projects.dreamTrained.diffusion.flux`
+
+FLUX.1 schnell
+
+### FLUX.1 schnell, about
+`projects.dreamTrained.diffusion.flux.about`
+
+Draws from words, better than either; Apache 2.0. 12 billion weights, about 24 GB on disk.
+
+### FLUX.1 schnell, why not yet
+`projects.dreamTrained.diffusion.flux.off`
+
+Too big to train a style on with 32 GB of memory, and slow to draw 256 combinations with.
+
+### Which style
+`projects.dreamTrained.decision.style`
+
+in whose style are the variations drawn?
+
+### No style
+`projects.dreamTrained.style.none`
+
+Kandinsky's own
+
+### No style, about
+`projects.dreamTrained.style.none.about`
+
+The variations look like the cards, mixed. Nothing to train.
+
+### From drawings
+`projects.dreamTrained.style.drawings`
+
+from drawings
+
+### From drawings, about
+`projects.dreamTrained.style.drawings.about`
+
+Someone's own drawings, 12 or more, become a latent image; latent train teaches Kandinsky's decoder their look (about 20 minutes), and every variation is drawn with it.
+
+### The drawings' set
+`projects.dreamTrained.style.set`
+
+drawings
+
+### The drawings, the note
+`projects.dreamTrained.style.note`
+
+Upload the drawings at the drawings step, into this set. Photographs of drawings work; crop them to the drawing.
+
+### The drawings view
+`projects.dreamTrained.view.drawings`
+
+{n} drawings in images/{set}: 12 at the least, 30 or more and the latent image has axes too.
+
 ## The dream room
 
 ### The room, for a screen reader

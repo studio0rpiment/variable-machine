@@ -3,7 +3,7 @@ import { NODES, WIRES, W, H } from './FlowMap'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
-import { chooseDream, chooseSet, EMBEDDERS, LIBRARY, QUALITIES, toggleText, useDreamChoices, WRITERS, ZH, type LibraryText } from '../lib/dreamChoices'
+import { chooseDream, chooseSet, EMBEDDERS, LIBRARY, QUALITIES, READER_BASES, toggleText, useDreamChoices, WRITERS, ZH, type LibraryText } from '../lib/dreamChoices'
 import { say } from '../text/say'
 import type { Project, Step } from './ProjectsPanel'
 
@@ -36,7 +36,9 @@ interface Box {
 }
 
 const VIEW = { x: 30, y: 30, w: 1170, h: 540 }
-const F = { h: 30, row1: 38, row2: 82, height: 90 }
+const F = { h: 30, row1: 38, row2: 82, row3: 126, height: 90 }
+/** the trained card's strip has a third row, for the training lane */
+const stripH = (trained: boolean) => (trained ? 134 : F.height)
 const ZOOM = 820
 const at = (id: string): P => {
   const n = NODES.find((x) => x.id === id)!
@@ -46,19 +48,21 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2)
 
-/** The Start map's boxes in view that the dream reading doesn't use: they fade as it unfolds. */
+/** The Start map's boxes in view that the dream reading doesn't use: they fade as it unfolds. The trained reader uses data, train, adapters and share. */
 const OFF = ['modelfile', 'data', 'train', 'prefer', 'merge', 'adapters', 'chat', 'share', 'reading-list', 'papers', 'pictures', 'made-images']
+const TRAINED_USES = ['data', 'train', 'adapters', 'share']
 /** The Start map's names for the boxes the dream's own boxes start from. */
 const START: Record<string, string> = { photos: 'cards', words: 'texts', segmentation: 'room' }
 
-function boxes(): Record<string, Box> {
+function boxes(trained: boolean): Record<string, Box> {
   const B: Record<string, Box> = {
     models: { name: 'models', a: at('models'), b: [60, 60], s: [520, F.row2], head: say('projects.dream.box.headModels') },
     siglip: { name: 'siglip', from: 'models', b: [280, 120], s: [520, F.row2], kind: 'model', role: say('projects.dream.box.roleSiglip') },
     embed: { name: '', from: 'models', b: [280, 505], s: [520, F.row2], kind: 'model', role: say('projects.dream.box.roleEmbed') },
     writer: { name: '', from: 'models', b: [520, 60], s: [520, F.row2], kind: 'model', role: say('projects.dream.box.roleWriter') },
     kandinsky: { name: 'kandinsky', from: 'models', b: [760, 60], s: [520, F.row2], kind: 'model', role: say('projects.dream.box.roleKandinsky') },
-    prior: { name: 'kandinsky-prior', from: 'models', b: [930, 130], s: [520, F.row2], kind: 'model', role: say('projects.dream.box.rolePrior') },
+    // in the trained card the prior sits beside Kandinsky and feeds it, so the style and the drawings have the space under it
+    prior: { name: 'kandinsky-prior', from: 'models', b: trained ? [1000, 60] : [930, 130], s: [520, F.row2], kind: 'model', role: say('projects.dream.box.rolePrior') },
     cards: { name: say('projects.dream.box.cards'), a: at('photos'), b: [60, 260], s: [60, F.row1], kind: 'input', caption: say('projects.dream.box.capCards') },
     deck: { name: say('projects.dream.box.deck'), from: 'cards', b: [280, 260], s: [280, F.row1], caption: say('projects.dream.box.capDeck') },
     texts: { name: say('projects.dream.box.texts'), a: at('words'), b: [60, 420], s: [60, F.row2], kind: 'input', caption: say('projects.dream.box.capTexts') },
@@ -67,7 +71,19 @@ function boxes(): Record<string, Box> {
     draw: { name: say('projects.dream.box.draw'), from: 'cards', b: [760, 340], s: [760, F.row1], caption: say('projects.dream.box.capDraw') },
     room: { name: say('projects.dream.box.room'), a: at('segmentation'), b: [1000, 340], s: [1000, F.row1], caption: say('projects.dream.box.capRoom') },
   }
+  if (trained) {
+    B.writer.role = say('projects.dreamTrained.box.roleTeacher')
+    Object.assign(B, {
+      rows: { name: say('projects.dreamTrained.box.rows'), a: at('data'), b: [520, 470], s: [280, F.row3], caption: say('projects.dreamTrained.box.capRows') },
+      train: { name: 'train', a: at('train'), b: [690, 470], s: [460, F.row3], caption: say('projects.dreamTrained.box.capTrain') },
+      adapters: { name: 'export', a: at('adapters'), b: [860, 470], s: [640, F.row3], caption: say('projects.dreamTrained.box.capExport') },
+      share: { name: 'package', a: at('share'), b: [1040, 470], s: [820, F.row3], caption: say('projects.dreamTrained.box.capShare') },
+      drawings: { name: say('projects.dreamTrained.box.drawings'), from: 'cards', b: [1000, 200], s: [1000, F.row2], kind: 'input', caption: say('projects.dreamTrained.box.capDrawings') },
+      style: { name: say('projects.dreamTrained.box.style'), from: 'cards', b: [760, 200], s: [760, F.row2], caption: say('projects.dreamTrained.box.capStyle') },
+    } satisfies Record<string, Box>)
+  }
   for (const id of OFF) {
+    if (trained && TRAINED_USES.includes(id)) continue
     const [x, y] = at(id)
     B[id] = { name: NODES.find((n) => n.id === id)!.name ?? id, a: [x, y], b: [x, y], s: [x, y] }
   }
@@ -87,9 +103,15 @@ const stateOf = (steps: Step[], i: number): State => {
 export default function DreamMode({ project, step, onStep, whole, onZoom }: { project: Project; step: number; onStep: (n: number) => void; whole: boolean; onZoom: () => void }) {
   const facts = project.dream!
   const c = useDreamChoices()
-  const on = new Set(['models', 'siglip', 'embed', 'kandinsky', 'cards', 'deck', 'texts', 'guide', 'interpret', 'draw', 'room', ...(c.writer !== 'none' ? ['writer'] : []), ...(c.drawWith === 'prior' || c.cards === 'demo' ? ['prior'] : [])])
+  const trained = !!facts.trained
+  const on = new Set([
+    'models', 'siglip', 'embed', 'kandinsky', 'cards', 'deck', 'texts', 'guide', 'interpret', 'draw', 'room',
+    ...(trained || c.writer !== 'none' ? ['writer'] : []),
+    ...(c.drawWith === 'prior' || c.cards === 'demo' ? ['prior'] : []),
+    ...(trained ? ['rows', 'train', 'adapters', 'share', ...(c.style === 'drawings' ? ['drawings', 'style'] : [])] : []),
+  ])
   const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / ZOOM, line: 'voice-mode__line' })
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (stripH(trained) * pxRef.current) / ZOOM, line: 'voice-mode__line' })
   const [u, setU] = useState(0)
   const [played, setPlayed] = useState(0)
   useEffect(() => {
@@ -104,7 +126,7 @@ export default function DreamMode({ project, step, onStep, whole, onZoom }: { pr
     return () => cancelAnimationFrame(frame)
   }, [played])
 
-  const B = boxes()
+  const B = boxes(trained)
   const lightId = focus && on.has(focus) ? focus : facts.steps[stepNow - 1]?.node
   const lit = lightId ? B[lightId] : undefined
   const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (lit ? lit.s[0] + W / 2 : VIEW.x) - ZOOM / 2))
@@ -113,9 +135,10 @@ export default function DreamMode({ project, step, onStep, whole, onZoom }: { pr
   const px = Math.min(width, 53 * 16) || VIEW.w
   pxRef.current = px
   const open = (VIEW.h * px) / VIEW.w
-  const want = Math.max((F.height * px) / zw, open - scroll)
-  const f = clamp((want * VIEW.w - px * VIEW.h) / (px * (F.height - VIEW.h) - want * (zw - VIEW.w)))
-  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VIEW.w, zw, f), h: lerp(VIEW.h, F.height, f) }
+  const FH = stripH(trained)
+  const want = Math.max((FH * px) / zw, open - scroll)
+  const f = clamp((want * VIEW.w - px * VIEW.h) / (px * (FH - VIEW.h) - want * (zw - VIEW.w)))
+  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VIEW.w, zw, f), h: lerp(VIEW.h, FH, f) }
 
   return (
     <>
@@ -137,6 +160,7 @@ export default function DreamMode({ project, step, onStep, whole, onZoom }: { pr
 function Schematic({ project, B, on, u, f, view, light, pick }: { project: Project; B: Record<string, Box>; on: Set<string>; u: number; f: number; view: { x: number; w: number; h: number }; light?: string; pick: (box: string) => void }) {
   const c = useDreamChoices()
   const steps = project.dream!.steps
+  const trained = !!project.dream!.trained
   const kA = ease(clamp(u / 0.45))
   const kB = ease(clamp((u - 0.4) / 0.6))
   const fold = ease(f)
@@ -174,7 +198,7 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
     return st.includes('now') ? 'now' : st.every((x) => x === 'done') ? 'done' : 'waiting'
   }
   const line = (pts: P[], cls: string, o: number, key: string) => o > 0.01 && <polyline key={key} points={pts.map((p) => p.join(',')).join(' ')} className={cls} style={{ opacity: o }} markerEnd={cls.includes('use') ? undefined : 'url(#dream-end)'} />
-  const modelName = (id: string) => (id === 'writer' ? c.writer : id === 'embed' ? c.embed : B[id].name)
+  const modelName = (id: string) => (id === 'writer' ? (trained ? c.teacher : c.writer) : id === 'embed' ? c.embed : B[id].name)
   const elbow = (a: string, b: string, x: number): P[] => [R(a), [x, R(a)[1]], [x, L(b)[1]], L(b)]
 
   const wires = [
@@ -185,8 +209,32 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
     line([R('interpret'), L('draw')], 'voice-band__route', late, 'interpret-draw'),
     line([R('draw'), L('room')], 'voice-band__route', late, 'draw-room'),
   ]
-  for (const [m, to] of [['siglip', 'deck'], ['embed', 'guide'], ['writer', 'interpret'], ['kandinsky', 'draw'], ['prior', 'draw']] as const) {
+  if (trained) {
+    // the training lane: the readings become rows, the rows a model, the model reads again; the drawings become the style Kandinsky draws in
+    wires.push(line([[595, pos('interpret')[1] + boxH], [595, pos('rows')[1]]], 'voice-band__route', late * (1 - clamp(f * 2)), 'interpret-rows'))
+    wires.push(line([R('rows'), L('train')], 'voice-band__route', late, 'rows-train'))
+    wires.push(line([R('train'), L('adapters')], 'voice-band__route', late, 'train-adapters'))
+    wires.push(line([R('adapters'), L('share')], 'voice-band__route', late, 'adapters-share'))
+    wires.push(line([[pos('adapters')[0] + 75, pos('adapters')[1]], [pos('adapters')[0] + 75, lerp(430, pos('interpret')[1] + boxH + 4, f)], [650, lerp(430, pos('interpret')[1] + boxH + 4, f)], [650, pos('interpret')[1] + boxH]], 'voice-band__route', late * (1 - clamp(f * 2)), 'reader-interpret'))
+    if (on.has('style')) {
+      wires.push(line([L('drawings'), R('style')], 'voice-band__route', late, 'drawings-style'))
+      wires.push(line([[pos('style')[0] + 75, pos('style')[1] + boxH], [pos('style')[0] + 75, pos('draw')[1]]], 'voice-band__route', late * (1 - clamp(f * 2)), 'style-draw'))
+    }
+  }
+  const uses: (readonly [string, string])[] = [['siglip', 'deck'], ['embed', 'guide'], ['writer', 'interpret'], [on.has('style') && trained ? 'kandinsky-style' : 'kandinsky', 'draw'], [trained ? 'prior-kandinsky' : 'prior', 'draw']]
+  for (const [m0, to0] of uses) {
+    // trained: Kandinsky draws through the style (its LoRA), and the prior feeds Kandinsky from the side
+    const m = m0.replace(/-.*/, '')
     if (!on.has(m)) continue
+    if (m0 === 'kandinsky-style') {
+      wires.push(line([[pos('kandinsky')[0] + 40, pos('kandinsky')[1] + boxH], [pos('style')[0] + 40, pos('style')[1]]], 'voice-band__route research-band__use', opened, 'kandinsky-style'))
+      continue
+    }
+    if (m0 === 'prior-kandinsky') {
+      wires.push(line([L('prior'), R('kandinsky')], 'voice-band__route research-band__use', opened, 'prior-kandinsky'))
+      continue
+    }
+    const to = to0
     const p = pos(m)
     // the passage finder sits under the passages, so its wire goes up
     const pts: P[] = m === 'embed' ? [[p[0] + 40, p[1]], [pos(to)[0] + 40, pos(to)[1] + boxH]] : [[p[0] + 40, p[1] + boxH], [pos(to)[0] + (m === 'prior' ? 100 : 40), pos(to)[1]]]
@@ -228,6 +276,11 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
             <text x={280} y={412} className="research-band__lane">
               {say('projects.dream.box.laneTexts')}
             </text>
+            {trained && (
+              <text x={690} y={462} className="research-band__lane">
+                {say('projects.dreamTrained.box.laneTrain')}
+              </text>
+            )}
           </g>
         )}
         {Object.entries(B).map(([id, b]) => {
@@ -308,17 +361,18 @@ export function DreamDecisions({ project }: { project: Project }) {
     const here = facts.ollama.find((x) => x.name === m || x.name === `${m}:latest`)
     return here ? Number(GB(here.size)) : (SIZE[m] ?? 0)
   }
-  const modelRow = (role: 'writer' | 'embed', name: string, what: string, models: string[]) => (
+  const trained = !!facts.trained
+  const modelRow = (role: 'writer' | 'embed' | 'teacher' | 'base', name: string, what: string, models: string[]) => (
     <div className="research-role">
       <span className="research-role__name">{name}</span>
       <span className="research-role__what">{what}</span>
       <span className="research-role__models">
         {models.map((m) => {
           const gb = size(m)
-          const here = m === 'none' || facts.ollama.some((x) => x.name === m || x.name === `${m}:latest`)
+          const here = m === 'none' || role === 'base' || facts.ollama.some((x) => x.name === m || x.name === `${m}:latest`)
           return (
-            <button key={m} type="button" role="radio" aria-checked={c[role] === m} className={`research-role__model ${c[role] === m ? 'is-on' : ''}`.trim()} onClick={() => chooseDream(role, m)} title={m === 'none' ? say('projects.dream.writer.none') : here ? say('projects.voice.base.here', { gb }) : say('projects.voice.base.pull', { gb })}>
-              {m}
+            <button key={m} type="button" role="radio" aria-checked={c[role] === m} className={`research-role__model ${c[role] === m ? 'is-on' : ''}`.trim()} onClick={() => chooseDream(role, m)} title={role === 'base' ? say('projects.dreamTrained.base.title', { base: m }) : m === 'none' ? say('projects.dream.writer.none') : here ? say('projects.voice.base.here', { gb }) : say('projects.voice.base.pull', { gb })}>
+              {role === 'base' ? m.replace(/^.*\//, '').replace(/-Instruct$/, '') : m}
             </button>
           )
         })}
@@ -375,18 +429,69 @@ export function DreamDecisions({ project }: { project: Project }) {
 
       <div className="voice-subs">
         <Decision box="models" q={say('projects.dream.decision.models')}>
-          {modelRow('writer', say('projects.dream.box.roleWriter'), say('projects.dream.writer.does'), WRITERS)}
+          {trained ? (
+            <>
+              {modelRow('teacher', say('projects.dreamTrained.box.roleTeacher'), say('projects.dreamTrained.teacher.does'), WRITERS.filter((w) => w !== 'none'))}
+              {modelRow('base', say('projects.dreamTrained.base.name'), say('projects.dreamTrained.base.does'), READER_BASES)}
+            </>
+          ) : (
+            modelRow('writer', say('projects.dream.box.roleWriter'), say('projects.dream.writer.does'), WRITERS)
+          )}
           {modelRow('embed', say('projects.dream.box.roleEmbed'), say('projects.dream.embed.does'), EMBEDDERS)}
           <p className="research-note">{say('projects.dream.models.note', { memory })}</p>
         </Decision>
-        <Decision box="draw" q={say('projects.dream.decision.draw')}>
+        {trained && (
+          <Decision box="rows" q={say('projects.dreamTrained.decision.rows')}>
+            <Choice on={c.rows === 'read'} onPick={() => chooseDream('rows', 'read')} name={say('projects.dreamTrained.rows.read')}>
+              {say('projects.dreamTrained.rows.read.about')}
+            </Choice>
+            <Choice on={c.rows === 'keep'} onPick={() => chooseDream('rows', 'keep')} name={say('projects.dreamTrained.rows.keep')}>
+              {say('projects.dreamTrained.rows.keep.about')}
+            </Choice>
+          </Decision>
+        )}
+        <Decision box="draw" q={trained ? say('projects.dreamTrained.decision.diffusion') : say('projects.dream.decision.draw')}>
           <Choice on={c.drawWith === 'cards'} onPick={() => chooseDream('drawWith', 'cards')} name={say('projects.dream.draw.cards')}>
             {say('projects.dream.draw.cards.about')}
           </Choice>
           <Choice on={c.drawWith === 'prior'} onPick={() => chooseDream('drawWith', 'prior')} name={say('projects.dream.draw.prior')}>
             {say('projects.dream.draw.prior.about')}
           </Choice>
+          {trained && (
+            <>
+              <Choice on={false} onPick={() => {}} name={say('projects.dreamTrained.diffusion.sd15')} off={say('projects.dreamTrained.diffusion.sd15.off')}>
+                {say('projects.dreamTrained.diffusion.sd15.about')}
+              </Choice>
+              <Choice on={false} onPick={() => {}} name={say('projects.dreamTrained.diffusion.flux')} off={say('projects.dreamTrained.diffusion.flux.off')}>
+                {say('projects.dreamTrained.diffusion.flux.about')}
+              </Choice>
+            </>
+          )}
         </Decision>
+        {trained && (
+          <Decision box="style" q={say('projects.dreamTrained.decision.style')}>
+            <Choice on={c.style === 'none'} onPick={() => chooseDream('style', 'none')} name={say('projects.dreamTrained.style.none')}>
+              {say('projects.dreamTrained.style.none.about')}
+            </Choice>
+            <Choice on={c.style === 'drawings'} onPick={() => chooseDream('style', 'drawings')} name={say('projects.dreamTrained.style.drawings')}>
+              {say('projects.dreamTrained.style.drawings.about')}
+            </Choice>
+            {c.style === 'drawings' && (
+              <div className="dream-sets">
+                <label className="dream-sets__row">
+                  <span className="label">{say('projects.dreamTrained.style.set')}</span>
+                  <select value={c.drawings} onChange={(e) => chooseDream('drawings', e.target.value)}>
+                    {!facts.sets.some((x) => x.folder === c.drawings) && <option value={c.drawings}>{`${c.drawings} (0)`}</option>}
+                    {facts.sets.filter((x) => !x.folder.startsWith(`${c.demo}-`)).map((x) => (
+                      <option key={x.folder} value={x.folder}>{`${x.folder} (${x.pictures})`}</option>
+                    ))}
+                  </select>
+                </label>
+                <p className="research-note">{say('projects.dreamTrained.style.note')}</p>
+              </div>
+            )}
+          </Decision>
+        )}
         <Decision box="draw" q={say('projects.dream.decision.variations')}>
           {[1, 2, 4].map((n) => (
             <Choice key={n} on={c.variations === n} onPick={() => chooseDream('variations', n)} name={say('projects.dream.variations.n', { n })}>
@@ -394,6 +499,7 @@ export function DreamDecisions({ project }: { project: Project }) {
             </Choice>
           ))}
         </Decision>
+        {!trained && (
         <Decision box="interpret" q={say('projects.dream.decision.ahead')}>
           <Choice on={c.ahead === 'all'} onPick={() => chooseDream('ahead', 'all')} name={say('projects.dream.ahead.all')}>
             {say('projects.dream.ahead.all.about')}
@@ -402,6 +508,7 @@ export function DreamDecisions({ project }: { project: Project }) {
             {say('projects.dream.ahead.live.about')}
           </Choice>
         </Decision>
+        )}
         <Decision box="room" q={say('projects.dream.decision.words')}>
           <Choice on={!c.readWords} onPick={() => chooseDream('readWords', false)} name={say('projects.dream.words.keep')}>
             {say('projects.dream.words.keep.about')}

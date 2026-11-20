@@ -246,8 +246,8 @@ export default function App() {
             {routeOf(mode.project).map((s, i) => (
               <section key={`${i}-${s.tab}`} className="voice-page__step" data-step={i + 1}>
                 <VoiceStep step={s} n={i + 1} />
-                {mode.project.dream ? (
-                  <DreamView step={s} />
+                {mode.project.dream && (s.view || !mode.project.dream.trained) ? (
+                  <DreamView step={s} trained={!!mode.project.dream.trained} />
                 ) : (
                   <PartsProvider value={s.parts ?? ALL_PARTS}>
                     <StepTab step={s} onUse={sendDataset} chatWith={chatWith} chatPair={chatPair} chatModels={chatModels} editModelfile={editModelfile} chatRequest={chatRequest} />

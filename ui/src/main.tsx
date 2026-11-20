@@ -8,14 +8,15 @@ import './styles.css'
 
 connect()
 
-/** #room/<name>: a dream installation's room page, full screen, without the rest of the app. */
-const room = /^#room\/([a-z0-9][a-z0-9._-]{0,63})$/.exec(location.hash)?.[1]
+/** #room/<name>, or #room/<name>/trained for the trained reader and style: a dream installation's room page, full screen, without the rest of the app. */
+const roomMatch = /^#room\/([a-z0-9][a-z0-9._-]{0,63})(\/trained)?$/.exec(location.hash)
+const room = roomMatch?.[1]
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#room/') || room) location.reload()
 })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {room ? <DreamRoom name={room} /> : <App />}
+    {room ? <DreamRoom name={room} trained={!!roomMatch?.[2]} /> : <App />}
   </StrictMode>,
 )

@@ -57,7 +57,7 @@ function useSet(set: string) {
 }
 
 /** A step's own view, in place of a tab: what the dream reading's route shows at that step. */
-export default function DreamView({ step }: { step: Step }) {
+export default function DreamView({ step, trained = false }: { step: Step; trained?: boolean }) {
   switch (step.view) {
     case 'dream-cards':
       return <CardsView />
@@ -68,7 +68,9 @@ export default function DreamView({ step }: { step: Step }) {
     case 'dream-combination':
       return <CombinationView />
     case 'dream-room':
-      return <RoomView />
+      return <RoomView trained={trained} />
+    case 'dream-drawings':
+      return <DrawingsView />
     default:
       return null
   }
@@ -119,6 +121,38 @@ function CardsRow({ q, set, own }: { q: Quality; set: string; own: boolean }) {
           </label>
         </span>
       )}
+    </div>
+  )
+}
+
+/** The drawings a style is trained on: someone's own, uploaded into one image set (12 at the least; 30 or more is better). */
+function DrawingsView() {
+  const c = useDreamChoices()
+  const files = useSet(c.drawings)
+  const [busy, setBusy] = useState(false)
+  const upload = async (list: FileList | null) => {
+    if (!list?.length) return
+    setBusy(true)
+    for (const f of [...list].filter((x) => IMG.test(x.name))) {
+      const clean = f.name.toLowerCase().replace(/[^\w.-]+/g, '-')
+      await fetch(`/api/workspace/upload?name=${encodeURIComponent(clean)}&set=${encodeURIComponent(c.drawings)}&license=${encodeURIComponent('the artist\'s own drawings')}`, { method: 'POST', body: f })
+    }
+    setBusy(false)
+  }
+  return (
+    <div className="dream-view">
+      <p className="label label--muted">{say('projects.dreamTrained.view.drawings', { n: files.length, set: c.drawings })}</p>
+      <div className="dream-row__cards dream-drawings">
+        {files.slice(0, 40).map((f) => (
+          <figure key={f} className="dream-card">
+            <img src={src(`images/${c.drawings}/${f}`)} alt="" />
+          </figure>
+        ))}
+      </div>
+      <label className="text-button">
+        {busy ? say('projects.dream.view.uploading') : say('projects.dream.view.upload', { set: c.drawings })}
+        <input type="file" accept="image/*" multiple hidden onChange={(e) => void upload(e.target.files)} />
+      </label>
     </div>
   )
 }
@@ -249,13 +283,13 @@ function CombinationView() {
 }
 
 /** The room: the page for the installation's screen, and the last visitor's response. */
-function RoomView() {
+function RoomView({ trained }: { trained: boolean }) {
   const c = useDreamChoices()
   const latest = useWorkspaceJson<{ response: string }>(`dreams/${c.name}/latest.json`)
   return (
     <div className="dream-view">
       <p className="label label--muted">{say('projects.dream.view.roomAbout')}</p>
-      <a className="text-link" href={`#room/${c.name}`} target="_blank" rel="noreferrer">
+      <a className="text-link" href={`#room/${c.name}${trained ? '/trained' : ''}`} target="_blank" rel="noreferrer">
         {say('projects.dream.open')}
       </a>
       {latest && <p className="label label--muted">{say('projects.dream.view.last', { path: latest.response })}</p>}

@@ -61,7 +61,7 @@ export interface Step {
   /** project mode: the parts of its tab it uses (lib/parts.tsx); the tab's other marked parts hide. Unset: the whole tab */
   parts?: string[]
   /** project mode: a view of its own under the step, in place of a tab (the dream reading's deck, guide texts, combinations, room) */
-  view?: 'dream-cards' | 'dream-deck' | 'dream-texts' | 'dream-combination' | 'dream-room'
+  view?: 'dream-cards' | 'dream-deck' | 'dream-texts' | 'dream-combination' | 'dream-room' | 'dream-drawings'
 }
 
 /** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
@@ -108,6 +108,8 @@ export interface DreamFacts {
   uploads: string[]
   ollama: { name: string; size: number }[]
   tools: string[]
+  /** the trained dream reader's card: the same dream, with a reader and a style trained by the student */
+  trained?: boolean
 }
 
 /** What the research bot's schematic shows: the route's steps, and what the decisions can choose from. */
@@ -209,7 +211,7 @@ interface Have {
   /** latent images, with the set each was made from, its check and its training */
   latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null }[]
   /** dream installations, with the four sets each was made from, and how many responses it has given */
-  dreams: { folder: string; created?: string; sets?: Record<'who' | 'what' | 'when' | 'where', string>; combinations?: number; guide?: string[]; interpreted?: number; drawn?: number }[]
+  dreams: { folder: string; created?: string; sets?: Record<'who' | 'what' | 'when' | 'where', string>; combinations?: number; guide?: string[]; interpreted?: number; drawn?: number; byModel?: Record<string, number>; styled?: number }[]
   /** the last choice and response of each dream installation */
   dreamState: Record<string, { chosen: boolean; response: string | null }>
   /** each image set's number of pictures */
@@ -363,7 +365,7 @@ const SMALL = 'HuggingFaceTB/SmolLM2-360M-Instruct'
 /** Rows kept from a model's drafts (or written by a model on the Data tab), and drafts still to read. */
 const kept = (d: DatasetManifest) => ({ kept: d.sources.filter((s) => s.kind === 'generated').reduce((a, s) => a + s.rows, 0), unreviewed: d.drafts?.unreviewed ?? 0 })
 /** How many kept rows a drafting step needs before it is done. */
-const KEEP = { studio: 150, voice: 100 }
+const KEEP = { studio: 150, voice: 100, dream: 100 }
 
 /** What was made last, so a step's command names it. */
 const last = <T extends { created?: unknown }>(xs: T[]): T | undefined => [...xs].sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? ''))).pop()
@@ -604,6 +606,104 @@ function dreamRoute(h: Have, c: DreamChoices): DreamFacts {
 }
 
 /**
+ * The trained dream reader as a route: the same dream, made by the student
+ * through Variable Machine's own tabs. A ready-made model (the teacher) reads
+ * every combination; its readings become rows (read on the Data tab, or kept
+ * unread); a small model of her choosing is trained on them and exported; it
+ * reads every combination again. Someone's own drawings, made into a latent
+ * image and trained (a LoRA for Kandinsky's decoder), give the variations
+ * their style. The room uses both, and the reader can be packaged to share.
+ */
+function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
+  const ready = dreamRoute(h, { ...c, writer: c.teacher })
+  const folder = ready.folder
+  const name = c.name
+  const total = folder?.combinations ?? 256
+  const by = folder?.byModel ?? {}
+  const here = (m: string) => h.ollama.some((x) => x.name === m || x.name === `${m}:latest`)
+  const set = h.data.find((d) => d.folder === c.readerSet)
+  const kept = set ? set.counts.train + set.counts.valid : 0
+  const target = Math.min(KEEP.dream, total)
+  const adapter = h.adapters.find((a) => a.folder === c.reader)
+  const exported = !!adapter && here(c.reader)
+  const latent = h.latents.find((l) => l.folder === c.styleName)
+  const styleOn = c.style === 'drawings'
+  const drawnBefore = (folder?.drawn ?? 0) > 0
+  const drawFlags = [...(c.variations === 2 ? [] : ['--variations', String(c.variations)]), ...(c.drawWith === 'cards' ? [] : ['--with', c.drawWith]), ...(styleOn ? ['--style', `latents/${c.styleName}`] : [])]
+  // models, cards, deck, texts and guide are the ready-made card's own steps
+  const steps: Step[] = [...ready.steps.slice(0, 5)]
+  steps.push({
+    name: say('projects.dreamTrained.mode.teacher', { teacher: c.teacher }),
+    tab: 'segmentation',
+    node: 'interpret',
+    commands: [joinWords(['dream', 'interpret', name, '--all', '--model', c.teacher])],
+    done: (by[c.teacher] ?? 0) + (by[c.reader] ?? 0) >= total,
+    result: folder ? say('projects.dreamTrained.mode.teacherResult', { n: by[c.teacher] ?? 0, total, teacher: c.teacher }) : undefined,
+    view: 'dream-combination',
+  })
+  steps.push({
+    name: say('projects.dreamTrained.mode.rows'),
+    tab: 'data',
+    node: 'rows',
+    commands: [joinWords(['dream', 'rows', name, c.readerSet, ...(c.teacher === 'qwen3:4b' ? [] : ['--by', c.teacher]), ...(c.rows === 'keep' ? ['--keep'] : [])]), joinWords(['data', 'split', c.readerSet, '--valid', '0.2'])],
+    done: kept >= (c.rows === 'keep' ? 1 : target) && !!set?.split,
+    result: set ? say('projects.dreamTrained.mode.rowsResult', { kept, target, unread: set.drafts?.unreviewed ?? 0 }) : undefined,
+    fill: set ? { data: { pick: c.readerSet } } : { data: { pick: 'new', newName: c.readerSet } },
+    parts: c.rows === 'read' ? ['data.chosen', 'data.drafts', 'data.rows', 'data.ready'] : ['data.chosen', 'data.rows', 'data.ready'],
+  })
+  steps.push({
+    name: say('projects.dreamTrained.mode.train'),
+    tab: 'train',
+    node: 'train',
+    commands: [joinWords(['train', c.reader, '--data', c.readerSet, '--base', c.base, '--max-seq', '3072'])],
+    done: !!adapter,
+    fill: { train: { data: c.readerSet, name: c.reader, base: c.base } },
+    parts: [],
+  })
+  steps.push({ name: say('projects.dreamTrained.mode.export'), tab: 'adapters', node: 'adapters', commands: [joinWords(['export', c.reader])], done: exported, result: exported ? c.reader : undefined, parts: [] })
+  steps.push({
+    name: say('projects.dreamTrained.mode.again', { reader: c.reader }),
+    tab: 'segmentation',
+    node: 'interpret',
+    commands: [joinWords(['dream', 'interpret', name, '--all', '--again', '--model', c.reader])],
+    done: (by[c.reader] ?? 0) >= total,
+    result: folder && exported ? say('projects.dreamTrained.mode.againResult', { n: by[c.reader] ?? 0, total, reader: c.reader }) : undefined,
+    view: 'dream-combination',
+  })
+  if (styleOn) {
+    steps.push({
+      name: say('projects.dreamTrained.mode.drawings'),
+      tab: 'segmentation',
+      node: 'drawings',
+      commands: [joinWords(['latent', 'make', c.styleName, `images/${c.drawings}`]), joinWords(['latent', 'train', c.styleName])],
+      done: !!latent?.trained,
+      result: latent?.check ? say('projects.dreamTrained.mode.drawingsResult', { n: latent.check.pictures, trained: latent.trained ? say('projects.dreamTrained.mode.trainedYes') : say('projects.dreamTrained.mode.trainedNo') }) : say('projects.dreamTrained.mode.drawingsNeed', { n: h.setSizes[c.drawings] ?? 0 }),
+      view: 'dream-drawings',
+    })
+  }
+  steps.push({
+    name: say('projects.dreamTrained.mode.draw'),
+    tab: 'segmentation',
+    node: 'draw',
+    commands: [joinWords(['dream', 'draw', name, '--all', ...drawFlags, ...(drawnBefore ? ['--again'] : [])])],
+    done: (folder?.drawn ?? 0) >= total && (!styleOn || (folder?.styled ?? 0) >= total),
+    result: folder ? say('projects.dreamTrained.mode.drawResult', { drawn: folder.drawn ?? 0, styled: folder.styled ?? 0, total }) : undefined,
+    view: 'dream-combination',
+  })
+  steps.push({
+    name: say('projects.dream.mode.room'),
+    tab: 'segmentation',
+    node: 'room',
+    commands: [joinWords(['dream', 'choose', name, '--who', '1', '--what', '2', '--when', '3', '--where', '4']), joinWords(['dream', 'respond', name, '--model', exported ? c.reader : c.teacher, ...drawFlags, ...(c.readWords ? ['--read-words'] : [])])],
+    done: !!h.dreamState[name]?.response && (by[c.reader] ?? 0) > 0,
+    link: folder ? { path: `#room/${name}/trained`, label: say('projects.dream.open') } : undefined,
+    view: 'dream-room',
+  })
+  steps.push({ name: say('projects.dreamTrained.mode.package'), tab: 'share', node: 'share', commands: [joinWords(['package', c.reader]), joinWords(['zip', `packages/${c.reader}`])], done: h.packages.includes(c.reader), parts: [] })
+  return { ...ready, steps, trained: true }
+}
+
+/**
  * The research bot as a route: the steps the decisions draw, each on its box
  * of the research bot's schematic (ResearchMode), with its command filled in
  * from the decisions and the workspace, and done when the workspace has what
@@ -805,6 +905,7 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
 
 function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices, dream: DreamChoices): Project[] {
   const dreamFacts = dreamRoute(h, dream)
+  const trainedFacts = trainedRoute(h, dream)
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -914,6 +1015,15 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research
       limits: say('projects.dream.limits'),
       steps: dreamFacts.steps,
       dream: dreamFacts,
+    },
+    {
+      id: 'dream-trained',
+      title: say('projects.dreamTrained.title'),
+      does: say('projects.dreamTrained.does'),
+      get: say('projects.dreamTrained.get'),
+      limits: say('projects.dreamTrained.limits'),
+      steps: trainedFacts.steps,
+      dream: trainedFacts,
     },
     {
       id: 'latent',
