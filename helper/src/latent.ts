@@ -100,7 +100,7 @@ async function example(args: string[], line: string): Promise<boolean> {
   const prior = encoderModel('kandinsky-prior')!
   if (!(await encoderPresent(prior))) return print(`latent example draws from words with Kandinsky's prior: model get kandinsky-prior (${prior.license}, about ${(prior.mb / 1000).toFixed(1)} GB)`), false
   if (!(await ready())) return false
-  print('  45 pictures: about a minute for the prior, then about 15 s a picture (12 minutes)')
+  print('  45 pictures: about a minute for the prior, then about 28 s a picture (25 minutes on 32 GB)')
   const out = `workspace/images/${name}`
   const argv = [...UV_LATENT, 'python', SCRIPT, 'example', out]
   return runRecipe({

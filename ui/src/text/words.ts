@@ -448,7 +448,7 @@ export const WORDS = {
   "projects.latent.decision.pictures": "which pictures",
   "projects.latent.pictures.example": "the example: a made-up photo roll",
   "projects.latent.pictures.example.tab": "to try the card first, as the dream reading has its demo deck · image segmentation",
-  "projects.latent.pictures.example.time": "about 12 minutes to draw 45 pictures",
+  "projects.latent.pictures.example.time": "about 25 minutes to draw 45 pictures (28 s each on a 32 GB Mac)",
   "projects.latent.pictures.example.disk": "7 GB more for Kandinsky's prior, which draws from words; 10 MB for the screenshots",
   "projects.latent.pictures.example.needs": "Kandinsky's prior (Apache 2.0); nobody's pictures: 45 written prompts for one made-up person's roll (a grey cat, coffee, the sea, concerts), drawn and laid out as three photo roll screenshots",
   "projects.latent.pictures.example.changes": "the whole route runs as it will on real screenshots, crop included; nothing private: the sets can be zipped and shared",

@@ -2256,7 +2256,7 @@ to try the card first, as the dream reading has its demo deck · image segmentat
 ### The example: time
 `projects.latent.pictures.example.time`
 
-about 12 minutes to draw 45 pictures
+about 25 minutes to draw 45 pictures (28 s each on a 32 GB Mac)
 
 ### The example: disk
 `projects.latent.pictures.example.disk`
