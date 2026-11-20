@@ -11,8 +11,9 @@ import type { LatentFacts, Project, Step } from './ProjectsPanel'
  * Project mode for the latent image. Its schematic is the Start map, with the
  * route lit on the boxes the Start map already has (your photos, your words,
  * the ready-made model, which here is Kandinsky 2.2, a diffusion model) and
- * four boxes it adds: crop, the latent image, the decoder trained on the set,
- * and the gallery page, where the route ends. The boxes off the route stay as
+ * five boxes it adds: crop, the latent image, the decoder trained on the set,
+ * the gallery page, and the room, the installation's own page, where the
+ * route ends. The boxes off the route stay as
  * faint outlines, so the student sees where the project sits in all of
  * Variable Machine. As the page scrolls the map folds, a px of height per px
  * scrolled, into a strip of two rows that stays at the top: the pictures'
@@ -50,12 +51,14 @@ const ROUTE: Record<string, Box> = {
   crop: { name: say('projects.latent.mode.boxCrop'), a: [300, 510], s: [300, F.row1], added: true, caption: () => say('projects.latent.mode.capCrop') },
   'made-images': { name: named('made-images'), a: at('made-images'), s: [590, F.row1], caption: () => say('projects.latent.mode.capModel') },
   latent: { name: say('projects.latent.mode.boxLatent'), a: [820, 510], s: [820, F.row1], added: true, caption: () => say('projects.latent.mode.capLatent') },
-  gallery: { name: say('projects.latent.mode.boxGallery'), a: [1000, 420], s: [1000, F.row1], added: true, caption: () => say('projects.latent.mode.capGallery') },
+  gallery: { name: say('projects.latent.mode.boxGallery'), a: [1000, 420], s: [820, F.row2], added: true, caption: () => say('projects.latent.mode.capGallery') },
+  // where the Start map has segmentation, a ready-made model's use: the room is this one's
+  room: { name: say('projects.latent.mode.boxRoom'), a: [1000, 510], s: [1000, F.row1], added: true, caption: () => say('projects.latent.mode.capRoom') },
   words: { name: named('words'), a: at('words'), s: [60, F.row2], input: true, caption: () => say('projects.latent.mode.capWords') },
   decoder: { name: say('projects.latent.mode.boxDecoder'), a: [590, 420], s: [590, F.row2], added: true, caption: () => say('projects.latent.mode.capDecoder') },
 }
 /** The Start map's other boxes in the open view: faint, to show where the project sits. */
-const OTHERS = NODES.filter((n) => !(n.id in ROUTE) && n.y + H <= VIEW.y + VIEW.h && n.y >= VIEW.y - 10)
+const OTHERS = NODES.filter((n) => !(n.id in ROUTE) && n.id !== 'segmentation' && n.y + H <= VIEW.y + VIEW.h && n.y >= VIEW.y - 10)
 /** boxes with a decision on the page, so a click on one scrolls to it even when no step sits there */
 const DECIDED = new Set(['photos', 'words', 'made-images', 'decoder', 'latent', 'gallery'])
 
@@ -67,14 +70,15 @@ const stateOf = (steps: Step[], i: number): State => {
 
 /** The boxes and wires the decisions draw. */
 function drawn(facts: LatentFacts, museum: boolean, decoder: boolean) {
-  const on = new Set(['photos', 'made-images', 'latent', 'gallery', 'words', ...(museum ? [] : ['crop']), ...(decoder ? ['decoder'] : [])])
+  const on = new Set(['photos', 'made-images', 'latent', 'gallery', 'room', 'words', ...(museum ? [] : ['crop']), ...(decoder ? ['decoder'] : [])])
   for (const st of facts.steps) if (st.node) on.add(st.node)
   const wires: { a: string; b: string; label: () => string }[] = [
     ...(museum ? [{ a: 'photos', b: 'made-images', label: () => say('projects.latent.mode.wireEncode') }] : [{ a: 'photos', b: 'crop', label: () => '' }, { a: 'crop', b: 'made-images', label: () => say('projects.latent.mode.wireEncode') }]),
     { a: 'made-images', b: 'latent', label: () => say('projects.latent.mode.wireDecode') },
     ...(decoder ? [{ a: 'made-images', b: 'decoder', label: () => '' }, { a: 'decoder', b: 'latent', label: () => '' }] : []),
     { a: 'latent', b: 'gallery', label: () => say('projects.latent.mode.wireMeasure') },
-    { a: 'words', b: 'gallery', label: () => say('projects.latent.mode.wireBeside') },
+    { a: 'latent', b: 'room', label: () => '' },
+    { a: 'words', b: 'room', label: () => say('projects.latent.mode.wireBeside') },
   ]
   return { on, wires }
 }
@@ -129,14 +133,14 @@ function Schematic({ project, facts, route, f, view, light, pick }: { project: P
     const st = at_.map((x) => stateOf(steps, x.i))
     return st.includes('now') ? 'now' : st.every((x) => x === 'done') ? 'done' : 'waiting'
   }
-  // the texts' wire runs under the decoder's row, clear of every box, to the gallery
+  // the texts' wire runs under the decoder's row, clear of every box, past the gallery's right and into the room's side
   const corridor = lerp(405, F.row2 + F.h + 4, f)
   // a wire from one box to the other: straight along a row or up a column, or along and then into the other box's top or bottom
   const wire = (a: string, b: string) => {
     const [ax, ay] = pos(a)
     const [bx, by] = pos(b)
     const down = by > ay
-    if (a === 'words') return `M${ax + W},${ay + boxH / 2} H255 V${corridor} H${bx + W / 2} V${corridor < by ? by : by + boxH}`
+    if (a === 'words') return `M${ax + W},${ay + boxH / 2} H255 V${corridor} H${bx + W + 20} V${by + boxH / 2} H${bx + W}`
     // up a column: at the box's right, clear of the caption under the upper box
     if (Math.abs(ax - bx) < 1) return `M${ax + W - 20},${down ? ay + boxH : ay} V${down ? by : by + boxH}`
     if (Math.abs(ay - by) < 1) return `M${ax + W},${ay + boxH / 2} H${bx}`

@@ -4,6 +4,8 @@
     python python/variable_machine/latent.py make <image folder> <out folder>
     python python/variable_machine/latent.py train <latent folder> <image folder> [--steps 800]
     python python/variable_machine/latent.py gallery <latent folder> <image folder> <out folder> [--brings 4]
+    python python/variable_machine/latent.py room <latent folder> <image folder> [<raw text folder> …] [--embed nomic-embed-text]
+    python python/variable_machine/latent.py respond <latent folder> --pick 3,7,12
 
 All paths are relative to the repo root. The model is Kandinsky 2.2
 (Sber AI, Apache 2.0) in workspace/tools/kandinsky/: its image encoder (CLIP
@@ -36,6 +38,14 @@ What each part does:
   share of how it differs that the axes don't explain. The pictures that
   bring most get a picture of it: the latent image with that picture's own
   part added, decoded.
+- room: the installation's page (#latent-room/<name>) made ready: each
+  picture's distance and what it brings, the media-theory lines, and for
+  each line the passages of the chosen texts nearest it (measured by an
+  embedding model in Ollama, nomic-embed-text). Nothing is drawn.
+- respond: a visitor's choice of pictures, drawn: the centre of the
+  pictures chosen, decoded (by the trained decoder, if there is one) in two
+  variations, and how near that centre is to the collection's, against
+  random choices of as many pictures.
 
 A mean and a few directions of spread is all the latent image is: a picture
 made from copies, of no picture. The texts on the card are media theory
@@ -49,8 +59,10 @@ import html
 import io
 import json
 import os
+import re
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -587,6 +599,152 @@ figcaption{{padding:.5rem .625rem;display:flex;flex-wrap:wrap;gap:.25rem .5rem}}
 """)
 
 
+# ---------------------------------------------------------------- the room
+
+
+OLLAMA = os.environ.get("OLLAMA_HOST_URL", "http://127.0.0.1:11434").rstrip("/")
+# The lines the room sets beside a visitor's latent image; for each, the passages of the chosen texts nearest it.
+ROOM_LINES = {
+    "mirror": PSY["model"][1],
+    "studium": PSY["latent"],
+    "punctum": PSY["brings"],
+    "simulacrum": PSY["model"][0],
+    "trained": PSY["trained"],
+}
+# a wiki page's markup, left out of the passages
+MARKUP = re.compile(r"\{\{.*?\}\}|\[\[|\]\]|'{2,3}|</?\w+[^>]*>|^=+.*?=+\s*$", re.S | re.M)
+
+
+def rel(p: Path) -> str:
+    """A path as the app's workspace file API takes it: without workspace/."""
+    s = str(p)
+    return s[len("workspace/") :] if s.startswith("workspace/") else s
+
+
+def embed(texts: list[str], model: str) -> np.ndarray:
+    out = []
+    for i in range(0, len(texts), 32):
+        req = urllib.request.Request(f"{OLLAMA}/api/embed", json.dumps({"model": model, "input": texts[i : i + 32]}).encode(), {"content-type": "application/json"})
+        with urllib.request.urlopen(req, timeout=600) as r:
+            out += json.loads(r.read())["embeddings"]
+    a = np.array(out, dtype=np.float32)
+    return a / np.maximum(np.linalg.norm(a, axis=1, keepdims=True), 1e-9)
+
+
+def passages_of(raw: Path) -> list[str]:
+    """A raw text's passages: its chunks, cut at sentences into pieces a visitor can read standing (about 450 characters)."""
+    out = []
+    for line in (raw / "chunks.jsonl").read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        cur = ""
+        for sent in re.split(r"(?<=[.!?])\s+", " ".join(MARKUP.sub("", json.loads(line)["text"]).split())):
+            if len(cur) + len(sent) > 450 and cur:
+                out.append(cur.strip())
+                cur = ""
+            cur += sent + " "
+        if cur.strip():
+            out.append(cur.strip())
+    return [p for p in out if len(p) >= 120]
+
+
+def room(latent: Path, folder: Path, texts: list[Path], model: str) -> None:
+    z = np.load(latent / "stats.npz")
+    E, mean, V = z["embeddings"], z["mean"], z["axes"]
+    names = json.loads((latent / "files.json").read_text())
+    C = E - mean
+    typical = float(np.linalg.norm(C, axis=1).mean())
+    dist = np.linalg.norm(C, axis=1) / typical
+    brings = 1 - explained(E, mean, V)
+    pics = [{"n": i + 1, "file": rel(folder / f), "distance": round(float(dist[i]), 2), "brings": round(float(brings[i]), 3)} for i, f in enumerate(names)]
+    rows, about = [], []
+    for t in texts:
+        if not (t / "chunks.jsonl").exists():
+            sys.exit(f"latent room: no text in {t}; bring it in first with data raw")
+        m = json.loads((t / "manifest.json").read_text()) if (t / "manifest.json").exists() else {}
+        ps = passages_of(t)
+        rows += [{"from": t.name, "text": p} for p in ps]
+        about.append({"name": t.name, "about": m.get("about", t.name), "license": m.get("license", ""), "private": bool(m.get("private")), "passages": len(ps)})
+        print(f"  {t.name}: {len(ps)} passages", flush=True)
+    passages: dict[str, list[dict]] = {}
+    if rows:
+        t0 = time.time()
+        try:
+            P = embed([f"search_document: {r['text']}" for r in rows], model)
+            Q = embed([f"search_query: {ROOM_LINES[k]}" for k in ROOM_LINES], model)
+        except Exception as err:  # noqa: BLE001
+            sys.exit(f"latent room: {model} in Ollama didn't answer ({err}); is Ollama running, and has it {model}? ollama pull {model}")
+        print(f"  {len(rows)} passages measured by {model} in {time.time() - t0:.0f}s", flush=True)
+        for k, q in zip(ROOM_LINES, Q):
+            order = np.argsort(-(P @ q))
+            # the nearest passage, then the nearest from another text, so one text doesn't speak for all of them
+            first = rows[order[0]]
+            other = next((rows[i] for i in order[1:] if rows[i]["from"] != first["from"]), None)
+            passages[k] = [first] + ([other] if other else [])
+    trained = (latent / "latent-trained.png").exists()
+    out = latent / "room"
+    out.mkdir(exist_ok=True)
+    (out / "room.json").write_text(json.dumps({
+        "latent": latent.name,
+        "set": folder.name,
+        "image": rel(latent / ("latent-trained.png" if trained else "latent.png")),
+        "trained": trained,
+        "check": json.loads((latent / "check.json").read_text()),
+        "pictures": pics,
+        "lines": ROOM_LINES,
+        "texts": about,
+        "embed": model if rows else None,
+        "passages": passages,
+    }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"  ◂ {out}/room.json: {len(pics)} pictures, {len(about)} texts, {len(rows)} passages", flush=True)
+
+
+def respond(latent: Path, picks: list[int]) -> None:
+    out = latent / "room"
+    key = "-".join(str(n) for n in sorted(set(picks)))
+    resp = out / "responses"
+    resp.mkdir(parents=True, exist_ok=True)
+    if (resp / f"{key}.json").exists():
+        (out / "latest.json").write_text(json.dumps({"response": rel(resp / f"{key}.json")}) + "\n")
+        print(f"  pictures {key.replace('-', ', ')}: drawn before; shown at once", flush=True)
+        return
+    z = np.load(latent / "stats.npz")
+    E, mean, length, grey = z["embeddings"], z["mean"], float(z["length"]), z["grey"]
+    idx = [n - 1 for n in sorted(set(picks))]
+    if not idx or min(idx) < 0 or max(idx) >= len(E):
+        sys.exit(f"latent respond: the pictures are numbered 1 to {len(E)}")
+    m = E[idx].mean(0)
+    typical = float(np.linalg.norm(E - mean, axis=1).mean())
+    d = float(np.linalg.norm(m - mean)) / typical
+    # how near, against 500 random choices of as many pictures: a mean of a few pictures is near the centre by chance alone
+    rng = np.random.default_rng(0)
+    rand = np.array([np.linalg.norm(E[rng.choice(len(E), len(idx), replace=False)].mean(0) - mean) / typical for _ in range(500)])
+    nearer = float((rand > d).mean())
+    lora = latent / "lora.safetensors"
+    t = time.time()
+    pipe = decoder(torch.float32 if lora.exists() else torch.float16, lora if lora.exists() else None)
+    print(f"  the decoder loaded in {time.time() - t:.0f}s{', trained on the set' if lora.exists() else ''}", flush=True)
+    made = []
+    with torch.no_grad():
+        for seed in range(2):
+            name = f"{key}-{seed + 1}.png"
+            draw(pipe, m, length, grey, seed).save(resp / name)
+            made.append(rel(resp / name))
+            print(f"  ◂ {name} ({time.time() - t:.0f}s)", flush=True)
+    lines = ["mirror", "studium" if nearer >= 0.5 else "punctum"] + (["trained"] if lora.exists() else ["simulacrum"])
+    (resp / f"{key}.json").write_text(json.dumps({
+        "pictures": [n + 1 for n in idx],
+        "distance": round(d, 2),
+        "nearer": round(nearer, 2),
+        "drawn": made,
+        "trained": lora.exists(),
+        "lines": lines,
+        "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }, indent=1) + "\n")
+    (out / "latest.json").write_text(json.dumps({"response": rel(resp / f"{key}.json")}) + "\n")
+    print(f"  their centre is {d:.2f} spreads from the set's: nearer than {nearer:.0%} of random choices of {len(idx)}", flush=True)
+
+
 def main(argv: list[str]) -> None:
     def opt(name: str, default: int) -> int:
         return int(argv[argv.index(name) + 1]) if name in argv else default
@@ -600,6 +758,10 @@ def main(argv: list[str]) -> None:
         crop(Path(pos[1]), Path(pos[2]), "--grid" in argv)
     elif len(pos) == 4 and pos[0] == "gallery":
         gallery(Path(pos[1]), Path(pos[2]), Path(pos[3]), opt("--brings", 4))
+    elif len(pos) >= 3 and pos[0] == "room":
+        room(Path(pos[1]), Path(pos[2]), [Path(p) for p in pos[3:]], argv[argv.index("--embed") + 1] if "--embed" in argv else "nomic-embed-text")
+    elif len(pos) == 2 and pos[0] == "respond" and "--pick" in argv:
+        respond(Path(pos[1]), [int(x) for x in argv[argv.index("--pick") + 1].split(",")])
     else:
         sys.exit(__doc__.split("\n\n")[1])
 

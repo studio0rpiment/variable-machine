@@ -59,6 +59,8 @@ The steps by hand, for checking each one:
 | 7 | Image segmentation | Measure the pictures; press **open the gallery** on the card | `latent gallery screenshots-pictures images/screenshots-pictures` | The page shows the latent image (before and after training) and the pixel average, each with its line of media theory (Barthes, Baudrillard, Benjamin); a list "what media theory says it is like" (Baudrillard's phases, Lacan's mirror stage, Flusser), with Steyerl's poor image and the line on saved posts and the recommender; "no axes"; then every picture, nearest first, with what it brings. On the mocks: 0.86 to 1.31 spreads |
 | 8 | Share | Try to zip it | `zip latents/screenshots-pictures` | Refused: it says the set is private and stays on this computer |
 
+**The room** (the walkthrough's last step): `latent room <name> <text> …` with Ollama running and nomic-embed-text pulled; open `#latent-room/<name>`; choose three pictures and press draw: about 50 s, then two drawings, the "nearer than" line, and two passages under each media-theory line. Choose the same three again: shown at once.
+
 ## 2. Image moods
 
 **Makes:** a mood classifier (calm, lively, tense, sombre) for what a picture conveys, its score on pictures set aside, and a gallery page with CSV and JSON. **Time:** about 10 minutes, 2 of them embedding the texts. **Disk:** about 360 MB (encoder 204 MB, OASIS 88 MB zip plus 51 MB dataset). **Note:** OASIS includes unpleasant photos (a carcass, a crash); its licence is research use, so the results are for student projects only.

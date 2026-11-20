@@ -73,6 +73,8 @@ const HELP = `commands
   latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
   latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
   latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
+  latent room <name> [<text> …]                   the installation's page, #latent-room/<name>, with passages of the texts beside it
+  latent respond <name> --pick 3,7,12             a visitor's choice of pictures, drawn as their latent image (the room runs it)
   model get siglip                                a picture encoder for image moods: workspace/tools/siglip/
   mood describe <dataset> --texts raw/<text> …    each mood's prompt and sentences from the texts: data/<dataset>/labels.md
   mood train <name> --data <picture dataset>      a mood classifier, checked on rows set aside: workspace/classifiers/<name>/

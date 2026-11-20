@@ -21,6 +21,8 @@ import { joinWords } from './shared/quote.ts'
  *   latent make <name> images/<set>              the latent image, its axes, the pixel average and the check: latents/<name>/
  *   latent train <name> [--steps 800]            the decoder learns the collection (LoRA), and draws the latent image again
  *   latent gallery <name> images/<set> [--brings 4]   every picture measured against it: outputs/<set>-<name>/
+ *   latent room <name> [<text> …]                the installation's page made ready, with passages of the texts: latents/<name>/room/
+ *   latent respond <name> --pick 3,7,12          a visitor's choice of pictures, drawn: latents/<name>/room/responses/
  *
  * A mean and a few directions of spread is all it is. "Subconscious" is the
  * project's frame; the card's texts give that frame its history.
@@ -270,12 +272,75 @@ async function gallery(args: string[], line: string): Promise<boolean> {
   })
 }
 
+/** `latent room <name> [<text> …]`: the room (#latent-room/<name>) made ready: the pictures' measures, and the passages of the texts (workspace/raw/<text>) nearest each media-theory line. */
+async function makeRoom(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  const [name, ...texts] = pos
+  if (!name || !NAME.test(name) || texts.some((t) => !NAME.test(t)) || texts.length > 24 || Object.keys(opts).some((o) => o !== 'embed') || (opts.embed !== undefined && !NAME.test(opts.embed.replace(':', '-')))) {
+    print('usage: latent room <name> [<text> …] [--embed nomic-embed-text]   (the room for workspace/latents/<name>; each text is a folder in workspace/raw, brought in with data raw)')
+    return false
+  }
+  const m = await readJson<{ set: string; private?: boolean }>(ws('latents', name, 'manifest.json'))
+  if (!m || !(await exists(ws('latents', name, 'stats.npz')))) return print(`latent room: no latent image workspace/latents/${name}; make it first with latent make ${name} images/<set>`), false
+  for (const t of texts) if (!(await exists(ws('raw', t, 'chunks.jsonl')))) return print(`latent room: no text workspace/raw/${t}; bring it in first with data raw`), false
+  const out = `workspace/latents/${name}/room`
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'room', `workspace/latents/${name}`, `workspace/images/${m.set}`, ...texts.map((t) => `workspace/raw/${t}`), ...(opts.embed ? ['--embed', opts.embed] : [])]
+  return runRecipe({
+    recipe: 'latent-room',
+    params: { name, texts },
+    outputs: [`${out}/room.json`],
+    steps: [
+      { kind: 'spawn', argv, env: PY_ENV },
+      {
+        kind: 'do',
+        display: `add the room to workspace/latents/${name}/manifest.json`,
+        run: async () => {
+          const manifest = (await readJson<Record<string, unknown> & { command: string[] }>(ws('latents', name, 'manifest.json')))!
+          manifest.command = [...manifest.command, line, shown(argv)]
+          manifest.room = { texts, created: new Date().toISOString() }
+          await fs.writeFile(ws('latents', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+          broadcast({ type: 'workspace.changed', path: `latents/${name}/manifest.json`, kind: 'change' })
+          print(`  open the room: http://localhost:${process.env.VARIABLE_MACHINE_PORT ?? 4817}/#latent-room/${name} (full screen: the browser's full-screen key)`)
+        },
+      },
+    ],
+  })
+}
+
+/** `latent respond <name> --pick 3,7,12`: the centre of the pictures a visitor chose, drawn twice, and how near it is to the set's. The room runs it. */
+async function respond(args: string[]): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  const [name] = pos
+  const picks = (opts.pick ?? '').split(',').map(Number)
+  const room = await readJson<{ pictures: unknown[] }>(ws('latents', name ?? '', 'room', 'room.json'))
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => o !== 'pick') || !opts.pick || picks.some((n) => !Number.isInteger(n) || n < 1)) {
+    print('usage: latent respond <name> --pick 3,7,12   (the pictures, by their numbers in the room, 3 or more)')
+    return false
+  }
+  if (!room) return print(`latent respond: no room for ${name}; make it first with latent room ${name}`), false
+  const n = new Set(picks).size
+  if (n < 3 || n > 40) return print('latent respond: choose 3 to 40 pictures'), false
+  if (picks.some((p) => p > room.pictures.length)) return print(`latent respond: the pictures are numbered 1 to ${room.pictures.length}`), false
+  const key = [...new Set(picks)].sort((a, b) => a - b).join('-')
+  const made = await exists(ws('latents', name, 'room', 'responses', `${key}.json`))
+  if (!made && !(await ready())) return false
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'respond', `workspace/latents/${name}`, '--pick', key.split('-').join(',')]
+  return runRecipe({
+    recipe: 'latent-respond',
+    params: { name, picks: key },
+    outputs: [`workspace/latents/${name}/room/latest.json`],
+    steps: [{ kind: 'spawn', argv, env: PY_ENV }],
+  })
+}
+
 export async function latentCommand(args: string[], line: string): Promise<boolean> {
   const [sub, ...rest] = args
   if (sub === 'crop') return cropShots(rest, line)
   if (sub === 'make') return make(rest, line)
   if (sub === 'train') return train(rest, line)
   if (sub === 'gallery') return gallery(rest, line)
-  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4]')
+  if (sub === 'room') return makeRoom(rest, line)
+  if (sub === 'respond') return respond(rest)
+  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4] | latent room <name> [<text> …] | latent respond <name> --pick 3,7,12')
   return false
 }

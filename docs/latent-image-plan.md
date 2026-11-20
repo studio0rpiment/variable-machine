@@ -300,3 +300,16 @@ It adds four boxes, marked NEW: crop, latent image, train (the decoder on the se
 
 **Your own writing or PDFs.** A new command, `data raw file uploads/<file> <name> --license "<terms>"`, reads an uploaded .txt, .md or .pdf into `workspace/raw/<name>`. A PDF is read page by page with pypdf. The text is marked private, and zip never shares raw texts. The Data tab has a card for it under "make a new one", and uploads now take .pdf.
 
+
+## 10. The room (2026-11-20)
+
+The installation's own page, as the dream reading has one: `http://localhost:4817/#latent-room/<name>` (4842 in testing), black, full screen (the browser's full-screen key), no other part of the app. It is the walkthrough's last step.
+
+- **The room shows** the set's latent image (the trained decoder's, if there is one) beside every picture of the set.
+- **A visitor** touches the pictures they would keep (3 to 40) and presses draw.
+- **The room answers** with the centre of the chosen pictures, drawn twice; how near it is to the set's centre, against 500 random choices of as many pictures; and media-theory lines beside it, each with the two passages of the chosen texts nearest it (the nearest, then the nearest from another text). The lines: Lacan's mirror stage always; Barthes's studium if the choice is nearer the centre than half of random choices, the punctum if not; Baudrillard's simulacrum (the trained decoder) or his phases of the image.
+- **Commands:** `latent room <name> [<text> …]` makes it ready: it measures every passage of the texts (workspace/raw, your own writing included) with nomic-embed-text in Ollama, and draws nothing (about 30 s for 1,300 passages). `latent respond <name> --pick 3,7,12` is what the room runs: it loads the decoder and draws (about 50 s on 32 GB); a choice drawn before shows at once.
+- **Files:** `latents/<name>/room/room.json`, `room/responses/<picks>.json` and its two pictures, `room/latest.json`. They stay with the latent image, and private as it is.
+- **Code:** `ui/src/components/LatentRoom.tsx`; the route's last step and the room box in `ProjectsPanel.tsx` and `LatentMode.tsx`.
+- **Tested** on port 4842, 2026-11-20, on the 15 Hiroshige test pictures with Barthes (Wikipedia) and Holmes (Gutenberg 11751): the room made ready, three pictures drawn through the page (50 s), the passages chosen (Holmes on the mirror beside Lacan).
+- **Not built:** a decoder kept loaded between visitors (each draw loads it, about 20 s of the 50); titles for Gutenberg texts (the room names them by their folder).

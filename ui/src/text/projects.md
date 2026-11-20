@@ -2593,6 +2593,21 @@ drawn by the trained decoder
 
 measure the pictures against the latent image, with the media theory beside each part, and open the gallery page
 
+### Step: the room
+`projects.latent.mode.room`
+
+make the room ready: the installation's own page, where a visitor touches the pictures they would keep and sees the latent image of those, with the media theory and the passages of your texts nearest it
+
+### Step: the room, for the texts it reads
+`projects.latent.mode.roomTexts`
+
+reads {n} texts: {texts}
+
+### Link: open the room
+`projects.latent.openRoom`
+
+open the room (full screen: the browser's full-screen key)
+
 ### Box: crop
 `projects.latent.mode.boxCrop`
 
@@ -2607,6 +2622,11 @@ latent image
 `projects.latent.mode.boxGallery`
 
 gallery
+
+### Box: the room
+`projects.latent.mode.boxRoom`
+
+room
 
 ### Box: the decoder
 `projects.latent.mode.boxDecoder`
@@ -2638,6 +2658,11 @@ the centre, drawn
 
 every picture against it
 
+### Caption: the room
+`projects.latent.mode.capRoom`
+
+a visitor's choice, drawn
+
 ### Caption: your words
 `projects.latent.mode.capWords`
 
@@ -2667,9 +2692,101 @@ measured
 ### Wire: read beside
 `projects.latent.mode.wireBeside`
 
-read beside it
+passages, beside a visitor's choice
 
 ### A box the project adds
 `projects.latent.mode.newBox`
 
 new
+
+## The latent image's room (#latent-room/<name>), the installation's own page
+
+### The room, for a screen reader
+`projects.latent.room.label`
+
+the latent image room
+
+### No room yet
+`projects.latent.room.none`
+
+No room for {name} yet: latent room {name} makes it ready, on the card's last step.
+
+### What the visitor is asked
+`projects.latent.room.ask`
+
+Touch the pictures you would keep: {n} or more.
+
+### The pictures, for a screen reader
+`projects.latent.room.pictures`
+
+the pictures
+
+### The set's latent image
+`projects.latent.room.theirs`
+
+the latent image of all {n}: their centre, drawn. No single picture shows it.
+
+### The visitor's latent image
+`projects.latent.room.yours`
+
+the latent image of the {n} you chose
+
+### Choose more
+`projects.latent.room.pickMore`
+
+choose {n} more
+
+### Draw
+`projects.latent.room.draw`
+
+draw the picture these {n} hold
+
+### Drawing
+`projects.latent.room.waiting`
+
+drawing the centre of the pictures you chose: about half a minute
+
+### It didn't draw
+`projects.latent.room.failed`
+
+it didn't draw: the terminal on the card says why
+
+### How near
+`projects.latent.room.near`
+
+Their centre is {d} spreads from the centre of all of them (1 is a typical picture's distance): nearer than {pct} of random choices of {k} pictures.
+
+### Heading: Lacan
+`projects.latent.room.lineMirror`
+
+Lacan, the mirror stage
+
+### Heading: the studium
+`projects.latent.room.lineStudium`
+
+Barthes, the studium: near the centre
+
+### Heading: the punctum
+`projects.latent.room.linePunctum`
+
+Barthes, the punctum: away from the centre
+
+### Heading: Baudrillard
+`projects.latent.room.lineSimulacrum`
+
+Baudrillard, the phases of the image
+
+### Heading: the trained decoder
+`projects.latent.room.lineTrained`
+
+Baudrillard, the simulacrum: drawn in the set's own look
+
+### The note under the reading
+`projects.latent.room.note`
+
+A mean of 1,280 numbers for each picture, decoded by Kandinsky 2.2. The theory is a likeness, not a finding: the numbers don't do what it describes. The passages are the ones nearest each line, measured by an embedding model.
+
+### Again
+`projects.latent.room.again`
+
+again

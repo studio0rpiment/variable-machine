@@ -206,7 +206,7 @@ interface Have {
   /** each image set's manifest: what it is, and where it came from */
   imageSets: { folder: string; created?: string; about?: string; private?: boolean; crop?: { from: string; grid: boolean }; command?: string | string[] }[]
   /** latent images, with the set each was made from, its check and its training */
-  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null }[]
+  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null; room?: { texts: string[] } }[]
 }
 
 async function readHave(): Promise<Have> {
@@ -780,6 +780,18 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
     fill: { look: { set: against } },
     parts: ['look.sets'],
+  })
+  // the room: the installation's own page; it reads the texts brought in, and your own writing if chosen
+  const reads = [...texts.map((t) => t.name), ...(c.own ? own : [])]
+  steps.push({
+    name: say('projects.latent.mode.room'),
+    tab: 'segmentation',
+    node: 'room',
+    commands: [joinWords(['latent', 'room', collection, ...reads])],
+    done: !!latent?.room,
+    result: latent?.room ? say('projects.latent.mode.roomTexts', { n: latent.room.texts.length, texts: latent.room.texts.join(' · ') || '–' }) : undefined,
+    link: latent?.room ? { path: `#latent-room/${collection}`, label: say('projects.latent.openRoom') } : undefined,
+    parts: [],
   })
   return { steps, sets: h.imageSets.map((s) => s.folder).filter((f) => f !== collection && !f.startsWith('classic-cv')), collection, own }
 }
