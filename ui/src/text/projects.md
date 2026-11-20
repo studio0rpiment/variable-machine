@@ -1028,7 +1028,7 @@ drawings
 ### The drawings, the note
 `projects.dreamTrained.style.note`
 
-Upload the drawings at the drawings step, into this set. Photographs of drawings work; crop them to the drawing.
+Upload the drawings at the drawings step, into this set. Photographs of drawings work; crop them to the drawing. To try it first, name a set starting demo (demo-drawings): the step then draws 30 demo drawings in one ink style.
 
 ### The drawings view
 `projects.dreamTrained.view.drawings`

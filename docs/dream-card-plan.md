@@ -149,3 +149,42 @@ What testing changed:
 - a card with a title is described by its title alone: SigLIP's second and third words can be wrong (an ox for the snake), and the model repeated them.
 
 **Not built:** a LoRA on her cards; a server that keeps Kandinsky loaded between visitors (each response loads it, about 25 s); editing an interpretation by hand in the page (she can edit `interpretation.json`, and the room shows it).
+
+## 10. The second card: dream reader, trained
+
+Added 2026-11-20, on Kevin's brief after seeing the room:
+
+> I love that we have a version of the final, and the Kandinsky model is awesome. But we want the user to be able to make all the combinations themselves, as well as making the choices about which models to use, how to train them with the texts we have, and the different diffusion models as well. Then maybe providing possible output styles from someone's own drawings.
+
+The first card (*dream reading*) stays as it is: it is the installation made with ready-made models. The second card, **dream reader, trained · 訓練解夢**, makes the same installation with models the student trains, through Variable Machine's own tabs, as the research bot's card does. It shares the dream folder, the deck and the guide texts with the first card.
+
+**The words it adds.**
+- The **teacher** is the ready-made language model (qwen3:4b by default) that interprets every combination first.
+- A **row** is one training example: the question `dream interpret` asked (the four cards and the nearest passages, in full) and the teacher's answer, as JSON.
+- The **reader** is the small model she trains on the rows she keeps and exports to Ollama: her dream reader.
+- A **style** is a latent image of someone's own drawings, trained with `latent train`: a LoRA (a small set of added weights) for Kandinsky's decoder, so it draws in their look.
+
+**The route** (14 steps; 13 with no style):
+
+| # | Box | Command | What it makes |
+|---|---|---|---|
+| 1–5 | models, cards, deck, guide texts, passages | the first card's own | the deck and the guide texts |
+| 6 | interpret | `dream interpret dream --all --model qwen3:4b` | all 256 readings by the teacher, each keeping its question and answer |
+| 7 | rows | `dream rows dream dream-readings [--keep]`, `data split dream-readings --valid 0.2` | the readings as drafts to keep, edit or reject on the Data tab (or, with `--keep`, kept unread) |
+| 8 | train | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072` | the reader (a LoRA on the base) |
+| 9 | export | `export dream-reader` | the reader in Ollama |
+| 10 | interpret | `dream interpret dream --all --again --model dream-reader` | all 256 readings again, by her reader |
+| 11 | drawings | `[dream drawings demo-drawings]`, `latent make her-style images/her-drawings`, `latent train her-style` | the style |
+| 12 | variations | `dream draw dream --all --style latents/her-style [--again]` | every combination drawn in the style |
+| 13 | the room | `dream choose …`, `dream respond dream --model dream-reader --style latents/her-style` | `#room/dream/trained`: the room with her reader and style |
+| 14 | package | `package dream-reader`, `zip packages/dream-reader` | the reader, its rows and their sources, to share |
+
+**The decisions it adds:** the teacher (qwen3:4b or qwen3:1.7b); the reader's base; whether every row is read before it is kept; which diffusion model draws; whose style.
+
+**The reader's base.** Variable Machine trained SmolLM2 only, which writes English. The reading is in English and Chinese, so two Apache 2.0 bases that write Chinese were added to the training bases (`helper/src/shared/library.ts`): Qwen2.5 0.5B Instruct (the default) and 1.5B Instruct. Qwen2.5 3B is under the Qwen Research licence, so it is not offered. `--max-seq 3072`: a row is about 2,000 tokens (4,700 characters of question, with the Chinese answer).
+
+**The diffusion models.** Kandinsky 2.2 is the one that can be trained here (`latent train`), from the cards or with the prior. Stable Diffusion 1.5 (CreativeML OpenRAIL-M, words only) and FLUX.1 schnell (Apache 2.0, 12 billion weights) are listed as choices with why they are not offered yet: the first needs its own drawing and style training; the second is too big to train a style on with 32 GB.
+
+**The demo drawings.** `dream drawings demo-drawings` draws 30 drawings in one ink line style with Kandinsky (Apache 2.0 output), standing in for someone's own until theirs are uploaded at step 11. Thirty, so the latent image has its axes. A style trained on Kandinsky's own pictures is a test of the route, not of a style: it should be made from a person's drawings.
+
+**New:** `dream rows`, `dream drawings`, `--again` (interpret and draw), `--style` (draw and respond), the readings' `asked` and `answer`, the manifest's `byModel` and `styled`; `trainedRoute` in `ProjectsPanel.tsx`; the trained boxes, wires and decisions in `DreamMode.tsx`; the drawings view in `DreamViews.tsx`; the trained room (`#room/<name>/trained`).

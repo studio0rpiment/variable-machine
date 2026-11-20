@@ -675,7 +675,8 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
       name: say('projects.dreamTrained.mode.drawings'),
       tab: 'segmentation',
       node: 'drawings',
-      commands: [joinWords(['latent', 'make', c.styleName, `images/${c.drawings}`]), joinWords(['latent', 'train', c.styleName])],
+      // a demo set (demo-…) is drawn by dream drawings; someone's own drawings are uploaded in the step
+      commands: [...(c.drawings.startsWith('demo') && !(h.setSizes[c.drawings] ?? 0) ? [joinWords(['dream', 'drawings', c.drawings])] : []), joinWords(['latent', 'make', c.styleName, `images/${c.drawings}`]), joinWords(['latent', 'train', c.styleName])],
       done: !!latent?.trained,
       result: latent?.check ? say('projects.dreamTrained.mode.drawingsResult', { n: latent.check.pictures, trained: latent.trained ? say('projects.dreamTrained.mode.trainedYes') : say('projects.dreamTrained.mode.trainedNo') }) : say('projects.dreamTrained.mode.drawingsNeed', { n: h.setSizes[c.drawings] ?? 0 }),
       view: 'dream-drawings',

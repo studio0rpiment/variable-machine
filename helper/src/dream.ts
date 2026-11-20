@@ -22,6 +22,7 @@ import type { DraftRow } from './shared/manifest.ts'
  * latent.py does, and SigLIP the way mood.py does.
  *
  *   dream cards <prefix>                                       a demo deck, drawn from prompts: images/<prefix>-who … -where
+ *   dream drawings <set>                                       30 demo drawings in one ink style, for the trained card's style
  *   dream deck <name> --who images/<set> --what … --when … --where …   the deck: workspace/dreams/<name>/
  *   dream guide <name> raw/<text> uploads/<file> … [--embed nomic-embed-text]   the guide texts
  *   dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none] [--again]
@@ -170,6 +171,33 @@ async function cards(args: string[], line: string): Promise<boolean> {
       broadcast({ type: 'workspace.changed', path: `images/${prefix}-${q}/manifest.json`, kind: 'add' })
     }
     print(`  next: dream deck <name> ${QUALITIES.map((q) => `--${q} images/${prefix}-${q}`).join(' ')}`)
+  })
+}
+
+/** `dream drawings <set>`: 30 demo drawings, drawn by Kandinsky from prompts in one ink line style, into images/<set>: someone's own drawings stand in here until theirs are uploaded. */
+async function drawingsCmd(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  const [set] = pos
+  if (!set || !NAME.test(set) || pos.length !== 1 || Object.keys(opts).length) return print('usage: dream drawings <set>   (30 demo drawings in one ink line style, into workspace/images/<set>, to train a style on: latent make <style> images/<set>)'), false
+  if (await exists(ws('images', set))) return print(`dream drawings: workspace/images/${set} exists; choose another name`), false
+  if (!(await need('kandinsky', 'kandinsky-prior'))) return false
+  print('  about 12 minutes: 30 prompts through the prior, then 30 pictures through the decoder')
+  const argv = [...UV_DREAM, 'python', SCRIPT, 'drawings', set]
+  return run('dream-drawings', null, argv, line, [`workspace/images/${set}/drawings.json`], { set }, async () => {
+    const d = await readJson<{ style: string; credits: { file: string; title: string; prompt: string }[] }>(ws('images', set, 'drawings.json'))
+    const manifest = {
+      name: set,
+      kind: 'images',
+      created: new Date().toISOString(),
+      license: 'drawn by Kandinsky 2.2 (Apache 2.0) from prompts written for the demo',
+      about: `30 demo drawings in one style (${d?.style ?? 'ink line'}), standing in for someone's own drawings`,
+      inputs: ['workspace/tools/kandinsky', 'workspace/tools/kandinsky-prior'],
+      command: [line, shown(argv)],
+      credits: (d?.credits ?? []).map((c) => ({ file: c.file, title: c.title, license: 'Apache 2.0 model output', prompt: c.prompt })),
+    }
+    await fs.writeFile(ws('images', set, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+    broadcast({ type: 'workspace.changed', path: `images/${set}/manifest.json`, kind: 'add' })
+    print(`  next: latent make <style> images/${set}, then latent train <style>`)
   })
 }
 
@@ -405,6 +433,7 @@ async function respond(args: string[], line: string): Promise<boolean> {
 export async function dreamCommand(args: string[], line: string): Promise<boolean> {
   const [sub, ...rest] = args
   if (sub === 'cards') return cards(rest, line)
+  if (sub === 'drawings') return drawingsCmd(rest, line)
   if (sub === 'deck') return deck(rest, line)
   if (sub === 'guide') return guide(rest, line)
   if (sub === 'interpret') return interpret(rest, line)
@@ -412,6 +441,6 @@ export async function dreamCommand(args: string[], line: string): Promise<boolea
   if (sub === 'draw') return draw(rest, line)
   if (sub === 'choose') return choose(rest)
   if (sub === 'respond') return respond(rest, line)
-  print('usage: dream cards <prefix> | dream deck <name> --who images/<set> … | dream guide <name> raw/<text> … | dream interpret <name> (--combination 1-2-3-4 | --all) [--again] | dream rows <name> <set> [--keep] | dream draw <name> (--combination … | --all) [--with cards|prior] | dream choose <name> --who n --what n --when n --where n | dream respond <name>')
+  print('usage: dream cards <prefix> | dream drawings <set> | dream deck <name> --who images/<set> … | dream guide <name> raw/<text> … | dream interpret <name> (--combination 1-2-3-4 | --all) [--again] | dream rows <name> <set> [--keep] | dream draw <name> (--combination … | --all) [--with cards|prior] | dream choose <name> --who n --what n --when n --where n | dream respond <name>')
   return false
 }

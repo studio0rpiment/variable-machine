@@ -1,6 +1,7 @@
 """A dream installation: four cards for each of who, what, when and where; a visitor chooses one of each.
 
     python python/variable_machine/dream.py cards <image folder prefix>
+    python python/variable_machine/dream.py drawings <image set>
     python python/variable_machine/dream.py deck <dream folder> --who <folder> --what <folder> --when <folder> --where <folder>
     python python/variable_machine/dream.py guide <dream folder> <text> [<text> …] [--embed nomic-embed-text]
     python python/variable_machine/dream.py interpret <dream folder> (--combination 1-2-3-4 | --all) [--model qwen3:4b] [--again]
@@ -293,6 +294,50 @@ def cards(prefix: str) -> None:
             credits.append({"file": name, "title": p, "prompt": f"{p}, {STYLE}"})
             say(f"  ◂ images/{prefix}-{q}/{name}: {p} ({time.time() - t:.0f}s)")
         (out / "cards.json").write_text(json.dumps({"quality": q, "style": STYLE, "credits": credits}, indent=1) + "\n")
+
+
+# A demo set of drawings for the trained card's style, drawn by `drawings` from these prompts: someone's own drawings
+# stand in here until hers are uploaded. One ink line style for all thirty (30 gives the latent image its axes).
+DRAWING_STYLE = "loose black ink line drawing on white paper, pen and brush, sparse cross-hatching, sketchbook page"
+DRAWING_SUBJECTS = [
+    "a sleeping cat", "a teapot", "a pine tree on a cliff", "a bicycle", "an old man reading", "a fishing boat", "a crow on a wire",
+    "a doorway with a curtain", "a bowl of oranges", "a girl with an umbrella", "a mountain village", "a hand holding a cup",
+    "a lantern", "a bridge over a stream", "a dog lying down", "a temple roof", "a market stall", "a woman sewing",
+    "a moon over rooftops", "a staircase", "a rooster", "a chair by a window", "rain on a street", "a koi fish",
+    "a tree in winter", "a child sleeping", "a kettle on a stove", "a horse", "a field of reeds", "a shoe",
+]
+
+
+def drawings(name: str) -> None:
+    """Thirty demo drawings, drawn as the demo cards are, into images/<name>, with drawings.json naming each prompt."""
+    import torch
+
+    L = latent_mod()
+    out = WORKSPACE / "images" / name
+    out.mkdir(parents=True, exist_ok=True)
+    t = time.time()
+    pipe = prior_pipe()
+    embeds = []
+    with torch.no_grad():
+        for i, p in enumerate(DRAWING_SUBJECTS):
+            o = pipe(f"{p}, {DRAWING_STYLE}", guidance_scale=4.0, num_inference_steps=25, generator=torch.Generator("cpu").manual_seed(i))
+            embeds.append((o.image_embeds.float().cpu(), o.negative_image_embeds.float().cpu()))
+    del pipe
+    if L.DEV == "mps":
+        torch.mps.empty_cache()
+    say(f"  {len(DRAWING_SUBJECTS)} prompts into Kandinsky's numbers by the prior in {time.time() - t:.0f}s")
+    dec = L.decoder()
+    credits = []
+    for i, (p, (e, n)) in enumerate(zip(DRAWING_SUBJECTS, embeds)):
+        t = time.time()
+        dt = dec.unet.dtype
+        with torch.no_grad():
+            im = dec(image_embeds=e.to(L.DEV, dt), negative_image_embeds=n.to(L.DEV, dt), height=512, width=512, num_inference_steps=L.STEPS, guidance_scale=4.0, generator=torch.Generator("cpu").manual_seed(i)).images[0]
+        f = f"drawing-{i + 1:02d}.png"
+        im.save(out / f)
+        credits.append({"file": f, "title": p, "prompt": f"{p}, {DRAWING_STYLE}"})
+        say(f"  ◂ images/{name}/{f}: {p} ({time.time() - t:.0f}s)")
+    (out / "drawings.json").write_text(json.dumps({"style": DRAWING_STYLE, "credits": credits}, indent=1) + "\n")
 
 
 # ---------------------------------------------------------------- deck
@@ -710,6 +755,8 @@ def main(argv: list[str]) -> None:
     style = Path(opt("--style")) if opt("--style") else None
     if cmd == "cards" and len(pos) == 2:
         cards(pos[1])
+    elif cmd == "drawings" and len(pos) == 2:
+        drawings(pos[1])
     elif cmd == "deck" and len(pos) == 2 and all(opt(f"--{q}") for q in QUALITIES):
         deck(Path(pos[1]), {q: Path(opt(f"--{q}")) for q in QUALITIES})
     elif cmd == "guide" and len(pos) >= 3:

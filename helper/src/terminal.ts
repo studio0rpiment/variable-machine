@@ -75,6 +75,7 @@ const HELP = `commands
   latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
   latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
   dream cards <prefix>                            16 demo cards drawn from prompts (Kandinsky's prior): workspace/images/<prefix>-who … -where
+  dream drawings <set>   30 demo drawings in one ink style, to train a style on (latent make, latent train)
   dream deck <name> --who images/<set> --what … --when … --where …   a dream installation's deck, 4 cards a quality: workspace/dreams/<name>/
   dream guide <name> raw/<text> [uploads/<file>.txt …]   the texts its combinations are interpreted with
   dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none] [--again]   a combination's interpretation, from the guide texts

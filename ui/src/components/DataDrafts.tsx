@@ -34,7 +34,7 @@ function fieldsOf(train: string): string {
  * read ten at a time: kept (`data append … --draft <id>`, edited first if need
  * be) or rejected (`data reject`).
  */
-export default function DataDrafts({ dataset, train }: { dataset: string; train: string }) {
+export default function DataDrafts({ dataset, train, dream }: { dataset: string; train: string; dream?: { folder: string; by: string } }) {
   const { models, reload } = useOllamaModels()
   const [model, setModel] = useState('qwen3:4b')
   const [count, setCount] = useState(200)
@@ -88,9 +88,11 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
 
   const fieldList = fields.split(',').map((f) => f.trim()).filter(Boolean)
   const line = joinWords(['data', 'draft', dataset, '--from', from || '<material>', ...(fieldList.length ? ['--fields', fieldList.join(',')] : []), '--count', String(count), '--model', model])
+  // a dream set's rows are readings dream interpret wrote: more come from dream rows, not from the writer
+  const dreamLine = dream ? joinWords(['dream', 'rows', dream.folder.replace(/^dreams\//, ''), dataset, '--by', dream.by]) : ''
   const draft = async () => {
     setBusy('draft')
-    await runCommand(line)
+    await runCommand(dream ? dreamLine : line)
     setBusy('')
   }
 
@@ -121,44 +123,55 @@ export default function DataDrafts({ dataset, train }: { dataset: string; train:
 
   return (
     <div className="generator drafts">
-      <p className="mf-next">{say('data.drafts.intro')}</p>
-      <div className="generator__head" data-guide="data.drafts.from">
-        <label className="field">
-          <span className="label label--muted">{say('data.drafts.from')}</span>
-          <select value={from} onChange={(e) => setFrom(e.target.value)}>
-            {!from && <option value="">{say('data.drafts.from.none')}</option>}
-            {sources.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="button" className="text-button" onClick={() => picker.current?.click()}>
-          {say('data.drafts.upload')}
-        </button>
-        <input ref={picker} type="file" accept=".txt,.md,text/plain,text/markdown" hidden onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
-      </div>
-      <div className="generator__head">
-        <label className="field" data-guide="data.drafts.fields">
-          <span className="label label--muted">{say('data.drafts.fields')}</span>
-          <input type="text" value={fields} placeholder={say('data.drafts.fields.example')} onChange={(e) => setFields(e.target.value.replace(/\s/g, ''))} />
-        </label>
-        <label className="field field--narrow">
-          <span className="label label--muted">{say('data.drafts.count')}</span>
-          <input type="text" inputMode="numeric" value={count} onChange={(e) => setCount(Math.max(1, Math.min(1000, Number(e.target.value.replace(/\D/g, '')) || 1)))} />
-        </label>
-        <ModelSelect label={say('data.drafts.model')} models={models} value={model} onChange={setModel} onOpen={reload} />
-      </div>
-      <p className="mf-next">{say('data.drafts.fields.note')}</p>
-      <NextBox on={!drafts.length && !train.trim()}>
-        <div className="generator__run">
-          <Explained id="data.draft">
-            <CommandPreview command={line} onRun={() => void draft()} disabled={!from} running={busy === 'draft'} label={say('data.drafts.run')} />
-          </Explained>
-          {note && <span className="label label--muted">{note}</span>}
-        </div>
-      </NextBox>
+      {dream ? (
+        <>
+          <p className="mf-next">{say('data.drafts.dream', { folder: dream.folder, by: dream.by })}</p>
+          <div className="generator__run">
+            <CommandPreview command={dreamLine} onRun={() => void draft()} running={busy === 'draft'} label={say('data.drafts.dreamRun')} />
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mf-next">{say('data.drafts.intro')}</p>
+          <div className="generator__head" data-guide="data.drafts.from">
+            <label className="field">
+              <span className="label label--muted">{say('data.drafts.from')}</span>
+              <select value={from} onChange={(e) => setFrom(e.target.value)}>
+                {!from && <option value="">{say('data.drafts.from.none')}</option>}
+                {sources.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className="text-button" onClick={() => picker.current?.click()}>
+              {say('data.drafts.upload')}
+            </button>
+            <input ref={picker} type="file" accept=".txt,.md,text/plain,text/markdown" hidden onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
+          </div>
+          <div className="generator__head">
+            <label className="field" data-guide="data.drafts.fields">
+              <span className="label label--muted">{say('data.drafts.fields')}</span>
+              <input type="text" value={fields} placeholder={say('data.drafts.fields.example')} onChange={(e) => setFields(e.target.value.replace(/\s/g, ''))} />
+            </label>
+            <label className="field field--narrow">
+              <span className="label label--muted">{say('data.drafts.count')}</span>
+              <input type="text" inputMode="numeric" value={count} onChange={(e) => setCount(Math.max(1, Math.min(1000, Number(e.target.value.replace(/\D/g, '')) || 1)))} />
+            </label>
+            <ModelSelect label={say('data.drafts.model')} models={models} value={model} onChange={setModel} onOpen={reload} />
+          </div>
+          <p className="mf-next">{say('data.drafts.fields.note')}</p>
+          <NextBox on={!drafts.length && !train.trim()}>
+            <div className="generator__run">
+              <Explained id="data.draft">
+                <CommandPreview command={line} onRun={() => void draft()} disabled={!from} running={busy === 'draft'} label={say('data.drafts.run')} />
+              </Explained>
+              {note && <span className="label label--muted">{note}</span>}
+            </div>
+          </NextBox>
+        </>
+      )}
       {drafts.length > 0 && (
         <span className="label label--muted">
           {say('data.drafts.tally', { kept: drafts.filter((d) => d.state === 'kept').length, rejected: drafts.filter((d) => d.state === 'rejected').length, unreviewed: open.length })}
