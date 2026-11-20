@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Explained } from '../explain/Explained'
 import type { ExplainId } from '../explain/text'
 
@@ -149,6 +149,33 @@ export const WIRES: Wire[] = [
   { from: 'gesture-train', to: 'gesture', label: 'your gesture model', points: [[740, 712], [994, 712]], at: [746, 706], anchor: 'start' },
 ]
 
+/**
+ * Wider than drawn: the gaps between the columns, in the map's units, where
+ * extra width goes. The boxes, and the ports and outlines at their edges,
+ * stay as they are; only the wires across a gap get longer.
+ */
+const GAPS: P[] = [[215, 295], [455, 570], [752, 815], [975, 985]]
+
+/** x on the map as drawn, to x on a map `extra` units wider, shared equally among the gaps. */
+export function stretcher(extra: number) {
+  if (extra <= 0) return (x: number) => x
+  const share = extra / GAPS.length
+  return (x: number) => GAPS.reduce((at, [a, b]) => at + share * Math.min(1, Math.max(0, (x - a) / (b - a))), x)
+}
+
+/** A wire on the wider map: one drawn by route() is routed again, so its bend stays at 45°. */
+function stretchWire(w: Wire, sx: (x: number) => number): Wire {
+  const first = w.points[0]
+  const last = w.points[w.points.length - 1]
+  const routed = route(first, last)
+  const same = routed.length === w.points.length && routed.every((p, i) => p[0] === w.points[i][0] && p[1] === w.points[i][1])
+  return {
+    ...w,
+    points: same ? route([sx(first[0]), first[1]], [sx(last[0]), last[1]]) : w.points.map(([x, y]) => [sx(x), y] as P),
+    at: [sx(w.at[0]), w.at[1]],
+  }
+}
+
 /** What each tab runs, for the corner echo when you point at it. */
 const RUNS: Record<string, string[]> = {
   models: ['ollama list', 'ollama pull qwen3:4b', 'model get smolvlm-256m'],
@@ -195,14 +222,23 @@ interface Props {
    * then, a scroll scrolls the page, and the tools and the echo go.
    */
   view?: { x: number; y: number; w: number; h: number }
+  /**
+   * Make Your Own: how many units wider than drawn the map is, so it fills a
+   * wide window at the same size; the extra goes into the gaps between the
+   * columns, and the boxes keep their size.
+   */
+  extra?: number
   /** the box lit solid: the part of the page in view */
   light?: string | null
   /** a click on a box, given where it leads (its tab), in place of following its link */
   onPick?: (to: string) => void
 }
 
-export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'], view, light, onPick }: Props) {
+export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'], view, extra = 0, light, onPick }: Props) {
   const held = !!view
+  const sx = useMemo(() => stretcher(extra), [extra])
+  const wires = useMemo(() => (extra > 0 ? WIRES.map((w) => stretchWire(w, sx)) : WIRES), [extra, sx])
+  const nodes = useMemo(() => (extra > 0 ? NODES.map((n) => ({ ...n, x: sx(n.x) })) : NODES), [extra, sx])
   const [hot, setHot] = useState<string | null>(null)
   const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : idle
 
@@ -337,29 +373,29 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
 
         {/* the columns, left to right */}
         {COLUMNS.map(([x, label]) => (
-          <text key={label} x={x} y={36} className="flow__column">
+          <text key={label} x={sx(x)} y={36} className="flow__column">
             {label}
           </text>
         ))}
 
         {/* the three ways: one box, one step number */}
-        <rect x={580} y={170} width={170} height={250} className="flow__group" />
-        <text x={580} y={162} className="flow__group-label">
+        <rect x={sx(580)} y={170} width={sx(750) - sx(580)} height={250} className="flow__group" />
+        <text x={sx(580)} y={162} className="flow__group-label">
           4 · three ways to change the numbers
         </text>
 
         {/* the other kinds, one row each, below the change loop */}
-        <line x1={40} y1={478} x2={1172} y2={478} className="flow__rule" />
+        <line x1={40} y1={478} x2={sx(1172)} y2={478} className="flow__rule" />
 
         {/* the projects, below everything they are made from */}
-        <line x1={40} y1={762} x2={1172} y2={762} className="flow__rule" />
+        <line x1={40} y1={762} x2={sx(1172)} y2={762} className="flow__rule" />
         {PROJECTS.map((l, i) => (
-          <text key={l} x={240} y={808 + i * 18} className="flow__caption">
+          <text key={l} x={sx(240)} y={808 + i * 18} className="flow__caption">
             {l}
           </text>
         ))}
 
-        {WIRES.map((w) => (
+        {wires.map((w) => (
           <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${w.soon ? 'is-soon' : ''} ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>
             <polyline points={w.points.map((p) => p.join(',')).join(' ')} markerEnd="url(#flow-end)" />
             <text x={w.at[0]} y={w.at[1]} textAnchor={w.anchor ?? 'start'} className="flow__label">
@@ -368,7 +404,7 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           </g>
         ))}
 
-        {NODES.map((n) => {
+        {nodes.map((n) => {
           // a use and Chat have an outer outline; their wires plug into it
           const out = n.dest || n.kind === 'use' ? 6 : 0
           const box = n.kind === 'input' ? 'flow__box flow__box--input' : n.kind === 'made' ? 'flow__box flow__box--made' : 'flow__box'
