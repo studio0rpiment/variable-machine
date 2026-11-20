@@ -276,7 +276,7 @@ def crop_screen(im: Image.Image) -> tuple[list[int], str]:
     return [(W - side) // 2, (H - side) // 2, (W - side) // 2 + side, (H - side) // 2 + side], "full screen: the middle square"
 
 
-HEADER, FOOTER = 0.115, 0.915  # a phone's Photos app draws its title and its bar of buttons over the grid: rows reaching above or below these shares of the height are left out
+HEADER, FOOTER = 0.115, 0.915  # a phone's Photos app draws its title and its bar of buttons over the grid: a row reaching above the first share of the height is left out, and one reaching below the second is kept only if the line under it shows (the bar hides it; Instagram draws no bar over its grid)
 
 
 def _gaps(a: np.ndarray, axis: int, thin: int) -> list[tuple[int, int]]:
@@ -313,6 +313,7 @@ def crop_grid(im: Image.Image) -> list[list[int]]:
     # are only evidence. The pitch is the commonest spacing between them (a column's width plus a line on a phone,
     # taller on Instagram); the phase is the one most lines agree with; every row is then placed by the two.
     starts = [y0 for y0, _ in _gaps(a, 1, max(2, w // 80))]
+    even = a.std(1).mean(-1) < 12  # rows of one even colour: the lines, and an app's plain header
     steps = [d - c for c, d in zip(starts, starts[1:]) if cw <= d - c <= 1.45 * cw + 2 * gap]
     if not steps:
         return []
@@ -326,7 +327,12 @@ def crop_grid(im: Image.Image) -> list[list[int]]:
     rows = [(round(best + i * pitch + gap), round(best + (i + 1) * pitch)) for i in range(k0, k0 + int(h / pitch) + 3)]
     boxes = []
     for y0, y1 in rows:
-        if not (0.94 <= (y1 - y0) / cw <= 1.4) or y0 < max(0, HEADER * h) or y1 > FOOTER * h:
+        if y0 < max(0, HEADER * h) or y1 > h or (y1 > FOOTER * h and not any(abs(d - y1) <= 2 for d in starts)):
+            continue
+        if y0 > gap + 8 and even[y0 - gap - 8 : y0].all():  # its top is under a plain header, not a dark picture's sky: start below the header
+            while y0 < y1 and even[y0]:
+                y0 += 1
+        if not (0.94 <= (y1 - y0) / cw <= 1.4):
             continue
         for x0, x1 in cols:
             boxes.append([round(x0 / k), round(y0 / k), round(x1 / k), round(y1 / k)])
