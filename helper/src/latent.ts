@@ -17,6 +17,7 @@ import { joinWords } from './shared/quote.ts'
  * 1280 numbers, the collection's mean and main axes are fitted to them, and
  * Kandinsky's decoder turns the mean back into a picture.
  *
+ *   latent example <set>                         a made-up person's photo roll, as three screenshots, to try the card: images/<set>/
  *   latent crop images/<screenshots> <set> [--grid]   screenshots cut down to the pictures in them: images/<set>/
  *   latent make <name> images/<set>              the latent image, its axes, the pixel average and the check: latents/<name>/
  *   latent train <name> [--steps 800]            the decoder learns the collection (LoRA), and draws the latent image again
@@ -84,6 +85,53 @@ async function images(set: string): Promise<string[]> {
 /** Screenshots hold other people's posts: a set made from them is kept out of zips (share.ts), and so is all made from it. */
 export const PRIVATE = "screenshots of other people's posts: student project only, kept on this computer"
 
+/** What the example is: drawn from written prompts, nobody's, so it is shared like any public-domain set. */
+export const EXAMPLE_LICENSE = 'made up: drawn by Kandinsky 2.2 (Apache 2.0) from the written prompts in example.json; nobody\'s pictures, free to share'
+
+/** `latent example <set>`: a made-up person's photo roll, drawn from 45 prompts by Kandinsky's prior and decoder, as three photo roll screenshots in images/<set>/. */
+async function example(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  const [name] = pos
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).length) {
+    print("usage: latent example <set>   (a made-up person's photo roll, as three screenshots, into workspace/images/<set>/; then latent crop images/<set> <set>-pictures --grid)")
+    return false
+  }
+  if (await exists(ws('images', name))) return print(`latent example: workspace/images/${name} exists; choose another name`), false
+  const prior = encoderModel('kandinsky-prior')!
+  if (!(await encoderPresent(prior))) return print(`latent example draws from words with Kandinsky's prior: model get kandinsky-prior (${prior.license}, about ${(prior.mb / 1000).toFixed(1)} GB)`), false
+  if (!(await ready())) return false
+  print('  45 pictures: about a minute for the prior, then about 15 s a picture (12 minutes)')
+  const out = `workspace/images/${name}`
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'example', out]
+  return runRecipe({
+    recipe: 'latent-example',
+    params: { name },
+    outputs: [`${out}/example.json`],
+    steps: [
+      { kind: 'spawn', argv, env: PY_ENV },
+      {
+        kind: 'do',
+        display: `write ${out}/manifest.json`,
+        run: async () => {
+          const manifest = {
+            name,
+            kind: 'images',
+            created: new Date().toISOString(),
+            license: EXAMPLE_LICENSE,
+            example: true,
+            about: "three screenshots of a made-up person's photo roll, 45 pictures drawn from prompts",
+            inputs: ['workspace/tools/kandinsky-prior', 'workspace/tools/kandinsky'],
+            command: [line, shown(argv)],
+          }
+          await fs.writeFile(ws('images', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+          broadcast({ type: 'workspace.changed', path: `images/${name}/manifest.json`, kind: 'add' })
+          print(`  next: latent crop images/${name} ${name}-pictures --grid`)
+        },
+      },
+    ],
+  })
+}
+
 /** `latent crop images/<screenshots> <set> [--grid]`: each screenshot cut down to its picture (or, with --grid, a grid's thumbnails: Instagram's Saved grid or a photo roll), into images/<set>/. */
 async function cropShots(args: string[], line: string): Promise<boolean> {
   const grid = args.includes('--grid')
@@ -91,7 +139,7 @@ async function cropShots(args: string[], line: string): Promise<boolean> {
   const [folder, name] = pos
   const from = SET.exec(folder ?? '')?.[1]
   if (!from || !name || !NAME.test(name) || pos.length !== 2 || Object.keys(opts).length) {
-    print('usage: latent crop images/<screenshots> <set> [--grid]   (screenshots of posts, stories or reels cut down to their pictures, into workspace/images/<set>/; --grid: screenshots of a grid, the Saved grid or a photo roll, one picture a thumbnail)')
+    print('usage: latent example <set> | latent crop images/<screenshots> <set> [--grid]   (screenshots of posts, stories or reels cut down to their pictures, into workspace/images/<set>/; --grid: screenshots of a grid, the Saved grid or a photo roll, one picture a thumbnail)')
     return false
   }
   const n = (await images(from)).length
@@ -107,24 +155,28 @@ async function cropShots(args: string[], line: string): Promise<boolean> {
       { kind: 'spawn', argv, env: PY_ENV },
       {
         kind: 'do',
-        display: `write ${out}/manifest.json, and mark both sets private`,
+        display: `write ${out}/manifest.json; screenshots are marked private, the example stays shared`,
         run: async () => {
           const crops = await readJson<{ crops: { file: string }[] }>(ws('images', name, 'crops.json'))
+          const src = ws('images', from, 'manifest.json')
+          const srcM = await readJson<Record<string, unknown> & { example?: boolean }>(src)
+          // the example is nobody's: its pictures are shared like any public set; anyone's screenshots stay private
+          const made = srcM?.example
           const manifest = {
             name,
             kind: 'images',
             created: new Date().toISOString(),
-            license: PRIVATE,
-            private: true,
+            ...(made ? { license: EXAMPLE_LICENSE, example: true } : { license: PRIVATE, private: true }),
             about: `${crops?.crops.length ?? 0} pictures cut from ${n} screenshots in images/${from}${grid ? ' (a grid)' : ''}`,
             inputs: [`workspace/images/${from}`],
             command: [line, shown(argv)],
             crop: { from, grid },
           }
           await fs.writeFile(ws('images', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
-          const src = ws('images', from, 'manifest.json')
-          const m = (await readJson<Record<string, unknown>>(src)) ?? { name: from, kind: 'images', created: manifest.created, inputs: [], command: 'uploaded' }
-          await fs.writeFile(src, JSON.stringify({ ...m, license: PRIVATE, private: true }, null, 2) + '\n')
+          if (!made) {
+            const m = srcM ?? { name: from, kind: 'images', created: manifest.created, inputs: [], command: 'uploaded' }
+            await fs.writeFile(src, JSON.stringify({ ...m, license: PRIVATE, private: true }, null, 2) + '\n')
+          }
           broadcast({ type: 'workspace.changed', path: `images/${name}/manifest.json`, kind: 'add' })
           print(`  look through ${out} before going on: a picture with large plain areas can be cut short, and a story's text over the picture stays in it`)
           print(`  next: latent make ${name} images/${name}`)
@@ -335,6 +387,7 @@ async function respond(args: string[]): Promise<boolean> {
 
 export async function latentCommand(args: string[], line: string): Promise<boolean> {
   const [sub, ...rest] = args
+  if (sub === 'example') return example(rest, line)
   if (sub === 'crop') return cropShots(rest, line)
   if (sub === 'make') return make(rest, line)
   if (sub === 'train') return train(rest, line)

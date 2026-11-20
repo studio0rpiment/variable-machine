@@ -313,3 +313,22 @@ The installation's own page, as the dream reading has one: `http://localhost:481
 - **Code:** `ui/src/components/LatentRoom.tsx`; the route's last step and the room box in `ProjectsPanel.tsx` and `LatentMode.tsx`.
 - **Tested** on port 4842, 2026-11-20, on the 15 Hiroshige test pictures with Barthes (Wikipedia) and Holmes (Gutenberg 11751): the room made ready, three pictures drawn through the page (50 s), the passages chosen (Holmes on the mirror beside Lacan).
 - **Not built:** a decoder kept loaded between visitors (each draw loads it, about 20 s of the 50); titles for Gutenberg texts (the room names them by their folder).
+
+## 11. The example (2026-11-20)
+
+The walkthrough opens on an example, as the dream reading opens on its demo deck: the whole route runs before anyone's own screenshots are in, and nothing in it is private.
+
+- **What it is:** one made-up person's photo roll, 45 pictures drawn from written prompts (`EXAMPLE` in `latent.py`): a grey cat, coffee, the sea, cooking, concerts, a few trips. Things come back, as they do in a real roll, so the centre has something to lean toward. No faces: no one is made up who could be taken for someone. The prompts share one style ("a casual phone photo, natural light, slightly grainy, snapshot").
+- **How it is drawn:** Kandinsky 2.2's prior turns each prompt into the same 1,280 numbers the picture encoder makes; the decoder draws them; the pictures are laid out as three screenshots of a phone's photo roll (three columns, thin white lines, a title and a bar), so the example goes through `latent crop --grid` like a student's screenshots.
+- **The decision:** "the example: a made-up photo roll" is the first of the four picture choices, and the default. It adds `model get kandinsky-prior` (6.9 GB, Apache 2.0; the dream card's model entry, unchanged) to step 1 and `latent example example-roll` as step 2.
+- **Shared:** the example's sets are marked as made up, not private (`EXAMPLE_LICENSE` in `helper/src/latent.ts`): they can be zipped and shared. The crop keeps anyone's own screenshots private as before.
+
+![The example: three photo roll screenshots, 45 pictures drawn from prompts](images/latent-example-roll.jpg)
+
+![The pixel average, the latent image, and the latent image drawn by the decoder trained on the roll: a table by a window, something on a plate](images/latent-example-latent.jpg)
+
+![In the room: the three cat pictures chosen, and their centre drawn twice by the trained decoder](images/latent-example-room.jpg)
+
+**What it showed:** the latent image of the roll is a table by a window with something on a plate: the coffee, the windowsills and the food together, in no picture. The three cat pictures' centre is 0.76 spreads from the roll's, further out than every one of 500 random choices of three, so the room sets the punctum beside it; under Lacan it put the Wikipedia article on the mirror stage and Holmes's mirror ("the man beholdeth himself in the glass and goeth his way").
+
+**Tested** on port 4842, 2026-11-20, every command through the tool: `latent example example-roll` (45 pictures in 23 minutes, about 28 s each on 32 GB, with the prior's minute); `latent crop … --grid` (15, 15, 15); four texts with `data raw`; `latent make` (axis 1 across halves 0.45: a sketch at 45 pictures); `latent train` (800 steps, 31 minutes); `latent gallery`; `latent room` with five texts (1,440 passages, 71 s); a draw in the room (about 50 s). Plato's *Sophist* didn't come in: Project Gutenberg answered 503 twice, so the texts step stays undone until it does.

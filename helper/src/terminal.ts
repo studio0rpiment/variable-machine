@@ -70,6 +70,7 @@ const HELP = `commands
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
 
   model get kandinsky                             Kandinsky 2.2, a picture encoder and decoder for the latent image (9 GB): workspace/tools/kandinsky/
+  latent example <set>                            a made-up person's photo roll, three screenshots drawn from prompts, to try the card
   latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
   latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
   latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/

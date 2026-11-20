@@ -8,9 +8,11 @@ import { useSyncExternalStore } from 'react'
  * (workspace/images, raw, latents and outputs).
  */
 
-/** The pictures: screenshots of a grid (a photo roll or Instagram's Saved grid), screenshots one picture each, or a public-domain body of work to try the card first. */
-export type Pictures = 'grid' | 'single' | 'museum'
-export const PICTURES: Pictures[] = ['grid', 'single', 'museum']
+/** The pictures: the example (a made-up person's photo roll, drawn from prompts, to try the card first, as the dream reading has its demo deck), screenshots of a grid (a photo roll or Instagram's Saved grid), screenshots one picture each, or a public-domain body of work. */
+export type Pictures = 'example' | 'grid' | 'single' | 'museum'
+export const PICTURES: Pictures[] = ['example', 'grid', 'single', 'museum']
+/** the example's screenshots: images/example-roll; its pictures, cropped: images/example-roll-pictures */
+export const EXAMPLE_SET = 'example-roll'
 /** The diffusion model that draws the latent image. Kandinsky 2.2 is built; TAESD, for an 8 GB Mac, is planned. */
 export type Diffusion = 'kandinsky' | 'taesd'
 export const DIFFUSIONS: Diffusion[] = ['kandinsky', 'taesd']
@@ -45,7 +47,7 @@ export interface LatentChoices {
 
 const KEY = 'variable-machine.latent'
 const DEFAULTS: LatentChoices = {
-  pictures: 'grid',
+  pictures: 'example',
   set: 'screenshots',
   texts: MEDIA_TEXTS.map((t) => t.id),
   own: false,

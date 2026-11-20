@@ -115,7 +115,9 @@ export default function LatentRoom({ name }: { name: string }) {
           </div>
           <div className="lroom__reading">
             <p className="lroom__near">
-              {say('projects.latent.room.near', { d: response.distance.toFixed(2), pct: `${Math.round(response.nearer * 100)}%`, k: response.pictures.length })}
+              {response.nearer >= 0.5
+                ? say('projects.latent.room.near', { d: response.distance.toFixed(2), pct: `${Math.round(response.nearer * 100)}%`, k: response.pictures.length })
+                : say('projects.latent.room.far', { d: response.distance.toFixed(2), pct: `${Math.round((1 - response.nearer) * 100)}%`, k: response.pictures.length })}
             </p>
             {response.lines.map((k) => (
               <div key={k} className="lroom__line">

@@ -1,5 +1,6 @@
 """The latent image of a collection: what a set of pictures holds that no single picture shows.
 
+    python python/variable_machine/latent.py example <out folder>
     python python/variable_machine/latent.py crop <screenshot folder> <out folder> [--grid]
     python python/variable_machine/latent.py make <image folder> <out folder>
     python python/variable_machine/latent.py train <latent folder> <image folder> [--steps 800]
@@ -15,6 +16,11 @@ downloads anything.
 
 What each part does:
 
+- example: a made-up person's photo roll, to try the card before anyone's
+  own screenshots are in: 45 prompts turned into Kandinsky's numbers by
+  its prior (workspace/tools/kandinsky-prior), drawn by its decoder, and
+  laid out as three screenshots of a phone's photo roll, so the example
+  goes through the crop like a student's. Nothing in it is anyone's.
 - crop: screenshots (of Instagram posts, stories and reels, or with --grid
   of the Saved grid or a photo roll) cut down to the pictures in them, so the app's own
   header, buttons and captions don't become part of the latent image.
@@ -599,6 +605,128 @@ figcaption{{padding:.5rem .625rem;display:flex;flex-wrap:wrap;gap:.25rem .5rem}}
 """)
 
 
+# ---------------------------------------------------------------- the example: a made-up person's photo roll
+
+
+PRIOR = Path("workspace/tools/kandinsky-prior")
+# One made-up person's camera roll: a city by the sea, a cat, coffee, cooking, concerts, a few trips. Things come back,
+# as they do in a real roll, so the centre has something to lean toward. No faces: no one is made up who could be mistaken for someone.
+EXAMPLE_STYLE = "a casual phone photo, natural light, slightly grainy, snapshot"
+EXAMPLE = [
+    "a cup of coffee on a small cafe table by a window",
+    "a grey cat asleep on a sofa cushion",
+    "the sea at sunset from a stony beach",
+    "a bowl of pasta with tomato sauce on a kitchen counter",
+    "a city street at night with neon signs and wet pavement",
+    "a concert stage with blue and purple lights seen from the crowd",
+    "a grey cat sitting on a windowsill looking out",
+    "a flat white with latte art, seen from above",
+    "waves breaking on a sea wall on a cloudy day",
+    "a houseplant in a terracotta pot on a windowsill",
+    "a pile of second-hand books on a wooden floor",
+    "a train window with fields passing by",
+    "a bowl of ramen with an egg, seen from above",
+    "a harbour with small fishing boats in the morning",
+    "a grey cat in a cardboard box",
+    "a vinyl record player with a record spinning",
+    "a snowy street with parked cars in the evening",
+    "a croissant and a coffee on a paper napkin",
+    "a cathedral ceiling seen from below",
+    "a bunch of tulips in a glass jar on a table",
+    "a lighthouse on a rocky point under a pink sky",
+    "a crowded bar with warm lights, blurred",
+    "a homemade loaf of bread on a cutting board",
+    "a mountain lake with pine trees and still water",
+    "a grey cat's paws on a laptop keyboard",
+    "an empty beach in winter with footprints in the sand",
+    "a market stall full of lemons and oranges",
+    "a bicycle leaning against a painted wall",
+    "a guitar on a bed next to a notebook",
+    "a cup of coffee and an open book on a bed",
+    "rain on a bus window at night with city lights",
+    "a plate of dumplings on a wooden table",
+    "a sunset over rooftops from a balcony",
+    "a festival crowd at dusk with stage lights in the distance",
+    "a grey cat stretched out in a patch of sunlight",
+    "a pier stretching into a calm sea at dawn",
+    "a shelf of spices and jars in a small kitchen",
+    "a museum room with large paintings and a bench",
+    "fog over the sea from a cliff path",
+    "a pizza in a cardboard box on a coffee table",
+    "a forest path with autumn leaves",
+    "an iced coffee on a sunny outdoor table",
+    "a ferry crossing a bay on a bright day",
+    "a candle and a teapot on a windowsill at night",
+    "a grey cat curled up on a knitted blanket",
+]
+
+
+def prior_pipe():
+    from diffusers import KandinskyV22PriorPipeline
+    from transformers import CLIPVisionModelWithProjection
+
+    try:
+        from transformers import CLIPImageProcessorPil as CLIPImageProcessor
+    except ImportError:
+        from transformers import CLIPImageProcessor
+    if not (PRIOR / "prior/prior/diffusion_pytorch_model.safetensors").exists():
+        sys.exit("latent example: drawing from words needs Kandinsky's prior: model get kandinsky-prior (6.9 GB, Apache 2.0)")
+    enc = CLIPVisionModelWithProjection.from_pretrained(MODEL / "prior/image_encoder", dtype=torch.float16)
+    proc = CLIPImageProcessor.from_pretrained(MODEL / "prior/image_processor")
+    pipe = KandinskyV22PriorPipeline.from_pretrained(PRIOR / "prior", image_encoder=enc, image_processor=proc, dtype=torch.float16).to(DEV)
+    pipe.set_progress_bar_config(disable=True)
+    return pipe
+
+
+def roll_screens(ims: list[Image.Image]) -> list[Image.Image]:
+    """The pictures laid out as screenshots of a phone's photo roll: 1179 × 2556, three columns, thin white lines, a title and a bar."""
+    from PIL import ImageDraw
+
+    w, h, gap, cols, rows = 1179, 2556, 3, 3, 5
+    side = (w - gap * (cols - 1)) // cols
+    top = 300
+    screens = []
+    for s in range(0, len(ims), cols * rows):
+        sc = Image.new("RGB", (w, h), (255, 255, 255))
+        d = ImageDraw.Draw(sc)
+        d.rectangle([0, 0, w, top - 6], fill=(250, 250, 250))
+        d.text((48, 150), "Recents", fill=(0, 0, 0), font_size=72)
+        for k, im in enumerate(ims[s : s + cols * rows]):
+            r, c = divmod(k, cols)
+            sc.paste(ImageOps.fit(im, (side, side)), (c * (side + gap), top + r * (side + gap)))
+        d.rectangle([0, int(h * 0.915), w, h], fill=(245, 245, 245))
+        d.text((w // 2 - 220, int(h * 0.94)), "Library     For You     Albums", fill=(120, 120, 120), font_size=44)
+        screens.append(sc)
+    return screens
+
+
+def example(out: Path) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    t = time.time()
+    pipe = prior_pipe()
+    embeds = []
+    with torch.no_grad():
+        for i, p in enumerate(EXAMPLE):
+            o = pipe(f"{p}, {EXAMPLE_STYLE}", guidance_scale=4.0, num_inference_steps=25, generator=torch.Generator("cpu").manual_seed(i))
+            embeds.append((o.image_embeds.float().cpu(), o.negative_image_embeds.float().cpu()))
+    del pipe
+    if DEV == "mps":
+        torch.mps.empty_cache()
+    print(f"  {len(EXAMPLE)} prompts into Kandinsky's numbers by the prior in {time.time() - t:.0f}s", flush=True)
+    dec = decoder()
+    dt = dec.unet.dtype
+    ims = []
+    for i, (e, n) in enumerate(embeds):
+        t = time.time()
+        with torch.no_grad():
+            ims.append(dec(image_embeds=e.to(DEV, dt), negative_image_embeds=n.to(DEV, dt), height=512, width=512, num_inference_steps=STEPS, guidance_scale=4.0, generator=torch.Generator("cpu").manual_seed(i)).images[0])
+        print(f"  drawn {i + 1}/{len(EXAMPLE)}: {EXAMPLE[i]} ({time.time() - t:.0f}s)", flush=True)
+    for k, sc in enumerate(roll_screens(ims)):
+        sc.save(out / f"roll-{k + 1}.png")
+        print(f"  ◂ roll-{k + 1}.png: a photo roll screenshot, 15 pictures", flush=True)
+    (out / "example.json").write_text(json.dumps({"style": EXAMPLE_STYLE, "prompts": EXAMPLE, "screens": (len(ims) + 14) // 15}, indent=1) + "\n")
+
+
 # ---------------------------------------------------------------- the room
 
 
@@ -612,7 +740,7 @@ ROOM_LINES = {
     "trained": PSY["trained"],
 }
 # a wiki page's markup, left out of the passages
-MARKUP = re.compile(r"\{\{.*?\}\}|\[\[|\]\]|'{2,3}|</?\w+[^>]*>|^=+.*?=+\s*$", re.S | re.M)
+MARKUP = re.compile(r"\{\{.*?\}\}|\[\[|\]\]|'{2,3}|</?\w+[^>]*>|={2,}[^=\n]*={2,}", re.S)
 
 
 def rel(p: Path) -> str:
@@ -754,6 +882,8 @@ def main(argv: list[str]) -> None:
         make(Path(pos[1]), Path(pos[2]))
     elif len(pos) == 3 and pos[0] == "train":
         train(Path(pos[1]), Path(pos[2]), opt("--steps", 800))
+    elif len(pos) == 2 and pos[0] == "example":
+        example(Path(pos[1]))
     elif len(pos) == 3 and pos[0] == "crop":
         crop(Path(pos[1]), Path(pos[2]), "--grid" in argv)
     elif len(pos) == 4 and pos[0] == "gallery":

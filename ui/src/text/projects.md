@@ -2243,6 +2243,36 @@ not built yet
 
 which pictures
 
+### The example
+`projects.latent.pictures.example`
+
+the example: a made-up photo roll
+
+### The example: its tab
+`projects.latent.pictures.example.tab`
+
+to try the card first, as the dream reading has its demo deck · image segmentation
+
+### The example: time
+`projects.latent.pictures.example.time`
+
+about 12 minutes to draw 45 pictures
+
+### The example: disk
+`projects.latent.pictures.example.disk`
+
+7 GB more for Kandinsky's prior, which draws from words; 10 MB for the screenshots
+
+### The example: needs
+`projects.latent.pictures.example.needs`
+
+Kandinsky's prior (Apache 2.0); nobody's pictures: 45 written prompts for one made-up person's roll (a grey cat, coffee, the sea, concerts), drawn and laid out as three photo roll screenshots
+
+### The example: changes
+`projects.latent.pictures.example.changes`
+
+the whole route runs as it will on real screenshots, crop included; nothing private: the sets can be zipped and shared
+
 ### Screenshots of a grid
 `projects.latent.pictures.grid`
 
@@ -2518,6 +2548,16 @@ get the diffusion model: Kandinsky 2.2's picture encoder and decoder (9 GB)
 
 get TAESD, for an 8 GB Mac
 
+### Step: the model, and its prior
+`projects.latent.mode.modelPrior`
+
+get the diffusion model: Kandinsky 2.2's picture encoder and decoder (9 GB), and its prior, which turns written words into its numbers, so the example can be drawn (7 GB)
+
+### Step: the example
+`projects.latent.mode.example`
+
+draw the example: 45 pictures of a made-up person's photo roll, from written prompts, laid out as three screenshots of the roll
+
 ### Step: the public-domain set
 `projects.latent.mode.museum`
 
@@ -2755,6 +2795,11 @@ it didn't draw: the terminal on the card says why
 `projects.latent.room.near`
 
 Their centre is {d} spreads from the centre of all of them (1 is a typical picture's distance): nearer than {pct} of random choices of {k} pictures.
+
+### How far
+`projects.latent.room.far`
+
+Their centre is {d} spreads from the centre of all of them (1 is a typical picture's distance): further out than {pct} of random choices of {k} pictures.
 
 ### Heading: Lacan
 `projects.latent.room.lineMirror`

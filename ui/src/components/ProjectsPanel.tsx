@@ -12,7 +12,7 @@ import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
 import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
-import { MEDIA_TEXTS, useLatentChoices, type LatentChoices } from '../lib/latentChoices'
+import { EXAMPLE_SET, MEDIA_TEXTS, useLatentChoices, type LatentChoices } from '../lib/latentChoices'
 import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -679,7 +679,8 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
  * with the media theory beside each part.
  */
 function latentRoute(h: Have, c: LatentChoices): LatentFacts {
-  const shots = c.set || 'screenshots'
+  const example = c.pictures === 'example'
+  const shots = example ? EXAMPLE_SET : c.set || 'screenshots'
   const museum = c.pictures === 'museum'
   const collection = museum ? 'hiroshige' : `${shots}-pictures`
   const has = (set: string) => h.imageSets.find((s) => s.folder === set)
@@ -692,9 +693,27 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
   const lat = (f: string) => `latents/${collection}/${f}`
   const steps: Step[] = [
     c.diffusion === 'kandinsky'
-      ? { name: say('projects.latent.mode.model'), tab: 'models', node: 'made-images', commands: ['model get kandinsky'], done: h.tools.includes('kandinsky'), parts: [] }
+      ? {
+          name: example ? say('projects.latent.mode.modelPrior') : say('projects.latent.mode.model'),
+          tab: 'models',
+          node: 'made-images',
+          // the example is drawn from words: Kandinsky's prior too
+          commands: example ? ['model get kandinsky', 'model get kandinsky-prior'] : ['model get kandinsky'],
+          done: h.tools.includes('kandinsky') && (!example || h.tools.includes('kandinsky-prior')),
+          parts: [],
+        }
       : { name: say('projects.latent.mode.taesd'), tab: 'models', node: 'made-images', commands: [], done: false, soon: true, parts: [] },
-    museum
+    example
+      ? {
+          name: say('projects.latent.mode.example'),
+          tab: 'segmentation',
+          node: 'photos',
+          commands: [joinWords(['latent', 'example', EXAMPLE_SET])],
+          done: !!has(EXAMPLE_SET),
+          fill: { look: { set: EXAMPLE_SET } },
+          parts: ['look.sets'],
+        }
+      : museum
       ? {
           name: say('projects.latent.mode.museum'),
           tab: 'segmentation',
@@ -719,7 +738,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
       name: say('projects.latent.mode.crop'),
       tab: 'segmentation',
       node: 'crop',
-      commands: [joinWords(['latent', 'crop', `images/${shots}`, collection, ...(c.pictures === 'grid' ? ['--grid'] : [])])],
+      commands: [joinWords(['latent', 'crop', `images/${shots}`, collection, ...(c.pictures !== 'single' ? ['--grid'] : [])])],
       done: !!has(collection)?.crop,
       result: has(collection)?.about,
       // the screenshots until they are cut; then the pictures cut from them

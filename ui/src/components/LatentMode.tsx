@@ -247,6 +247,7 @@ function Schematic({ project, facts, route, f, view, light, pick }: { project: P
 
 /** Each kind of pictures in words: its name, its tab, and what it costs and changes. Literal keys, so the build can check every one is used. */
 const PICTURE_WORDS: Record<Pictures, () => { name: string; tab: string; time: string; disk: string; needs: string; changes: string }> = {
+  example: () => ({ name: say('projects.latent.pictures.example'), tab: say('projects.latent.pictures.example.tab'), time: say('projects.latent.pictures.example.time'), disk: say('projects.latent.pictures.example.disk'), needs: say('projects.latent.pictures.example.needs'), changes: say('projects.latent.pictures.example.changes') }),
   grid: () => ({ name: say('projects.latent.pictures.grid'), tab: say('projects.latent.pictures.grid.tab'), time: say('projects.latent.pictures.grid.time'), disk: say('projects.latent.pictures.grid.disk'), needs: say('projects.latent.pictures.grid.needs'), changes: say('projects.latent.pictures.grid.changes') }),
   single: () => ({ name: say('projects.latent.pictures.single'), tab: say('projects.latent.pictures.single.tab'), time: say('projects.latent.pictures.single.time'), disk: say('projects.latent.pictures.single.disk'), needs: say('projects.latent.pictures.single.needs'), changes: say('projects.latent.pictures.single.changes') }),
   museum: () => ({ name: say('projects.latent.pictures.museum'), tab: say('projects.latent.pictures.museum.tab'), time: say('projects.latent.pictures.museum.time'), disk: say('projects.latent.pictures.museum.disk'), needs: say('projects.latent.pictures.museum.needs'), changes: say('projects.latent.pictures.museum.changes') }),
@@ -264,13 +265,14 @@ const TEXT_WORDS: Record<MediaText, () => [string, string]> = {
   plato: () => [say('projects.latent.text.plato'), say('projects.latent.text.plato.about')],
 }
 
-/** The decisions under the schematic: the pictures as a fork of three, then the diffusion model, the texts, the look, and what it is measured against. */
+/** The decisions under the schematic: the pictures as a fork of four, then the diffusion model, the texts, the look, and what it is measured against. */
 export function LatentDecisions({ project }: { project: Project }) {
   const facts = project.latent!
   const c = useLatentChoices()
   const { status } = useHelperState()
   const memory = status?.memoryGB ?? 16
-  const screenshots = c.pictures !== 'museum'
+  /** someone's own screenshots: a set to name, and private */
+  const screenshots = c.pictures === 'grid' || c.pictures === 'single'
 
   return (
     <section className="voice-decisions" aria-label={say('projects.latent.decisions')}>
