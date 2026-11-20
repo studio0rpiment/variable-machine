@@ -468,7 +468,24 @@ export function VoiceStep({ step, n }: { step: Step; n: number }) {
     <div className="voice-step" data-box={step.node}>
       <h2 className="label project-open">{say('projects.mode.open', { n, name: step.name })}</h2>
       {step.result && <span className="label label--muted">{step.result}</span>}
-      {step.commands.length > 0 ? (
+      {step.link && (
+        <a className="text-link" href={step.link.path.startsWith('#') ? step.link.path : `/api/workspace/file?path=${encodeURIComponent(step.link.path)}`} target="_blank" rel="noreferrer">
+          {step.link.label}
+        </a>
+      )}
+      {step.show && (
+        <div className="voice-step__show">
+          {step.show.map((p) => (
+            <figure key={p.path}>
+              <img src={`/api/workspace/file?path=${encodeURIComponent(p.path)}`} alt={p.label} />
+              <figcaption className="label label--muted">{p.label}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      {step.soon ? (
+        <span className="label label--muted">{say('projects.latent.notBuilt')}</span>
+      ) : step.commands.length > 0 ? (
         <div className="voice-step__commands">
           {step.commands.map((c) => (
             <CommandPreview key={c} command={c} onRun={() => void run(c)} disabled={c.includes('<') || !!busy} running={busy === c} label={say('projects.step.run')} />

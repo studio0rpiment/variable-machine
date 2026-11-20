@@ -12,6 +12,7 @@ import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
 import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
+import { MEDIA_TEXTS, useLatentChoices, type LatentChoices } from '../lib/latentChoices'
 import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -30,6 +31,8 @@ export interface Fill {
   prefer?: { data: string; model: string }
   /** the Chat tab: the models to put in its columns, in order; null leaves a column as it is */
   chat?: { models: (string | null)[] }
+  /** the image segmentation tab: the set to open (a new one by that name, if it isn't there yet), and whose pictures they are */
+  look?: { set: string; license?: string; make?: boolean }
 }
 
 /** One note of a step's walkthrough: the control it points at (its flag's id, or a data-guide marker) and what it says. */
@@ -59,6 +62,8 @@ export interface Step {
   node?: string
   /** project mode: the parts of its tab it uses (lib/parts.tsx); the tab's other marked parts hide. Unset: the whole tab */
   parts?: string[]
+  /** pictures it made, shown on the step: workspace paths */
+  show?: { path: string; label: string }[]
 }
 
 /** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
@@ -89,6 +94,19 @@ export interface Project {
   voice?: VoiceFacts
   /** the research bot, followed as a project: the route the decisions draw */
   research?: ResearchFacts
+  /** the latent image, followed as a project: the route the decisions draw */
+  latent?: LatentFacts
+}
+
+/** What the latent image's schematic shows: the route's steps, and what the decisions can choose from. */
+export interface LatentFacts {
+  steps: Step[]
+  /** the picture sets there are, to measure against the latent image */
+  sets: string[]
+  /** the set the latent image is made from */
+  collection: string
+  /** your own texts brought in (data raw file), by name */
+  own: string[]
 }
 
 /** What the research bot's schematic shows: the route's steps, and what the decisions can choose from. */
@@ -652,7 +670,121 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
   return { steps, folder, folders: h.research.map((r) => r.folder), ollama: h.ollama, view: model }
 }
 
-function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices): Project[] {
+/**
+ * The latent image as a route: the steps the decisions draw, each on its box
+ * of the latent image's schematic (LatentMode). The diffusion model first (a
+ * 9 GB download), then the pictures, the texts that frame it, the latent image
+ * itself, the decoder trained on the set's look if chosen, and the gallery
+ * page, where the route ends: every picture measured against the latent image,
+ * with the media theory beside each part.
+ */
+function latentRoute(h: Have, c: LatentChoices): LatentFacts {
+  const shots = c.set || 'screenshots'
+  const museum = c.pictures === 'museum'
+  const collection = museum ? 'hiroshige' : `${shots}-pictures`
+  const has = (set: string) => h.imageSets.find((s) => s.folder === set)
+  const latent = h.latents.find((l) => l.folder === collection)
+  const against = c.against || collection
+  const measured = h.outputs.find((o) => o.folder === `${against}-${collection}`)
+  const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
+  const own = h.raw.filter((r) => r.source === 'file').map((r) => r.folder)
+  const texts = MEDIA_TEXTS.filter((t) => c.texts.includes(t.id))
+  const lat = (f: string) => `latents/${collection}/${f}`
+  const steps: Step[] = [
+    c.diffusion === 'kandinsky'
+      ? { name: say('projects.latent.mode.model'), tab: 'models', node: 'made-images', commands: ['model get kandinsky'], done: h.tools.includes('kandinsky'), parts: [] }
+      : { name: say('projects.latent.mode.taesd'), tab: 'models', node: 'made-images', commands: [], done: false, soon: true, parts: [] },
+    museum
+      ? {
+          name: say('projects.latent.mode.museum'),
+          tab: 'segmentation',
+          node: 'photos',
+          commands: [joinWords(['look', 'museum', 'Utagawa Hiroshige', 'hiroshige', '--limit', '100'])],
+          done: !!has('hiroshige'),
+          fill: { look: { set: 'hiroshige' } },
+          parts: ['look.sets'],
+        }
+      : {
+          name: c.pictures === 'grid' ? say('projects.latent.mode.uploadGrid', { set: shots }) : say('projects.latent.mode.uploadSingle', { set: shots }),
+          tab: 'segmentation',
+          node: 'photos',
+          commands: [],
+          done: !!has(shots),
+          fill: { look: { set: shots, license: say('projects.latent.mode.license'), make: true } },
+          parts: ['look.sets'],
+        },
+  ]
+  if (!museum)
+    steps.push({
+      name: say('projects.latent.mode.crop'),
+      tab: 'segmentation',
+      node: 'crop',
+      commands: [joinWords(['latent', 'crop', `images/${shots}`, collection, ...(c.pictures === 'grid' ? ['--grid'] : [])])],
+      done: !!has(collection)?.crop,
+      result: has(collection)?.about,
+      // the screenshots until they are cut; then the pictures cut from them
+      fill: { look: { set: has(collection) ? collection : shots } },
+      parts: ['look.sets'],
+    })
+  steps.push({
+    name: say('projects.latent.mode.texts'),
+    tab: 'data',
+    node: 'words',
+    commands: texts.map((t) => joinWords(['data', 'raw', ...t.args, t.name])),
+    done: texts.every((t) => h.raw.some((r) => r.folder === t.name)),
+    result: texts.length ? say('projects.latent.mode.textsHere', { n: texts.filter((t) => h.raw.some((r) => r.folder === t.name)).length, of: texts.length }) : say('projects.latent.mode.noTexts'),
+    fill: { data: { pick: 'new' } },
+    parts: ['data.raw'],
+  })
+  if (c.own)
+    steps.push({
+      name: say('projects.latent.mode.own'),
+      tab: 'data',
+      node: 'words',
+      commands: [joinWords(['data', 'raw', 'file', 'uploads/<file>', '<name>', '--license', say('data.rawFile.mine')])],
+      done: own.length > 0,
+      result: own.length ? own.join(' · ') : undefined,
+      fill: { data: { pick: 'new' } },
+      parts: ['data.rawFile'],
+    })
+  steps.push({
+    name: say('projects.latent.mode.make'),
+    tab: 'segmentation',
+    node: 'latent',
+    commands: [joinWords(['latent', 'make', collection, `images/${collection}`])],
+    done: !!latent,
+    result: latent?.check
+      ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
+      : undefined,
+    show: latent ? [{ path: lat('latent.png'), label: say('projects.latent.mode.showLatent') }, { path: lat('pixel-average.png'), label: say('projects.latent.mode.showPixels') }] : undefined,
+    fill: { look: { set: collection } },
+    parts: ['look.sets'],
+  })
+  if (c.look === 'set')
+    steps.push({
+      name: say('projects.latent.mode.train'),
+      tab: 'segmentation',
+      node: 'decoder',
+      commands: [joinWords(['latent', 'train', collection])],
+      done: !!latent?.trained,
+      result: latent?.trained ? say('projects.latent.trainedIn', { steps: latent.trained.steps, minutes: latent.trained.minutes }) : undefined,
+      show: latent?.trained ? [{ path: lat('latent-trained.png'), label: say('projects.latent.mode.showTrained') }, { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') }] : undefined,
+      parts: [],
+    })
+  steps.push({
+    name: say('projects.latent.mode.gallery'),
+    tab: 'segmentation',
+    node: 'gallery',
+    commands: [joinWords(['latent', 'gallery', collection, `images/${against}`])],
+    done: !!measured,
+    link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
+    fill: { look: { set: against } },
+    parts: ['look.sets'],
+  })
+  return { steps, sets: h.imageSets.map((s) => s.folder).filter((f) => f !== collection && !f.startsWith('classic-cv')), collection, own }
+}
+
+function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices, latentC: LatentChoices): Project[] {
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -809,6 +941,7 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research
           link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
         },
       ],
+      latent: latentRoute(h, latentC),
     },
     {
       id: 'mood',
@@ -1021,17 +1154,18 @@ export function useProjects(): Project[] | null {
   const choice = useGestureChoices()
   const voice = useVoiceChoices()
   const research = useResearchChoices()
+  const latentC = useLatentChoices()
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
     useCallback((e) => (e.path.endsWith('manifest.json') || /^research\/[^/]+\/(screen\.json|reading-list\.md)$/.test(e.path) || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.path.endsWith('labels.md') || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
-  return have && projects(have, choice, voice, research)
+  return have && projects(have, choice, voice, research, latentC)
 }
 
 /** The steps a project follows in project mode: its route, where its decisions draw one; else its card's steps. */
-export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.steps
+export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.latent?.steps ?? p.steps
 
 /** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
 export function stepNumber(steps: Step[], i: number) {

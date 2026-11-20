@@ -1168,6 +1168,9 @@ img.move-view__picture { transform: none; }
 .voice-choice__warn { color: var(--line); }
 .voice-step { flex: none; display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem 0; }
 .voice-step__commands { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; }
+.voice-step__show { display: flex; flex-wrap: wrap; gap: 1rem; }
+.voice-step__show figure { margin: 0; width: 16rem; }
+.voice-step__show img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border: 1px solid var(--muted); }
 .voice-choice.is-off { opacity: 0.45; cursor: default; }
 .voice-choice.is-off:hover .voice-choice__name { color: var(--muted); }
 /* project mode: the research bot's schematic, unfolded from the Start map */

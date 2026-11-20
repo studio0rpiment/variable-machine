@@ -127,4 +127,5 @@ export const RAW_SOURCES = {
   txt: { about: 'a plain-text file from a URL; give the license the source states' },
   jsonl: { about: 'a table written as JSON lines (one {"column": value} object per line) from a URL, e.g. a dataset file on Hugging Face; give the license the source states' },
   arcgis: { about: 'a table read straight from an ArcGIS map service (how DC Open Data serves its tables), by its layer address; give the license the source states' },
+  file: { about: 'your own writing, or a PDF, uploaded from this computer (.txt, .md or .pdf); give its terms ("my own writing", or what the PDF states). It is marked private and stays on this computer: zip never shares raw texts' },
 }

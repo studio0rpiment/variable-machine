@@ -31,6 +31,23 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 - **Memory:** a Mac with 16 GB or more; the helper refuses below that and says why.
 - **Privacy:** the screenshots show a person's own photographs or other people's posts. Both sets, the latent image and the gallery are marked private, and `zip` refuses them. Student project only.
 
+**The walkthrough.** Press the card: it opens as a walkthrough, like the research bot's. The Start map is drawn with the route lit on your photos, your words and the ready-made model (Kandinsky 2.2, the diffusion model), and four boxes it adds, marked NEW: crop, latent image, train and gallery. Under it are the decisions:
+
+- **which pictures:** grid screenshots, single screenshots, or a public-domain set;
+- **the set's name;**
+- **which diffusion model:** Kandinsky 2.2 (TAESD is shown, not built);
+- **which texts:** the six media-theory texts, and your own writing or PDFs;
+- **whose look:** the model's, or the set's own, which adds the train step;
+- **what to measure against.**
+
+Then come the steps on one long page. Each shows its own copy of its tab: the image set for the pictures, Data's raw material for the texts, and the new "your own writing, or a PDF" card. Scrolling folds the map into a strip, and the box of the section in view turns green.
+
+- Check: changing a decision redraws the route. "A public-domain body of work" drops the crop box; "the model's look" drops the train box.
+- Check: with "your own writing, or PDFs" on, step 5 shows the upload card. Choose a .txt, .md or .pdf, then **bring it in** (`data raw file uploads/<file> <name> --license "my own writing"`). It lands in `workspace/raw/<name>` with `"private": true`. A scanned PDF with no text layer is refused with a reason. Tested 2026-11-20 with a .txt, a text PDF and a scanned one.
+- Check: after make and train, steps 6 and 7 show the latent image, the pixel average and the trained decoder's drawing.
+
+The steps by hand, for checking each one:
+
 | # | Tab | Do | Command | Check |
 |---|---|---|---|---|
 | 1 | Models | Get the picture encoder and decoder (picture encoders section, **kandinsky**) | `model get kandinsky` | 9 files in `workspace/tools/kandinsky/prior` and `/decoder`; the licence reads Apache 2.0 from Hugging Face. It refuses first if the disk has less than 9.9 GB free |

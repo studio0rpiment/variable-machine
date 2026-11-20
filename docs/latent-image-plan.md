@@ -278,3 +278,25 @@ Kevin's brief changed the collection: screenshots of a person's photo roll, or o
 - **15 pictures.** `latent make` takes 12 or more. Below 30 it draws no axes: on 40 landscapes axis 1 already changed with the half. On 15 mocks the centre across halves was 0.942, just under 0.95. Training defaults to 20 steps a picture (300 for 15), so the decoder learns the set's look, not the pictures themselves.
 - **Private.** The screenshots show a person's own photographs or other people's posts. Both image sets, the latent image and the gallery carry `"private": true`, and `zip` refuses them.
 - **Media theory on the page.** Each part of the gallery page is printed with what it is like (`PSY` in `latent.py`; sources in `docs/latent-image-reading.md`, sections 1–3). The pixel average is Benjamin's mechanical reproduction taken a step further: a copy of every copy, with no aura. The latent image is Barthes's studium of the set, and a photograph with no "that-has-been": no one was ever in front of it. The trained decoder is Baudrillard's simulacrum, the set's look copied from no picture, and his four phases of the image run from the photograph through the screenshot and the pixel average to the latent image. Lacan's mirror stage reads the saved pictures as a mirror and the latent image as the unified self no single picture shows. Flusser's program is the model's terms. The axes are Holmes's "form divorced from matter". What a picture brings is where to look for Barthes's punctum, which no measure finds. For screenshot sets two lines are added: Steyerl's poor image, and Bucher on the recommender (saved posts were chosen from what it offered). The texts step brings in the Wikipedia articles on Benjamin, Barthes, Baudrillard and Lacan, and two public-domain texts (Holmes, Gutenberg 11751; Plato's *Sophist*, Gutenberg 1735); the works themselves are in copyright and read through the library.
+
+## 9. The walkthrough (2026-11-20)
+
+The card opens as a walkthrough, built the way the research bot's is (`ui/src/components/LatentMode.tsx`, `ui/src/lib/latentChoices.ts`, `latentRoute` in `ProjectsPanel.tsx`).
+
+**The schematic.** It is the Start map with the route lit on boxes the Start map already has:
+- your photos (the screenshots);
+- your words (the texts);
+- the ready-made model, which here is Kandinsky 2.2, the diffusion model: its encoder gives each picture 1,280 numbers, and its diffusion decoder draws the centre.
+
+It adds four boxes, marked NEW: crop, latent image, train (the decoder on the set's look) and gallery, where the route ends.
+
+**The decisions:**
+- which pictures: grid screenshots, single screenshots, or a public-domain set;
+- the set's name;
+- which diffusion model: Kandinsky 2.2, or TAESD, which is planned and not built;
+- which texts: the six media-theory texts, and your own writing or PDFs;
+- whose look: the model's, or the set's own;
+- what is measured against it.
+
+**Your own writing or PDFs.** A new command, `data raw file uploads/<file> <name> --license "<terms>"`, reads an uploaded .txt, .md or .pdf into `workspace/raw/<name>`. A PDF is read page by page with pypdf. The text is marked private, and zip never shares raw texts. The Data tab has a card for it under "make a new one", and uploads now take .pdf.
+

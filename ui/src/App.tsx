@@ -18,6 +18,7 @@ import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep, ZoomToggle } from './components/VoiceMode'
 import ResearchMode, { ResearchDecisions } from './components/ResearchMode'
+import LatentMode, { LatentDecisions } from './components/LatentMode'
 import { leaveMode, toProjects, useGuide } from './lib/guide'
 import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
@@ -90,7 +91,7 @@ export default function App() {
   /** the tab the guide bar and the panels take as open: a project's step's, or else the part in view */
   const panel: string = mode ? modeStep!.tab : view === 'roll' ? (inView ?? 'roll') : view
   /** a route on one long page, under its schematic: a character's voice, the research bot */
-  const longPage = !!(mode?.project.voice || mode?.project.research)
+  const longPage = !!(mode?.project.voice || mode?.project.research || mode?.project.latent)
   const [folded, setFolded] = useState(true)
   /** a route on one long page (voice, the research bot): the step whose section is in view */
   const [stepInView, setStepInView] = useState(1)
@@ -228,6 +229,11 @@ export default function App() {
               <>
                 <ResearchMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} onZoom={() => setWhole(false)} />
                 <ResearchDecisions project={mode.project} />
+              </>
+            ) : mode.project.latent ? (
+              <>
+                <LatentMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} onZoom={() => setWhole(false)} />
+                <LatentDecisions project={mode.project} />
               </>
             ) : (
               <>
@@ -375,6 +381,8 @@ function StepTab({ step, onUse, chatWith, chatPair, chatModels, editModelfile, c
       return <MergePanel onChatModels={chatModels} />
     case 'share':
       return <SharePanel />
+    case 'segmentation':
+      return <LookPanel start={f?.look && { ...f.look, n }} />
     case 'chat':
       return (
         <div className="voice-page__chat">

@@ -374,3 +374,80 @@ show {n} more
 `data.drafts.source`
 
 draft {id} · by {model} · from {from}
+
+## Your own writing or a PDF, as raw material
+
+### Heading
+`data.rawFile.title`
+
+your own writing, or a PDF, as raw material
+
+### When to use it
+`data.rawFile.when`
+
+For texts that aren't on Project Gutenberg or Wikipedia: your own writing, notes, or a PDF of an article or a chapter. It becomes passages in workspace/raw, like a book, and stays on this computer.
+
+### The card's name
+`data.rawFile.card`
+
+your own file
+
+### What it takes
+`data.rawFile.what`
+
+a .txt, .md or .pdf from this computer; a PDF is read page by page, and a scan with no text in it gives nothing
+
+### That it stays here
+`data.rawFile.private`
+
+marked private: your writing, or someone else's PDF, stays on this computer (zip never shares raw texts)
+
+### The upload button
+`data.rawFile.choose`
+
+choose a file…
+
+### The wrong kind of file
+`data.rawFile.kinds`
+
+a .txt, .md or .pdf file, please
+
+### While it uploads
+`data.rawFile.uploading`
+
+uploading {file}…
+
+### Uploaded before
+`data.rawFile.already`
+
+{file} was already uploaded; using that copy
+
+### Uploaded
+`data.rawFile.uploaded`
+
+uploaded to workspace/{path}
+
+### When the upload fails
+`data.rawFile.failed`
+
+upload failed
+
+### Its name
+`data.rawFile.as`
+
+as
+
+### Its terms
+`data.rawFile.terms`
+
+its terms (the license)
+
+### Its terms, at first
+`data.rawFile.mine`
+
+my own writing
+
+### The button
+`data.rawFile.run`
+
+bring it in

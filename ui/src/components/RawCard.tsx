@@ -5,7 +5,8 @@ import Manifest from './Manifest'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
 
-type Kind = keyof typeof RAW_SOURCES
+/** your own file has its own card (RawFileCard), with an upload */
+type Kind = Exclude<keyof typeof RAW_SOURCES, 'file'>
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
 /**
@@ -26,7 +27,7 @@ export default function RawCard({ onRun, busy }: { onRun: (line: string) => void
     <Manifest name="raw material" lines={[RAW_SOURCES[kind].about, 'lands in workspace/raw as passages for the generator']}>
       <div className="choice" role="radiogroup" aria-label="raw source">
         <span className="label label--muted">from</span>
-        {(Object.keys(RAW_SOURCES) as Kind[]).map((k) => (
+        {(Object.keys(RAW_SOURCES) as Kind[]).filter((k) => (k as string) !== 'file').map((k) => (
           <button key={k} type="button" role="radio" aria-checked={k === kind} className={`text-button ${k === kind ? 'is-active' : ''}`.trim()} onClick={() => (setKind(k), setWhat(k === 'gutenberg' ? '11' : k === 'wikipedia' ? 'Color_psychology' : ''))}>
             {k}
           </button>
