@@ -3,6 +3,7 @@ import { joinWords } from '@shared/quote'
 import { runCommand } from '../lib/helper'
 import { readFile } from '../lib/workspace'
 import { say } from '../text/say'
+import Loading from './Loading'
 
 const src = (p: string) => `/api/workspace/file?path=${encodeURIComponent(p)}`
 
@@ -161,7 +162,7 @@ export default function LatentRoom({ name }: { name: string }) {
             ))}
           </div>
           {busy ? (
-            <p className="lroom__wait">{say('projects.latent.room.waiting')}</p>
+            <Loading label={say('projects.latent.room.waiting')} about={50} />
           ) : (
             <div className="lroom__go">
               {failed && <span className="lroom__failed">{say('projects.latent.room.failed')}</span>}

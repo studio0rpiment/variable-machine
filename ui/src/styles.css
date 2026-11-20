@@ -1122,7 +1122,7 @@ img.move-view__picture { transform: none; }
 .voice-band__toggle.is-whole { transform: rotate(90deg); }
 .voice-band__zoom { display: inline-flex; align-items: center; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .voice-band { margin: 0; background: var(--bg); border-bottom: 1px solid var(--muted); }
-.voice-band__svg { display: block; width: 100%; max-width: 53rem; height: auto; font-family: var(--font); }
+.voice-band__svg { display: block; width: 100%; height: auto; font-family: var(--font); }
 .voice-band__route { fill: none; stroke: var(--line); stroke-width: 1.5; }
 .voice-band__wire polyline { fill: none; stroke: var(--muted); stroke-width: 1; opacity: 0.25; }
 .voice-band__wire.is-lit polyline { stroke: var(--line); stroke-width: 1.5; opacity: 1; }
@@ -1263,3 +1263,5 @@ img.move-view__picture { transform: none; }
 .lroom__line cite { color: #666; font-size: 0.75rem; font-style: normal; }
 .lroom__note { font-size: 0.8125rem; color: #777; margin: 0; }
 .lroom__reading .lroom__button { justify-self: start; }
+.lroom .loading { border-color: #333; color: #ddd; justify-self: end; }
+.lroom .loading__spiral { color: #5CF25C; }

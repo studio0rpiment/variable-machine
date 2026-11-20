@@ -119,6 +119,11 @@ done on the {tab} tab, in the page: no command
 
 run this step
 
+### A step's command, while it runs
+`projects.step.running`
+
+running {command}; the terminal below shows each line
+
 ## Latent image
 
 ### Name
@@ -2784,7 +2789,7 @@ draw the picture these {n} hold
 ### Drawing
 `projects.latent.room.waiting`
 
-drawing the centre of the pictures you chose: about half a minute
+drawing the centre of the pictures you chose
 
 ### It didn't draw
 `projects.latent.room.failed`

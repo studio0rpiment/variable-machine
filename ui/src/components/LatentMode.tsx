@@ -37,6 +37,8 @@ const VIEW = { x: 30, y: 60, w: 1170, h: 520 }
 /** the folded strip: two rows, the pictures' line and, under it, the texts and the decoder */
 const F = { h: 30, row1: VIEW.y + 8, row2: VIEW.y + 52, height: 90 }
 const ZOOM = 820
+/** How much of the map the folded strip shows: 820 units on a 53rem page; on a wider one more of the route, at the same size. */
+const zoomOf = (px: number) => Math.min(VIEW.w, (ZOOM * px) / (53 * 16))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const at = (id: string): P => {
@@ -89,14 +91,16 @@ export default function LatentMode({ project, step, onStep, whole, onZoom }: { p
   const c = useLatentChoices()
   const route = drawn(facts, c.pictures === 'museum', c.look === 'set')
   const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / ZOOM, line: 'voice-mode__line' })
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / zoomOf(pxRef.current), line: 'voice-mode__line' })
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
   const lightId = focus && route.on.has(focus) ? focus : facts.steps[stepNow - 1]?.node
   const lit = lightId ? ROUTE[lightId] : undefined
-  const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (lit ? lit.s[0] + W / 2 : VIEW.x) - ZOOM / 2))
+  // the map runs the page's whole width
+  const px = width || VIEW.w
+  const zoom = zoomOf(px)
+  const zoomX = Math.min(VIEW.x + VIEW.w - zoom, Math.max(VIEW.x, (lit ? lit.s[0] + W / 2 : VIEW.x) - zoom / 2))
   const zx = useGlide(whole ? VIEW.x : zoomX)
-  const zw = useGlide(whole ? VIEW.w : ZOOM)
-  const px = Math.min(width, 53 * 16) || VIEW.w
+  const zw = useGlide(whole ? VIEW.w : zoom)
   pxRef.current = px
   const open = (VIEW.h * px) / VIEW.w
   // each px scrolled takes a px off the map's height (as voice's does)

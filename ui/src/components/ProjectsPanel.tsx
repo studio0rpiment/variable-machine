@@ -48,6 +48,8 @@ export interface Step {
   commands: string[]
   done: boolean
   /** not built yet */
+  /** about how long its command takes, in seconds, for the wait shown while it runs */
+  about?: number
   soon?: boolean
   /** the start of a second way: its steps take the place of the ones above */
   or?: boolean
@@ -709,6 +711,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
           tab: 'segmentation',
           node: 'photos',
           commands: [joinWords(['latent', 'example', EXAMPLE_SET])],
+          about: 25 * 60,
           done: !!has(EXAMPLE_SET),
           fill: { look: { set: EXAMPLE_SET } },
           parts: ['look.sets'],
@@ -739,6 +742,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
       tab: 'segmentation',
       node: 'crop',
       commands: [joinWords(['latent', 'crop', `images/${shots}`, collection, ...(c.pictures !== 'single' ? ['--grid'] : [])])],
+      about: 15,
       done: !!has(collection)?.crop,
       result: has(collection)?.about,
       // the screenshots until they are cut; then the pictures cut from them
@@ -771,6 +775,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     tab: 'segmentation',
     node: 'latent',
     commands: [joinWords(['latent', 'make', collection, `images/${collection}`])],
+    about: 4 * 60,
     done: !!latent,
     result: latent?.check
       ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
@@ -785,6 +790,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
       tab: 'segmentation',
       node: 'decoder',
       commands: [joinWords(['latent', 'train', collection])],
+      about: 30 * 60,
       done: !!latent?.trained,
       result: latent?.trained ? say('projects.latent.trainedIn', { steps: latent.trained.steps, minutes: latent.trained.minutes }) : undefined,
       show: latent?.trained ? [{ path: lat('latent-trained.png'), label: say('projects.latent.mode.showTrained') }, { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') }] : undefined,
@@ -795,6 +801,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     tab: 'segmentation',
     node: 'gallery',
     commands: [joinWords(['latent', 'gallery', collection, `images/${against}`])],
+    about: 3 * 60,
     done: !!measured,
     link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
     fill: { look: { set: against } },
@@ -807,6 +814,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     tab: 'segmentation',
     node: 'room',
     commands: [joinWords(['latent', 'room', collection, ...reads])],
+    about: 75,
     done: !!latent?.room,
     result: latent?.room ? say('projects.latent.mode.roomTexts', { n: latent.room.texts.length, texts: latent.room.texts.join(' · ') || '–' }) : undefined,
     link: latent?.room ? { path: `#latent-room/${collection}`, label: say('projects.latent.openRoom') } : undefined,

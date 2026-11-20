@@ -3,6 +3,7 @@ import { useRoutePage } from '../lib/routePage'
 import { HF_BASES } from '@shared/library'
 import { NODES, WIRES, W, H } from './FlowMap'
 import CommandPreview from './CommandPreview'
+import Loading from './Loading'
 import { Icon } from '../icons'
 import { startGuide } from '../lib/guide'
 import { runCommand } from '../lib/helper'
@@ -84,6 +85,8 @@ const stateOf = (steps: Step[], i: number): State => {
 const F = { h: 30, gap: 22, pad: 8, level: (k: number) => 7 + 5 * k }
 /** How wide the folded view is, in units of the Start map: the open step's box and its neighbours. */
 const ZOOM = 820
+/** How much of the map the folded strip shows: 820 units on a 53rem page; on a wider one more of the route, at the same size. */
+const zoomOf = (px: number) => Math.min(VIEW.w, (ZOOM * px) / (53 * 16))
 
 /** A number that eases to its target over a third of a second, so the folded view glides from step to step. */
 export function useGlide(target: number) {
@@ -163,17 +166,19 @@ export default function VoiceMode({ project, step, onStep, whole, onZoom }: { pr
   const fold = foldLayout(facts, lit)
   // the svg's width in px, as last measured: the strip's height in px follows from it
   const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (fold.height * pxRef.current) / ZOOM, line: 'voice-mode__line' })
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (fold.height * pxRef.current) / zoomOf(pxRef.current), line: 'voice-mode__line' })
   // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
   const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[stepNow - 1]?.node
   const node = NODES.find((n) => n.id === lightId)
-  const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - ZOOM / 2))
+  // the map runs the page's whole width
+  const px = width || VIEW.w
+  const zoom = zoomOf(px)
+  const zoomX = Math.min(VIEW.x + VIEW.w - zoom, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - zoom / 2))
   // FULL / ZOOM, in the header: the whole route, or zoomed in on the step
   const zx = useGlide(whole ? VIEW.x : zoomX)
-  const zw = useGlide(whole ? VIEW.w : ZOOM)
+  const zw = useGlide(whole ? VIEW.w : zoom)
   // the svg's width in px: the page's, at most 53rem so the open map stays under 20rem tall
-  const px = Math.min(width, 53 * 16) || VIEW.w
   pxRef.current = px
   const open = (VIEW.h * px) / VIEW.w
   // each px scrolled takes a px off the map's height: solve for how far folded that is, as the view narrows and its height shrinks
@@ -490,6 +495,8 @@ export function VoiceStep({ step, n }: { step: Step; n: number }) {
           {step.commands.map((c) => (
             <CommandPreview key={c} command={c} onRun={() => void run(c)} disabled={c.includes('<') || !!busy} running={busy === c} label={say('projects.step.run')} />
           ))}
+          {/* the wait, while it lasts: the spiral turns; the terminal below has the command's own lines */}
+          {busy && <Loading label={say('projects.step.running', { command: busy })} about={step.about} />}
         </div>
       ) : (
         <span className="label label--muted">{say('projects.voice.mode.inTab')}</span>
