@@ -19,8 +19,8 @@ export const PARTS = ['models', 'modelfile', 'data', 'train', 'prefer', 'merge',
 export type Part = (typeof PARTS)[number]
 export const isPart = (id: string): id is Part => (PARTS as readonly string[]).includes(id)
 
-/** The whole map, in its own units: every row, down to the projects. */
-const DRAWN = { x: 30, y: 16, w: 1170, h: 846 }
+/** The whole map, in its own units: every row, down to the gesture row (the projects row isn't drawn here: Projects is in the top bar). */
+const DRAWN = { x: 30, y: 16, w: 1170, h: 750 }
 /** The folded strip: how much of the map it shows, in the map's units. */
 const STRIP = 104
 /** Up to this width, in px, the map scales to fit; wider, it keeps this scale and the wires between its columns get longer. */

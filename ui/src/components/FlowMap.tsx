@@ -238,7 +238,8 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
   const held = !!view
   const sx = useMemo(() => stretcher(extra), [extra])
   const wires = useMemo(() => (extra > 0 ? WIRES.map((w) => stretchWire(w, sx)) : WIRES), [extra, sx])
-  const nodes = useMemo(() => (extra > 0 ? NODES.map((n) => ({ ...n, x: sx(n.x) })) : NODES), [extra, sx])
+  // Make Your Own has no projects row: Projects is in the top bar
+  const nodes = useMemo(() => NODES.filter((n) => !held || n.id !== 'projects').map((n) => (extra > 0 ? { ...n, x: sx(n.x) } : n)), [extra, sx, held])
   const [hot, setHot] = useState<string | null>(null)
   const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : idle
 
@@ -387,13 +388,14 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
         {/* the other kinds, one row each, below the change loop */}
         <line x1={40} y1={478} x2={sx(1172)} y2={478} className="flow__rule" />
 
-        {/* the projects, below everything they are made from */}
-        <line x1={40} y1={762} x2={sx(1172)} y2={762} className="flow__rule" />
-        {PROJECTS.map((l, i) => (
-          <text key={l} x={sx(240)} y={808 + i * 18} className="flow__caption">
-            {l}
-          </text>
-        ))}
+        {/* the projects, below everything they are made from (not in Make Your Own, where Projects is in the top bar) */}
+        {!held && <line x1={40} y1={762} x2={sx(1172)} y2={762} className="flow__rule" />}
+        {!held &&
+          PROJECTS.map((l, i) => (
+            <text key={l} x={sx(240)} y={808 + i * 18} className="flow__caption">
+              {l}
+            </text>
+          ))}
 
         {wires.map((w) => (
           <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${w.soon ? 'is-soon' : ''} ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>
