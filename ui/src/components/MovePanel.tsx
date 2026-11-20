@@ -13,6 +13,7 @@ import { Explained } from '../explain/Explained'
 import Loading, { DownloadWait } from './Loading'
 import { useSpaceKey } from '../hooks/useSpaceKey'
 import { rich, say } from '../text/say'
+import { choose, useGestureChoices } from '../lib/gestureChoices'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const LABEL = /^[\w .-]{1,40}$/
@@ -203,21 +204,28 @@ function draw(canvas: HTMLCanvasElement, w: number, h: number, found: Found | nu
  * own, train a k-nearest-neighbours model on them (`gesture train`), test it
  * live, and send what it sees to TouchDesigner, Max or anything that takes OSC.
  */
-/** active: the gesture tab is showing. Panels stay mounted when hidden, and the camera must only be on while you can see it. */
-export default function MovePanel({ active }: { active: boolean }) {
+/**
+ * active: the gesture tab is showing. Panels stay mounted when hidden, and the camera must only be on while you can see it.
+ * only: project mode, on the gesture controller's step of that number (1 tracker, 2 set, 3 record, 4 train, 5 send):
+ * the tab shows only that step's parts, and its decisions are on the schematic above it.
+ */
+export default function MovePanel({ active, only }: { active: boolean; only?: number }) {
+  const part = (n: number) => only === undefined || only === n
   const [here, setHere] = useState<Record<string, boolean>>({})
   const [sets, setSets] = useState<GestureSet[]>([])
   const [examples, setExamples] = useState<(GestureSet & { about?: string })[]>([])
-  const [name, setName] = useState('')
+  // the set, a new set's tracker and the source are shared with the gesture controller's schematic
+  const { set: name, tracker: newTracker, source } = useGestureChoices()
+  const setName = useCallback((v: string | ((was: string) => string)) => choose('set', v), [])
+  const setNewTracker = (t: Tracker) => choose('tracker', t)
+  const setSource = (s: 'camera' | 'photo') => choose('source', s)
   const [newName, setNewName] = useState('')
-  const [newTracker, setNewTracker] = useState<Tracker>('hands')
   /** counts clicks on "make your own": each one flashes a dashed box around the name, the next thing to fill in */
   const [flash, setFlash] = useState(0)
   /** the lightbox: the camera and the controls for recording, or for testing, gathered in the middle while the rest fades */
   const [focus, setFocus] = useState<'record' | 'test' | null>(null)
   const nameInput = useRef<HTMLInputElement>(null)
   useEffect(() => void (flash && nameInput.current?.focus()), [flash])
-  const [source, setSource] = useState<'camera' | 'photo'>('camera')
   const [photo, setPhoto] = useState('')
   const [label, setLabel] = useState('')
   const [recording, setRecording] = useState('')
@@ -264,7 +272,7 @@ export default function MovePanel({ active }: { active: boolean }) {
     // the first set is chosen once, on opening; after that "a new set…" stays chosen while files change
     if (!picked.current) setName((n) => n || g[0]?.folder || '')
     picked.current = true
-  }, [])
+  }, [setName])
   useEffect(() => void load(), [load])
   useHelperEvent(
     'workspace.changed',
@@ -337,8 +345,9 @@ export default function MovePanel({ active }: { active: boolean }) {
     setCamera((c) => (c === 'on' || c === 'starting' ? 'off' : c))
   }, [])
   useEffect(() => {
-    if (!active || source !== 'camera') stopCamera()
-  }, [active, source, stopCamera])
+    // in project mode, only the record and send steps use the camera
+    if (!active || source !== 'camera' || (only !== undefined && only !== 3 && only !== 5)) stopCamera()
+  }, [active, source, only, stopCamera])
   useEffect(() => stopCamera, [stopCamera])
   useEffect(() => stopCamera(), [name, stopCamera])
   useEffect(() => setFocus(null), [name, active])
@@ -512,12 +521,26 @@ export default function MovePanel({ active }: { active: boolean }) {
 
   return (
     <section className="panel" aria-label={say('gesture.label')}>
-      <div className="move-layout">
+      <div className={`move-layout ${only !== undefined ? `move-layout--only move-layout--step${only}` : ''}`.trim()}>
         <div className="move-setup">
-          <h2 className="panel__title label">{say('gesture.steps.title', { what })}</h2>
-          <Steps steps={steps} />
+          {only === undefined && (
+            <>
+              <h2 className="panel__title label">{say('gesture.steps.title', { what })}</h2>
+              <Steps steps={steps} />
+            </>
+          )}
 
-          <h2 className="panel__title label">{say('gesture.sets.title')}</h2>
+          {only === 1 && (
+            <>
+              <p className="models-intro">{say('gesture.mode.tracker', { what })}</p>
+              <div className="cards">
+                <TrackerCard t={trackerInfo} here={trackerHere} busy={busy === `get ${tracker}`} onGet={getTracker} />
+              </div>
+            </>
+          )}
+
+          {part(2) && <h2 className="panel__title label">{say('gesture.sets.title')}</h2>}
+          {part(2) && (
           <div className="look-sets">
             <Explained id="move.set">
               <div className="move-sets" role="radiogroup" aria-label={say('gesture.sets.label')}>
@@ -565,6 +588,9 @@ export default function MovePanel({ active }: { active: boolean }) {
                     <input ref={nameInput} type="text" value={newName} onChange={(e) => setNewName(asName(e.target.value))} placeholder={say('gesture.new.name.placeholder')} spellCheck={false} />
                   </label>
                 </Next>
+                {only !== undefined ? (
+                  <span className="label label--muted">{say('gesture.mode.follows', { what: TRACKER_NAMES[newTracker]() })}</span>
+                ) : (
                 <div className="field">
                   <span className="label label--muted">{say('gesture.new.tracker')}</span>
                   <div className="choice" role="radiogroup" aria-label={say('gesture.new.tracker')}>
@@ -579,7 +605,8 @@ export default function MovePanel({ active }: { active: boolean }) {
                     {say('gesture.new.tracker.about')}
                   </span>
                 </div>
-                {offerTracker}
+                )}
+                {only === undefined && offerTracker}
                 <Explained id="move.new">
                   <button
                     type="button"
@@ -596,18 +623,24 @@ export default function MovePanel({ active }: { active: boolean }) {
               </div>
             )}
           </div>
+          )}
 
-          <h2 className="panel__title label">{say('gesture.models.title')}</h2>
-          <p className="models-intro">{say('gesture.models.intro')}</p>
-          <div className="cards">
-            {TRACKER_MODELS.map((t) => (
-              <TrackerCard key={t.name} t={t} here={!!here[t.name]} busy={busy === `get ${t.name}`} onGet={() => void run(`get ${t.name}`, `model get ${t.name}`)} />
-            ))}
-          </div>
+          {only === undefined && (
+            <>
+              <h2 className="panel__title label">{say('gesture.models.title')}</h2>
+              <p className="models-intro">{say('gesture.models.intro')}</p>
+              <div className="cards">
+                {TRACKER_MODELS.map((t) => (
+                  <TrackerCard key={t.name} t={t} here={!!here[t.name]} busy={busy === `get ${t.name}`} onGet={() => void run(`get ${t.name}`, `model get ${t.name}`)} />
+                ))}
+              </div>
+            </>
+          )}
 
         </div>
 
         {focus && <div className="move-backdrop" onClick={closeFocus} aria-hidden="true" />}
+        {(only === undefined || only >= 3) && (
         <div
           className={`move-studio ${focus ? `is-focus is-focus--${focus}` : ''}`.trim()}
           aria-label={say('gesture.studio.label')}
@@ -624,6 +657,7 @@ export default function MovePanel({ active }: { active: boolean }) {
                   </button>
                 </div>
               )}
+              {only === undefined && (
               <div className="choice move-source" role="radiogroup" aria-label={say('gesture.source.label')}>
                 {(['camera', 'photo'] as const).map((s) => (
                   <button key={s} type="button" role="radio" aria-checked={s === source} className={`text-button ${s === source ? 'is-active' : ''}`.trim()} onClick={() => (setSource(s), setNote(''))}>
@@ -631,13 +665,14 @@ export default function MovePanel({ active }: { active: boolean }) {
                   </button>
                 ))}
               </div>
-              {source === 'photo' && (
+              )}
+              {source === 'photo' && only !== 4 && (
                 <Next on={now === 2}>
                   <PicturePicker value={photo} onChange={choosePhoto} />
                 </Next>
               )}
-              {offerTracker}
-              {source === 'camera' && trackerHere && camera !== 'on' && (
+              {only === undefined && offerTracker}
+              {source === 'camera' && trackerHere && camera !== 'on' && only !== 4 && (
                 <Next on={now === 2}>
                 <div className="move-start">
                   {camera === 'starting' ? (
@@ -655,7 +690,7 @@ export default function MovePanel({ active }: { active: boolean }) {
               )}
               {loadingTracker && <Loading label={say('gesture.tracker.loading', { tracker })} about={2 + trackerInfo.mb * 0.15} />}
 
-              <figure className="move-view">
+              <figure className="move-view" hidden={only === 4}>
                 <div className="move-view__frame">
                   {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
                   <canvas ref={canvas} className="move-view__points" />
@@ -675,16 +710,17 @@ export default function MovePanel({ active }: { active: boolean }) {
                   {` · ${say('gesture.view.onlyPoints')}`}
                 </figcaption>
               </figure>
-              {source === 'camera' && camera === 'on' && (
+              {source === 'camera' && camera === 'on' && only !== 4 && (
                 <button type="button" className="text-button move-camera-off" onClick={stopCamera}>
                   {say('gesture.camera.stop')}
                 </button>
               )}
 
               <div className="move-side">
+                {part(3) && (
                 <div className="move-part move-part--record">
                 <Next on={now === 3}>
-                <h3 className="label">{say('gesture.record.title')}</h3>
+                {only === undefined && <h3 className="label">{say('gesture.record.title')}</h3>}
                 {!focus && (
                   <button
                     type="button"
@@ -752,9 +788,12 @@ export default function MovePanel({ active }: { active: boolean }) {
                 {note && <p className="label">{note}</p>}
                 </Next>
                 </div>
+                )}
 
+                {part(4) && (
+                <>
                 <Next on={now === 4}>
-                <h3 className="label">{say('gesture.train.title')}</h3>
+                {only === undefined && <h3 className="label">{say('gesture.train.title')}</h3>}
                 <Explained id="move.train">
                   <CommandPreview command={trainLine} onRun={() => void run('train', trainLine)} disabled={!trainable} running={busy === 'train'} label={say('gesture.train.label')} />
                 </Explained>
@@ -790,9 +829,12 @@ export default function MovePanel({ active }: { active: boolean }) {
                     </table>
                   </>
                 )}
+                </>
+                )}
 
+                {part(5) && (
                 <div className={`move-test move-part--test ${now === 5 ? 'is-next' : ''}`.trim()}>
-                  <h3 className="label">{say('gesture.test.title')}</h3>
+                  {only === undefined && <h3 className="label">{say('gesture.test.title')}</h3>}
                   <Explained id="move.test">
                     <button type="button" className={`text-button ${testing ? 'is-active' : ''}`.trim()} disabled={!set.trained} onClick={() => {
                         setGuess(null)
@@ -830,13 +872,15 @@ export default function MovePanel({ active }: { active: boolean }) {
                     </button>
                   </div>
                 </div>
-                {set.trained && <UseIt name={name} port={port || '9000'} sending={sending} />}
+                )}
+                {set.trained && part(5) && <UseIt name={name} port={port || '9000'} sending={sending} />}
               </div>
             </>
           ) : (
             <p className="move-studio__empty label label--muted">{say('gesture.studio.empty')}</p>
           )}
         </div>
+        )}
       </div>
     </section>
   )

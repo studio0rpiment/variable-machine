@@ -79,6 +79,16 @@ What you bring to a language model: questions with the answers you want, written
 
 Photos, each with a question and the answer you want: what it shows, said your way. On the Data tab they become picture rows, and Train teaches a model that sees (SmolVLM) to talk about pictures like that.
 
+### Papers
+`map.papers`
+
+What you bring to the research bot: a topic, and two to five papers or articles you already know are relevant. Search code finds real items on it, in scholarship and the feeds you name; a model writes the searches and screens what is found, and never names a source itself. On the Data tab, under papers and articles.
+
+### Reading list
+`map.readingList`
+
+What the research bot gives you: the items you kept, each with why, where it was found and a link to check it, and a BibTeX file. Your keep and skip decisions can also become a point of view: a small model, trained on Train or Prefer, that screens the next search the way you do.
+
 ### Your photos
 `map.photos`
 

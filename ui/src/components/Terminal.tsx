@@ -7,6 +7,7 @@ import { onEvent, sendEvent } from '../lib/helper'
 import { useHelperEvent } from '../hooks/useHelper'
 import { Prompt, Stop, TerminalMark } from '../icons'
 import type { Theme } from '../themes'
+import { say } from '../text/say'
 
 const FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
 
@@ -27,7 +28,17 @@ function xtermTheme(t: Theme): ITheme {
  * xterm's own keystrokes because there is no pty behind it: the helper takes
  * whole lines.
  */
-export default function Terminal({ theme }: { theme: Theme }) {
+/** The last command run, from the echo: › typed, ▸ from the page. */
+const strip = (t: string) => t.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '')
+const COMMAND = /^[›▸] (.+)$/
+
+/**
+ * folded: project mode. The terminal is one line, the last command run, with
+ * a way to open it; it keeps every line meanwhile, so opening it shows them.
+ * onFold: open it, or fold it again; given only in project mode.
+ */
+export default function Terminal({ theme, folded = false, onFold }: { theme: Theme; folded?: boolean; onFold?: (folded: boolean) => void }) {
+  const [last, setLast] = useState('')
   // a short strip by default (15% of the window), half the window when you need to read it
   const tall = usePref('tallTerminal')
   const host = useRef<HTMLDivElement>(null)
@@ -60,7 +71,14 @@ export default function Terminal({ theme }: { theme: Theme }) {
     const ro = new ResizeObserver(() => fit.fit())
     ro.observe(el)
     const off = onEvent((e) => {
-      if (e.type === 'terminal.output') t.write(e.text)
+      if (e.type !== 'terminal.output') return
+      t.write(e.text)
+      const command = strip(e.text)
+        .split('\n')
+        .map((l) => COMMAND.exec(l)?.[1])
+        .filter(Boolean)
+        .pop()
+      if (command) setLast(command)
     })
     return () => {
       off()
@@ -111,16 +129,35 @@ export default function Terminal({ theme }: { theme: Theme }) {
   }
 
   return (
-    <section className="dock" aria-label="terminal">
-      <header className="panel-head">
+    <section className={`dock ${folded ? 'dock--folded' : ''}`.trim()} aria-label="terminal">
+      {folded && (
+        <div className="dock__folded">
+          <TerminalMark size={1} />
+          <span className="dock__last">{last ? `▸ ${last}` : say('projects.mode.terminal.none')}</span>
+          {busy && (
+            <button type="button" className="icon-button" onClick={() => sendEvent({ type: 'terminal.stop' })} title="stop (ctrl-c)" aria-label="stop">
+              <Stop size={1} />
+            </button>
+          )}
+          <button type="button" className="text-button" onClick={() => onFold?.(false)}>
+            {say('projects.mode.terminal.open')}
+          </button>
+        </div>
+      )}
+      <header className="panel-head" hidden={folded}>
         <TerminalMark size={1} />
         <span className="label">terminal</span>
+        {onFold && (
+          <button type="button" className="text-button" onClick={() => onFold(true)}>
+            {say('projects.mode.terminal.fold')}
+          </button>
+        )}
         <button type="button" className="text-button terminal__size" onClick={() => setPref('tallTerminal', !tall)} aria-pressed={tall}>
           {tall ? 'smaller ▾' : 'taller ▴'}
         </button>
       </header>
-      <div className="terminal__screen" ref={host} />
-      <div className="terminal__line">
+      <div className="terminal__screen" ref={host} hidden={folded} />
+      <div className="terminal__line" hidden={folded}>
         <Prompt size={0.9} className="terminal__glyph" />
         <input
           type="text"

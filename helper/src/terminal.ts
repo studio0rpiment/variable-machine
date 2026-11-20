@@ -44,7 +44,7 @@ const HELP = `commands
   ask check <model> <dataset>                      how often its queries give the right answer, on questions set aside
   reader check <model> <dataset> [--against qwen3:4b|none]   a reader model against qwen3:4b given a prompt, on rows set aside
   package <model>                                  an "ask the table" model, or a relevance judge, as a folder for another project: workspace/packages/<model>
-  papers search | screen | decide | summarise | list | check | judge <name> …   the research bot: papers and articles on a topic   (papers help)
+  papers search | screen | decide | add | summarise | list | check | pool | judge <name> …, papers keys   the research bot: papers, archives, newspapers and patents on a topic   (papers help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs

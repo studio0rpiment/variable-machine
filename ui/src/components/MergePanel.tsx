@@ -12,6 +12,7 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import PipelineSteps from './PipelineSteps'
 import { Explained } from '../explain/Explained'
+import { Part } from '../lib/parts'
 
 interface AdapterManifest {
   name: string
@@ -143,6 +144,7 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
       </details>
       {pipe && <PipelineSteps p={pipe} />}
 
+      <Part id="merge.list">
       <h2 className="panel__title label">merges · workspace/merges</h2>
       <div className="cards">
         {merges.map((m) => {
@@ -188,6 +190,7 @@ export default function MergePanel({ onChatModels }: { onChatModels: (models: st
         })}
         {merges.length === 0 && <p className="label label--muted">no merges yet</p>}
       </div>
+      </Part>
     </section>
   )
 }

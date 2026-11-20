@@ -7,15 +7,29 @@
  *   node research.js --top 60        how many of the closest new items the judge reads
  *
  * The whole loop: the searches → OpenAlex, Semantic Scholar, arXiv, Crossref
- * and the feeds → the seeds' citations both ways → duplicates removed → what
+ * and the feeds (and, when research.json names them, the Internet Archive,
+ * the Library of Congress's newspapers and US patents by number) → the seeds'
+ * citations both ways → duplicates removed → what
  * the library has seen dropped → nomic-embed-text ranks the rest by closeness
  * to the seeds → the judge (the model in this package) answers keep or skip →
  * reading-<date>.md, references.bib, and library.jsonl updated. The judge never
  * names a paper; search code finds them all.
  */
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { DECISION_SCHEMA, bibtex, cosine, dedupe, embedText, followCitations, judgeInput, judgeSystem, parseDecision, QUERY_SCHEMA, queryPrompt, readFeed, resolveSeeds, search, SOURCES, type Item, type Keys } from '../shared/research.ts'
+import { DECISION_SCHEMA, bibtex, cosine, dedupe, embedQuery, embedText, followCitations, judgeInput, judgeSystem, parseDecision, QUERY_SCHEMA, queryPrompt, readFeed, resolveSeeds, search, searchMore, SOURCES, type Item, type Keys, type More } from '../shared/research.ts'
+
+/** Keys, as Variable Machine keeps them: a file in your Library on a Mac (never in this folder), or the environment. */
+function loadKeys(): Keys {
+  let file: Keys = {}
+  try {
+    file = JSON.parse(fs.readFileSync(path.join(os.homedir(), 'Library', 'Application Support', 'Variable Machine', 'keys.json'), 'utf8')) as Keys
+  } catch {
+    // no file: the free budgets
+  }
+  return { ...file, ...(process.env.OPENALEX_API_KEY && { openalex: process.env.OPENALEX_API_KEY }), ...(process.env.SEMANTIC_SCHOLAR_API_KEY && { semanticScholar: process.env.SEMANTIC_SCHOLAR_API_KEY }) }
+}
 
 
 export interface ResearchConfig {
@@ -34,6 +48,10 @@ export interface ResearchConfig {
   top: number
   /** results per search, per source */
   per: number
+  /** the other sources searched: archive, newspapers, patents (older packages have none) */
+  more?: More[]
+  /** US patent numbers to fetch every run */
+  patents?: string[]
 }
 
 type Entry = Item & { first: string; run: number; decision?: 'keep' | 'skip'; reason?: string; by?: string; sim?: number }
@@ -56,7 +74,7 @@ async function embed(cfg: ResearchConfig, texts: string[]): Promise<number[][]> 
 /** The whole loop, once. Returns the new items, each with the judge's decision. */
 export async function run(dir: string, opts: { newQueries?: boolean; top?: number } = {}): Promise<Entry[]> {
   const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'research.json'), 'utf8')) as ResearchConfig
-  const keys: Keys = { openalex: process.env.OPENALEX_API_KEY, semanticScholar: process.env.SEMANTIC_SCHOLAR_API_KEY }
+  const keys = loadKeys()
   const libFile = path.join(dir, 'library.jsonl')
   const library: Entry[] = fs.existsSync(libFile) ? fs.readFileSync(libFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as Entry) : []
   const runNo = Math.max(0, ...library.map((x) => x.run)) + 1
@@ -89,6 +107,7 @@ export async function run(dir: string, opts: { newQueries?: boolean; top?: numbe
     say(`  ${source.padEnd(17)} ${n}`)
   }
   for (const url of cfg.feeds) found.push(...(await readFeed(url).catch((err: Error) => (say(`  feed ${url}: ${err.message}`), []))))
+  if (cfg.more?.length) found.push(...(await searchMore(cfg.more, queries, cfg.per, { patents: cfg.patents, say, log: [] }).catch((err: Error) => (say(`  ${err.message}`), []))))
   found.push(...(await followCitations(works, cfg.per * 2, keys).catch((err: Error) => (say(`  citations: ${err.message}`), []))))
 
   const seen = new Set([...library.map((x) => x.key), ...known.map((k) => k.key)])
@@ -96,12 +115,12 @@ export async function run(dir: string, opts: { newQueries?: boolean; top?: numbe
   say(`  ${fresh.length} new, of ${dedupe(found).length} found (the library has ${library.length})`)
   if (!fresh.length) return []
 
-  const [centreish, ...anchors] = await embed(cfg, [`search_query: ${cfg.topic}`, ...known.map((k) => embedText(k))])
+  const [centreish, ...anchors] = await embed(cfg, [embedQuery(cfg.topic, cfg.embed), ...known.map((k) => embedText(k, cfg.embed))])
   const all = [centreish, ...anchors]
   const centre = centreish.map((_, i) => all.reduce((s, v) => s + v[i], 0) / all.length)
   const vs = await embed(
     cfg,
-    fresh.map((x) => embedText(x)),
+    fresh.map((x) => embedText(x, cfg.embed)),
   )
   const ranked: Entry[] = fresh.map((x, i) => ({ ...x, first: new Date().toISOString(), run: runNo, sim: Math.round(cosine(vs[i], centre) * 1000) / 1000 })).sort((a, b) => b.sim! - a.sim!)
   const top = opts.top ?? cfg.top
@@ -129,7 +148,18 @@ export async function run(dir: string, opts: { newQueries?: boolean; top?: numbe
     '',
     `${kept.length} kept of ${ranked.length} new. Found by search code; kept or skipped by ${cfg.judge}, the judge named in research.json. Abstracts only: check each before you cite it.`,
     '',
-    ...kept.flatMap((x) => [`## ${x.title}`, '', [x.authors.slice(0, 3).join(', '), x.year, x.venue].filter(Boolean).join(' · '), '', `- **Why:** ${x.reason}`, `- **Where:** ${x.url}${x.oa ? ` · free to read: ${x.oa}` : ''}`, '']),
+    ...kept.flatMap((x) => [
+      `## ${x.title}`,
+      '',
+      [x.authors.slice(0, 3).join(', '), x.year, x.venue].filter(Boolean).join(' · '),
+      '',
+      `- **Why:** ${x.reason}`,
+      `- **Decided by:** ${x.by}`,
+      `- **Where:** ${x.url}${x.oa && x.oa !== x.url ? ` · free to read: ${x.oa}` : ''}`,
+      `- **Found:** in ${x.sources.join(', ')}${x.hits?.[0] ? `; by the search "${x.hits[0].search}", ${x.hits[0].at.slice(0, 10)}: ${x.hits[0].address}` : ''}`,
+      ...(x.quotes?.length ? [`  > “${x.quotes[0].text.slice(0, 300)}” (${x.quotes[0].where})`] : []),
+      '',
+    ]),
   ].join('\n')
   fs.writeFileSync(path.join(dir, `reading-${day}.md`), md)
   fs.writeFileSync(path.join(dir, 'references.bib'), bibtex([...library, ...ranked].filter((x) => x.decision === 'keep')) + '\n')

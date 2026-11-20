@@ -19,6 +19,7 @@ import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
 import { Explained } from '../explain/Explained'
+import { Part } from '../lib/parts'
 
 interface RunManifest {
   name: string
@@ -40,7 +41,7 @@ const pct = (x: number) => `${Math.round(x * 100)}%`
  * chosen answer more likely than the rejected one, before and after.
  */
 /** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number } }) {
+export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number; model?: string } }) {
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [fused, setFused] = useState<{ name: string }[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
@@ -83,7 +84,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
     if (!p.data && ready[0]) setP((x) => ({ ...x, data: ready[0].name }))
   }, [ready, p.data])
   useEffect(() => {
-    if (withData) setP((x) => ({ ...x, data: withData.data }))
+    if (withData) setP((x) => ({ ...x, data: withData.data, ...(withData.model && { model: withData.model }) }))
   }, [withData])
   useEffect(() => {
     if (!touchedName && p.data && !running) setP((x) => ({ ...x, name: free(`${p.data}-dpo`) }))
@@ -240,6 +241,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
         </>
       )}
 
+      <Part id="prefer.runs">
       <h2 className="panel__title label">preference runs · workspace/runs</h2>
       <div className="cards">
         {runs.map((r) => (
@@ -263,6 +265,7 @@ export default function PreferPanel({ onAdapters, onChatPair, onChat, withData }
         ))}
         {runs.length === 0 && <p className="label label--muted">no preference runs yet</p>}
       </div>
+      </Part>
     </section>
   )
 }
