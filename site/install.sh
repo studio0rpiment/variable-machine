@@ -86,6 +86,10 @@ main() {
     || stop "The app couldn't be made." "You can still start it: in Finder, open $DEST and double-click Variable Machine.command."
   if [ -f "$DEST/scripts/app-icon.icns" ]; then
     cp "$DEST/scripts/app-icon.icns" "$APP/Contents/Resources/applet.icns"
+    # macOS 26 takes an app's icon from Assets.car when Info.plist names one
+    # (CFBundleIconName), so osacompile's default icon would win over the spiral.
+    rm -f "$APP/Contents/Resources/Assets.car"
+    /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APP/Contents/Info.plist" >/dev/null 2>&1
     codesign --force --sign - "$APP" >/dev/null 2>&1
     touch "$APP"
   fi
