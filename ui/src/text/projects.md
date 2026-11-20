@@ -134,7 +134,7 @@ get the picture encoder and decoder (Kandinsky 2.2, 9 GB)
 ### Step: the screenshots
 `projects.latent.screenshots`
 
-upload 15 or more screenshots into a new image set: of a photo roll, or of Instagram saved posts, stories or reels (one post a screenshot, or screenshots of a grid: the Saved grid or the photo roll)
+upload 15 or more screenshots into a new image set: of a photo roll, or of Instagram saved posts, stories or reels (one post a screenshot, or screenshots of a grid: the Saved grid, or the photo roll zoomed to 3 or 5 columns; a zoomed-out view's thumbnails are too small to cut)
 
 ### Step: a public-domain set instead
 `projects.latent.pictures`

@@ -276,20 +276,60 @@ def crop_screen(im: Image.Image) -> tuple[list[int], str]:
     return [(W - side) // 2, (H - side) // 2, (W - side) // 2 + side, (H - side) // 2 + side], "full screen: the middle square"
 
 
+HEADER, FOOTER = 0.115, 0.915  # a phone's Photos app draws its title and its bar of buttons over the grid: rows reaching above or below these shares of the height are left out
+
+
+def _gaps(a: np.ndarray, axis: int, thin: int) -> list[tuple[int, int]]:
+    """The thin lines of one even colour across a grid: along axis 0, columns; along axis 1, rows. A line is even when
+    its pixels hardly vary along it (the gap between thumbnails, white or black); a plain area inside a picture can be
+    even too, but it is thicker than `thin`, so it isn't taken for a gap."""
+    sd = a.std(axis).mean(-1)
+    return [(x0, x1) for x0, x1 in _runs(sd < 12, 1) if x1 - x0 <= thin]
+
+
+def _cells(gaps: list[tuple[int, int]], n: int) -> list[tuple[int, int]]:
+    edges = [0] + [x for g in gaps for x in g] + [n]
+    return [(edges[i], edges[i + 1]) for i in range(0, len(edges), 2) if edges[i + 1] > edges[i]]
+
+
 def crop_grid(im: Image.Image) -> list[list[int]]:
     """The thumbnails in a screenshot of a grid (Instagram's Saved grid, or a phone's photo roll): blocks of picture
-    separated by thin lines of background. A photo roll's lines are 1–3 pixels, so the grid is read at the screenshot's
-    own size: shrinking it blurs the lines into the pictures."""
+    between thin lines of one even colour. The columns are found in the middle of the screen, where nothing is drawn
+    over the grid; the rows are placed by the grid's pitch, fitted to the lines that run the whole width. Kept: cells as wide as a column, about square or a little taller (Instagram's are 3:4), and
+    clear of the Photos app's title and bar. The lines are 1–3 pixels, so the grid is read at the screenshot's own
+    size: shrinking it blurs them into the pictures. A zoomed-out view (Years, Months, or many columns) has no lines,
+    and gives nothing."""
     W, H = im.size
     k = min(1.0, 2000 / W)
-    a = np.asarray(im if k == 1 else im.resize((round(W * k), max(1, round(H * k)))))
-    w = a.shape[1]
-    c = _content(a)
+    a = np.asarray(im if k == 1 else im.resize((round(W * k), max(1, round(H * k))))).astype(np.int16)
+    h, w = a.shape[:2]
+    cols = [c for c in _cells(_gaps(a[int(0.3 * h) : int(0.8 * h)], 0, max(2, w // 80)), w) if c[1] - c[0] >= w // 12]
+    if len(cols) < 2:
+        return []
+    cw = float(np.median([x1 - x0 for x0, x1 in cols]))
+    cols = [c for c in cols if abs(c[1] - c[0] - cw) <= 0.06 * cw]
+    gap = max(1, round((w - cw * len(cols)) / max(1, len(cols) - 1)))
+    # The rows, by the grid's pitch: a dark or plain picture can hide a line or make a false one, so the lines found
+    # are only evidence. The pitch is the commonest spacing between them (a column's width plus a line on a phone,
+    # taller on Instagram); the phase is the one most lines agree with; every row is then placed by the two.
+    starts = [y0 for y0, _ in _gaps(a, 1, max(2, w // 80))]
+    steps = [d - c for c, d in zip(starts, starts[1:]) if cw <= d - c <= 1.45 * cw + 2 * gap]
+    if not steps:
+        return []
+    vals, counts = np.unique(np.round(steps), return_counts=True)
+    pitch = float(vals[counts.argmax()])
+    best = max(starts, key=lambda c: sum(min((d - c) % pitch, pitch - (d - c) % pitch) <= 2 for d in starts))
+    on = [(round((d - best) / pitch), d) for d in starts if min((d - best) % pitch, pitch - (d - best) % pitch) <= 2]
+    if len(on) >= 2:  # the pitch to a fraction of a pixel, fitted to the lines that agree
+        pitch, best = np.polyfit([i for i, _ in on], [d for _, d in on], 1)
+    k0 = -int(best // pitch) - 1
+    rows = [(round(best + i * pitch + gap), round(best + (i + 1) * pitch)) for i in range(k0, k0 + int(h / pitch) + 3)]
     boxes = []
-    for y0, y1 in _runs(c.mean(1) > 0.6, w // 8):
-        for x0, x1 in _runs(c[y0:y1].mean(0) > 0.6, w // 8):
-            if 0.5 <= (y1 - y0) / (x1 - x0) <= 2:
-                boxes.append([round(x0 / k), round(y0 / k), round(x1 / k), round(y1 / k)])
+    for y0, y1 in rows:
+        if not (0.94 <= (y1 - y0) / cw <= 1.4) or y0 < max(0, HEADER * h) or y1 > FOOTER * h:
+            continue
+        for x0, x1 in cols:
+            boxes.append([round(x0 / k), round(y0 / k), round(x1 / k), round(y1 / k)])
     return boxes
 
 
@@ -305,7 +345,8 @@ def crop(folder: Path, out: Path, grid: bool) -> None:
                 name = f"{f.stem}-{j + 1:02d}.png"
                 im.crop(b).save(out / name)
                 made.append({"file": name, "from": f.name, "box": b, "found": "grid"})
-            print(f"  {f.name}: {len(boxes)} thumbnails", flush=True)
+            why = "" if boxes else ": no lines between thumbnails found. A zoomed-out view (Years, Months, or many small columns) has none: zoom in to 3 or 5 columns"
+            print(f"  {f.name}: {len(boxes)} thumbnails{why}", flush=True)
         else:
             b, how = crop_screen(im)
             name = f"{f.stem}.png"
