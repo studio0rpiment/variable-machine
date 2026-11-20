@@ -10,7 +10,7 @@ import AdaptersPanel from './components/AdaptersPanel'
 import MergePanel from './components/MergePanel'
 import PreferPanel from './components/PreferPanel'
 import SharePanel from './components/SharePanel'
-import RollYourOwn, { PARTS, type Part } from './components/RollYourOwn'
+import MakeYourOwn, { PARTS, type Part } from './components/MakeYourOwn'
 import { NODES } from './components/FlowMap'
 import AboutPanel from './components/AboutPanel'
 import ProjectsPanel, { type Fill, type Step } from './components/ProjectsPanel'
@@ -34,12 +34,12 @@ import { AdaptersMark, ChatMark, DataMark, MergeMark, ModelfileMark, ModelsMark,
 
 /**
  * Two modes. Projects: the cards, each a project to follow (a card with a
- * schematic opens in project mode). Roll Your Own: every tab on one long page,
+ * schematic opens in project mode). Make Your Own: every tab on one long page,
  * in the Start map's order, with the Start map as the way round it. About is
  * the long form, in words. The mode lives in the hash; so does the part of
- * Roll Your Own to go to (#data), so old links to a tab still land.
+ * Make Your Own to go to (#data), so old links to a tab still land.
  */
-type View = 'projects' | 'roll' | 'about'
+type View = 'projects' | 'make' | 'about'
 /** A part's mark, beside its name on the page. */
 const MARKS: Record<Part, ReactNode> = {
   models: <ModelsMark size={0.9} />,
@@ -62,12 +62,12 @@ const LABEL: Partial<Record<Part, string>> = { segmentation: 'image segmentation
 /** Tabs that were renamed, so old links still land: look, voice and move became segmentation, speech and gesture. */
 const RENAMED: Record<string, Part> = { look: 'segmentation', voice: 'speech', move: 'gesture' }
 
-/** The hash, as a mode and a part: #projects, #about, or a part of Roll Your Own (#roll, #start and anything else: its top). */
+/** The hash, as a mode and a part: #projects, #about, or a part of Make Your Own (#make, #start and anything else: its top). */
 function fromHash(): { view: View; part: Part | null } {
   const h = location.hash.slice(1)
   if (h === 'projects' || h === 'about') return { view: h, part: null }
   const part = RENAMED[h] ?? ((PARTS as readonly string[]).includes(h) ? (h as Part) : null)
-  return { view: 'roll', part }
+  return { view: 'make', part }
 }
 
 /**
@@ -85,10 +85,10 @@ export default function App() {
   const modeStep = followed && (routeOf(followed)[guide!.step - 1] ?? routeOf(followed).at(-1))
   const mode = followed && modeStep ? { project: followed, step: Math.min(guide!.step, routeOf(followed).length) } : null
   const view: View = at.view
-  /** Roll Your Own: the part in view (none at the top of the page, on the open map) */
+  /** Make Your Own: the part in view (none at the top of the page, on the open map) */
   const [inView, setInView] = useState<string | null>(null)
   /** the tab the guide bar and the panels take as open: a project's step's, or else the part in view */
-  const panel: string = mode ? modeStep!.tab : view === 'roll' ? (inView ?? 'roll') : view
+  const panel: string = mode ? modeStep!.tab : view === 'make' ? (inView ?? 'make') : view
   /** a route on one long page, under its schematic: a character's voice, the research bot */
   const longPage = !!(mode?.project.voice || mode?.project.research)
   const [folded, setFolded] = useState(true)
@@ -96,7 +96,7 @@ export default function App() {
   const [stepInView, setStepInView] = useState(1)
   /** the folded schematic: the whole route (FULL pressed) or zoomed in on the step (ZOOM) */
   const [whole, setWhole] = useState(false)
-  /** Roll Your Own's map: the whole of it over the page (FULL), or the strip (ZOOM) */
+  /** Make Your Own's map: the whole of it over the page (FULL), or the strip (ZOOM) */
   const [wholeMap, setWholeMap] = useState(false)
   const [chatRequest, setChatRequest] = useState<{ models: (string | null)[]; n: number }>()
   const [modelfileFrom, setModelfileFrom] = useState<{ model: string; n: number }>()
@@ -206,9 +206,9 @@ export default function App() {
               {say('shared.mode.projects')}
             </a>
           </Explained>
-          <a href="#roll" className={`nav-link label ${view === 'roll' ? 'is-active' : ''}`.trim()} aria-current={view === 'roll' ? 'page' : undefined} title={say('shared.mode.roll.about')}>
+          <a href="#make" className={`nav-link label ${view === 'make' ? 'is-active' : ''}`.trim()} aria-current={view === 'make' ? 'page' : undefined} title={say('shared.mode.make.about')}>
             <StartMark size={0.9} />
-            {say('shared.mode.roll')}
+            {say('shared.mode.make')}
           </a>
           <a href="#about" className={`nav-link label shell__about ${view === 'about' ? 'is-active' : ''}`.trim()} aria-current={view === 'about' ? 'page' : undefined}>
             <AboutMark size={0.9} />
@@ -218,10 +218,10 @@ export default function App() {
         <StatusLine />
         <FlagsToggle />
         <ThemeToggle mode={theme.mode} onToggle={toggle} />
-        {view === 'roll' && <ZoomToggle whole={wholeMap} onToggle={() => setWholeMap(!wholeMap)} titles={{ full: say('shared.roll.fullTitle'), zoom: say('shared.roll.zoomTitle') }} />}
+        {view === 'make' && <ZoomToggle whole={wholeMap} onToggle={() => setWholeMap(!wholeMap)} titles={{ full: say('shared.make.fullTitle'), zoom: say('shared.make.zoomTitle') }} />}
       </header>
       )}
-      <main ref={mainRef} className={`shell__main ${mode || view === 'roll' ? 'shell__main--project' : ''}`.trim()}>
+      <main ref={mainRef} className={`shell__main ${mode || view === 'make' ? 'shell__main--project' : ''}`.trim()}>
         {mode && longPage ? (
           <>
             {mode.project.research ? (
@@ -298,21 +298,21 @@ export default function App() {
             <div className="panel-slot" hidden={view !== 'about'}>
               <AboutPanel />
             </div>
-            {/* Roll Your Own: every tab on one long page, under the Start map, which folds into the strip at the top */}
-            <div className="ryo-page" hidden={view !== 'roll'}>
-              <RollYourOwn whole={wholeMap} onZoom={() => setWholeMap(false)} onFocus={setInView}>
+            {/* Make Your Own: every tab on one long page, under the Start map, which folds into the strip at the top */}
+            <div className="myo-page" hidden={view !== 'make'}>
+              <MakeYourOwn whole={wholeMap} onZoom={() => setWholeMap(false)} onFocus={setInView}>
                 <GuideBar panel={panel} onFill={fill} />
-              </RollYourOwn>
+              </MakeYourOwn>
               <PartsProvider value={ALL_PARTS}>
                 {PARTS.map((p) => {
                   const node = NODES.find((n) => n.id === p)
                   return (
-                    <section key={p} className="ryo__part" data-box={p} aria-label={LABEL[p] ?? p}>
-                      <h2 className="label ryo__head">
+                    <section key={p} className="myo__part" data-box={p} aria-label={LABEL[p] ?? p}>
+                      <h2 className="label myo__head">
                         {node?.n && <span className="nav-step">{node.n}</span>}
                         {MARKS[p]}
                         {LABEL[p] ?? p}
-                        {node && <span className="label--muted ryo__caption">{node.caption}</span>}
+                        {node && <span className="label--muted myo__caption">{node.caption}</span>}
                       </h2>
                       {p === 'models' && <ModelsPanel onChat={chatWith} onModelfile={editModelfile} />}
                       {p === 'modelfile' && <ModelfilePanel startFrom={modelfileFrom} onChatPair={chatPair} />}
@@ -328,8 +328,8 @@ export default function App() {
                       )}
                       {p === 'share' && <SharePanel />}
                       {p === 'segmentation' && <LookPanel />}
-                      {p === 'speech' && <VoicePanel active={view === 'roll' && inView === 'speech'} />}
-                      {p === 'gesture' && <MovePanel active={view === 'roll' && inView === 'gesture'} />}
+                      {p === 'speech' && <VoicePanel active={view === 'make' && inView === 'speech'} />}
+                      {p === 'gesture' && <MovePanel active={view === 'make' && inView === 'gesture'} />}
                     </section>
                   )
                 })}

@@ -5,7 +5,7 @@ import { useRoutePage } from '../lib/routePage'
 import { say } from '../text/say'
 
 /**
- * Roll Your Own: all of Variable Machine on one long page, in the Start map's
+ * Make Your Own: all of Variable Machine on one long page, in the Start map's
  * order, with the Start map as the way round it. The page opens on the whole
  * map. As it scrolls, each px scrolled takes a px off the map's height, and the
  * view closes in on the box of the part in view, until the map is a strip at
@@ -33,9 +33,9 @@ const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const within = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 const noStep = () => {}
 
-export default function RollYourOwn({ whole, onZoom, onFocus, children }: { whole: boolean; onZoom: () => void; onFocus: (part: string | null) => void; children?: ReactNode }) {
+export default function MakeYourOwn({ whole, onZoom, onFocus, children }: { whole: boolean; onZoom: () => void; onFocus: (part: string | null) => void; children?: ReactNode }) {
   const pxRef = useRef(MAX_PX)
-  const { space, self, scroll, focus, width, pick } = useRoutePage({ step: 1, project: 'roll', onStep: noStep, stripPx: () => (STRIP * pxRef.current) / zoomFor(pxRef.current), line: 'ryo__line' })
+  const { space, self, scroll, focus, width, pick } = useRoutePage({ step: 1, project: 'make', onStep: noStep, stripPx: () => (STRIP * pxRef.current) / zoomFor(pxRef.current), line: 'myo__line' })
   const px = Math.min(width, MAX_PX) || MAX_PX
   const ZOOM = zoomFor(px)
   useEffect(() => onFocus(focus), [focus, onFocus])
@@ -84,15 +84,15 @@ export default function RollYourOwn({ whole, onZoom, onFocus, children }: { whol
   return (
     <>
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
-      <div className="ryo__line">
-        <div ref={self} className={`ryo__frame ${t > 0.98 ? 'is-folded' : ''} ${k > 0 ? 'is-whole' : ''}`.replace(/\s+/g, ' ').trim()} aria-label={say('shared.roll.map')} role="navigation">
+      <div className="myo__line">
+        <div ref={self} className={`myo__frame ${t > 0.98 ? 'is-folded' : ''} ${k > 0 ? 'is-whole' : ''}`.replace(/\s+/g, ' ').trim()} aria-label={say('shared.make.map')} role="navigation">
           <FlowMap view={view} light={focus} onPick={onPick} />
           {/* under the strip, so it stays in sight: the guide bar, when a project's step is followed here */}
           {children}
         </div>
       </div>
       {/* holds the open map's place in the page; the map draws over it */}
-      <div ref={space} className="ryo" style={{ height: `${open / 16}rem` }} />
+      <div ref={space} className="myo" style={{ height: `${open / 16}rem` }} />
     </>
   )
 }

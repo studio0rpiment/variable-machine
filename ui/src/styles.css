@@ -1195,21 +1195,21 @@ img.move-view__picture { transform: none; }
 .part > * { order: var(--part-order, 0); }
 .research-note { color: var(--muted); margin: 0.4rem 0 0; }
 
-/* ---- Roll Your Own: every tab on one long page, under the Start map, which folds into a strip as the page scrolls ---- */
-.ryo-page { display: flex; flex-direction: column; }
-.ryo-page[hidden] { display: none; }
-.ryo { flex: none; }
-.ryo__line { position: sticky; top: 0; height: 0; z-index: 3; }
-.ryo__frame { position: relative; background: var(--bg); }
-.ryo__frame.is-folded, .ryo__frame.is-whole { border-bottom: 1px solid var(--muted); }
+/* ---- Make Your Own: every tab on one long page, under the Start map, which folds into a strip as the page scrolls ---- */
+.myo-page { display: flex; flex-direction: column; }
+.myo-page[hidden] { display: none; }
+.myo { flex: none; }
+.myo__line { position: sticky; top: 0; height: 0; z-index: 3; }
+.myo__frame { position: relative; background: var(--bg); }
+.myo__frame.is-folded, .myo__frame.is-whole { border-bottom: 1px solid var(--muted); }
 .flow--held { flex: none; min-height: 0; overflow: visible; }
 .flow--held .flow__svg { position: static; width: 100%; max-width: 60rem; height: auto; cursor: default; touch-action: auto; }
-.ryo__frame.is-whole .flow__svg { max-height: 70vh; }
+.myo__frame.is-whole .flow__svg { max-height: 70vh; }
 .flow__node.is-lit .flow__box, .flow__node.is-lit .flow__dest { fill: var(--act); stroke: var(--act); stroke-dasharray: none; }
 .flow__node.is-lit .flow__name, .flow__node.is-lit .flow__num { fill: var(--bg); }
-.ryo__part { flex: none; border-top: 1px solid var(--muted); padding-top: 1rem; margin-top: 1.5rem; }
-.ryo__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.5rem; font-weight: normal; }
-.ryo__caption { margin-left: 0.5rem; }
+.myo__part { flex: none; border-top: 1px solid var(--muted); padding-top: 1rem; margin-top: 1.5rem; }
+.myo__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.5rem; font-weight: normal; }
+.myo__caption { margin-left: 0.5rem; }
 
 /* ---- the Projects page: a box for each project, like the models ---- */
 .projects__cards { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }

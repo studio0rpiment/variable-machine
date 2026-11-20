@@ -190,7 +190,7 @@ interface Props {
   /** what the echo says while nothing is pointed at and the terminal is quiet; the website shows nothing */
   idle?: string[]
   /**
-   * Roll Your Own: the part of the map to show, set from outside (the map
+   * Make Your Own: the part of the map to show, set from outside (the map
    * folding into the strip as the page scrolls). It can't be dragged or zoomed
    * then, a scroll scrolls the page, and the tools and the echo go.
    */

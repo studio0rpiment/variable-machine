@@ -1,6 +1,6 @@
 # Shared: what every page shows
 
-The top bar's two modes, and Roll Your Own's map.
+The top bar's two modes, and Make Your Own's map.
 
 ## The two modes
 
@@ -19,13 +19,13 @@ projects
 
 the project cards: finished work, one card each, followed step by step
 
-### Roll Your Own
-`shared.mode.roll`
+### Make Your Own
+`shared.mode.make`
 
-roll your own
+make your own
 
-### Roll Your Own, on pointing
-`shared.mode.roll.about`
+### Make Your Own, on pointing
+`shared.mode.make.about`
 
 all of Variable Machine on one page, with the Start map as the way round it
 
@@ -34,19 +34,19 @@ all of Variable Machine on one page, with the Start map as the way round it
 
 about
 
-## Roll Your Own
+## Make Your Own
 
 ### The map, for a screen reader
-`shared.roll.map`
+`shared.make.map`
 
 the Start map: a box goes to its part of the page
 
 ### FULL, on pointing
-`shared.roll.fullTitle`
+`shared.make.fullTitle`
 
 show the whole map
 
 ### ZOOM, on pointing
-`shared.roll.zoomTitle`
+`shared.make.zoomTitle`
 
 zoom in on the part you are in
