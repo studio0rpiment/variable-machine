@@ -74,6 +74,9 @@ const HELP = `commands
   latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
   latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
   latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
+  latent ways <name>                              the composite and the average in the decoder's codes, beside the drawing and the pixel average
+  latent themes <name> [--themes 5]               what recurs in the set: groups, each with a composite, its centre drawn and words
+  latent walk <name> --to theme-1|picture-12|words|"a sentence"   an animation out from the latent image
   latent room <name> [<text> …]                   the installation's page, #latent-room/<name>, with passages of the texts beside it
   latent respond <name> --pick 3,7,12             a visitor's choice of pictures, drawn as their latent image (the room runs it)
   model get siglip                                a picture encoder for image moods: workspace/tools/siglip/

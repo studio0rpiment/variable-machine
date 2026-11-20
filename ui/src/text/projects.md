@@ -2243,6 +2243,76 @@ the latent image's decisions
 
 not built yet
 
+### Where the walk goes
+`projects.latent.decision.walk`
+
+where the walk goes
+
+### Walk: to a theme
+`projects.latent.walk.theme`
+
+to a theme
+
+### Walk: to a theme, about
+`projects.latent.walk.theme.about`
+
+to the centre of something that recurs in the set: 1 is the largest theme, the subject the person keeps most. A walk from what the set shares to what it keeps coming back to.
+
+### Walk: to the set's words
+`projects.latent.walk.words`
+
+to the set's own words
+
+### Walk: to the set's words, about
+`projects.latent.walk.words.about`
+
+to the words Kandinsky's text encoder reads in the set (the themes step finds them), drawn back into a picture: the set described, then the description drawn. Needs Kandinsky's prior.
+
+### Walk: to a sentence
+`projects.latent.walk.sentence`
+
+to a sentence
+
+### Walk: to a sentence, about
+`projects.latent.walk.sentence.about`
+
+to a sentence you write: what you think the set is about, or what it lacks. Needs Kandinsky's prior, which turns words into the encoder's numbers.
+
+### Walk: to a picture
+`projects.latent.walk.picture`
+
+to one picture
+
+### Walk: to a picture, about
+`projects.latent.walk.picture.about`
+
+to one picture of the set, by its number: from the picture no one took to one that was taken.
+
+### Walk: which theme
+`projects.latent.walk.themeField`
+
+theme
+
+### Walk: the sentence
+`projects.latent.walk.sentenceField`
+
+the sentence
+
+### Walk: the sentence, before it is written
+`projects.latent.walk.sentencePlaceholder`
+
+a photo of a day by the sea
+
+### Walk: which picture
+`projects.latent.walk.pictureField`
+
+picture number
+
+### Walk: a note
+`projects.latent.walk.note`
+
+24 frames, about 20 seconds each with the trained decoder (10 without): about 8 minutes. Every frame is drawn from the same noise, so only the numbers change along the way, and the picture moves rather than flickers.
+
 ### Which pictures
 `projects.latent.decision.pictures`
 
@@ -2622,6 +2692,47 @@ the latent image
 `projects.latent.mode.showPixels`
 
 the pixel average
+
+
+### Step: the composite, shown
+`projects.latent.mode.showComposite`
+
+the composite: the pixel average of the 10 pictures nearest the centre
+
+### Step: the average in the decoder's codes, shown
+`projects.latent.mode.showCodes`
+
+the average in the decoder's own codes, decoded
+
+### Step: the themes
+`projects.latent.mode.themes`
+
+find what recurs in the set: its pictures sorted into themes by their numbers, each with a composite of its pictures, its centre drawn, and words for it
+
+### Step: the themes, found
+`projects.latent.mode.themesHere`
+
+{n} themes; the set's own words: {words}
+
+### Step: a theme's composite, shown
+`projects.latent.mode.themeComposite`
+
+theme {n}, {size} pictures, composited · {words}
+
+### Step: a theme's centre, shown
+`projects.latent.mode.themeDrawn`
+
+theme {n}, its centre drawn
+
+### Step: the walk
+`projects.latent.mode.walk`
+
+walk out from the latent image: frames drawn along the way to where the walk goes, as an animation that loops out and back
+
+### Step: the walk, shown
+`projects.latent.mode.showWalk`
+
+the walk to {to}
 
 ### Step: train the decoder
 `projects.latent.mode.train`

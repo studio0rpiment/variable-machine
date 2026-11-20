@@ -22,6 +22,9 @@ import { joinWords } from './shared/quote.ts'
  *   latent make <name> images/<set>              the latent image, its axes, the pixel average and the check: latents/<name>/
  *   latent train <name> [--steps 800]            the decoder learns the collection (LoRA), and draws the latent image again
  *   latent gallery <name> images/<set> [--brings 4]   every picture measured against it: outputs/<set>-<name>/
+ *   latent ways <name>                           the composite and the average in the decoder's codes (make runs it too)
+ *   latent themes <name> [--themes 5]            what recurs in the set: groups, each with a composite, its centre drawn and words
+ *   latent walk <name> --to theme-1|picture-12|words|"a sentence" [--frames 24]   an animation out from the latent image
  *   latent room <name> [<text> …]                the installation's page made ready, with passages of the texts: latents/<name>/room/
  *   latent respond <name> --pick 3,7,12          a visitor's choice of pictures, drawn: latents/<name>/room/responses/
  *
@@ -224,6 +227,7 @@ async function make(args: string[], line: string): Promise<boolean> {
             set,
             pictures: n,
             check,
+            ways: true,
             ...(setM?.private ? { private: true } : {}),
           }
           await fs.writeFile(ws('latents', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
@@ -324,6 +328,108 @@ async function gallery(args: string[], line: string): Promise<boolean> {
   })
 }
 
+/** Add what a command made to workspace/latents/<name>/manifest.json, with the command, so the card can tick its step. */
+async function note(name: string, line: string, argv: string[], add: (m: Record<string, unknown>) => void) {
+  const manifest = (await readJson<Record<string, unknown> & { command: string[] }>(ws('latents', name, 'manifest.json')))!
+  manifest.command = [...manifest.command, line, shown(argv)]
+  add(manifest)
+  await fs.writeFile(ws('latents', name, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+  broadcast({ type: 'workspace.changed', path: `latents/${name}/manifest.json`, kind: 'change' })
+}
+
+/** The latent image's manifest, with the set it was made from; prints why not when it isn't there. */
+async function latentOf(name: string | undefined, cmd: string): Promise<{ set: string } | null> {
+  const m = name && NAME.test(name) ? await readJson<{ set: string }>(ws('latents', name, 'manifest.json')) : null
+  if (!m || !(await exists(ws('latents', name!, 'stats.npz')))) print(`latent ${cmd}: no latent image workspace/latents/${name ?? '<name>'}; make it first with latent make ${name ?? '<name>'} images/<set>`)
+  return m
+}
+
+/** `latent ways <name>`: the composite (the pixel average of the 10 pictures nearest the centre) and the average in the decoder's own codes, decoded. `latent make` runs it too; this is for a latent image made before. */
+async function moreWays(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  if (pos.length !== 1 || Object.keys(opts).length) return print('usage: latent ways <name>   (the composite and the average in the decoder\'s codes, beside the drawing and the pixel average)'), false
+  const name = pos[0]
+  const m = await latentOf(name, 'ways')
+  if (!m || !(await ready())) return false
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'ways', `workspace/latents/${name}`, `workspace/images/${m.set}`]
+  return runRecipe({
+    recipe: 'latent-ways',
+    params: { name },
+    outputs: [`workspace/latents/${name}/composite.png`, `workspace/latents/${name}/codes-average.png`],
+    steps: [
+      { kind: 'spawn', argv, env: PY_ENV },
+      { kind: 'do', display: `add them to workspace/latents/${name}/manifest.json`, run: () => note(name, line, argv, (x) => (x.ways = true)) },
+    ],
+  })
+}
+
+/** `latent themes <name> [--themes N]`: what recurs in the set, as groups of its pictures, each with a composite, its centre drawn, and words (with Kandinsky's prior). */
+async function themes(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  const n = opts.themes === undefined ? 0 : Number(opts.themes)
+  if (pos.length !== 1 || Object.keys(opts).some((o) => o !== 'themes') || !Number.isInteger(n) || (opts.themes !== undefined && (n < 2 || n > 12))) {
+    print('usage: latent themes <name> [--themes 5]   (2 to 12 groups; without it, the number that splits the set most clearly)')
+    return false
+  }
+  const name = pos[0]
+  const m = await latentOf(name, 'themes')
+  if (!m || !(await ready())) return false
+  if (!(await encoderPresent(encoderModel('kandinsky-prior')!))) print("  no words for the themes without Kandinsky's prior, which reads them: model get kandinsky-prior")
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'themes', `workspace/latents/${name}`, `workspace/images/${m.set}`, ...(n ? ['--themes', String(n)] : [])]
+  return runRecipe({
+    recipe: 'latent-themes',
+    params: { name },
+    outputs: [`workspace/latents/${name}/themes/themes.json`],
+    steps: [
+      { kind: 'spawn', argv, env: PY_ENV },
+      {
+        kind: 'do',
+        display: `add the themes to workspace/latents/${name}/manifest.json`,
+        run: async () => {
+          const t = await readJson<{ themes: { n: number; size: number; words: string[]; composite: string; drawn: string }[]; words: string[] }>(ws('latents', name, 'themes', 'themes.json'))
+          await note(name, line, argv, (x) => (x.themes = t ? { words: t.words, list: t.themes.map(({ n, size, words, composite, drawn }) => ({ n, size, words, composite, drawn })) } : null))
+          print(`  next: latent walk ${name} --to theme-1, to see the latent image walk out to the largest theme`)
+        },
+      },
+    ],
+  })
+}
+
+/** `latent walk <name> --to theme-1|picture-12|words|"a sentence" [--frames 24]`: an animation from the latent image out to a target, drawn frame by frame. */
+async function walk(args: string[], line: string): Promise<boolean> {
+  const { pos, opts } = flags(args)
+  const to = (opts.to ?? '').trim()
+  const frames = opts.frames === undefined ? 24 : Number(opts.frames)
+  if (pos.length !== 1 || !to || to.length > 200 || Object.keys(opts).some((o) => o !== 'to' && o !== 'frames') || !Number.isInteger(frames) || frames < 6 || frames > 96) {
+    print('usage: latent walk <name> --to theme-1|picture-12|words|"a sentence" [--frames 24]   (6 to 96 frames, about 20 s each with the trained decoder)')
+    return false
+  }
+  const name = pos[0]
+  const m = await latentOf(name, 'walk')
+  if (!m) return false
+  const named = /^(theme|picture)-\d+$/.test(to)
+  if ((to === 'words' || /^theme-/.test(to)) && !(await exists(ws('latents', name, 'themes', 'themes.json')))) return print(`latent walk: ${to} comes from the themes; make them first with latent themes ${name}`), false
+  if (!named && !(await encoderPresent(encoderModel('kandinsky-prior')!))) return print("latent walk: walking to words needs Kandinsky's prior, which turns them into the encoder's numbers: model get kandinsky-prior"), false
+  if (!(await ready())) return false
+  const trained = await exists(ws('latents', name, 'lora.safetensors'))
+  print(`  ${frames} frames, about ${Math.round((frames * (trained ? 20 : 10)) / 60)} min`)
+  const slug = to.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'walk'
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'walk', `workspace/latents/${name}`, '--to', to, '--frames', String(frames)]
+  return runRecipe({
+    recipe: 'latent-walk',
+    params: { name, to },
+    outputs: [`workspace/latents/${name}/walks/${slug}.webp`],
+    steps: [
+      { kind: 'spawn', argv, env: PY_ENV },
+      {
+        kind: 'do',
+        display: `add the walk to workspace/latents/${name}/manifest.json`,
+        run: () => note(name, line, argv, (x) => (x.walks = [...new Set([...((x.walks as string[] | undefined) ?? []), slug])])),
+      },
+    ],
+  })
+}
+
 /** `latent room <name> [<text> …]`: the room (#latent-room/<name>) made ready: the pictures' measures, and the passages of the texts (workspace/raw/<text>) nearest each media-theory line. */
 async function makeRoom(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
@@ -392,8 +498,11 @@ export async function latentCommand(args: string[], line: string): Promise<boole
   if (sub === 'make') return make(rest, line)
   if (sub === 'train') return train(rest, line)
   if (sub === 'gallery') return gallery(rest, line)
+  if (sub === 'ways') return moreWays(rest, line)
+  if (sub === 'themes') return themes(rest, line)
+  if (sub === 'walk') return walk(rest, line)
   if (sub === 'room') return makeRoom(rest, line)
   if (sub === 'respond') return respond(rest)
-  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4] | latent room <name> [<text> …] | latent respond <name> --pick 3,7,12')
+  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4] | latent ways <name> | latent themes <name> [--themes 5] | latent walk <name> --to theme-1 | latent room <name> [<text> …] | latent respond <name> --pick 3,7,12')
   return false
 }

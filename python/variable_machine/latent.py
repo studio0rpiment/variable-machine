@@ -5,6 +5,9 @@
     python python/variable_machine/latent.py make <image folder> <out folder>
     python python/variable_machine/latent.py train <latent folder> <image folder> [--steps 800]
     python python/variable_machine/latent.py gallery <latent folder> <image folder> <out folder> [--brings 4]
+    python python/variable_machine/latent.py ways <latent folder> <image folder>
+    python python/variable_machine/latent.py themes <latent folder> <image folder> [--themes 5]
+    python python/variable_machine/latent.py walk <latent folder> --to theme-1|picture-12|words|"a sentence" [--frames 24]
     python python/variable_machine/latent.py room <latent folder> <image folder> [<raw text folder> …] [--embed nomic-embed-text]
     python python/variable_machine/latent.py respond <latent folder> --pick 3,7,12
 
@@ -44,6 +47,14 @@ What each part does:
   share of how it differs that the axes don't explain. The pictures that
   bring most get a picture of it: the latent image with that picture's own
   part added, decoded.
+- ways: two more pictures of the set beside the drawing and the pixel
+  average: the composite (the pixel average of the 10 pictures nearest
+  the centre) and the average in the decoder's own codes, decoded.
+- themes: what recurs in the set: its pictures sorted into groups by
+  their numbers, each with a composite of its pictures, its centre drawn,
+  and words for it read by Kandinsky's text encoder (from the prior).
+- walk: an animation from the latent image to a theme, a picture, the
+  set's own words, or a sentence: frames drawn along the way, as a loop.
 - room: the installation's page (#latent-room/<name>) made ready: each
   picture's distance and what it brings, the media-theory lines, and for
   each line the passages of the chosen texts nearest it (measured by an
@@ -421,6 +432,10 @@ def make(folder: Path, out: Path) -> None:
     ends = {f"axis{a + 1}": {"minus": [files[i].name for i in np.argsort(C @ V[a])[:3]], "plus": [files[i].name for i in np.argsort(C @ V[a])[-3:][::-1]]} for a in range(SHOWN)}
     (out / "latent.json").write_text(json.dumps({"pictures": len(files), "nearest": near, "axisEnds": ends, "check": c}, indent=1) + "\n")
     print(f"  nearest the centre: {', '.join(near[:3])}")
+    del pipe
+    if DEV == "mps":
+        torch.mps.empty_cache()
+    ways(out, folder)
 
 
 def train(latent: Path, folder: Path, steps: int) -> None:
@@ -727,6 +742,214 @@ def example(out: Path) -> None:
     (out / "example.json").write_text(json.dumps({"style": EXAMPLE_STYLE, "prompts": EXAMPLE, "screens": (len(ims) + 14) // 15}, indent=1) + "\n")
 
 
+# ---------------------------------------------------------------- more ways to make the picture
+
+
+COMPOSITE = 10  # the composite: the pixel average of the pictures nearest the centre
+
+
+def ways(latent: Path, folder: Path) -> None:
+    """Two more pictures of the set beside the drawing and the pixel average: the composite of the pictures
+    nearest the centre (as Galton composited faces), and the average in the decoder's own codes (MoVQ), decoded."""
+    z = np.load(latent / "stats.npz")
+    names = json.loads((latent / "files.json").read_text())
+    files = [folder / n for n in names]
+    C = z["embeddings"] - z["mean"]
+    near = [files[i] for i in np.argsort(np.linalg.norm(C, axis=1))[:COMPOSITE]]
+    pixel_average(near).save(latent / "composite.png")
+    print(f"  ◂ composite.png: the pixel average of the {len(near)} pictures nearest the centre", flush=True)
+    pipe = decoder(torch.float32)
+    t = time.time()
+    with torch.no_grad():
+        acc = None
+        for f in files:
+            x = torch.tensor(np.asarray(ImageOps.fit(open_image(f), (512, 512))), dtype=torch.float32, device=DEV).permute(2, 0, 1)[None] / 127.5 - 1
+            code = pipe.movq.encode(x).latents
+            acc = code if acc is None else acc + code
+        im = pipe.movq.decode(acc / len(files), force_not_quantize=True).sample
+    a = ((im[0].permute(1, 2, 0).float().cpu().numpy() + 1) * 127.5).clip(0, 255).astype(np.uint8)
+    Image.fromarray(a).save(latent / "codes-average.png")
+    print(f"  ◂ codes-average.png: every picture in the decoder's own codes, averaged and decoded ({time.time() - t:.0f}s)", flush=True)
+
+
+# ---------------------------------------------------------------- themes: what recurs in the set
+
+# Words the text encoder can name a theme with: the things a photo roll or a feed holds. Each is read as "a photo of …".
+VOCAB = """cat dog bird horse animal pet flower plant tree forest leaves garden park field grass meadow mountain lake river sea ocean
+beach wave sand rock cliff island harbour boat ship ferry pier lighthouse sky cloud sunset sunrise night moon star rain snow fog
+city street building skyscraper house window door room bedroom kitchen living-room bathroom office desk table chair sofa bed
+bookshelf book library museum painting sculpture gallery church cathedral temple bridge road car bus train station airport
+plane bicycle motorcycle crowd concert stage festival party bar restaurant cafe coffee tea wine beer cocktail food meal breakfast
+bread cake dessert pizza pasta noodles ramen sushi dumplings salad fruit vegetables market shop clothes shoes fashion mirror
+selfie face portrait person people friends family child baby wedding birthday candle christmas holiday travel hotel pool
+football football-pitch stadium sport tennis basketball running gym yoga swimming skiing hiking camping tent fire screen
+phone laptop computer television film cinema camera photograph poster sign text meme screenshot drawing sketch illustration
+cartoon comic diagram map chart document receipt record vinyl guitar piano music dancer dance theatre art graffiti wall
+architecture interior light shadow reflection neon colour black-and-white dark bright vintage close-up landscape still-life""".split()
+
+
+def text_encoder():
+    from transformers import CLIPTextModelWithProjection, CLIPTokenizer
+
+    if not (PRIOR / "prior/text_encoder/model.safetensors").exists():
+        return None
+    enc = CLIPTextModelWithProjection.from_pretrained(PRIOR / "prior/text_encoder", dtype=torch.float16).to(DEV).eval()
+    tok = CLIPTokenizer.from_pretrained(PRIOR / "prior/tokenizer")
+    return enc, tok
+
+
+def vocab_vectors(te) -> np.ndarray:
+    enc, tok = te
+    out = []
+    with torch.no_grad():
+        for i in range(0, len(VOCAB), 64):
+            ids = tok([f"a photo of {w.replace('-', ' ')}" for w in VOCAB[i : i + 64]], padding="max_length", max_length=77, truncation=True, return_tensors="pt").to(DEV)
+            out.append(enc(**ids).text_embeds.float().cpu().numpy())
+    T = np.concatenate(out)
+    return T / np.linalg.norm(T, axis=1, keepdims=True)
+
+
+def unit(v: np.ndarray) -> np.ndarray:
+    return v / np.maximum(np.linalg.norm(v, axis=-1, keepdims=True), 1e-9)
+
+
+def kmeans(U: np.ndarray, k: int, rounds: int = 20) -> np.ndarray:
+    """k groups of unit vectors by cosine, from the best of a few starts (k-means++)."""
+    best, best_in = None, -1.0
+    for seed in range(8):
+        rng = np.random.default_rng(seed)
+        cent = [U[rng.integers(len(U))]]
+        for _ in range(k - 1):
+            d = np.clip(1 - np.max(U @ np.array(cent).T, axis=1), 0, None).astype(np.float64)
+            cent.append(U[rng.choice(len(U), p=d / d.sum()) if d.sum() > 0 else rng.integers(len(U))])
+        cent = np.array(cent)
+        for _ in range(rounds):
+            lab = np.argmax(U @ cent.T, axis=1)
+            cent = np.array([unit(U[lab == j].mean(0)) if (lab == j).any() else cent[j] for j in range(k)])
+        inside = float(np.mean(np.sum(U * cent[lab], axis=1)))
+        if inside > best_in:
+            best, best_in = lab, inside
+    return best
+
+
+def silhouette(U: np.ndarray, lab: np.ndarray) -> float:
+    D = 1 - U @ U.T
+    s = []
+    for i in range(len(U)):
+        same = lab == lab[i]
+        if same.sum() < 2:
+            s.append(0.0)
+            continue
+        a = D[i, same].sum() / (same.sum() - 1)
+        b = min(D[i, lab == j].mean() for j in set(lab.tolist()) if j != lab[i])
+        s.append((b - a) / max(a, b))
+    return float(np.mean(s))
+
+
+def themes(latent: Path, folder: Path, k: int | None) -> None:
+    """The set's recurring subjects: its pictures sorted into groups by the encoder's numbers (k-means, cosine);
+    for each group, its pictures' pixel composite, its centre drawn, and words for it from the text encoder."""
+    z = np.load(latent / "stats.npz")
+    E, length, grey = z["embeddings"], float(z["length"]), z["grey"]
+    names = json.loads((latent / "files.json").read_text())
+    files = [folder / n for n in names]
+    U = unit(E)
+    if k is None:
+        tries = {j: kmeans(U, j) for j in range(2, max(3, min(8, len(U) // 5) + 1))}
+        scores = {j: silhouette(U, lab) for j, lab in tries.items()}
+        k = max(scores, key=scores.get)
+        print("  how well the set splits (silhouette, higher is clearer): " + ", ".join(f"{j} themes {s:.2f}" for j, s in scores.items()), flush=True)
+        lab = tries[k]
+    else:
+        lab = kmeans(U, k)
+    groups = sorted(range(k), key=lambda j: -(lab == j).sum())
+    te = text_encoder()
+    T = vocab_vectors(te) if te else None
+    if te:
+        del te
+    out = latent / "themes"
+    out.mkdir(exist_ok=True)
+    lora = latent / "lora.safetensors"
+    pipe = decoder(torch.float32 if lora.exists() else torch.float16, lora if lora.exists() else None)
+    setU = unit(U.mean(0))
+    made = []
+    for n, j in enumerate(groups, start=1):
+        idx = np.where(lab == j)[0]
+        centre = unit(U[idx].mean(0))
+        idx = idx[np.argsort(-(U[idx] @ centre))]
+        pixel_average([files[i] for i in idx]).save(out / f"theme-{n}-composite.png")
+        with torch.no_grad():
+            draw(pipe, E[idx].mean(0), length, grey).save(out / f"theme-{n}-drawn.png")
+        # words that name this theme more than they name the set as a whole
+        words = [VOCAB[w].replace("-", " ") for w in np.argsort(-(T @ centre - 0.5 * (T @ setU)))[:4]] if T is not None else []
+        made.append({"n": n, "pictures": [int(i) + 1 for i in idx], "files": [names[i] for i in idx], "size": len(idx), "words": words, "composite": rel(out / f"theme-{n}-composite.png"), "drawn": rel(out / f"theme-{n}-drawn.png")})
+        print(f"  ◂ theme {n}: {len(idx)} pictures{' · ' + ', '.join(words) if words else ''}", flush=True)
+    set_words = [VOCAB[w].replace("-", " ") for w in np.argsort(-(T @ setU))[:5]] if T is not None else []
+    (out / "themes.json").write_text(json.dumps({"themes": made, "words": set_words, "k": k, "byText": T is not None}, indent=1) + "\n")
+    if T is None:
+        print("  no words: they need Kandinsky's prior, whose text encoder reads them (model get kandinsky-prior)", flush=True)
+    else:
+        print(f"  the set's own words: {', '.join(set_words)}", flush=True)
+
+
+# ---------------------------------------------------------------- the walk: an animation out from the centre
+
+
+def slerp(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
+    a, b = unit(a), unit(b)
+    om = np.arccos(np.clip(a @ b, -1, 1))
+    return a if om < 1e-6 else (np.sin((1 - t) * om) * a + np.sin(t * om) * b) / np.sin(om)
+
+
+def walk(latent: Path, to: str, frames: int) -> None:
+    """Frames drawn along the way from the latent image to a target, as one looping animation (animated WebP):
+    theme-N (a recurring subject's centre), picture-N (one picture), words (the set's own words, from themes),
+    or a sentence (through Kandinsky's prior, which turns words into the encoder's numbers)."""
+    z = np.load(latent / "stats.npz")
+    E, mean, length, grey = z["embeddings"], z["mean"], float(z["length"]), z["grey"]
+    if m := re.fullmatch(r"theme-(\d+)", to):
+        th = json.loads((latent / "themes" / "themes.json").read_text())["themes"]
+        target = E[[p - 1 for p in th[int(m[1]) - 1]["pictures"]]].mean(0)
+        what = f"theme {m[1]}"
+    elif m := re.fullmatch(r"picture-(\d+)", to):
+        target = E[int(m[1]) - 1]
+        what = f"picture {m[1]}"
+    else:
+        sentence = to
+        if to == "words":
+            w = json.loads((latent / "themes" / "themes.json").read_text())["words"]
+            if not w:
+                sys.exit("latent walk: the set has no words yet; they need Kandinsky's prior (model get kandinsky-prior), then latent themes")
+            sentence = "a photo of " + ", ".join(w)
+        pipe = prior_pipe()
+        with torch.no_grad():
+            target = pipe(sentence, guidance_scale=4.0, num_inference_steps=25, generator=torch.Generator("cpu").manual_seed(0)).image_embeds[0].float().cpu().numpy()
+        del pipe
+        if DEV == "mps":
+            torch.mps.empty_cache()
+        what = f'"{sentence}"'
+    slug = re.sub(r"[^a-z0-9]+", "-", to.lower()).strip("-")[:48] or "walk"
+    out = latent / "walks"
+    (out / slug).mkdir(parents=True, exist_ok=True)
+    lora = latent / "lora.safetensors"
+    pipe = decoder(torch.float32 if lora.exists() else torch.float16, lora if lora.exists() else None)
+    t0 = time.time()
+    ims = []
+    with torch.no_grad():
+        for i in range(frames):
+            t = i / (frames - 1)
+            # the same noise every frame, so only the numbers change and the picture moves rather than flickers
+            im = draw(pipe, slerp(mean, target, t), length, grey, seed=0)
+            im.save(out / slug / f"{i + 1:03d}.png")
+            ims.append(im.resize((384, 384)))
+            print(f"  frame {i + 1}/{frames} ({time.time() - t0:.0f}s)", flush=True)
+    # out and back, as a loop; the ends held a moment
+    seq = [ims[0]] * 4 + ims + [ims[-1]] * 6 + ims[::-1]
+    seq[0].save(out / f"{slug}.webp", save_all=True, append_images=seq[1:], duration=120, loop=0, quality=80)
+    (out / f"{slug}.json").write_text(json.dumps({"to": to, "what": what, "frames": frames, "trained": lora.exists(), "animation": rel(out / f"{slug}.webp")}, indent=1) + "\n")
+    print(f"  ◂ walks/{slug}.webp: {frames} frames from the latent image to {what}, out and back", flush=True)
+
+
 # ---------------------------------------------------------------- the room
 
 
@@ -888,6 +1111,12 @@ def main(argv: list[str]) -> None:
         crop(Path(pos[1]), Path(pos[2]), "--grid" in argv)
     elif len(pos) == 4 and pos[0] == "gallery":
         gallery(Path(pos[1]), Path(pos[2]), Path(pos[3]), opt("--brings", 4))
+    elif len(pos) == 3 and pos[0] == "ways":
+        ways(Path(pos[1]), Path(pos[2]))
+    elif len(pos) == 3 and pos[0] == "themes":
+        themes(Path(pos[1]), Path(pos[2]), opt("--themes", 0) or None)
+    elif len(pos) == 2 and pos[0] == "walk" and "--to" in argv:
+        walk(Path(pos[1]), argv[argv.index("--to") + 1], opt("--frames", 24))
     elif len(pos) >= 3 and pos[0] == "room":
         room(Path(pos[1]), Path(pos[2]), [Path(p) for p in pos[3:]], argv[argv.index("--embed") + 1] if "--embed" in argv else "nomic-embed-text")
     elif len(pos) == 2 and pos[0] == "respond" and "--pick" in argv:

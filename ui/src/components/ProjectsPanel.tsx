@@ -12,7 +12,7 @@ import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
 import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
-import { EXAMPLE_SET, MEDIA_TEXTS, useLatentChoices, type LatentChoices } from '../lib/latentChoices'
+import { EXAMPLE_SET, MEDIA_TEXTS, useLatentChoices, walkSlug, walkTarget, type LatentChoices } from '../lib/latentChoices'
 import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -208,7 +208,7 @@ interface Have {
   /** each image set's manifest: what it is, and where it came from */
   imageSets: { folder: string; created?: string; about?: string; private?: boolean; crop?: { from: string; grid: boolean }; command?: string | string[] }[]
   /** latent images, with the set each was made from, its check and its training */
-  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null; room?: { texts: string[] } }[]
+  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null; room?: { texts: string[] }; ways?: boolean; themes?: { words: string[]; list: { n: number; size: number; words: string[]; composite: string; drawn: string }[] } | null; walks?: string[] }[]
 }
 
 async function readHave(): Promise<Have> {
@@ -780,7 +780,14 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     result: latent?.check
       ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
       : undefined,
-    show: latent ? [{ path: lat('latent.png'), label: say('projects.latent.mode.showLatent') }, { path: lat('pixel-average.png'), label: say('projects.latent.mode.showPixels') }] : undefined,
+    // four ways to make the set's picture: drawn from its centre, the pixel average, the composite of the nearest, the average in the decoder's codes
+    show: latent
+      ? [
+          { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') },
+          { path: lat('pixel-average.png'), label: say('projects.latent.mode.showPixels') },
+          ...(latent.ways ? [{ path: lat('composite.png'), label: say('projects.latent.mode.showComposite') }, { path: lat('codes-average.png'), label: say('projects.latent.mode.showCodes') }] : []),
+        ]
+      : undefined,
     fill: { look: { set: collection } },
     parts: ['look.sets'],
   })
@@ -796,6 +803,34 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
       show: latent?.trained ? [{ path: lat('latent-trained.png'), label: say('projects.latent.mode.showTrained') }, { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') }] : undefined,
       parts: [],
     })
+  // what recurs in the set, then the walk out to it (or to words, a sentence, a picture)
+  const themeList = latent?.themes?.list ?? []
+  steps.push({
+    name: say('projects.latent.mode.themes'),
+    tab: 'segmentation',
+    node: 'latent',
+    commands: [joinWords(['latent', 'themes', collection])],
+    about: 2 * 60,
+    done: !!latent?.themes,
+    result: latent?.themes ? say('projects.latent.mode.themesHere', { n: themeList.length, words: latent.themes.words.join(', ') || '–' }) : undefined,
+    show: themeList.slice(0, 4).flatMap((t) => [
+      { path: t.composite, label: say('projects.latent.mode.themeComposite', { n: t.n, size: t.size, words: t.words.join(', ') || '–' }) },
+      { path: t.drawn, label: say('projects.latent.mode.themeDrawn', { n: t.n }) },
+    ]),
+    parts: [],
+  })
+  const to = walkTarget(c)
+  const walked = latent?.walks?.includes(walkSlug(to))
+  steps.push({
+    name: say('projects.latent.mode.walk'),
+    tab: 'segmentation',
+    node: 'latent',
+    commands: [joinWords(['latent', 'walk', collection, '--to', to])],
+    about: (latent?.trained ? 20 : 10) * 24,
+    done: !!walked,
+    show: walked ? [{ path: lat(`walks/${walkSlug(to)}.webp`), label: say('projects.latent.mode.showWalk', { to }) }] : undefined,
+    parts: [],
+  })
   steps.push({
     name: say('projects.latent.mode.gallery'),
     tab: 'segmentation',

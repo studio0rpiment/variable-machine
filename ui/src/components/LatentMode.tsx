@@ -3,7 +3,7 @@ import { NODES, WIRES, W, H } from './FlowMap'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
-import { BUILT_DIFFUSIONS, chooseLatent, DIFFUSIONS, MEDIA_TEXTS, PICTURES, toggleMediaText, useLatentChoices, type Diffusion, type MediaText, type Pictures } from '../lib/latentChoices'
+import { BUILT_DIFFUSIONS, chooseLatent, DIFFUSIONS, MEDIA_TEXTS, PICTURES, toggleMediaText, useLatentChoices, WALKS, type Diffusion, type MediaText, type Pictures, type Walk } from '../lib/latentChoices'
 import { say } from '../text/say'
 import type { LatentFacts, Project, Step } from './ProjectsPanel'
 
@@ -260,6 +260,12 @@ const DIFFUSION_WORDS: Record<Diffusion, () => [string, string]> = {
   kandinsky: () => [say('projects.latent.diffusion.kandinsky'), say('projects.latent.diffusion.kandinsky.about')],
   taesd: () => [say('projects.latent.diffusion.taesd'), say('projects.latent.diffusion.taesd.about')],
 }
+const WALK_WORDS: Record<Walk, () => [string, string]> = {
+  theme: () => [say('projects.latent.walk.theme'), say('projects.latent.walk.theme.about')],
+  words: () => [say('projects.latent.walk.words'), say('projects.latent.walk.words.about')],
+  sentence: () => [say('projects.latent.walk.sentence'), say('projects.latent.walk.sentence.about')],
+  picture: () => [say('projects.latent.walk.picture'), say('projects.latent.walk.picture.about')],
+}
 const TEXT_WORDS: Record<MediaText, () => [string, string]> = {
   benjamin: () => [say('projects.latent.text.benjamin'), say('projects.latent.text.benjamin.about')],
   barthes: () => [say('projects.latent.text.barthes'), say('projects.latent.text.barthes.about')],
@@ -353,6 +359,36 @@ export function LatentDecisions({ project }: { project: Project }) {
           <Choice on={c.look === 'set'} onPick={() => chooseLatent('look', 'set')} name={say('projects.latent.look.set')}>
             {say('projects.latent.look.set.about')}
           </Choice>
+        </Decision>
+
+        <Decision box="latent" q={say('projects.latent.decision.walk')}>
+          {WALKS.map((w) => {
+            const [name, about] = WALK_WORDS[w]()
+            return (
+              <Choice key={w} on={c.walk === w} onPick={() => chooseLatent('walk', w)} name={name}>
+                {about}
+              </Choice>
+            )
+          })}
+          {c.walk === 'theme' && (
+            <label className="field">
+              <span className="label label--muted">{say('projects.latent.walk.themeField')}</span>
+              <input type="number" min={1} max={12} value={c.theme} onChange={(e) => chooseLatent('theme', Math.max(1, Math.min(12, Number(e.target.value) || 1)))} />
+            </label>
+          )}
+          {c.walk === 'sentence' && (
+            <label className="field">
+              <span className="label label--muted">{say('projects.latent.walk.sentenceField')}</span>
+              <input type="text" value={c.sentence} maxLength={200} placeholder={say('projects.latent.walk.sentencePlaceholder')} onChange={(e) => chooseLatent('sentence', e.target.value)} />
+            </label>
+          )}
+          {c.walk === 'picture' && (
+            <label className="field">
+              <span className="label label--muted">{say('projects.latent.walk.pictureField')}</span>
+              <input type="number" min={1} value={c.picture} onChange={(e) => chooseLatent('picture', Math.max(1, Number(e.target.value) || 1))} />
+            </label>
+          )}
+          <p className="research-note">{say('projects.latent.walk.note')}</p>
         </Decision>
 
         <Decision box="gallery" q={say('projects.latent.decision.against')}>

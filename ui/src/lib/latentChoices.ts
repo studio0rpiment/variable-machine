@@ -19,6 +19,13 @@ export const DIFFUSIONS: Diffusion[] = ['kandinsky', 'taesd']
 export const BUILT_DIFFUSIONS = new Set<Diffusion>(['kandinsky'])
 /** Whose look the latent image is drawn in: the model's, learned from the web, or the set's own (the decoder trained on it). */
 export type Look = 'web' | 'set'
+/** Where the walk goes, out from the latent image: the set's largest theme, its own words, a sentence, or one picture. */
+export type Walk = 'theme' | 'words' | 'sentence' | 'picture'
+export const WALKS: Walk[] = ['theme', 'words', 'sentence', 'picture']
+/** the walk's target, as `latent walk --to` takes it */
+export const walkTarget = (c: LatentChoices) => (c.walk === 'theme' ? `theme-${c.theme}` : c.walk === 'words' ? 'words' : c.walk === 'picture' ? `picture-${c.picture}` : c.sentence.trim() || 'a photo of a day')
+/** the walk's file name, as the helper makes it from the target */
+export const walkSlug = (to: string) => to.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'walk'
 
 /** The media-theory texts the tool can bring in: the open ones (Wikipedia articles on the works, and two public-domain texts). The works themselves are in copyright: read through the library. */
 export const MEDIA_TEXTS = [
@@ -43,6 +50,12 @@ export interface LatentChoices {
   look: Look
   /** the image set measured against the latent image: empty is the collection itself */
   against: string
+  walk: Walk
+  /** which theme the walk goes to: 1 is the largest */
+  theme: number
+  sentence: string
+  /** which picture the walk goes to, by its number in the set */
+  picture: number
 }
 
 const KEY = 'variable-machine.latent'
@@ -54,6 +67,10 @@ const DEFAULTS: LatentChoices = {
   diffusion: 'kandinsky',
   look: 'set',
   against: '',
+  walk: 'theme',
+  theme: 1,
+  sentence: '',
+  picture: 1,
 }
 
 let choices: LatentChoices = DEFAULTS
