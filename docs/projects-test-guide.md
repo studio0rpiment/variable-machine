@@ -24,25 +24,41 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 
 ## 1. Dream reading
 
-**Makes:** an installation for a student's dream project. A visitor is shown four pictures (who 誰, what 什麼, when 何時, where 何地), chooses the one most like their dream, and gets a reading from the *Zhougong jiemeng* (周公解夢) in Chinese and English, and a response picture drawn by Kandinsky 2.2. Plan: `docs/dream-card-plan.md`; sources: `docs/dream-reading.md`.
+**Makes:** an installation for a student's dream project. Sixteen cards: four for each quality, who (誰), what (什麼), when (何時), where (何地). A visitor chooses one card of each, a combination (256 of them). Each combination has an interpretation, written by a language model from the guide texts the student chose, and variations drawn by Kandinsky 2.2. Plan: `docs/dream-card-plan.md`; sources: `docs/dream-reading.md`.
 
-- **Time:** about 10 minutes with the four museum sets: the downloads, then about 3 minutes (with `--drawn 1`) to make, then about 70 seconds a response.
-- **Disk:** 9 GB for Kandinsky, 214 MB for SigLIP, 2.5 GB for `qwen3:4b` in Ollama, and about 1 GB for torch.
-- **Memory:** a Mac with 16 GB or more (Kandinsky's limit).
-- **Privacy:** a visitor's words are kept in the dream folder on this computer and nowhere else; all three models run locally.
+It is a **walkthrough**: on the Projects tab, the dream reading's box opens project mode. The Start map unfolds into the dream's schematic; the decisions come first; then all eight steps on one long page, each with its command and its own view.
 
-| # | Tab | Do | Command | Check |
+- **Time:** with the demo deck, about 15 minutes to a first combination (6 to draw the deck); then about 2 hours to interpret all 256 and 3 to draw them, which can run overnight and stop and start.
+- **Disk:** Kandinsky 9 GB, its prior 6.9 GB (for the demo deck, and for drawing with the interpretation), SigLIP 214 MB; `qwen3:4b` 2.5 GB and `nomic-embed-text` 274 MB in Ollama; torch about 1 GB. On Kevin's Mac the two Kandinsky folders are on KP 512, linked from `workspace/tools/`.
+- **Memory:** a Mac with 16 GB or more.
+- **Privacy:** a visitor's words stay in `workspace/dreams/<name>/` on this computer; every model runs locally.
+
+**The decisions** (top of the page). Change one and watch the schematic and the steps change:
+
+| Decision | Try | Check |
+|---|---|---|
+| where the cards come from | her own pictures, then the demo deck | Her own: four set pickers appear, and step 2 becomes an upload. Demo: step 2 runs `dream cards dream-demo`, and **kandinsky-prior** lights in MODELS |
+| the texts to interpret with | tick Freud | Step 4 adds `data raw gutenberg 66048 freud-dreams` if it isn't brought in; step 5's command adds `raw/freud-dreams` |
+| which models read | the writer `none` | The writer's box in MODELS goes faint; steps 6 and 7 add `--model none` |
+| how the variations are drawn | the cards and the interpretation | **kandinsky-prior** lights, and its wire runs to VARIATIONS; the draw commands add `--with prior` |
+| how many variations | 4 | `--variations 4`; the time shown for all 256 doubles |
+| when | in the room only | Step 7 (all of them) disappears: the route has 7 steps |
+| the visitor's own words | read into the interpretation | Step 8's `dream respond` adds `--read-words` |
+
+**The steps** (default decisions: the demo deck; the Zhougong jiemeng, Wang Fu and the Liezi in Giles's English; `qwen3:4b`; two variations from the cards; all ahead):
+
+| # | Box | Do | Command | Check |
 |---|---|---|---|---|
-| 1 | Models | Get the picture models and the reading model | `model get kandinsky`, `model get siglip`, `ollama pull qwen3:4b` | Both under **picture encoders** marked here; `qwen3:4b` in `ollama list`. Without `qwen3:4b` the card still runs, but the response quotes the book's lines with no glosses or reading, and says so |
-| 2 | Image segmentation | Upload the student's pictures into four sets, one per category (e.g. `her-who`, `her-what`, `her-when`, `her-where`) | none: upload in the page | A few pictures in each; 8 or more so the room shows each visitor different ones. To try the card first, use step 3 instead |
-| 3 | Image segmentation | Or: four public-domain sets (CC0, Art Institute of Chicago) | `look museum portrait dream-who --limit 8`, `look museum "still life" dream-what --limit 8`, `look museum moon dream-when --limit 8`, `look museum landscape dream-where --limit 8` | 8 pictures in each of `workspace/images/dream-who` … `dream-where`, each credited in its manifest |
-| 4 | Data → raw material | Bring in the dream book and the texts it is read beside | the card's eight commands: `data raw txt <Wikisource address> zhougong-jiemeng …`, `liezi-zh`, `liezi-dreams`, `wangfu-menglie`, `data raw gutenberg 59709 zhuangzi`, `data raw gutenberg 66048 freud-dreams`, `kuunmong`, `data raw wikipedia Dream_incubation dream-incubation` | `workspace/raw/zhougong-jiemeng/source.txt` begins `{{Header|title=周公解夢` and has the 27 section headings (`== 天地日月星辰 ==` …). The step's result lists the Chinese texts brought in |
-| 5 | Image segmentation | Match every picture to the dream book | `dream make dream --book raw/zhougong-jiemeng --who images/dream-who --what images/dream-what --when images/dream-when --where images/dream-where` (add `--drawn 1` for one Kandinsky drawing a category) | It says `the dream book: 988 lines in 27 sections`, then each picture with its three nearest glossary words. Museum portraits get *a man* 男, *a woman* 婦, *a monk* 僧; landscapes *a river* 河, *trees* 樹, *fields* 田; still lifes *fruit* 果, *food* 食. The card's result reads **36 pictures matched to the dream book** with `--drawn 1` (8 a category and one drawn). Read the words in `workspace/dreams/dream/dream.json`: a picture with wrong words will get the wrong lines |
-| 6 | Image segmentation | Choose for a visitor, by hand | `dream choose dream where <picture>` (a file from `images/dream-where`; add `--dream "<a few words>"`) | It prints the picture's words and writes `workspace/dreams/dream/choice.json` |
-| 7 | Image segmentation | Respond | `dream respond dream` | It prints up to five lines of the book (e.g. for a boat on a river: 船飛行主大富貴, 船淺在岸是非厄, 渡天河主有所吉 …), `the reading, by qwen3:4b in 21s`, and which picture the response was drawn toward. About 70 s in all: 21 s to read, 20 s to draw, the rest loading Kandinsky. If the Chinese reading comes back partly in English, it says so and leaves it out. **see the last response** opens `response.html`: the chosen picture and the response side by side, the book's lines with their glosses, the reading in English and Chinese, and the other traditions |
-| 8 | — | Open the room on the installation's screen | open **open the room** on the card (`http://localhost:4817/#room/dream`), then the browser's full-screen key | Black page, four pictures labelled 誰 · who … 何地 · where, a box for a few words. Type a few words, touch a picture: it turns green, the others dim, "reading the dream book…", and about a minute later the response. **another dream** deals four new pictures. The terminal on the main page shows the same `dream choose` and `dream respond` lines |
+| 1 | models | get what is missing | `model get kandinsky`, `model get siglip`, `model get kandinsky-prior`, `ollama pull nomic-embed-text`, `ollama pull qwen3:4b` | The step lists the five and turns done when all are here |
+| 2 | cards | draw the demo deck (or, with her own pictures, upload each quality's pictures in the step's four rows) | `dream cards dream-demo` | About 6 minutes. Four rows fill in: an old woman in a dark blue robe, a child with a paper lantern, a white snake, a monk; a boat, a bronze mirror, a red candle, a comb; a full moon, snow at dusk, summer rain, sunrise; a river, a temple courtyard, a mountain path, a kitchen. One ink-and-watercolour style |
+| 3 | deck | make the deck | `dream deck dream --who images/dream-demo-who --what … --when … --where …` | The step shows the sixteen cards, each with three glossary words (the snake: *a snake* 蛇; the moon: *the moon* 月). It says **256 combinations** |
+| 4 | guide texts | bring in the library texts not here yet; upload her own writing (.txt or .md) in the step | `data raw txt …` for each | Her upload appears in the decision's list, ticked, and in step 5's command as `uploads/<file>` |
+| 5 | passages | cut and measure the guide texts | `dream guide dream raw/zhougong-jiemeng raw/wangfu-menglie raw/liezi-dreams` | It says the Zhougong jiemeng is a dream book (looked up by the glossary) and how many passages each other text has |
+| 6 | interpret | pick a card in each row, then run both commands | `dream interpret dream --combination 1-1-1-1`, `dream draw dream --combination 1-1-1-1` | About 25 s and 40 s. The step shows the two variations, the reading in English and Chinese, the picture sentence, and the passages (the ones used marked). **open its page** shows the same, on its own |
+| 7 | variations | make all 256, before the show | `dream interpret dream --all`, `dream draw dream --all` | Each line says how long is left. Stop it and run it again: what is made is kept. The step's result counts them |
+| 8 | the room | try a visitor, then **open the room** | `dream choose dream --who 1 --what 2 --when 3 --where 4`, `dream respond dream` | Respond says *interpreted ahead of time* or *interpreting now*. The room: four rows of four cards; a card in each row turns green and dims the others; **read my dream**; the four cards, the variations, the reading in Chinese and English; **another dream** |
 
-**Tested** end to end through the helper on port 4843 on 2026-11-11, with the four museum sets and `--drawn 1`: the texts, `make`, one response by hand (a boat on a dark river, with the visitor's words) and two from the room (a woman's portrait; a quilt for *when*, read as *withering*, *sowing* and *spring*: 枯木再發子孫興, "a withered tree puts out shoots: your descendants will prosper"). In one of the room's responses the model wrote half its Chinese reading in English; the check that leaves such a reading out was added after it.
+**Tested** on port 4843 on 2026-11-20 with the demo deck and the default decisions, every step through the tool. `--all` was run for eight combinations, stopped with the page's stop, and run again: it said `8 interpreted already, kept; 248 to go`. In the room, combination 3-1-1-2 (made ahead) came back in about 10 s; 1-3-2-4 with the words *my grandmother was cooking but the fire would not light* was made live in about 90 s, its reading drawn from the Zhougong jiemeng, the Liezi and Wang Fu.
 
 ---
 

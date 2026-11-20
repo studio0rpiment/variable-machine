@@ -190,7 +190,8 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
           .filter((e) => !e.name.startsWith('.'))
           .map(async (e) => {
             const st = await fs.stat(path.join(target, e.name))
-            return { name: e.name, dir: e.isDirectory(), size: st.size, modified: st.mtime.toISOString() }
+            // fs.stat follows a link: a model folder linked from another drive (KP 512) is a folder
+            return { name: e.name, dir: st.isDirectory(), size: st.size, modified: st.mtime.toISOString() }
           }),
       )
       return json(res, 200, rows)

@@ -2,11 +2,13 @@
 
 The texts for the dream reading card ([`dream-card-plan.md`](dream-card-plan.md)), gathered 2026-11-11. The dream sources first gathered for the latent image card ([`latent-image-reading.md`](latent-image-reading.md), sections 1–3 and 6) belong to this project and are carried over here, checked again, with Taiwanese and Chinese sources added first.
 
-**How the texts enter the card:**
+**How the texts enter the card.** The student chooses the **guide texts**: any of the public-domain texts below that the card can bring in, and her own writing, uploaded as .txt or .md. Each combination of cards is interpreted from them:
 
-- **The *Zhougong jiemeng*** is the dream book the card reads from: every reading is made from its lines.
-- **The rest are framing.** One line from each of several is printed under every reading (`FRAMES` in `python/variable_machine/dream.py`). The student reads them, chooses, and edits those lines.
-- No text trains a model.
+- **The *Zhougong jiemeng*** is a dream book: its lines are looked up by the cards' glossary words.
+- **Every other guide text** is cut into passages, and the passages nearest a combination's four cards are found by an embedding model.
+- A language model writes the interpretation from those passages, saying which text each idea comes from. Each combination's page prints the passages beside it.
+
+No text trains a model. The library texts the card offers are the ones marked public domain in section 6; the rest are for her to read, and to quote in her own writing if she chooses.
 
 **What the access column means:**
 
@@ -132,6 +134,6 @@ data raw txt https://archive.org/download/cu31924023333077/cu31924023333077_djvu
 data raw wikipedia Dream_incubation dream-incubation
 ```
 
-(On the card, each also carries `--about` and `--page`.) The *Zhougong jiemeng* is the one `dream make` reads; the rest are for the student to read and quote from.
+(On the card, each also carries `--about` and `--page`.) Each can be chosen as a guide text on the card, as can Jung (`data raw gutenberg 65903 jung-unconscious`).
 
 **Licences of the open Chinese texts:** the texts themselves are public domain (ancient works; Wikisource marks the *Zhougong jiemeng* PD-old and Giles's translation PD-US). Wikisource's own pages (its notes and layout) are CC BY-SA 4.0; the card keeps only the text. ctext.org is for reading, not for bringing in.

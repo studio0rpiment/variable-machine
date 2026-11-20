@@ -74,10 +74,13 @@ const HELP = `commands
   latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
   latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
   latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
-  dream make <name> --book raw/<book> --who images/<set> --what images/<set> --when images/<set> --where images/<set> [--drawn 0]
-                                                  a dream installation: each category's pictures matched to the dream book: workspace/dreams/<name>/
-  dream choose <name> <who|what|when|where> <picture> [--dream "…"]   the visitor's choice
-  dream respond <name> [--model qwen3:4b]         a reading from the dream book and a response picture; the room page is #room/<name>
+  dream cards <prefix>                            16 demo cards drawn from prompts (Kandinsky's prior): workspace/images/<prefix>-who … -where
+  dream deck <name> --who images/<set> --what … --when … --where …   a dream installation's deck, 4 cards a quality: workspace/dreams/<name>/
+  dream guide <name> raw/<text> [uploads/<file>.txt …]   the texts its combinations are interpreted with
+  dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none]   a combination's interpretation, from the guide texts
+  dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior]   its variations, drawn by Kandinsky
+  dream choose <name> --who n --what n --when n --where n [--dream "…"]   a visitor's combination
+  dream respond <name> [--read-words]             its interpretation and variations, made ahead or now; the room page is #room/<name>
   model get siglip                                a picture encoder for image moods: workspace/tools/siglip/
   mood describe <dataset> --texts raw/<text> …    each mood's prompt and sentences from the texts: data/<dataset>/labels.md
   mood train <name> --data <picture dataset>      a mood classifier, checked on rows set aside: workspace/classifiers/<name>/

@@ -172,6 +172,31 @@ export const ENCODER_MODELS: EncoderModel[] = [
     repos: { prior: 'kandinsky-community/kandinsky-2-2-prior', decoder: 'kandinsky-community/kandinsky-2-2-decoder' },
     runsIn: 'python (torch, diffusers), in the latent extra',
   },
+  {
+    name: 'kandinsky-prior',
+    kind: 'looks',
+    repo: 'kandinsky-community/kandinsky-2-2-prior',
+    original: 'kandinsky-community/kandinsky-2-2-prior',
+    license: 'Apache 2.0',
+    maker: 'Sber AI (Kandinsky 2.2), 2023; text encoder CLIP ViT-bigG/14 from LAION',
+    builtFor:
+      "Kandinsky 2.2's way in from words: a text encoder (CLIP ViT-bigG/14's text half) and a diffusion prior that turns a sentence into the same 1280 numbers the picture encoder makes, so the decoder can draw from a sentence, or from pictures and a sentence mixed. 6.9 GB more, beside kandinsky (which it needs). Used by the dream reading card to draw a combination of cards with its interpretation.",
+    files: [
+      'prior/model_index.json',
+      'prior/scheduler/scheduler_config.json',
+      'prior/prior/config.json',
+      'prior/prior/diffusion_pytorch_model.safetensors',
+      'prior/text_encoder/config.json',
+      'prior/text_encoder/model.safetensors',
+      'prior/tokenizer/merges.txt',
+      'prior/tokenizer/special_tokens_map.json',
+      'prior/tokenizer/tokenizer_config.json',
+      'prior/tokenizer/vocab.json',
+    ],
+    mb: 6890,
+    repos: { prior: 'kandinsky-community/kandinsky-2-2-prior' },
+    runsIn: 'python (torch, diffusers), in the latent extra',
+  },
 ]
 
 export const encoderModel = (name: string) => ENCODER_MODELS.find((e) => e.name === name)

@@ -13,6 +13,7 @@ import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
 import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
 import { listModels } from '../lib/ollama'
+import { QUALITIES, useDreamChoices, type DreamChoices, type LibraryText, type Quality } from '../lib/dreamChoices'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
 export const TAB_NAME = { models: 'models', merge: 'merge', data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
@@ -59,6 +60,8 @@ export interface Step {
   node?: string
   /** project mode: the parts of its tab it uses (lib/parts.tsx); the tab's other marked parts hide. Unset: the whole tab */
   parts?: string[]
+  /** project mode: a view of its own under the step, in place of a tab (the dream reading's deck, guide texts, combinations, room) */
+  view?: 'dream-cards' | 'dream-deck' | 'dream-texts' | 'dream-combination' | 'dream-room'
 }
 
 /** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
@@ -89,6 +92,22 @@ export interface Project {
   voice?: VoiceFacts
   /** the research bot, followed as a project: the route the decisions draw */
   research?: ResearchFacts
+  /** the dream reading, followed as a project: the route the decisions draw */
+  dream?: DreamFacts
+}
+
+/** What the dream reading's schematic and views show: the route's steps, and what the decisions can choose from. */
+export interface DreamFacts {
+  steps: Step[]
+  /** the dream folder followed, as its manifest says */
+  folder?: Have['dreams'][number]
+  /** the image sets there are, with how many pictures each has */
+  sets: { folder: string; pictures: number }[]
+  /** the guide texts there are: brought in (raw/…) and uploaded (uploads/…) */
+  raw: string[]
+  uploads: string[]
+  ollama: { name: string; size: number }[]
+  tools: string[]
 }
 
 /** What the research bot's schematic shows: the route's steps, and what the decisions can choose from. */
@@ -190,9 +209,11 @@ interface Have {
   /** latent images, with the set each was made from, its check and its training */
   latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null }[]
   /** dream installations, with the four sets each was made from, and how many responses it has given */
-  dreams: { folder: string; created?: string; book: string; sets: Record<'who' | 'what' | 'when' | 'where', string>; responses?: number; pictures?: number; drawn?: number }[]
+  dreams: { folder: string; created?: string; sets?: Record<'who' | 'what' | 'when' | 'where', string>; combinations?: number; guide?: string[]; interpreted?: number; drawn?: number }[]
   /** the last choice and response of each dream installation */
   dreamState: Record<string, { chosen: boolean; response: string | null }>
+  /** each image set's number of pictures */
+  setSizes: Record<string, number>
 }
 
 async function readHave(): Promise<Have> {
@@ -219,6 +240,8 @@ async function readHave(): Promise<Have> {
     readManifests<Have['merges'][number]>('merges'),
     listDir('chat'),
   ])
+  const setSizes: Have['setSizes'] = {}
+  for (const i of images.filter((x) => x.dir)) setSizes[i.name] = (await listDir(`images/${i.name}`)).filter((f) => /\.(jpe?g|png|webp)$/i.test(f.name)).length
   const dreamState: Have['dreamState'] = {}
   for (const d of dreams) {
     const files = (await listDir(`dreams/${d.folder}`)).map((f) => f.name)
@@ -268,6 +291,7 @@ async function readHave(): Promise<Have> {
     latents,
     dreams,
     dreamState,
+    setSizes,
     exampleGestures,
     ollama: ollama.map((m) => ({ name: m.name, size: m.size })),
     merges,
@@ -464,6 +488,120 @@ function voiceRoute(h: Have, c: VoiceChoices): VoiceFacts {
 
 /** How many of your own decisions a point of view needs: papers judge takes 10; 30 overrides make enough pairs for Prefer. */
 const VIEW_DECIDED = 10
+
+/** The data raw command that brings in each guide text from the library. */
+const zhws = (title: string) => `https://zh.wikisource.org/w/index.php?title=${encodeURIComponent(title)}&action=raw`
+export const LIBRARY_COMMAND: Record<LibraryText, string> = {
+  'zhougong-jiemeng': joinWords(['data', 'raw', 'txt', zhws('周公解夢'), 'zhougong-jiemeng', '--license', 'public domain (Wikisource: PD-old)', '--about', '周公解夢, the Zhougong jiemeng: the folk dream book attributed to the Duke of Zhou, 27 sections, from Chinese Wikisource', '--page', 'https://zh.wikisource.org/wiki/周公解夢']),
+  'wangfu-menglie': joinWords(['data', 'raw', 'txt', zhws('潛夫論/卷七'), 'wangfu-menglie', '--license', 'public domain (Wikisource)', '--about', '王符《潛夫論》卷七·夢列 (Wang Fu, Qianfu lun, chapter 28, the ten kinds of dream), in Chinese', '--page', 'https://zh.wikisource.org/wiki/潛夫論/卷七']),
+  'liezi-zh': joinWords(['data', 'raw', 'txt', zhws('列子/周穆王篇'), 'liezi-zh', '--license', 'public domain (Wikisource)', '--about', '列子·周穆王, the Liezi, chapter 3, King Mu of Zhou: the six kinds of dream, in Chinese', '--page', 'https://zh.wikisource.org/wiki/列子/周穆王篇']),
+  'liezi-dreams': joinWords(['data', 'raw', 'txt', 'https://en.wikisource.org/w/index.php?title=Taoist_teachings_from_the_book_of_Lieh_Tz%C5%AD/Book_3&action=raw', 'liezi-dreams', '--license', 'public domain: Lionel Giles, 1912 (Wikisource: PD-US)', '--about', "The Liezi, Book III, Dreams, in Lionel Giles's abridged translation (1912)", '--page', 'https://en.wikisource.org/wiki/Taoist_teachings_from_the_book_of_Lieh_Tz%C5%AD/Book_3']),
+  zhuangzi: joinWords(['data', 'raw', 'gutenberg', '59709', 'zhuangzi']),
+  'freud-dreams': joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']),
+  'jung-unconscious': joinWords(['data', 'raw', 'gutenberg', '65903', 'jung-unconscious']),
+  kuunmong: joinWords(['data', 'raw', 'txt', 'https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt', 'kuunmong', '--license', "public domain: Gale's translation, published 1922", '--about', "Kim Man-jung, The Cloud Dream of the Nine (Kuunmong), tr. James S. Gale, 1922; Cornell's copy, read by OCR", '--page', 'https://archive.org/details/cu31924023333077']),
+  'dream-incubation': joinWords(['data', 'raw', 'wikipedia', 'Dream_incubation', 'dream-incubation']),
+}
+
+/**
+ * The dream reading as a route: the steps the decisions draw, each on its box
+ * of the dream's schematic (DreamMode), with its command filled in from the
+ * decisions and the workspace. Every route ends in the room: four rows of
+ * cards, a visitor's choice, and its interpretation and variations.
+ */
+function dreamRoute(h: Have, c: DreamChoices): DreamFacts {
+  const folder = h.dreams.find((d) => d.folder === c.name)
+  const name = c.name
+  const here = (m: string) => h.ollama.some((x) => x.name === m || x.name === `${m}:latest`)
+  const prior = c.drawWith === 'prior' || c.cards === 'demo'
+  const pull = [c.embed, ...(c.writer === 'none' ? [] : [c.writer])]
+  const tools = ['kandinsky', 'siglip', ...(prior ? ['kandinsky-prior'] : [])]
+  const sets = Object.fromEntries(QUALITIES.map((q) => [q, c.cards === 'demo' ? `${c.demo}-${q}` : c.sets[q] || `<${q}-pictures>`])) as Record<Quality, string>
+  const texts = [...c.library.map((t) => `raw/${t}`), ...c.own]
+  const missing = c.library.filter((t) => !h.raw.some((r) => r.folder === t))
+  const flag = (k: string, v: string | number, fallback: string | number) => (v === fallback ? [] : [k, String(v)])
+  const drawFlags = [...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards')]
+  const total = folder?.combinations ?? 256
+  const key = QUALITIES.map((q) => c.combination[q]).join('-')
+  const steps: Step[] = [
+    {
+      name: say('projects.dream.mode.models'),
+      tab: 'models',
+      node: 'models',
+      commands: [...tools.filter((t) => !h.tools.includes(t)).map((t) => `model get ${t}`), ...pull.filter((m) => !here(m)).map((m) => joinWords(['ollama', 'pull', m]))],
+      done: tools.every((t) => h.tools.includes(t)) && pull.every(here),
+      result: say('projects.dream.mode.modelsResult', { models: [...tools, ...pull].join(', ') }),
+      parts: [],
+    },
+    c.cards === 'demo'
+      ? { name: say('projects.dream.mode.demo'), tab: 'segmentation', node: 'cards', commands: [joinWords(['dream', 'cards', c.demo])], done: QUALITIES.every((q) => (h.setSizes[`${c.demo}-${q}`] ?? 0) >= 4), view: 'dream-cards' }
+      : { name: say('projects.dream.mode.own'), tab: 'segmentation', node: 'cards', commands: [], done: QUALITIES.every((q) => (h.setSizes[c.sets[q]] ?? 0) >= 2), view: 'dream-cards' },
+    {
+      name: say('projects.dream.mode.deck'),
+      tab: 'segmentation',
+      node: 'deck',
+      commands: [joinWords(['dream', 'deck', name, ...QUALITIES.flatMap((q) => [`--${q}`, `images/${sets[q]}`])])],
+      done: !!folder?.sets,
+      result: folder?.combinations ? say('projects.dream.mode.deckResult', { n: folder.combinations }) : undefined,
+      view: 'dream-deck',
+    },
+    {
+      name: say('projects.dream.mode.texts'),
+      tab: 'data',
+      node: 'texts',
+      commands: missing.map((t) => LIBRARY_COMMAND[t]),
+      done: !missing.length,
+      result: say('projects.dream.mode.textsResult', { texts: texts.map((t) => t.replace(/^(raw|uploads)\//, '')).join(', ') }),
+      view: 'dream-texts',
+    },
+    {
+      name: say('projects.dream.mode.guide'),
+      tab: 'data',
+      node: 'guide',
+      commands: [joinWords(['dream', 'guide', name, ...texts, ...flag('--embed', c.embed, 'nomic-embed-text')])],
+      done: !!folder?.guide && texts.every((t) => folder.guide!.includes(t)) && folder.guide.length === texts.length,
+      result: folder?.guide ? say('projects.dream.mode.guideResult', { texts: folder.guide.join(', ') }) : undefined,
+    },
+    {
+      name: say('projects.dream.mode.one'),
+      tab: 'segmentation',
+      node: 'interpret',
+      commands: [joinWords(['dream', 'interpret', name, '--combination', key, ...flag('--model', c.writer, 'qwen3:4b')]), joinWords(['dream', 'draw', name, '--combination', key, ...drawFlags])],
+      done: (folder?.drawn ?? 0) > 0 && (folder?.interpreted ?? 0) > 0,
+      view: 'dream-combination',
+    },
+    ...(c.ahead === 'all'
+      ? [
+          {
+            name: say('projects.dream.mode.all'),
+            tab: 'segmentation' as const,
+            node: 'draw',
+            commands: [joinWords(['dream', 'interpret', name, '--all', ...flag('--model', c.writer, 'qwen3:4b')]), joinWords(['dream', 'draw', name, '--all', ...drawFlags])],
+            done: !!folder && (folder.interpreted ?? 0) >= total && (folder.drawn ?? 0) >= total,
+            result: folder ? say('projects.dream.mode.allResult', { interpreted: folder.interpreted ?? 0, drawn: folder.drawn ?? 0, total }) : undefined,
+          },
+        ]
+      : []),
+    {
+      name: say('projects.dream.mode.room'),
+      tab: 'segmentation',
+      node: 'room',
+      commands: [joinWords(['dream', 'choose', name, '--who', '1', '--what', '2', '--when', '3', '--where', '4']), joinWords(['dream', 'respond', name, ...flag('--model', c.writer, 'qwen3:4b'), ...drawFlags, ...(c.readWords ? ['--read-words'] : [])])],
+      done: !!h.dreamState[name]?.response,
+      link: folder ? { path: `#room/${name}`, label: say('projects.dream.open') } : undefined,
+      view: 'dream-room',
+    },
+  ]
+  return {
+    steps,
+    folder,
+    sets: Object.entries(h.setSizes).map(([f, n]) => ({ folder: f, pictures: n })),
+    raw: h.raw.map((r) => r.folder),
+    uploads: h.texts,
+    ollama: h.ollama,
+    tools: h.tools,
+  }
+}
 
 /**
  * The research bot as a route: the steps the decisions draw, each on its box
@@ -665,7 +803,8 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
   return { steps, folder, folders: h.research.map((r) => r.folder), ollama: h.ollama, view: model }
 }
 
-function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices): Project[] {
+function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices, dream: DreamChoices): Project[] {
+  const dreamFacts = dreamRoute(h, dream)
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -766,55 +905,6 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research
   const measured = last(h.outputs.filter((o) => o.items?.some((i) => i.tool === 'latent')))
   const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
 
-  // dream reading: models → four image sets → texts → make → choose → respond → the room
-  const dream = last(h.dreams)
-  const dreamName = dream?.folder ?? 'dream'
-  const museum = { who: ['portrait', 'dream-who'], what: ['still life', 'dream-what'], when: ['moon', 'dream-when'], where: ['landscape', 'dream-where'] } as const
-  const cats = ['who', 'what', 'when', 'where'] as const
-  const has = (set: string) => ownSets.some((s) => s.folder === set)
-  // each category's set: the one the last installation used, else the museum one if it's here, else <who-pictures> to fill in
-  const dreamSet = (c: (typeof cats)[number]) => dream?.sets[c] ?? (has(museum[c][1]) ? museum[c][1] : `<${c}-pictures>`)
-  const dreamTexts = h.raw.filter((r) => ['zhougong-jiemeng', 'liezi-zh', 'liezi-dreams', 'wangfu-menglie'].includes(r.folder))
-  const dreamDone = dream ? h.dreamState[dream.folder] : undefined
-  const ws = (title: string) => `https://zh.wikisource.org/w/index.php?title=${encodeURIComponent(title)}&action=raw`
-  const dreamSteps: Step[] = [
-    { name: say('projects.dream.models'), tab: 'models', commands: ['model get kandinsky', 'model get siglip', joinWords(['ollama', 'pull', 'qwen3:4b'])], done: h.tools.includes('kandinsky') && h.tools.includes('siglip') },
-    { name: say('projects.dream.pictures'), tab: 'segmentation', commands: [], done: !!dream || ownSets.length >= 4 },
-    { name: say('projects.dream.museum'), tab: 'segmentation', commands: cats.map((c) => joinWords(['look', 'museum', museum[c][0], museum[c][1], '--limit', '8'])), done: cats.every((c) => has(museum[c][1])), or: true },
-    {
-      name: say('projects.dream.texts'),
-      tab: 'data',
-      commands: [
-        joinWords(['data', 'raw', 'txt', ws('周公解夢'), 'zhougong-jiemeng', '--license', 'public domain (Wikisource: PD-old)', '--about', '周公解夢, the Zhougong jiemeng: the folk dream book attributed to the Duke of Zhou, 27 sections, from Chinese Wikisource', '--page', 'https://zh.wikisource.org/wiki/周公解夢']),
-        joinWords(['data', 'raw', 'txt', ws('列子/周穆王篇'), 'liezi-zh', '--license', 'public domain (Wikisource)', '--about', '列子·周穆王, the Liezi, chapter 3, King Mu of Zhou: the six kinds of dream, in Chinese', '--page', 'https://zh.wikisource.org/wiki/列子/周穆王篇']),
-        joinWords(['data', 'raw', 'txt', 'https://en.wikisource.org/w/index.php?title=Taoist_teachings_from_the_book_of_Lieh_Tz%C5%AD/Book_3&action=raw', 'liezi-dreams', '--license', 'public domain: Lionel Giles, 1912 (Wikisource: PD-US)', '--about', 'The Liezi, Book III, Dreams, in Lionel Giles\'s abridged translation (1912)', '--page', 'https://en.wikisource.org/wiki/Taoist_teachings_from_the_book_of_Lieh_Tz%C5%AD/Book_3']),
-        joinWords(['data', 'raw', 'txt', ws('潛夫論/卷七'), 'wangfu-menglie', '--license', 'public domain (Wikisource)', '--about', '王符《潛夫論》卷七·夢列 (Wang Fu, Qianfu lun, chapter 28, the ten kinds of dream), in Chinese', '--page', 'https://zh.wikisource.org/wiki/潛夫論/卷七']),
-        joinWords(['data', 'raw', 'gutenberg', '59709', 'zhuangzi']),
-        joinWords(['data', 'raw', 'gutenberg', '66048', 'freud-dreams']),
-        joinWords(['data', 'raw', 'txt', 'https://archive.org/download/cu31924023333077/cu31924023333077_djvu.txt', 'kuunmong', '--license', "public domain: Gale's translation, published 1922", '--about', "Kim Man-jung, The Cloud Dream of the Nine (Kuunmong), tr. James S. Gale, 1922; Cornell's copy, read by OCR", '--page', 'https://archive.org/details/cu31924023333077']),
-        joinWords(['data', 'raw', 'wikipedia', 'Dream_incubation', 'dream-incubation']),
-      ],
-      done: h.raw.some((r) => r.folder === 'zhougong-jiemeng'),
-      result: dreamTexts.length ? dreamTexts.map((r) => r.folder).join(' · ') : undefined,
-    },
-    {
-      name: say('projects.dream.make'),
-      tab: 'segmentation',
-      commands: [joinWords(['dream', 'make', dreamName, '--book', 'raw/zhougong-jiemeng', ...cats.flatMap((c) => [`--${c}`, `images/${dreamSet(c)}`]), ...(dream?.drawn ? ['--drawn', String(dream.drawn)] : [])])],
-      done: !!dream,
-      result: dream?.pictures ? say('projects.dream.made', { n: dream.pictures }) : undefined,
-    },
-    { name: say('projects.dream.choose'), tab: 'segmentation', commands: [joinWords(['dream', 'choose', dreamName, 'where', '<picture>'])], done: !!dreamDone?.chosen },
-    {
-      name: say('projects.dream.respond'),
-      tab: 'segmentation',
-      commands: [joinWords(['dream', 'respond', dreamName])],
-      done: !!dreamDone?.response,
-      link: dreamDone?.response ? { path: dreamDone.response.replace(/json$/, 'html'), label: say('projects.dream.see') } : undefined,
-    },
-    { name: say('projects.dream.room'), tab: 'segmentation', commands: [], done: !!dream?.responses, link: dream ? { path: `#room/${dream.folder}`, label: say('projects.dream.open') } : undefined },
-  ]
-
   return [
     {
       id: 'dream',
@@ -822,7 +912,8 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research
       does: say('projects.dream.does'),
       get: say('projects.dream.get'),
       limits: say('projects.dream.limits'),
-      steps: dreamSteps,
+      steps: dreamFacts.steps,
+      dream: dreamFacts,
     },
     {
       id: 'latent',
@@ -1090,17 +1181,18 @@ export function useProjects(): Project[] | null {
   const choice = useGestureChoices()
   const voice = useVoiceChoices()
   const research = useResearchChoices()
+  const dream = useDreamChoices()
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || /^research\/[^/]+\/(screen\.json|reading-list\.md)$/.test(e.path) || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.path.endsWith('labels.md') || /^dreams\/[^/]+\/(choice|latest)\.json$/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || /^research\/[^/]+\/(screen\.json|reading-list\.md)$/.test(e.path) || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.path.endsWith('labels.md') || /^dreams\/[^/]+\/(choice|latest|deck|guide)\.json$/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
-  return have && projects(have, choice, voice, research)
+  return have && projects(have, choice, voice, research, dream)
 }
 
 /** The steps a project follows in project mode: its route, where its decisions draw one; else its card's steps. */
-export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.steps
+export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.dream?.steps ?? p.steps
 
 /** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
 export function stepNumber(steps: Step[], i: number) {

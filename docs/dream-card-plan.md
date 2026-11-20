@@ -1,137 +1,151 @@
 # Dream reading: plan
 
-A Projects card for a student's installation, written and built 2026-11-11. The student is Taiwanese; she uses she/her. Kevin's words for the project: "people choose images that resemble some aspect of the user's dream and then interpreting it in an immersive installation... she has four images of who/what/when/where and they choose one, and then it generates a response."
+A Projects card for a student's installation. The student is Taiwanese; she uses she/her. First built 2026-11-11; rebuilt 2026-11-20 on Kevin's brief:
 
-**Card name:** *dream reading · who, what, when, where*.
+> Her structure is Who, What, When, Where, from human choice, and now it is 4 cards per 4 qualities. The different combinations should be interpreted. Then she can choose which text to add as the guide to interpreting, including her own, or others she can upload; then we should use a diffusion model to generate variations of those combinations. However many models we need, there should be choice.
 
-The sources are in [`dream-reading.md`](dream-reading.md). The card reuses the latent image card's model (Kandinsky 2.2) and its loading code (`python/variable_machine/latent.py`); see [`latent-image-plan.md`](latent-image-plan.md).
+**Card name:** *dream reading · who, what, when, where*. It follows the walkthrough the research bot has (project mode): the Start map unfolds into the dream's schematic, the decisions come first, then every step on one long page.
 
-## 1. The interaction
+The sources are in [`dream-reading.md`](dream-reading.md). The models are Kandinsky 2.2 (loaded by `latent.py`, as the latent image card does), its prior, SigLIP, and two models in Ollama.
 
-1. **The visitor thinks of a dream.** They can type a few words of it, or not.
-2. **The room shows four pictures**, side by side, each labelled with its category in Chinese and English:
-   - **who** (誰): a person, a god, an animal, a body;
-   - **what** (什麼): a thing, or something that happens;
-   - **when** (何時): the sky, the weather, a time of life;
-   - **where** (何地): a place.
+## 1. The words
 
-   Each category is a set of pictures. The room deals one from each set at random, so each visitor sees a different four.
-3. **The visitor touches the one most like their dream.** That is the **choice**: one category and one picture.
-4. **The room answers** after about a minute, with the **response**:
-   - **the reading:** the lines the dream book has for that picture, in Chinese, then a short reading in Traditional Chinese and in English;
-   - **the response picture:** a new picture, drawn from the chosen one and from what the book says it foretells.
-5. **"Another dream"** deals four new pictures for the next visitor.
+| Word | What it is |
+|---|---|
+| **quality** | one of who (誰), what (什麼), when (何時), where (何地) |
+| **card** | one picture standing for a quality |
+| **deck** | the sixteen cards: four for each quality |
+| **combination** | one card of each quality. 4 × 4 × 4 × 4 = 256. Named by its cards' numbers, who-what-when-where: `1-3-2-4` |
+| **guide texts** | the texts the combinations are interpreted with, chosen by the student: dream books, other texts, her own writing |
+| **passage** | a piece of a guide text, about a paragraph; for the *Zhougong jiemeng*, one line (a dream and its omen) |
+| **interpretation** | what a language model writes for a combination, from the passages nearest its four cards, in English and Traditional Chinese |
+| **variation** | a picture a diffusion model draws for a combination |
+| **the room** | the full-screen page the installation shows |
 
-Each response is kept: `workspace/dreams/<name>/responses/<n>/` holds `response.png`, `response.json` and `response.html`. The HTML is a fuller page than the room shows: the chosen picture and the response, the book's lines with their glosses, the reading, and other traditions' ways of reading the same dream.
+## 2. The interaction
 
-## 2. Where the four pictures come from
+1. The room shows the deck as four rows, one per quality, four cards in each.
+2. The visitor thinks of a dream and touches one card in each row. They can type a few words of it, or not.
+3. They press **read my dream**. The room shows the four cards chosen, the combination's variations, and its interpretation.
+4. **another dream** clears the choice for the next visitor.
 
-| | The student's own pictures | Generated with Kandinsky |
+## 3. The route, and its decisions
+
+Each decision changes a step's command, or which steps there are.
+
+| Decision | Options | What it changes |
 |---|---|---|
-| How | She uploads four image sets on the image segmentation tab, one per category | `dream make … --drawn N`: Kandinsky 2.2 draws N pictures for each category from the centre of that category's pictures (the latent image card's method, run on each set) |
-| What the visitor sees | Her work: photographs, drawings, found images | New pictures, in the manner of her sets: what each set has in common, not any one picture |
-| Needs | A few pictures a category; 8 or more so visitors see different ones | Her sets as well (at least 4 a category): the drawing starts from them |
-| Cost | Nothing more | About 16 s a picture, on top of `make` |
-| Licence | Hers | Hers, through Kandinsky (Apache 2.0) |
+| **Where the cards come from** | her own pictures (four image sets, uploaded in step 2); a demo deck drawn from prompts | step 2: upload, or `dream cards dream-demo` |
+| **The guide texts** (any number) | the *Zhougong jiemeng*, Wang Fu's "Meng lie", the *Liezi* in Chinese and in English, Zhuangzi, Freud, Jung, *Kuunmong*, Wikipedia's "Dream incubation"; her own texts, uploaded as .txt or .md | step 4 brings in the missing ones; step 5 cuts them all into passages |
+| **Which models read** | the writer: `qwen3:4b`, `qwen3:1.7b`, or none (the passages alone); the passage finder: `nomic-embed-text` or `mxbai-embed-large` | steps 1, 5, 6, 7 |
+| **How variations are drawn** | the four cards mixed; or the cards and the interpretation, through Kandinsky's prior | steps 1 (the prior), 6, 7 |
+| **How many variations** | 1, 2 or 4 a combination | steps 6, 7 |
+| **When** | all 256 before the show (and any missing, in the room); or in the room only | step 7 is there or not |
+| **The visitor's words** | kept beside the response; or read into a new interpretation, live | the room's `dream respond` |
 
-**Kandinsky can't draw from prompts in this build.** It draws from 1280 numbers (an embedding), and the tool has only its picture encoder. Drawing from a written prompt needs Kandinsky's prior, a second model that turns text into those numbers: 6.9 GB more (`kandinsky-community/kandinsky-2-2-prior`, its text encoder and diffusion prior; Apache 2.0). That isn't built, so `--drawn` draws from the pictures, not from words.
+**The default route:** the demo deck; the *Zhougong jiemeng*, Wang Fu and the *Liezi* (Giles) as guide texts; `qwen3:4b` and `nomic-embed-text`; variations from the cards, two each; all 256 ahead; the visitor's words kept.
 
-**Recommendation: her own pictures, with `--drawn` as an option.** The installation is her work, and her pictures are what make it hers; the drawn pictures sit beside them as the set's own "dream" of itself. Generated-from-prompts is worth adding only if she has no pictures for a category; that needs the prior (6.9 GB) and is Kevin's call.
-
-To try the card before she has pictures, four public-domain sets come from the Art Institute of Chicago (CC0): `look museum portrait dream-who --limit 8`, and `still life`, `moon` and `landscape` for the other three.
-
-## 3. "Trained on dream interpretation", honestly, on a laptop
-
-"Train a model on dream interpretation" can mean four things. Each was weighed for a Mac with 16 GB of memory:
-
-### (a) Retrieval: a dream book searched by the chosen picture (built)
-
-- **The dream book:** the *Zhougong jiemeng* (周公解夢), from Chinese Wikisource (public domain). It has 27 sections and 988 lines; each line is a dream and what it foretells: 天門開貴人薦引, "the gate of heaven opens: a noble person will recommend you".
-- **The bridge from a picture to the book.** A **glossary** (`GLOSSARY` in `python/variable_machine/dream.py`) of about 140 characters, each with one English word, set under who, what, when or where: 蛇 *a snake*, 門 *a gate*, 月 *the moon*. Every character is one the book's dreams use.
-  - SigLIP (Google, Apache 2.0, 214 MB, already in the tool for image moods) puts a picture and an English phrase into the same 768 numbers. For each picture, `dream make` keeps the three glossary words of its category nearest it ("a picture of a snake").
-  - The book's lines whose dream (the first four characters) holds that character are the picture's lines.
-- **Why not the picture model alone:** Kandinsky's encoder reads pictures only, and the tool has no text half of it.
-- **Why a glossary, not the whole book in English:** glossing 988 lines with a small local model took 5 minutes for 30 lines when it was tested (it reasoned at length first), so the book is glossed a few lines at a time, at response time. The glossary is also something the student can read, check and change: she reads the Chinese, and what the book can "see" in a picture is exactly the glossary's words.
-- **Cost:** seconds; no training.
-- **Limit:** a picture is only ever read through the glossary's 140 words. SigLIP was trained on English captions of web photos; it finds snakes and moons well, and abstract things ("a beginning") badly.
-
-### (b) A language model writes the reading (built)
-
-- **Which:** `qwen3:4b` in Ollama (Alibaba, **Apache 2.0**, 2.5 GB). It is already one of the two models `doctor` suggests, and the stand-in `reader check` compares against; it writes Traditional Chinese.
-- **Claude through the API:** the tool has no path for it (no Anthropic key or client anywhere in the helper), and a gallery visitor's words would leave the laptop. Not built.
-- **What it is given:** the category, the picture's glossary words, the visitor's own words if they gave any, and the book's lines (up to five). It answers in JSON: each line glossed (the dream, and what it foretells), then a four-sentence reading in English and the same in Traditional Chinese, from those lines only.
-- **What it is not:** a model trained on dream interpretation. It is a general model reading the book's lines. The page says so, and prints the lines beside its glosses so a reader of Chinese can check them.
-- **Cost:** measured: 21 s a response on an M1 Pro (32 GB). Qwen3 reasons at length first unless the prompt ends with `/no_think`; Ollama's `think: false` was ignored here, and one test took 5 minutes.
-- **Limit:** it can gloss wrongly, and the visitor's words are context, not something the book was looked up by.
-
-### (c) Kandinsky draws the response picture (built)
-
-- **How:** the chosen picture's 1280 numbers, moved 40% of the way toward the picture (among all four categories' pictures) that SigLIP finds nearest to what the first line foretells. Kandinsky's decoder draws the result (30 steps, 512 px, about 20 s).
-  - Choose a snake picture; the book says 蛇入門主得財, "a snake comes in at the gate: you will gain wealth"; the response is the snake drawn toward the picture of hers that looks most like "wealth".
-- **Without a gloss** (Ollama not running), the chosen picture is moved toward the other three pictures on the wall, together: the whole dream condensed into one picture, as Freud would put it.
-- **Conditioned on the reading itself,** as text, it would need Kandinsky's prior (section 2); with it, the reading's sentence could be turned into numbers and mixed in directly. Not built.
-- **Limit:** the omen enters the picture only through her own pictures. If none of them looks like "a noble person", the nearest is a loose fit, and the response says which picture it was.
-
-### (d) A LoRA trained on the student's own pictures (not built in this card; built in the latent card)
-
-- `latent train <name>` already trains Kandinsky's decoder on a set (LoRA: 1.6M added weights, about 1.5 s a step, 9 GB of memory). Trained on all her pictures, the response would be drawn in her look, not the web's.
-- **Not built here** because a trained decoder takes 10–20 minutes per set, and the card works without it. Adding `--lora latents/<name>` to `dream respond` is a few lines (the `decoder()` function already takes a LoRA). Worth it once her pictures are final.
-
-### Recommendation (built)
-
-**(a) + (b) + (c):** retrieval from the *Zhougong jiemeng* by the chosen picture, a reading written by `qwen3:4b` from the lines found, and a response picture drawn by Kandinsky toward the omen. It is honest about what it is (a folk book, looked up and paraphrased) and runs on the laptop with no training. **(d)** is the next step, when the student's sets are final.
-
-| | Download | Memory | Time per response |
+| # | Step | Box | Command |
 |---|---|---|---|
-| Kandinsky 2.2 (draws) | 9 GB | about 8 GB at peak | 20 s, plus about 25 s to load |
-| SigLIP (matches) | 214 MB | under 1 GB | about 1 s |
-| qwen3:4b (reads) | 2.5 GB | about 3 GB | 21 s |
+| 1 | get the models | models | `model get kandinsky`, `model get siglip`, `model get kandinsky-prior` (if the demo deck or the prior is chosen), `ollama pull nomic-embed-text`, `ollama pull qwen3:4b` |
+| 2 | the cards | cards | her own: upload four sets in the step; or `dream cards dream-demo` |
+| 3 | the deck | deck | `dream deck dream --who images/<set> --what … --when … --where …` |
+| 4 | the guide texts | guide texts | `data raw txt …` for each library text not brought in yet; her own texts uploaded in the step |
+| 5 | the passages | passages | `dream guide dream raw/zhougong-jiemeng raw/wangfu-menglie raw/liezi-dreams [uploads/<her text>.txt]` |
+| 6 | one combination | interpret | `dream interpret dream --combination 1-1-1-1`, `dream draw dream --combination 1-1-1-1`; the step lets her pick any combination and read it |
+| 7 | all of them | variations | `dream interpret dream --all`, `dream draw dream --all` |
+| 8 | the room | the room | `dream choose dream --who 1 --what 2 --when 3 --where 4`, `dream respond dream`; then open the room |
 
-A whole response took about 70 s in the test. A Mac with 16 GB runs it; 32 GB is comfortable. Loading Kandinsky each time takes about 25 s of that; a long-running server process would cut that and is the obvious next improvement for a show.
+Every step is a real command, shown on the step and run from it.
 
-## 4. The other traditions on the page
+## 4. The cards
 
-The reading is the *Zhougong jiemeng*'s. Under it, each response page prints, in one line each, how other traditions would read a dream (`FRAMES` in `dream.py`):
+**Her own pictures** are the work. She uploads four image sets in step 2, one per quality; the first four pictures of each are its cards. A set may have more; only four are dealt.
 
-- **Wang Fu** (*Qianfu lun*, "Meng lie", 2nd century): ten kinds of dream, including dreams of the season (時) and dreams that mean their opposite (反). This is where "when" comes from: the book itself has no section on time.
-- **The *Liezi*** ("King Mu of Zhou"): six kinds of dream, and the servant who dreams he is a lord.
-- **Zhuangzi:** the butterfly dream.
-- **Freud,** with the note that most dream researchers since the 1950s reject him (Domhoff).
-- **Hoel:** dreams as the brain's own strange pictures, against overfitting.
-- **The Akan** (Nrenzah, 2025): a dream as a meeting with others.
+**The demo deck** is for trying the card before her pictures are in. Kandinsky 2.2's prior turns a written prompt into Kandinsky's 1280 numbers, and its decoder draws them. The prompts (`DEMO` in `dream.py`) share one style ("ink and watercolour on paper, soft light, quiet, a single subject, dreamlike"), so the sixteen read as one deck. Each prompt names something the glossary has, so the *Zhougong jiemeng* has lines for it:
 
-These are framing, not part of the reading. The student can edit them, and should add the Korean and Taiwanese material she chooses from the reading list.
+| who | what | when | where |
+|---|---|---|---|
+| an old woman in a dark blue robe | a small wooden boat on still water | a full moon behind clouds at night | a river between mountains |
+| a child holding a paper lantern | a round bronze mirror | snow falling at dusk | a temple courtyard with incense smoke |
+| a white snake coiled on a stone | a lit red candle | heavy summer rain | a mountain path in mist |
+| a monk seen from behind | a wooden comb lying on silk | the sun rising at daybreak | an old kitchen with a clay stove |
 
-## 5. How the installation runs
+![The demo deck: four rows, who, what, when, where, four cards each, drawn by Kandinsky 2.2 from the prompts above](images/dream-demo-deck.jpg)
 
-- **The room page:** `http://localhost:4843/#room/<name>` (port 4817 on Kevin's own copy). It is a page of the app, but shows nothing else: black, full screen (press the browser's full-screen key), four pictures, a box for a few words, and the response.
-  - It runs the card's own commands, `dream choose` and `dream respond`, so every response is in the terminal's history and the workspace.
-  - It is separate from the card: the card is for making and testing; the room is for the visitor.
-- **Hardware:** the laptop runs Variable Machine; a second screen or a projector shows the room. A touch screen works as it is (each picture is a button); a mouse works too.
-- **One visitor at a time.** A second touch while a response is drawn is ignored.
-- **Privacy:** a visitor's words are kept in `choice.json` and the response, on the laptop only. Nothing leaves it: all three models run locally. The student should say so on a card in the room, and clear `workspace/dreams/<name>/responses/` (move it to the Trash) after the show if she doesn't want to keep them.
+**The deck step** encodes every card twice:
+- by Kandinsky's picture encoder, into 1280 numbers, for drawing;
+- by SigLIP, which puts pictures and English phrases in one space. It finds each card's three nearest words in a glossary of about 140 characters (`GLOSSARY` in `dream.py`), each set under its quality: 蛇 *a snake*, 鏡 *a mirror*, 月 *the moon*, 寺 *a temple*.
 
-## 6. The build (done 2026-11-11)
+## 5. Interpretation: "trained on dream interpretation", honestly
 
-| Step on the card | Tab | Command |
+Nothing is trained. The interpretation is **retrieval and reading**:
+
+1. **The *Zhougong jiemeng*** (周公解夢, 988 lines, public domain) is looked up through the glossary: for each card, the book's lines whose dream holds that card's characters. 蛇入門主得財: "a snake comes in at the gate: you will gain wealth".
+2. **Every other guide text** is cut into passages and measured by an embedding model in Ollama (`nomic-embed-text`, Apache 2.0, 274 MB). A combination's four cards, in words, find the nearest passages: two from each text, eight in all.
+3. **A language model** (`qwen3:4b`, Apache 2.0) is given the four cards and the numbered passages, and writes:
+   - five sentences in English, reading the four cards together as one dream and saying which text each idea comes from;
+   - the same in Traditional Chinese (left out if it comes back partly in English, as it did once in testing);
+   - one **picture sentence**, for the drawing;
+   - the numbers of the passages it used.
+4. Each combination's page prints all of it: the cards, the variations, the interpretation, and every passage, the ones used marked.
+
+**Her own writing is a guide text like any other.** Uploaded as .txt or .md, it is cut into passages at paragraph breaks and found the same way. That is how she makes the interpretation hers: the more of her own writing, the more of the reading comes from her.
+
+**Why not train a model on dream interpretation:** there is no honest data set for it. A model trained on a dream book would learn to produce omens in the book's style, not to read; the retrieval keeps every sentence traceable to a passage.
+
+**Limits:**
+- The passages are found by how near their words are to the cards' words, not by understanding. Eight passages is what fits a small model's attention.
+- The glossary decides what the *Zhougong jiemeng* can see in a card.
+- `qwen3:4b` reasons at length unless the prompt ends with `/no_think` (Ollama's `think: false` was ignored when tested).
+
+## 6. Variations: the diffusion model, two ways
+
+| | the four cards, mixed | the cards and the interpretation |
 |---|---|---|
-| get the models | Models | `model get kandinsky`, `model get siglip`, `ollama pull qwen3:4b` |
-| the student's pictures | Image segmentation | upload four sets |
-| or: public-domain sets | Image segmentation | `look museum portrait dream-who --limit 8` (and `still life`, `moon`, `landscape`) |
-| the texts | Data | `data raw txt <Wikisource address> zhougong-jiemeng …`, the *Liezi* in Chinese and in Giles's English, Wang Fu's "Meng lie", Zhuangzi (Gutenberg 59709), Freud (66048), *Kuunmong*, Wikipedia's "Dream incubation" |
-| make it | Image segmentation | `dream make <name> --book raw/zhougong-jiemeng --who images/<set> --what … --when … --where … [--drawn 0]` |
-| choose | Image segmentation | `dream choose <name> <who\|what\|when\|where> <picture> [--dream "<a few words>"]` |
-| respond | Image segmentation | `dream respond <name> [--model qwen3:4b]` |
-| the room | — | open `#room/<name>` |
+| How | the cards' Kandinsky numbers, mixed. Variation 1 is led by who (40%, the other three 20% each), variation 2 by what, and so on | the same mix, with the interpretation's picture sentence turned into Kandinsky's numbers by the prior and mixed in at 40% (`interpolate`, in diffusers) |
+| Needs | Kandinsky (9 GB) | Kandinsky and its prior (6.9 GB more) |
+| Shows | the combination's pictures, condensed into one | the same, shaped by what the reading says |
+| Time | about 20 s a picture | about 20 s a picture, plus the prior |
 
-**New:**
+![Combination 3-1-1-2 (the white snake, the boat, the full moon, the temple courtyard) and its two variations, drawn with its interpretation through the prior: led by who, then by what](images/dream-combination-3-1-1-2.jpg)
 
-- `python/variable_machine/dream.py`: `make` and `respond`. It imports Kandinsky's encoder, decoder and `draw` from `latent.py`, and SigLIP from `mood.py`; it loads no model of its own.
-- `helper/src/dream.ts`: `dream make`, `dream choose`, `dream respond`; `UV_DREAM` (the `latent` and `mood` extras together) in `helper/src/shared/recipes.ts`.
-- `workspace/dreams/<name>/`, which `trash` knows. `zip` doesn't: a dream folder holds visitors' words.
-- The card at the top of Projects (`ProjectsPanel.tsx`, `projects.md`), and the room page (`DreamRoom.tsx`, opened by `#room/<name>` in `main.tsx`).
-- Section 2 of `docs/projects-test-guide.md`.
+All 256 at two variations is 512 pictures: about 3 hours. The command can stop and start again: what is drawn is kept.
 
-**Tested** on port 4843 with four public-domain sets (8 pictures each, plus one drawn): one response by hand and two from the room page. The glosses were mostly right; one ran two omens together (刀落水中妻妾亡). Once the model wrote half its Chinese reading in English; the response now leaves such a reading out and says so.
+**Other diffusion models, not built:** a LoRA trained on her cards (`latent train` does it for the latent image card) would draw the variations in her own look; it is the next step once her pictures are final. Larger models (FLUX.1 schnell, Apache 2.0, about 24 GB) don't fit a 16 GB Mac.
 
-**Not built:** prompts for Kandinsky (needs the prior, 6.9 GB); the LoRA for responses; a server process that keeps Kandinsky loaded between visitors; sound.
+## 7. When: ahead, and live
+
+**Ahead** (the default): `dream interpret dream --all` (about 25 s a combination, 2 hours for 256) and `dream draw dream --all` (3 hours). She reads the pages and redoes any she doesn't keep, combination by combination, with step 6.
+
+**Live:** in the room, `dream respond` shows what was made ahead at once, and makes anything missing (about a minute). With "read the visitor's words", a visitor who types words gets a new interpretation written with them (about 30 s).
+
+## 8. The room
+
+- `http://localhost:4817/#room/dream` (4843 in testing): black, full screen (the browser's full-screen key), no other part of the app.
+- It runs the card's own commands, `dream choose` and `dream respond`, with the decisions made on the card in the same browser.
+- Hardware: the laptop runs Variable Machine; a second screen or projector shows the room. A touch screen works as it is.
+- Privacy: a visitor's words are kept in `workspace/dreams/dream/choice.json` and the responses, on the laptop only. All the models run locally.
+
+## 9. The build
+
+**New or rewritten (2026-11-20):**
+
+- `python/variable_machine/dream.py`: `cards`, `deck`, `guide`, `interpret`, `draw`, `respond`, and each combination's page. It imports Kandinsky's encoder, decoder and `draw` from `latent.py`, and SigLIP from `mood.py`.
+- `helper/src/dream.ts`: the `dream` commands; `model get kandinsky-prior` (`helper/src/shared/kinds.ts`).
+- `ui/src/components/DreamMode.tsx` (the schematic and the decisions), `DreamViews.tsx` (each step's own view: the cards and their uploads, the deck, the guide texts and their uploads, one combination, the room), `DreamRoom.tsx` (the room), `ui/src/lib/dreamChoices.ts` (the decisions, kept in the browser).
+- The route in `ProjectsPanel.tsx` (`dreamRoute`); the words in `projects.md`.
+- This branch merges `claude/roll-your-own` for the walkthrough (project mode), which isn't on main yet.
+
+**Replaced:** the first version (2026-11-11) had one card for each quality and a visitor choosing one of four. Its single picture and reading for one card are what a combination's interpretation and variations now do for four.
+
+**Tested** on port 4843, 2026-11-20, every command through the tool: `model get kandinsky-prior` (6.4 GB onto KP 512, linked from `workspace/tools/`); `dream cards dream-demo` (16 cards, 6 minutes, 16 s a card); `dream deck` and `dream guide` with the Zhougong jiemeng, Wang Fu and the Liezi (Giles); combinations interpreted one at a time and with `--all` (19 to 32 s each), stopped with the page's stop and started again (the eight made were kept); variations drawn from the cards and through the prior (20 s each); the walkthrough's decisions and steps; and the room, with a combination made ahead (about 10 s) and one made live with a visitor's words (about 90 s).
+
+What testing changed:
+- the first prompt had the model list the cards' omens one by one, three times over, from the dream book alone. It now asks for one sentence for each guide text and one joining them, which uses all three texts;
+- the dream book's lines took every place for passages (two a card); now one a card, so the other texts are heard;
+- diffusers' `interpolate` takes a tensor as a picture's pixels, not as Kandinsky's numbers, so the mix with the sentence is done in `dream.py`;
+- a Chinese sentence with English words in it is left out, not the whole reading;
+- a card with a title is described by its title alone: SigLIP's second and third words can be wrong (an ox for the snake), and the model repeated them.
+
+**Not built:** a LoRA on her cards; a server that keeps Kandinsky loaded between visitors (each response loads it, about 25 s); editing an interpretation by hand in the page (she can edit `interpretation.json`, and the room shows it).

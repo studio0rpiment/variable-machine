@@ -1,90 +1,94 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { joinWords } from '@shared/quote'
 import { runCommand } from '../lib/helper'
 import { readFile } from '../lib/workspace'
+import { dreamChoices, QUALITIES, ZH, type Quality } from '../lib/dreamChoices'
 import { say } from '../text/say'
-
-const CATEGORIES = ['who', 'what', 'when', 'where'] as const
-type Category = (typeof CATEGORIES)[number]
-const ZH: Record<Category, string> = { who: '誰', what: '什麼', when: '何時', where: '何地' }
-
-interface Dream {
-  categories: Record<Category, { pictures: { file: string }[] }>
-}
-interface Response {
-  category: Category
-  chosen: string
-  image: string
-  reading: string
-  reading_zh: string
-  lines: { zh: string; dream?: string; omen?: string }[]
-}
+import type { Deck } from './DreamViews'
 
 const src = (p: string) => `/api/workspace/file?path=${encodeURIComponent(p)}`
-const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)]
+
+interface Response {
+  combination: string
+  reading: string
+  reading_zh: string
+  passages: { from: string; text: string }[]
+  variations: string[]
+}
 
 /**
  * The room: the page the installation's screen shows, full screen, apart from
- * the card (#room/<name>). Four pictures, one from each category, dealt at
- * random; the visitor touches one; the page runs `dream choose` and `dream
- * respond`, the same commands the card shows, and shows the response.
+ * the card (#room/<name>). Four rows of cards, one row for each quality; the
+ * visitor touches one card in each row, then asks for the reading. The page
+ * runs `dream choose` and `dream respond`, the commands the card shows, with
+ * the decisions made on the card (in this browser), and shows the response:
+ * made ahead of time if it was, at once; made now if not, in about a minute.
  */
 export default function DreamRoom({ name }: { name: string }) {
-  const [dream, setDream] = useState<Dream | null | undefined>(undefined)
-  const [shown, setShown] = useState<Record<Category, string> | null>(null)
+  const [deck, setDeck] = useState<Deck | null | undefined>(undefined)
+  const [pick, setPick] = useState<Partial<Record<Quality, number>>>({})
   const [words, setWords] = useState('')
-  const [busy, setBusy] = useState<Category | null>(null)
+  const [busy, setBusy] = useState(false)
   const [response, setResponse] = useState<Response | null>(null)
 
-  const deal = useCallback((d: Dream) => setShown(Object.fromEntries(CATEGORIES.map((c) => [c, pick(d.categories[c].pictures).file])) as Record<Category, string>), [])
   useEffect(() => {
-    void readFile(`dreams/${name}/dream.json`).then((t) => {
-      const d = t ? (JSON.parse(t) as Dream) : null
-      setDream(d)
-      if (d) deal(d)
-    })
-  }, [name, deal])
+    void readFile(`dreams/${name}/deck.json`).then((t) => setDeck(t ? (JSON.parse(t) as Deck) : null))
+  }, [name])
 
-  const choose = async (c: Category) => {
-    if (!shown || busy) return
-    setBusy(c)
-    const given = CATEGORIES.map((k) => `${k}=${shown[k]}`).join(',')
+  const ready = QUALITIES.every((q) => pick[q])
+  const read = async () => {
+    if (!ready || busy) return
+    setBusy(true)
+    const c = dreamChoices()
+    const flag = (k: string, v: string | number, fallback: string | number) => (v === fallback ? [] : [k, String(v)])
     const ok =
-      (await runCommand(joinWords(['dream', 'choose', name, c, shown[c], '--shown', given, ...(words.trim() ? ['--dream', words.trim()] : [])]))) &&
-      (await runCommand(joinWords(['dream', 'respond', name])))
+      (await runCommand(joinWords(['dream', 'choose', name, ...QUALITIES.flatMap((q) => [`--${q}`, String(pick[q])]), ...(words.trim() ? ['--dream', words.trim()] : [])]))) &&
+      (await runCommand(joinWords(['dream', 'respond', name, ...flag('--model', c.writer, 'qwen3:4b'), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(c.readWords ? ['--read-words'] : [])])))
     const latest = ok ? (JSON.parse((await readFile(`dreams/${name}/latest.json`)) ?? 'null') as { response: string } | null) : null
     const r = latest ? (JSON.parse((await readFile(latest.response)) ?? 'null') as Response | null) : null
-    setBusy(null)
+    setBusy(false)
     setResponse(r)
   }
   const again = () => {
     setResponse(null)
     setWords('')
-    if (dream) deal(dream)
+    setPick({})
   }
 
-  if (dream === undefined) return <main className="room" aria-label={say('projects.dream.roomLabel')} />
-  if (!dream || !shown)
+  if (deck === undefined) return <main className="room" aria-label={say('projects.dream.roomLabel')} />
+  if (!deck)
     return (
       <main className="room" aria-label={say('projects.dream.roomLabel')}>
         <p className="room__ask">{say('projects.dream.none', { name })}</p>
       </main>
     )
 
+  const card = (q: Quality, n: number) => deck.qualities[q].cards[n - 1]
   return (
     <main className="room" aria-label={say('projects.dream.roomLabel')}>
       {response ? (
         <section className="room__response">
-          <div className="room__pair">
-            <img src={src(response.chosen)} alt="" />
-            <img src={src(response.image)} alt="" />
+          <div className="room__chosen">
+            {QUALITIES.map((q) => (
+              <figure key={q}>
+                <img src={src(card(q, pick[q]!).file)} alt="" />
+                <figcaption>{`${ZH[q]} · ${q}`}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="room__vars">
+            {response.variations.map((v) => (
+              <img key={v} src={src(v)} alt="" />
+            ))}
           </div>
           <div className="room__reading">
-            <p lang="zh-Hant" className="room__lines">
-              {response.lines.map((l) => l.zh).join('　')}
-            </p>
             {response.reading_zh && <p lang="zh-Hant">{response.reading_zh}</p>}
             {response.reading && <p>{response.reading}</p>}
+            {!response.reading && (
+              <p lang="zh-Hant" className="room__lines">
+                {response.passages.map((p) => p.text.slice(0, 80)).join('　')}
+              </p>
+            )}
             <p className="room__note">{say('projects.dream.note')}</p>
             <button type="button" className="room__again" onClick={again}>
               {say('projects.dream.again')}
@@ -94,20 +98,39 @@ export default function DreamRoom({ name }: { name: string }) {
       ) : (
         <>
           <p className="room__ask">{say('projects.dream.ask')}</p>
-          <div className="room__four">
-            {CATEGORIES.map((c) => (
-              <button type="button" key={c} className={`room__pic ${busy === c ? 'is-chosen' : ''}`.trim()} onClick={() => void choose(c)} disabled={!!busy}>
-                <img src={src(shown[c])} alt="" />
-                <span>
-                  {ZH[c]} · {c}
+          <div className="room__rows">
+            {QUALITIES.map((q) => (
+              <div key={q} className="room__row" role="radiogroup" aria-label={q}>
+                <span className="room__q">
+                  {ZH[q]}
+                  <br />
+                  {q}
                 </span>
-              </button>
+                {deck.qualities[q].cards.map((c) => (
+                  <button
+                    type="button"
+                    key={c.n}
+                    role="radio"
+                    aria-checked={pick[q] === c.n}
+                    className={`room__pic ${pick[q] === c.n ? 'is-chosen' : ''} ${pick[q] && pick[q] !== c.n ? 'is-other' : ''}`.trim()}
+                    onClick={() => !busy && setPick({ ...pick, [q]: c.n })}
+                    disabled={busy}
+                  >
+                    <img src={src(c.file)} alt={c.title} />
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
           {busy ? (
             <p className="room__wait">{say('projects.dream.waiting')}</p>
           ) : (
-            <input className="room__words" value={words} onChange={(e) => setWords(e.target.value)} placeholder={say('projects.dream.words')} aria-label={say('projects.dream.words')} maxLength={300} />
+            <div className="room__go">
+              <input className="room__words" value={words} onChange={(e) => setWords(e.target.value)} placeholder={say('projects.dream.words')} aria-label={say('projects.dream.words')} maxLength={300} />
+              <button type="button" className="room__again" onClick={() => void read()} disabled={!ready}>
+                {ready ? say('projects.dream.read') : say('projects.dream.pickAll')}
+              </button>
+            </div>
           )}
         </>
       )}
