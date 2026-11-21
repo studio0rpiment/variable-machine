@@ -19,7 +19,8 @@ import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep, ZoomToggle } from './components/VoiceMode'
 import ResearchMode, { ResearchDecisions } from './components/ResearchMode'
 import LatentMode, { LatentDecisions } from './components/LatentMode'
-import { leaveMode, toProjects, useGuide } from './lib/guide'
+import { leaveMode, SCHEMATICS, startGuide, toProjects, useGuide } from './lib/guide'
+import { useHelperState } from './hooks/useHelper'
 import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
 import { say } from './text/say'
@@ -86,6 +87,17 @@ export default function App() {
   const modeStep = followed && (routeOf(followed)[guide!.step - 1] ?? routeOf(followed).at(-1))
   const mode = followed && modeStep ? { project: followed, step: Math.min(guide!.step, routeOf(followed).length) } : null
   const view: View = at.view
+  // started for one project (VARIABLE_MACHINE_PROJECT): its walkthrough is the whole app; anywhere else leads back into it
+  const { status } = useHelperState()
+  const only = status?.project && SCHEMATICS.has(status.project) ? status.project : null
+  useEffect(() => {
+    if (!only || (guide?.mode && guide.project === only)) return
+    const p = projects?.find((x) => x.id === only)
+    if (!p) return
+    const route = routeOf(p)
+    const n = route.findIndex((s) => !s.done) + 1 || route.length
+    startGuide(only, n, route[n - 1].tab, true)
+  }, [only, projects, guide])
   /** Roll Your Own: the part in view (none at the top of the page, on the open map) */
   const [inView, setInView] = useState<string | null>(null)
   /** the tab the guide bar and the panels take as open: a project's step's, or else the part in view */
@@ -176,7 +188,7 @@ export default function App() {
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
           <span className="label label--name">Variable Machine</span>
           <span className="label project-top__name">
-            <a
+            {!only && <a
               href="#projects"
               className="project-top__projects"
               title={say('projects.mode.projects.about')}
@@ -186,15 +198,17 @@ export default function App() {
               }}
             >
               {say('projects.mode.projects')}
-            </a>{' '}
-            {say('projects.mode.project', { project: mode.project.title })}
+            </a>}{' '}
+            {only ? mode.project.title : say('projects.mode.project', { project: mode.project.title })}
           </span>
           <span className="label label--muted">{say('projects.guide.step', { n: longPage ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />
           <ThemeToggle mode={theme.mode} onToggle={toggle} />
-          <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
-            {say('projects.mode.leave')}
-          </button>
+          {!only && (
+            <button type="button" className="text-button project-top__leave" onClick={leaveMode} title={say('projects.mode.leave.about')}>
+              {say('projects.mode.leave')}
+            </button>
+          )}
           {longPage && <ZoomToggle whole={whole} onToggle={() => setWhole(!whole)} />}
         </header>
       ) : (

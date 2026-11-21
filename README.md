@@ -27,6 +27,8 @@ It downloads the newest release into `~/variable-machine`, makes a **Variable Ma
 
 **Next time,** open **Variable Machine** like any other app (cmd-space, type *Variable Machine*); you can drag it to the Dock. **To stop it,** close its Terminal window (or press ctrl-C in it). Variants you made on the Modelfile tab and didn't keep are cleared away when it stops. **To update it,** paste the same line again: your workspace (datasets, sets, adapters, models) stays as it is.
 
+**One project on its own:** a student working on a single project can start the app for that project only: double-click **Latent Image.command** or **Research Bot.command** in the variable-machine folder. It is the same app with the same checks, started with `VARIABLE_MACHINE_PROJECT` set to the project (`latent`, `research`; any project with a walkthrough works). The page opens straight into that project's walkthrough, and Projects, Make Your Own and About are left out. Everything it makes stays in the same `workspace` folder, on this computer.
+
 **Working on the code?** Clone the repository and use `npm run dev` instead: it rebuilds the page on every save and restarts the helper.
 
 ```bash
@@ -57,7 +59,7 @@ bash scripts/remove-everything.sh
 
 It shows what each step removes and its size, and asks before each one; anything you keep stays as it is. Most of it goes to the Trash, so empty the Trash to delete it for good. `--dry-run` only shows what it would remove.
 
-**For developers:** `npm run dev` rebuilds the page on save (reload to see it) and restarts the helper on save. `VARIABLE_MACHINE_PORT` picks another port and `VARIABLE_MACHINE_OPEN=0` stops it opening a browser.
+**For developers:** `npm run dev` rebuilds the page on save (reload to see it) and restarts the helper on save. `VARIABLE_MACHINE_PORT` picks another port, `VARIABLE_MACHINE_OPEN=0` stops it opening a browser, and `VARIABLE_MACHINE_PROJECT=latent` (or any project with a walkthrough) starts it for that project only.
 
 ## The tabs, in the order you'd use them
 

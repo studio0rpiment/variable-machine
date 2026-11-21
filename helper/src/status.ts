@@ -27,6 +27,8 @@ export const status: Status = {
   memoryGB,
   tier: tierFor(memoryGB),
   arch: process.arch,
+  // one project, for a student who works on only that: the page opens into its walkthrough
+  ...(/^[a-z]{1,32}$/.test(process.env.VARIABLE_MACHINE_PROJECT ?? '') ? { project: process.env.VARIABLE_MACHINE_PROJECT } : {}),
 }
 
 function update(patch: Partial<Status>) {
