@@ -197,7 +197,7 @@ export const WORDS = {
   "projects.dreamTrained.box.laneTrain": "what you train",
   "projects.dreamTrained.teacher.does": "reads every combination first; the reader learns from what it writes",
   "projects.dreamTrained.base.name": "the reader",
-  "projects.dreamTrained.base.does": "the small model you train: all three write English; Qwen2.5 writes Chinese too",
+  "projects.dreamTrained.base.does": "the small model you train: both write English; Qwen2.5 writes Chinese too",
   "projects.dreamTrained.base.title": "{base}: Apache 2.0; downloaded when training starts",
   "projects.dreamTrained.decision.rows": "which readings does the reader learn from?",
   "projects.dreamTrained.rows.read": "the ones I keep",

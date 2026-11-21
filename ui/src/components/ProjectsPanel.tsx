@@ -662,7 +662,9 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
     name: say('projects.dreamTrained.mode.train'),
     tab: 'train',
     node: 'train',
-    commands: [joinWords(['train', c.reader, '--data', c.readerSet, '--base', c.base, '--max-seq', '3072', '--iters', '400', '--keep', 'best'])],
+    // rows of about 2,000 tokens. The set-aside loss was lowest after about two passes over 205 rows (step 100 at
+    // batch 4, in three runs of the 0.5B); --keep best keeps that step, with room past it
+    commands: [joinWords(['train', c.reader, '--data', c.readerSet, '--base', c.base, '--max-seq', '3072', '--iters', '200', '--keep', 'best'])],
     done: !!adapter,
     result: adapter?.kept ? say('projects.dreamTrained.mode.trainKept', { iter: adapter.kept.iter, iters: adapter.iters ?? 0, loss: adapter.kept.valLoss }) : undefined,
     fill: { train: { data: c.readerSet, name: c.reader, base: c.base } },
