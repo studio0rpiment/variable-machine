@@ -21,6 +21,8 @@ import ResearchMode, { ResearchDecisions } from './components/ResearchMode'
 import LatentMode, { LatentDecisions } from './components/LatentMode'
 import { leaveMode, SCHEMATICS, startGuide, toProjects, useGuide } from './lib/guide'
 import { useHelperState } from './hooks/useHelper'
+import DreamMode, { DreamDecisions } from './components/DreamMode'
+import DreamView from './components/DreamViews'
 import { ALL_PARTS, PartsProvider } from './lib/parts'
 import { routeOf, useProjects } from './components/ProjectsPanel'
 import { say } from './text/say'
@@ -103,7 +105,7 @@ export default function App() {
   /** the tab the guide bar and the panels take as open: a project's step's, or else the part in view */
   const panel: string = mode ? modeStep!.tab : view === 'make' ? (inView ?? 'make') : view
   /** a route on one long page, under its schematic: a character's voice, the research bot */
-  const longPage = !!(mode?.project.voice || mode?.project.research || mode?.project.latent)
+  const longPage = !!(mode?.project.voice || mode?.project.research || mode?.project.latent || mode?.project.dream)
   const [folded, setFolded] = useState(true)
   /** a route on one long page (voice, the research bot): the step whose section is in view */
   const [stepInView, setStepInView] = useState(1)
@@ -239,7 +241,12 @@ export default function App() {
       <main ref={mainRef} className={`shell__main ${mode || view === 'make' ? 'shell__main--project' : ''}`.trim()}>
         {mode && longPage ? (
           <>
-            {mode.project.research ? (
+            {mode.project.dream ? (
+              <>
+                <DreamMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} onZoom={() => setWhole(false)} />
+                <DreamDecisions project={mode.project} />
+              </>
+            ) : mode.project.research ? (
               <>
                 <ResearchMode key={mode.project.id} project={mode.project} step={mode.step} onStep={setStepInView} whole={whole} onZoom={() => setWhole(false)} />
                 <ResearchDecisions project={mode.project} />
@@ -259,9 +266,13 @@ export default function App() {
             {routeOf(mode.project).map((s, i) => (
               <section key={`${i}-${s.tab}`} className="voice-page__step" data-step={i + 1}>
                 <VoiceStep step={s} n={i + 1} />
-                <PartsProvider value={s.parts ?? ALL_PARTS}>
-                  <StepTab step={s} onUse={sendDataset} chatWith={chatWith} chatPair={chatPair} chatModels={chatModels} editModelfile={editModelfile} chatRequest={chatRequest} />
-                </PartsProvider>
+                {mode.project.dream && (s.view || !mode.project.dream.trained) ? (
+                  <DreamView step={s} trained={!!mode.project.dream.trained} />
+                ) : (
+                  <PartsProvider value={s.parts ?? ALL_PARTS}>
+                    <StepTab step={s} onUse={sendDataset} chatWith={chatWith} chatPair={chatPair} chatModels={chatModels} editModelfile={editModelfile} chatRequest={chatRequest} />
+                  </PartsProvider>
+                )}
               </section>
             ))}
             {/* room after the last step, so it too can scroll up under the strip */}

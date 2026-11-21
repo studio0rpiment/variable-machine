@@ -28,6 +28,8 @@ export interface TrainParams {
   batch: number
   maxSeq: number
   evalEvery: number
+  /** best: save at every check against the set-aside rows and keep the step where their loss is lowest; last (the default): the last step */
+  keep?: 'best' | 'last'
 }
 
 /** Plan §11. */
@@ -48,6 +50,8 @@ export const UV_VOICE = [...UV, '--extra', 'voice']
 export const UV_MOOD = [...UV, '--extra', 'mood']
 /** The same, with torch and diffusers for the latent image (helper/src/latent.ts). */
 export const UV_LATENT = [...UV, '--extra', 'latent']
+/** Both, for the dream installation: Kandinsky (latent.py) and SigLIP (mood.py) in one run (helper/src/dream.ts). */
+export const UV_DREAM = [...UV, '--extra', 'latent', '--extra', 'mood']
 
 /**
  * Training a model that sees on a picture dataset (mlx-vlm 0.7.10, through
@@ -95,7 +99,7 @@ export function seesTrainArgs(p: TrainParams): string[] {
 
 /** The `train` line for a picture dataset: the same command, without the settings mlx-vlm doesn't take. */
 export function seesTrainLine(p: TrainParams): string[] {
-  return ['train', p.name, '--base', p.base, '--data', p.data, '--rank', String(p.rank), '--lr', String(p.lr), '--iters', String(p.iters), '--batch', String(p.batch), '--max-seq', String(p.maxSeq), '--eval-every', String(p.evalEvery)]
+  return ['train', p.name, '--base', p.base, '--data', p.data, '--rank', String(p.rank), '--lr', String(p.lr), '--iters', String(p.iters), '--batch', String(p.batch), '--max-seq', String(p.maxSeq), '--eval-every', String(p.evalEvery), ...(p.keep === 'best' ? ['--keep', 'best'] : [])]
 }
 
 export const runConfigYaml = (p: TrainParams) =>
@@ -116,6 +120,7 @@ export function trainArgs(p: TrainParams, runDir: string, text = false): string[
     '--max-seq-length', String(p.maxSeq),
     '--steps-per-report', '5',
     '--steps-per-eval', String(p.evalEvery),
+    ...(p.keep === 'best' ? ['--save-every', String(p.evalEvery)] : []),
     '--adapter-path', `workspace/adapters/${p.name}`,
     ...(text ? [] : ['--mask-prompt']),
     '--config', `${runDir}/config.yaml`,
@@ -168,10 +173,10 @@ export const CHATML_TEMPLATE = `{{- if .Messages }}
 {{ end }}<|im_start|>assistant
 {{ end }}{{ .Response }}{{ if .Response }}<|im_end|>{{ end }}`
 
-export function registerModelfile(o: { fused: string; template?: 'chatml' | 'raw'; system?: string; license: string; base: string; adapter: string }) {
+export function registerModelfile(o: { fused: string; gguf?: boolean; template?: 'chatml' | 'raw'; system?: string; license: string; base: string; adapter: string }) {
   return [
     `# made by Variable Machine from adapter ${o.adapter} on ${o.base}`,
-    `FROM ../fused/${o.fused}`,
+    `FROM ../fused/${o.fused}${o.gguf ? '/model.gguf' : ''}`,
     ...(o.template === 'chatml' ? [`TEMPLATE """${CHATML_TEMPLATE}"""`, 'PARAMETER stop "<|im_start|>"', 'PARAMETER stop "<|im_end|>"'] : []),
     // trained on rows as plain text (data rows): the prompt is the start of a row, continued as written
     ...(o.template === 'raw' ? ['TEMPLATE """{{ .Prompt }}"""', 'PARAMETER stop "<|endoftext|>"', 'PARAMETER stop "<|im_end|>"'] : []),

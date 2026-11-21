@@ -167,7 +167,7 @@ async function askJson<T>(model: string, system: string | null, prompt: string, 
   return JSON.parse(body.message?.content ?? '{}') as T
 }
 
-async function hasModel(model: string) {
+export async function hasModel(model: string) {
   const res = await ollamaPost('/api/show', { model }).catch(() => null)
   return !!res?.ok
 }

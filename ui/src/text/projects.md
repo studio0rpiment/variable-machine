@@ -216,6 +216,912 @@ see the latent image
 
 open the gallery
 
+## Dream reading
+
+### Name
+`projects.dream.title`
+
+dream reading · who, what, when, where
+
+### What it does
+`projects.dream.does`
+
+An installation for a dream. The deck is sixteen cards: four for each quality of a dream: who, what, when and where. A visitor chooses one card of each, a combination: there are 256. Each combination is interpreted from the guide texts the artist chose (the Zhougong jiemeng, Wang Fu, the Liezi, her own writing, or others she uploads): a language model reads the passages nearest the four cards and writes the interpretation, in English (in Traditional Chinese too, if chosen). A diffusion model, Kandinsky 2.2, draws variations of the combination. All 256 can be made before the show, read and redone; any not made yet is made in the room.
+
+### What you get
+`projects.dream.get`
+
+a deck of sixteen cards, each matched to the words of the Zhougong jiemeng; an interpretation and variations for every combination, each with a page showing the passages it was written from; and a room page that runs full screen: four rows of cards, a visitor's choice, the interpretation and the pictures
+
+### What it can't do
+`projects.dream.limits`
+
+It doesn't interpret anyone's dream: a small language model paraphrases the passages of the guide texts nearest the four cards, and the passages are found by how near their words are to the cards' words, not by understanding. The Zhougong jiemeng is reached through a glossary of about 140 characters, so a card is read only through those words. The glosses and readings can be wrong; each page prints the passages beside them. Drawing all 256 combinations takes about 3 hours at two variations each, and Kandinsky needs a Mac with 16 GB of memory.
+
+### The decisions, for a screen reader
+`projects.dream.decisions`
+
+the dream reading's decisions
+
+### Decision: the cards
+`projects.dream.decision.cards`
+
+where the cards come from
+
+### Her own pictures
+`projects.dream.cards.own`
+
+her own pictures
+
+### What her own pictures mean
+`projects.dream.cards.own.about`
+
+Four image sets, one for each quality, uploaded under step 2. The first four pictures of each set are its cards.
+
+### Choosing a set, empty
+`projects.dream.cards.pick`
+
+choose an image set
+
+### Her own pictures, the note
+`projects.dream.cards.own.note`
+
+Upload under step 2, or choose sets that are already here. A set needs 2 pictures at the least; 4 make the deck.
+
+### A demo deck
+`projects.dream.cards.demo`
+
+a demo deck, drawn from prompts
+
+### What the demo deck means
+`projects.dream.cards.demo.about`
+
+Sixteen cards drawn by Kandinsky 2.2 from prompts written for the demo (an old woman in a dark blue robe, a wooden boat, a full moon, a temple courtyard …), to try the card before her pictures are in. It needs Kandinsky's prior, 6.9 GB more; about 6 minutes.
+
+### Decision: the guide texts
+`projects.dream.decision.texts`
+
+the texts to interpret with
+
+### A text not brought in yet
+`projects.dream.text.notIn`
+
+(brought in at step 4)
+
+### Her own text
+`projects.dream.text.own`
+
+her own text, uploaded
+
+### The guide texts, the note
+`projects.dream.texts.note`
+
+Upload your own writing as .txt or .md under step 4, and it is listed here. The sources and their access, with the Taiwanese and Korean ones not brought in, are in docs/dream-reading.md.
+
+### The Zhougong jiemeng
+`projects.dream.text.zhougong`
+
+周公解夢 Zhougong jiemeng
+
+### The Zhougong jiemeng, about
+`projects.dream.text.zhougong.about`
+
+The folk dream book: 988 lines, each a dream and its omen. Looked up by each card's glossary words. Public domain, Wikisource.
+
+### Wang Fu
+`projects.dream.text.wangfu`
+
+王符 Wang Fu, 夢列
+
+### Wang Fu, about
+`projects.dream.text.wangfu.about`
+
+The ten kinds of dream (2nd century), in Chinese. Public domain, Wikisource.
+
+### The Liezi in Chinese
+`projects.dream.text.lieziZh`
+
+列子 Liezi, 周穆王
+
+### The Liezi in Chinese, about
+`projects.dream.text.lieziZh.about`
+
+The six kinds of dream, and the servant who dreams he is a lord, in Chinese. Public domain, Wikisource.
+
+### The Liezi in English
+`projects.dream.text.liezi`
+
+the Liezi, "Dreams" (Giles)
+
+### The Liezi in English, about
+`projects.dream.text.liezi.about`
+
+Lionel Giles's English (1912), abridged. Public domain, Wikisource.
+
+### Zhuangzi
+`projects.dream.text.zhuangzi`
+
+Zhuangzi (Giles)
+
+### Zhuangzi, about
+`projects.dream.text.zhuangzi.about`
+
+The butterfly dream, in Herbert Giles's English (1889). Public domain, Gutenberg 59709.
+
+### Freud
+`projects.dream.text.freud`
+
+Freud, The Interpretation of Dreams
+
+### Freud, about
+`projects.dream.text.freud.about`
+
+The dream as a disguised wish (Brill, 1913). Most dream researchers since the 1950s reject it. Public domain, Gutenberg 66048.
+
+### Jung
+`projects.dream.text.jung`
+
+Jung, Psychology of the Unconscious
+
+### Jung, about
+`projects.dream.text.jung.about`
+
+Dream and myth images as one energy (Hinkle, 1916); read with Fanon's and Dalal's critiques. Public domain in the US, Gutenberg 65903.
+
+### Kuunmong
+`projects.dream.text.kuunmong`
+
+Kuunmong, The Cloud Dream of the Nine
+
+### Kuunmong, about
+`projects.dream.text.kuunmong.about`
+
+A Korean novel of a whole life dreamt and woken from (Gale, 1922; read by OCR). Public domain, Internet Archive.
+
+### Dream incubation
+`projects.dream.text.incubation`
+
+Wikipedia, "Dream incubation"
+
+### Dream incubation, about
+`projects.dream.text.incubation.about`
+
+Sleeping in a temple to receive a dream. CC BY-SA 4.0.
+
+### Decision: the models
+`projects.dream.decision.models`
+
+which models read
+
+### The writer, what it does
+`projects.dream.writer.does`
+
+writes each interpretation from the passages
+
+### No writer
+`projects.dream.writer.none`
+
+no language model: the passages alone
+
+### The embedding model, what it does
+`projects.dream.embed.does`
+
+finds the passages of the guide texts nearest a combination's four cards
+
+### The models, the note
+`projects.dream.models.note`
+
+This Mac has {memory} GB of memory. Kandinsky (9 GB on disk) and SigLIP (214 MB) are fixed: Kandinsky draws, SigLIP matches cards to the dream book's words.
+
+### Decision: how variations are drawn
+`projects.dream.decision.draw`
+
+how the variations are drawn
+
+### From the cards
+`projects.dream.draw.cards`
+
+the four cards, mixed
+
+### From the cards, about
+`projects.dream.draw.cards.about`
+
+Kandinsky's numbers for the four cards, mixed; each variation is led by a different quality (40%), the other three share the rest. Nothing more to download.
+
+### With the interpretation
+`projects.dream.draw.prior`
+
+the cards and the interpretation
+
+### With the interpretation, about
+`projects.dream.draw.prior.about`
+
+The same mix, with the interpretation's picture sentence turned into Kandinsky's numbers by its prior (40%), so the reading shapes the picture. Needs Kandinsky's prior, 6.9 GB.
+
+### Decision: how many variations
+`projects.dream.decision.variations`
+
+how many variations for each combination
+
+### A number of variations
+`projects.dream.variations.n`
+
+{n}
+
+### How long they take
+`projects.dream.variations.about`
+
+about {minutes} minutes for all 256
+
+### Decision: when
+`projects.dream.decision.ahead`
+
+when combinations are made
+
+### All ahead
+`projects.dream.ahead.all`
+
+all 256 before the show
+
+### All ahead, about
+`projects.dream.ahead.all.about`
+
+Interpret and draw every combination (about 2 hours to interpret, and the drawing time above), read them, redo any you don't keep. The room shows them at once; any missing is made there.
+
+### Live
+`projects.dream.ahead.live`
+
+in the room only
+
+### Live, about
+`projects.dream.ahead.live.about`
+
+Nothing is made ahead: each visitor waits about a minute for their combination, which is then kept for the next visitor who chooses it.
+
+### Decision: the visitor's words
+`projects.dream.decision.words`
+
+the visitor's own words
+
+### Decision: the reading's language
+`projects.dream.decision.language`
+
+the language of the reading
+
+### English
+`projects.dream.language.en`
+
+English
+
+### English, about
+`projects.dream.language.en.about`
+
+The reading is in English. The guide texts stay as they are: the Zhougong jiemeng's lines are read in Chinese, through its glossary, and the reading says what they mean in English.
+
+### English and Chinese
+`projects.dream.language.zh`
+
+English and Traditional Chinese
+
+### English and Chinese, about
+`projects.dream.language.zh.about`
+
+The reading is also translated into Traditional Chinese (繁體中文), and the room shows both. Each reading takes a few seconds longer, and a small trained reader's Chinese slips into English.
+
+### Keep them
+`projects.dream.words.keep`
+
+kept beside the response
+
+### Keep them, about
+`projects.dream.words.keep.about`
+
+The visitor may type a few words of their dream; they are kept with the response, and the interpretation made ahead is shown at once.
+
+### Read them
+`projects.dream.words.read`
+
+read into the interpretation
+
+### Read them, about
+`projects.dream.words.read.about`
+
+When a visitor types words, a new interpretation is written with them, live: about 30 seconds more.
+
+### The schematic: models
+`projects.dream.box.headModels`
+
+models
+
+### The schematic: siglip's role
+`projects.dream.box.roleSiglip`
+
+matches cards to words
+
+### The schematic: the embedding model's role
+`projects.dream.box.roleEmbed`
+
+finds passages
+
+### The schematic: the writer's role
+`projects.dream.box.roleWriter`
+
+writes the interpretation
+
+### The schematic: Kandinsky's role
+`projects.dream.box.roleKandinsky`
+
+draws the variations
+
+### The schematic: the prior's role
+`projects.dream.box.rolePrior`
+
+draws from words
+
+### The schematic: the cards box
+`projects.dream.box.cards`
+
+cards
+
+### The schematic: under the cards
+`projects.dream.box.capCards`
+
+4 for each quality
+
+### The schematic: the deck box
+`projects.dream.box.deck`
+
+deck
+
+### The schematic: under the deck
+`projects.dream.box.capDeck`
+
+16 cards, 256 combinations
+
+### The schematic: the texts box
+`projects.dream.box.texts`
+
+guide texts
+
+### The schematic: under the texts
+`projects.dream.box.capTexts`
+
+books, and her own writing
+
+### The schematic: the guide box
+`projects.dream.box.guide`
+
+passages
+
+### The schematic: under the guide
+`projects.dream.box.capGuide`
+
+cut and measured
+
+### The schematic: the interpret box
+`projects.dream.box.interpret`
+
+interpret
+
+### The schematic: under interpret
+`projects.dream.box.capInterpret`
+
+a combination's reading
+
+### The schematic: the draw box
+`projects.dream.box.draw`
+
+variations
+
+### The schematic: under the variations
+`projects.dream.box.capDraw`
+
+drawn for a combination
+
+### The schematic: the room box
+`projects.dream.box.room`
+
+the room
+
+### The schematic: under the room
+`projects.dream.box.capRoom`
+
+the visitor chooses
+
+### The schematic: the models lane
+`projects.dream.box.laneModels`
+
+MODELS · each a choice
+
+### The schematic: the cards lane
+`projects.dream.box.laneCards`
+
+THE CARDS
+
+### The schematic: the texts lane
+`projects.dream.box.laneTexts`
+
+THE GUIDE TEXTS
+
+### Step: the models
+`projects.dream.mode.models`
+
+get the models
+
+### The models, after
+`projects.dream.mode.modelsResult`
+
+{models}
+
+### Step: a demo deck
+`projects.dream.mode.demo`
+
+draw the demo deck
+
+### Step: her own pictures
+`projects.dream.mode.own`
+
+upload her pictures, four for each quality
+
+### Step: the deck
+`projects.dream.mode.deck`
+
+make the deck: each card matched to the dream book's words
+
+### The deck, after
+`projects.dream.mode.deckResult`
+
+{n} combinations
+
+### Step: the texts
+`projects.dream.mode.texts`
+
+bring in the guide texts, and upload her own
+
+### The texts, chosen
+`projects.dream.mode.textsResult`
+
+{texts}
+
+### Step: the passages
+`projects.dream.mode.guide`
+
+cut the guide texts into passages, and measure them
+
+### The passages, after
+`projects.dream.mode.guideResult`
+
+guide texts: {texts}
+
+### Step: one combination
+`projects.dream.mode.one`
+
+interpret and draw one combination, and read it
+
+### Step: all of them
+`projects.dream.mode.all`
+
+interpret and draw all of them, before the show
+
+### All of them, so far
+`projects.dream.mode.allResult`
+
+{interpreted} of {total} interpreted · {drawn} drawn
+
+### Step: the room
+`projects.dream.mode.room`
+
+try a visitor, then open the room
+
+### Step view: a set's name
+`projects.dream.view.setName`
+
+the {q} set's name
+
+### Step view: uploading
+`projects.dream.view.uploading`
+
+uploading…
+
+### Step view: upload pictures
+`projects.dream.view.upload`
+
+upload pictures into images/{set}
+
+### Step view: no deck yet
+`projects.dream.view.noDeck`
+
+no deck yet: run the deck step
+
+### Step view: the texts
+`projects.dream.view.textsAbout`
+
+The guide texts chosen above. Upload your own writing as .txt or .md; it is added to them.
+
+### Step view: upload a text
+`projects.dream.view.uploadText`
+
+upload a text (.txt or .md)
+
+### Step view: texts uploaded
+`projects.dream.view.uploaded`
+
+uploaded: {files}
+
+### Step view: pick a combination
+`projects.dream.view.pick`
+
+choose a card in each row: combination {key}
+
+### Step view: the picture sentence
+`projects.dream.view.sentence`
+
+picture sentence: {sentence}
+
+### Step view: the passages
+`projects.dream.view.passages`
+
+the {n} passages it was written from, by {by}
+
+### Step view: no model
+`projects.dream.view.noModel`
+
+no language model
+
+### Step view: the page
+`projects.dream.view.page`
+
+open its page
+
+### Step view: the room
+`projects.dream.view.roomAbout`
+
+Open the room on the installation's screen, then the browser's full-screen key. It uses the decisions above, as this browser keeps them.
+
+### Step view: the last response
+`projects.dream.view.last`
+
+last response: {path}
+
+### The link to the room page
+`projects.dream.open`
+
+open the room
+
+## Dream reader, trained
+
+### Name
+`projects.dreamTrained.title`
+
+dream reader, trained
+
+### What it does
+`projects.dreamTrained.does`
+
+The same dream installation, made with models the student trains. A ready-made language model, the teacher, interprets all 256 combinations from the guide texts she chose. Its readings become training rows, which she reads, edits or rejects on the Data tab. A small model of her choosing is trained on the rows she keeps, exported to Ollama, and reads every combination again: the dream reader is now hers. Kandinsky 2.2 draws the variations, and someone's own drawings, made into a latent image and trained (a LoRA, a small set of added weights), give them that person's style. The room uses both, and the reader and its rows can be zipped to share.
+
+### What you end up with
+`projects.dreamTrained.get`
+
+A dream reader of your own in Ollama, trained on readings you kept; a style of your own for Kandinsky, trained on your drawings; all 256 combinations interpreted and drawn with them; the room; and a package of the reader with its rows and where they came from.
+
+### What it can't do
+`projects.dreamTrained.limits`
+
+The trained reader learns to answer as the teacher did, from the same passages: it is no better a reader than the teacher, only smaller and hers, and with a few hundred rows it can still repeat itself or drift. Keeping a reading means agreeing to train on it. The style learns a look from 12 to about 100 drawings, not a drawing hand: Kandinsky still draws. Only Kandinsky 2.2 can be trained here; other diffusion models are listed with what they would need. Training the reader takes about 20 minutes on 16 GB of memory, the style about 20 minutes, and drawing all 256 again about 3 hours.
+
+### The teacher's readings
+`projects.dreamTrained.mode.teacher`
+
+{teacher} interprets every combination
+
+### The teacher's readings, so far
+`projects.dreamTrained.mode.teacherResult`
+
+{n} of {total} read by {teacher}
+
+### The rows
+`projects.dreamTrained.mode.rows`
+
+the readings become rows; keep the ones to train on
+
+### The rows, so far
+`projects.dreamTrained.mode.rowsResult`
+
+{kept} kept of {target} to train on · {unread} to read
+
+### Train the reader
+`projects.dreamTrained.mode.train`
+
+train the dream reader on the rows
+
+### Train, the step kept
+`projects.dreamTrained.mode.trainKept`
+
+kept step {iter} of {iters}: there the reader was closest to the teacher on the rows set aside (loss {loss}). Training on past it learns the rows by heart and reads new combinations worse.
+
+### Export the reader
+`projects.dreamTrained.mode.export`
+
+export it to Ollama
+
+### The reader reads again
+`projects.dreamTrained.mode.again`
+
+{reader} interprets every combination again
+
+### The reader's readings, so far
+`projects.dreamTrained.mode.againResult`
+
+{n} of {total} read by {reader}
+
+### The drawings
+`projects.dreamTrained.mode.drawings`
+
+the drawings become a style
+
+### The drawings, so far
+`projects.dreamTrained.mode.drawingsResult`
+
+{n} drawings · {trained}
+
+### The style is trained
+`projects.dreamTrained.mode.trainedYes`
+
+trained
+
+### The style is not trained yet
+`projects.dreamTrained.mode.trainedNo`
+
+not trained yet
+
+### The drawings, not enough yet
+`projects.dreamTrained.mode.drawingsNeed`
+
+{n} drawings: 12 at the least, 30 or more for its axes
+
+### Draw in the style
+`projects.dreamTrained.mode.draw`
+
+draw every combination
+
+### Drawn, so far
+`projects.dreamTrained.mode.drawResult`
+
+{drawn} of {total} drawn · {styled} in the style
+
+### Package the reader
+`projects.dreamTrained.mode.package`
+
+zip the reader and its rows to share
+
+### The schematic: the teacher
+`projects.dreamTrained.box.roleTeacher`
+
+the teacher
+
+### The schematic: the rows box
+`projects.dreamTrained.box.rows`
+
+rows
+
+### The schematic: under the rows
+`projects.dreamTrained.box.capRows`
+
+readings you keep
+
+### The schematic: under train
+`projects.dreamTrained.box.capTrain`
+
+a small model learns
+
+### The schematic: under export
+`projects.dreamTrained.box.capExport`
+
+into Ollama
+
+### The schematic: under package
+`projects.dreamTrained.box.capShare`
+
+to share
+
+### The schematic: the drawings box
+`projects.dreamTrained.box.drawings`
+
+drawings
+
+### The schematic: under the drawings
+`projects.dreamTrained.box.capDrawings`
+
+someone's own
+
+### The schematic: the style box
+`projects.dreamTrained.box.style`
+
+style
+
+### The schematic: under the style
+`projects.dreamTrained.box.capStyle`
+
+Kandinsky with a LoRA
+
+### The schematic: the training lane
+`projects.dreamTrained.box.laneTrain`
+
+what you train
+
+### The teacher, what it does
+`projects.dreamTrained.teacher.does`
+
+reads every combination first; the reader learns from what it writes
+
+### The base, its name
+`projects.dreamTrained.base.name`
+
+the reader
+
+### The base, what it does
+`projects.dreamTrained.base.does`
+
+the small model you train: all three write English; Qwen2.5 writes Chinese too
+
+### A base, on hover
+`projects.dreamTrained.base.title`
+
+{base}: Apache 2.0; downloaded when training starts
+
+### Which rows to train on
+`projects.dreamTrained.decision.rows`
+
+which readings does the reader learn from?
+
+### Read each one
+`projects.dreamTrained.rows.read`
+
+the ones I keep
+
+### Read each one, about
+`projects.dreamTrained.rows.read.about`
+
+Each reading is a draft on the Data tab: keep it, edit it first, or reject it. The reader learns only what you kept; 100 is enough to start.
+
+### Keep them all
+`projects.dreamTrained.rows.keep`
+
+all of them, unread
+
+### Keep them all, about
+`projects.dreamTrained.rows.keep.about`
+
+Every reading goes into training at once. Quicker, but the reader learns the teacher's mistakes too.
+
+### Which diffusion model
+`projects.dreamTrained.decision.diffusion`
+
+which diffusion model draws?
+
+### Stable Diffusion 1.5
+`projects.dreamTrained.diffusion.sd15`
+
+Stable Diffusion 1.5
+
+### Stable Diffusion 1.5, about
+`projects.dreamTrained.diffusion.sd15.about`
+
+Draws from words only, so the cards would reach it through the reading's picture sentence. 4 GB; CreativeML OpenRAIL-M, a licence with use limits.
+
+### Stable Diffusion 1.5, why not yet
+`projects.dreamTrained.diffusion.sd15.off`
+
+Not in Variable Machine yet: it needs its own drawing and style training.
+
+### FLUX.1 schnell
+`projects.dreamTrained.diffusion.flux`
+
+FLUX.1 schnell
+
+### FLUX.1 schnell, about
+`projects.dreamTrained.diffusion.flux.about`
+
+Draws from words, better than either; Apache 2.0. 12 billion weights, about 24 GB on disk.
+
+### FLUX.1 schnell, why not yet
+`projects.dreamTrained.diffusion.flux.off`
+
+Too big to train a style on with 32 GB of memory, and slow to draw 256 combinations with.
+
+### Which style
+`projects.dreamTrained.decision.style`
+
+in whose style are the variations drawn?
+
+### No style
+`projects.dreamTrained.style.none`
+
+Kandinsky's own
+
+### No style, about
+`projects.dreamTrained.style.none.about`
+
+The variations look like the cards, mixed. Nothing to train.
+
+### From drawings
+`projects.dreamTrained.style.drawings`
+
+from drawings
+
+### From drawings, about
+`projects.dreamTrained.style.drawings.about`
+
+Someone's own drawings, 12 or more, become a latent image; latent train teaches Kandinsky's decoder their look (about 20 minutes), and every variation is drawn with it.
+
+### The drawings' set
+`projects.dreamTrained.style.set`
+
+drawings
+
+### The drawings, the note
+`projects.dreamTrained.style.note`
+
+Upload the drawings at the drawings step, into this set. Photographs of drawings work; crop them to the drawing. To try it first, name a set starting demo (demo-drawings): the step then draws 30 demo drawings in one ink style.
+
+### The drawings view
+`projects.dreamTrained.view.drawings`
+
+{n} drawings in images/{set}: 12 at the least, 30 or more and the latent image has axes too.
+
+## The dream room
+
+### The room, when a reading fails
+`projects.dream.failed`
+
+The reading didn't come back. The terminal on the Projects tab says why: a model or a style may not be made yet.
+
+### The room, for a screen reader
+`projects.dream.roomLabel`
+
+dream reading room
+
+### What the room asks
+`projects.dream.ask`
+
+Think of a dream. Choose one card in each row: who, what, when, where.
+
+### The words box
+`projects.dream.words`
+
+a few words of your dream (you can leave this empty)
+
+### The button to read
+`projects.dream.read`
+
+read my dream
+
+### Before every row has a card
+`projects.dream.pickAll`
+
+a card in each row
+
+### While it answers
+`projects.dream.waiting`
+
+reading the texts…
+
+### The button to start again
+`projects.dream.again`
+
+another dream
+
+### When the room has nothing to show
+`projects.dream.none`
+
+no dream installation called {name}: make its deck on the projects tab first
+
+### Under the reading
+`projects.dream.note`
+
+Read from the texts the artist chose, by a small language model. It is what they say, not what will happen.
+
 ## Image moods
 
 ### Name

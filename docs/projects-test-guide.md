@@ -22,7 +22,85 @@ Words in angle brackets, like `<table>`, are names you choose or that the page f
 
 ---
 
-## 1. Latent image
+## 1. Dream reading
+
+**Makes:** an installation for a student's dream project. Sixteen cards: four for each quality, who (誰), what (什麼), when (何時), where (何地). A visitor chooses one card of each, a combination (256 of them). Each combination has an interpretation, written by a language model from the guide texts the student chose, and variations drawn by Kandinsky 2.2. Plan: `docs/dream-card-plan.md`; sources: `docs/dream-reading.md`.
+
+It is a **walkthrough**: on the Projects tab, the dream reading's box opens project mode. The Start map unfolds into the dream's schematic; the decisions come first; then all eight steps on one long page, each with its command and its own view.
+
+- **Time:** with the demo deck, about 15 minutes to a first combination (6 to draw the deck); then about 2 hours to interpret all 256 and 3 to draw them, which can run overnight and stop and start.
+- **Disk:** Kandinsky 9 GB, its prior 6.9 GB (for the demo deck, and for drawing with the interpretation), SigLIP 214 MB; `qwen3:4b` 2.5 GB and `nomic-embed-text` 274 MB in Ollama; torch about 1 GB. On Kevin's Mac the two Kandinsky folders are on KP 512, linked from `workspace/tools/`.
+- **Memory:** a Mac with 16 GB or more.
+- **Privacy:** a visitor's words stay in `workspace/dreams/<name>/` on this computer; every model runs locally.
+
+**The decisions** (top of the page). Change one and watch the schematic and the steps change:
+
+| Decision | Try | Check |
+|---|---|---|
+| where the cards come from | her own pictures, then the demo deck | Her own: four set pickers appear, and step 2 becomes an upload. Demo: step 2 runs `dream cards dream-demo`, and **kandinsky-prior** lights in MODELS |
+| the texts to interpret with | tick Freud | Step 4 adds `data raw gutenberg 66048 freud-dreams` if it isn't brought in; step 5's command adds `raw/freud-dreams` |
+| which models read | the writer `none` | The writer's box in MODELS goes faint; steps 6 and 7 add `--model none` |
+| how the variations are drawn | the cards and the interpretation | **kandinsky-prior** lights, and its wire runs to VARIATIONS; the draw commands add `--with prior` |
+| how many variations | 4 | `--variations 4`; the time shown for all 256 doubles |
+| when | in the room only | Step 7 (all of them) disappears: the route has 7 steps |
+| the visitor's own words | read into the interpretation | Step 8's `dream respond` adds `--read-words` |
+
+**The steps** (default decisions: the demo deck; the Zhougong jiemeng, Wang Fu and the Liezi in Giles's English; `qwen3:4b`; two variations from the cards; all ahead):
+
+| # | Box | Do | Command | Check |
+|---|---|---|---|---|
+| 1 | models | get what is missing | `model get kandinsky`, `model get siglip`, `model get kandinsky-prior`, `ollama pull nomic-embed-text`, `ollama pull qwen3:4b` | The step lists the five and turns done when all are here |
+| 2 | cards | draw the demo deck (or, with her own pictures, upload each quality's pictures in the step's four rows) | `dream cards dream-demo` | About 6 minutes. Four rows fill in: an old woman in a dark blue robe, a child with a paper lantern, a white snake, a monk; a boat, a bronze mirror, a red candle, a comb; a full moon, snow at dusk, summer rain, sunrise; a river, a temple courtyard, a mountain path, a kitchen. One ink-and-watercolour style |
+| 3 | deck | make the deck | `dream deck dream --who images/dream-demo-who --what … --when … --where …` | The step shows the sixteen cards, each with three glossary words (the snake: *a snake* 蛇; the moon: *the moon* 月). It says **256 combinations** |
+| 4 | guide texts | bring in the library texts not here yet; upload her own writing (.txt or .md) in the step | `data raw txt …` for each | Her upload appears in the decision's list, ticked, and in step 5's command as `uploads/<file>` |
+| 5 | passages | cut and measure the guide texts | `dream guide dream raw/zhougong-jiemeng raw/wangfu-menglie raw/liezi-dreams` | It says the Zhougong jiemeng is a dream book (looked up by the glossary) and how many passages each other text has |
+| 6 | interpret | pick a card in each row, then run both commands | `dream interpret dream --combination 1-1-1-1`, `dream draw dream --combination 1-1-1-1` | About 25 s and 40 s. The step shows the two variations, the reading in English and Chinese, the picture sentence, and the passages (the ones used marked). **open its page** shows the same, on its own |
+| 7 | variations | make all 256, before the show | `dream interpret dream --all`, `dream draw dream --all` | Each line says how long is left. Stop it and run it again: what is made is kept. The step's result counts them |
+| 8 | the room | try a visitor, then **open the room** | `dream choose dream --who 1 --what 2 --when 3 --where 4`, `dream respond dream` | Respond says *interpreted ahead of time* or *interpreting now*. The room: four rows of four cards; a card in each row turns green and dims the others; **read my dream**; the four cards, the variations, the reading in Chinese and English; **another dream** |
+
+**Tested** on port 4843 on 2026-11-20 with the demo deck and the default decisions, every step through the tool. `--all` was run for eight combinations, stopped with the page's stop, and run again: it said `8 interpreted already, kept; 248 to go`. In the room, combination 3-1-1-2 (made ahead) came back in about 10 s; 1-3-2-4 with the words *my grandmother was cooking but the fire would not light* was made live in about 90 s, its reading drawn from the Zhougong jiemeng, the Liezi and Wang Fu.
+
+---
+
+## 2. Dream reader, trained (訓練解夢)
+
+**Makes:** the dream reading's installation, with every part made by the student. Same folder, deck and guide texts as card 1 (`workspace/dreams/dream`). A **teacher** model (`qwen3:4b`) reads all 256 combinations; each reading becomes a **row** (the question asked and the teacher's answer, as JSON); a small **reader** model is trained on the rows and exported to Ollama, then reads all 256 again. A **style** trained from someone's drawings (a decoder LoRA for Kandinsky 2.2) draws the variations. Plan: `docs/dream-card-plan.md` §10.
+
+It is a walkthrough like card 1: the schematic adds a training lane (rows → train → export → share) and the drawings → style boxes.
+
+- **Time:** on top of card 1's steps: the teacher's 256 readings about 107 minutes; training the 0.5B reader about 40 minutes; the reader's 256 readings about 45 minutes; 30 demo drawings 8 minutes; the style 22 minutes; all 256 drawn again about 3 hours.
+- **Disk:** card 1's, plus the base model from Hugging Face (Qwen2.5 0.5B, 1 GB; 1.5B, 3 GB) and the exported reader in Ollama.
+
+**The decisions** (besides card 1's):
+
+| Decision | Try | Check |
+|---|---|---|
+| the teacher | `olmo2:7b` | Step 6 and step 7's `dream rows` add `--by olmo2:7b` |
+| the reader's base | Qwen2.5 1.5B | Step 8's `--base Qwen/Qwen2.5-1.5B-Instruct` |
+| the rows | keep at once | Step 7's `dream rows` adds `--keep`; with *read*, the drafts wait on the Data tab |
+| the diffusion model | the cards and the prior | Kandinsky only; SD 1.5 and FLUX.1 schnell show as choices that are off, with why |
+| the style | from drawings | Step 11 appears, with a set picker; step 12 adds `--style latents/<style>` |
+
+**The steps** (the default decisions; the drawings set `demo-drawings`):
+
+| # | Box | Do | Command | Check |
+|---|---|---|---|---|
+| 1–5 | models, cards, deck, texts, guide | as card 1 | | done if card 1 is |
+| 6 | the teacher reads | all 256 | `dream interpret dream --all --model qwen3:4b` | The step counts readings by the teacher |
+| 7 | rows | make rows; read and keep them on the Data tab; split | `dream rows dream dream-readings`, `data split dream-readings --valid 0.2` | The Data tab's drafts panel says the rows are readings, offers **make rows** (not the writer), and **keep** moves a row into train.jsonl |
+| 8 | train | train the reader | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072` | The loss falls; the adapter appears |
+| 9 | export | into Ollama | `export dream-reader` | It writes `fused/dream-reader/model.gguf` (Qwen's GGUF with the trained weights) and `ollama list` has dream-reader, 675 MB |
+| 10 | the reader reads | all 256 again | `dream interpret dream --all --again --model dream-reader` | The step's combination shows the reader's reading |
+| 11 | drawings → style | choose the drawings set in the decision (the style is named after it: demo-drawings → demo-style); upload drawings, or draw the demo set; make and train the style | `dream drawings demo-drawings`, `latent make demo-style images/demo-drawings`, `latent train demo-style` | The step shows the drawings; `latents/demo-style/lora.safetensors` exists |
+| 12 | variations | draw again in the style | `dream draw dream --all --style latents/demo-style --again` | The page says *in the style of* |
+| 13 | the room | open **#room/dream/trained** | `dream respond dream --model dream-reader --style latents/demo-style` | A live reading comes from the reader and is drawn in the style |
+| 14 | share | zip the reader and its rows | `zip adapters/dream-reader`, `zip data/dream-readings` | Both zips in workspace/shared, each with its manifest |
+
+**Tested** on port 4843 on 2026-11-20 and 21, every step through the tool: 246 rows (25 kept on the Data tab), split 197 / 49; the 0.5B reader trained 200 iterations in about 40 minutes (the set-aside loss lowest at 100: 1.24, then rising to 1.48, so 100 iterations is enough for this many rows); exported through the GGUF route; a reading in about 10 s against the teacher's 25; the demo style trained in 22 minutes; the trained room read 2-3-2-4 live and drew it in the style in about 80 s. The Projects card said 12 of 14 steps done before the two runs over all 256.
+
+---
+
+## 3. Latent image
 
 **Makes:** the latent image of what a person keeps (the picture 15 or more screenshots of their photo roll, or of their Instagram saved posts, stories or reels, hold without any one showing it), beside the pixel average; a decoder trained on the set; and a gallery page that sets each part beside the media theory it is like (Benjamin, Barthes, Baudrillard, Lacan), with JSON of every picture's distance and what it brings.
 
@@ -63,7 +141,7 @@ The steps by hand, for checking each one:
 
 **The room** (the walkthrough's last step): `latent room <name> <text> …` with Ollama running and nomic-embed-text pulled; open `#latent-room/<name>`; choose three pictures and press draw: about 50 s, then two drawings, the "nearer than" line, and two passages under each media-theory line. Choose the same three again: shown at once.
 
-## 2. Image moods
+## 4. Image moods
 
 **Makes:** a mood classifier (calm, lively, tense, sombre) for what a picture conveys, its score on pictures set aside, and a gallery page with CSV and JSON. **Time:** about 10 minutes, 2 of them embedding the texts. **Disk:** about 360 MB (encoder 204 MB, OASIS 88 MB zip plus 51 MB dataset). **Note:** OASIS includes unpleasant photos (a carcass, a crash); its licence is research use, so the results are for student projects only.
 
@@ -79,7 +157,7 @@ The steps by hand, for checking each one:
 | 8 | Image segmentation | Sort the gallery; press **open the gallery** on the card | `mood gallery oasis-moods-siglip images/aic-landscapes` | The page shows each picture's mood, confidence and reason; the passages differ from picture to picture; `moods.csv` and `moods.json` are beside it |
 | 9 | Share | Package and zip; in the unzipped folder, `sh get-encoder.sh`, then classify.py on a folder | `package oasis-moods-siglip`, `zip packages/oasis-moods-siglip` | A zip of about 120 KB; `classify.py` writes `moods/gallery.html` |
 
-## 3. Ask a table
+## 5. Ask a table
 
 **Makes:** a small model that turns a question into a query; the answer is counted from the table. **Time:** about 20 minutes, 9 of them training.
 
@@ -93,7 +171,7 @@ The steps by hand, for checking each one:
 | 6 | Chat | Ask three questions of your own, one with a place not in the table | — | The query and SQL show; the unknown place is refused with a list of real places, never answered with 0 |
 | 7 | Share | Package, then zip | `package <model>`, `zip packages/<model>` | The folder has `ask.js`, `demo.html` and the README; `node ask.js "how many …"` answers |
 
-## 4. Gesture controller
+## 6. Gesture controller
 
 **Makes:** a model trained on your own gestures, sent as OSC. **Time:** about 10 minutes. **Needs:** a camera, and TouchDesigner, Max or Pure Data listening on port 9000, or any OSC monitor.
 
@@ -105,7 +183,7 @@ The steps by hand, for checking each one:
 | 4 | Gesture | Train | `gesture train <set>` | Set-aside examples are mostly named right |
 | 5 | Gesture | Send | `gesture send <set> --port 9000` | The patch receives the gesture names |
 
-## 5. Cut-out tool
+## 7. Cut-out tool
 
 **Makes:** PNGs with a transparent background, each with a record. **Time:** about 5 minutes.
 
@@ -115,7 +193,7 @@ The steps by hand, for checking each one:
 | 2 | Look → segmentation | Bring in the example photos (or your own) | `look example classic-cv` | The photos show |
 | 3 | Look → segmentation | Cut one out | `look cutout images/classic-cv/<photo>` | A transparent PNG appears in outputs with its record |
 
-## 6. A character's voice
+## 8. A character's voice
 
 Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 
@@ -134,7 +212,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 3 | Train | Train on SmolLM2 | `train <adapter> --data <rows> --base <small>` | The run ends without an error |
 | 4 | Adapters → Chat | Export, then talk to it | `export <adapter>` | It sounds like the writer, and more than the base model does |
 
-## 7. Research bot
+## 9. Research bot
 
 **Makes:** a reading list, BibTeX, a library of what's been seen, and later a judge trained on your decisions. **Time:** about 15 minutes to the reading list; training adds about 10 minutes and needs about 2.2 GB of disk.
 

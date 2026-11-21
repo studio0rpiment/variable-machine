@@ -563,7 +563,7 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                   <Part id="data.drafts">
 <section className="mf-part" aria-label={say('data.drafts.title')}>
                     <h2 className="panel__title label mf-lead-plain">{say('data.drafts.title')}</h2>
-                    <DataDrafts dataset={current.name} train={files.train} />
+                    <DataDrafts dataset={current.name} train={files.train} dream={current.dream} />
                   </section>
 </Part>
                 )}

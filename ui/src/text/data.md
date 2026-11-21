@@ -275,6 +275,16 @@ drafts · a model writes many rows at once, you read each one
 
 A model reads your material a passage at a time and writes rows from it, ten to a call, into drafts.jsonl. Nothing goes into the set until you read a draft: keep it as it is, edit it and keep it, or reject it. Leave it running, and read them when it's done.
 
+### Drafts of dream readings
+`data.drafts.dream`
+
+These rows are the readings {by} wrote in workspace/{folder}: each is the question dream interpret asked and {by}'s answer. Read each one and keep or reject it. When more combinations are read, make their rows the same way.
+
+### Make dream rows
+`data.drafts.dreamRun`
+
+make rows
+
 ### Write from
 `data.drafts.from`
 

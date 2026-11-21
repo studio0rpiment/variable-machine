@@ -95,7 +95,7 @@ const licenseOf = (base: string, data: DatasetManifest | null) =>
 
 async function train(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
-  if (!only(opts, ['base', 'data', 'type', 'rank', 'layers', 'lr', 'iters', 'batch', 'max-seq', 'eval-every'], 'train')) return false
+  if (!only(opts, ['base', 'data', 'type', 'rank', 'layers', 'lr', 'iters', 'batch', 'max-seq', 'eval-every', 'keep'], 'train')) return false
   // A picture dataset trains a model that sees, with mlx-vlm and its own defaults.
   const early = opts.data ? await readJson<DatasetManifest>(ws('data', opts.data, 'manifest.json')) : null
   const sees = early?.format === 'picture'
@@ -117,9 +117,12 @@ async function train(args: string[], line: string): Promise<boolean> {
     batch: Number(opts.batch ?? d.batch),
     maxSeq: Number(opts['max-seq'] ?? d.maxSeq),
     evalEvery: Number(opts['eval-every'] ?? d.evalEvery),
+    ...(opts.keep === 'best' && { keep: 'best' as const }),
   }
+  if (opts.keep !== undefined && !['best', 'last'].includes(opts.keep)) return print('train: --keep is best (the step where the set-aside rows\' loss is lowest) or last'), false
+  if (sees && opts.keep === 'best') return print('train: --keep best is for language models (mlx-lm); a model that sees keeps its last step'), false
   if (!NAME.test(p.name) || !p.data) {
-    print('usage: train <adapter-name> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank 8] [--layers 8] [--lr 1e-4] [--iters 200] [--batch 4] [--max-seq 1024] [--eval-every 50]')
+    print('usage: train <adapter-name> --data <dataset> [--base <hf id>] [--type lora|dora|full] [--rank 8] [--layers 8] [--lr 1e-4] [--iters 200] [--batch 4] [--max-seq 1024] [--eval-every 50] [--keep best|last]')
     return false
   }
   if (!['lora', 'dora', 'full'].includes(p.type) || [p.rank, p.layers, p.lr, p.iters, p.batch, p.maxSeq, p.evalEvery].some((n) => !Number.isFinite(n) || n === 0)) {
@@ -167,6 +170,8 @@ async function train(args: string[], line: string): Promise<boolean> {
   const lossState = { iter: 0 }
   const started = Date.now()
   const losses: { iter: number; trainLoss?: number; valLoss?: number; tokensPerSec?: number }[] = []
+  // with --keep best: the step kept and its set-aside loss
+  let kept: { iter: number; valLoss: number } | null = null
   await fs.mkdir(runDir, { recursive: true })
   const lossFile = path.join(runDir, 'loss.jsonl')
   await fs.writeFile(lossFile, '')
@@ -214,6 +219,26 @@ async function train(args: string[], line: string): Promise<boolean> {
           broadcast({ type: 'pipeline.metric', runId, ...m })
         },
       },
+      ...(p.keep === 'best'
+        ? [
+            {
+              kind: 'do' as const,
+              display: `keep the step where the set-aside rows' loss is lowest`,
+              run: async () => {
+                // the check at step 1 is the base before training; a checkpoint is saved at every later check
+                const checks = losses.filter((l) => l.valLoss !== undefined && l.iter >= p.evalEvery && l.iter % p.evalEvery === 0)
+                const best = checks.reduce<(typeof checks)[number] | null>((a, l) => (!a || l.valLoss! < a.valLoss! ? l : a), null)
+                const last = checks.at(-1)
+                if (!best || !last) return print('  no set-aside checks to choose from; the last step is kept')
+                kept = { iter: best.iter, valLoss: best.valLoss! }
+                if (best.iter === last.iter) return print(`  the last step, ${last.iter}, has the lowest set-aside loss (${last.valLoss}): kept`)
+                const file = `${String(best.iter).padStart(7, '0')}_adapters.safetensors`
+                await fs.copyFile(ws('adapters', p.name, file), ws('adapters', p.name, 'adapters.safetensors'))
+                print(`  ◂ kept step ${best.iter} of ${last.iter}: set-aside loss ${best.valLoss}, against ${last.valLoss} at the end (${file} → adapters.safetensors)`)
+              },
+            },
+          ]
+        : []),
       {
         kind: 'do',
         display: `write manifests: workspace/adapters/${p.name}, workspace/hf/${p.base.replace('/', '--')}`,
@@ -236,6 +261,7 @@ async function train(args: string[], line: string): Promise<boolean> {
             scale: vlmConfig?.lora_parameters?.scale ?? 20,
             iters: p.iters,
             final: manifest(true).final,
+            ...(kept && { kept }),
             ...(sees && { sees: see!.name, trainedWith: 'mlx-vlm' }),
           }
           await writeJson(ws('adapters', p.name, 'manifest.json'), adapter)
@@ -515,8 +541,15 @@ function fuseStep(adapter: AdapterManifest, out: string, line: string): Step[] {
 }
 
 function registerSteps(o: { fused: string; model: string; quantize: Quantize; system?: string; base: string; adapter: string; license: string }): Step[] {
-  const template = HF_BASES.find((b) => b.id === o.base)?.template
+  const hf = HF_BASES.find((b) => b.id === o.base)
+  const template = hf?.template
+  // Ollama's safetensors import refuses some architectures (qwen2): their weights go into a copy of the makers' GGUF, already Q8_0
+  const gguf = hf?.gguf
+  if (gguf && o.quantize !== 'int8') print(`  note: ${o.base} goes to Ollama as its makers' Q8_0 GGUF; --quantize isn't used`)
   return [
+    ...(gguf
+      ? [{ kind: 'spawn' as const, argv: [...UV_SEES, 'python', 'python/variable_machine/gguf_export.py', '--fused', `workspace/fused/${o.fused}`, '--repo', gguf.repo, '--file', gguf.file, '--out', `workspace/fused/${o.fused}/model.gguf`], env: PY_ENV }]
+      : []),
     {
       kind: 'do',
       display: `write workspace/modelfiles/${o.model}.Modelfile`,
@@ -525,10 +558,10 @@ function registerSteps(o: { fused: string; model: string; quantize: Quantize; sy
         // a model trained on plain text continues what it's given: no chat template around the prompt
         const data = (await readJson<{ data?: string }>(ws('adapters', o.adapter, 'manifest.json')))?.data
         const text = data && (await readJson<DatasetManifest>(ws('data', data, 'manifest.json')))?.format === 'text'
-        await fs.writeFile(ws('modelfiles', `${o.model}.Modelfile`), registerModelfile({ ...o, template: text ? 'raw' : template }))
+        await fs.writeFile(ws('modelfiles', `${o.model}.Modelfile`), registerModelfile({ ...o, gguf: !!gguf, template: text ? 'raw' : template }))
       },
     },
-    { kind: 'spawn', argv: createArgs(o.model, o.quantize), env: { OLLAMA_HOST: OLLAMA_URL.origin } },
+    { kind: 'spawn', argv: createArgs(o.model, gguf ? 'none' : o.quantize), env: { OLLAMA_HOST: OLLAMA_URL.origin } },
     {
       kind: 'do',
       display: `ollama list  (refresh the runs-on inventory)`,
@@ -674,7 +707,7 @@ async function exportRecipe(args: string[], line: string) {
     })
   }
   const base = HF_BASES.find((b) => b.id === adapter.base)
-  if (base && base.architecture !== 'llama') print(`  note: ${adapter.base} is ${base.architecture}; Ollama's safetensors import may not support it`)
+  if (base && base.architecture !== 'llama' && !base.gguf) print(`  note: ${adapter.base} is ${base.architecture}; Ollama's safetensors import may not support it`)
   return runRecipe({
     recipe: 'export',
     params: { adapter: adapter.name, model, quantize },

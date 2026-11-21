@@ -21,6 +21,7 @@ import { packageCommand } from './package/index.ts'
 import { papersCommand } from './papers.ts'
 import { moodCommand } from './mood.ts'
 import { latentCommand } from './latent.ts'
+import { dreamCommand } from './dream.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -46,7 +47,7 @@ const HELP = `commands
   ls | cat | head | tail | wc <path>                   inside workspace/ only
   zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research|classifiers|latents>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research|classifiers|latents|dreams>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -77,6 +78,15 @@ const HELP = `commands
   latent walk <name> --to theme-1|picture-12|words|"a sentence"   an animation out from the latent image
   latent room <name> [<text> …]                   the installation's page, #latent-room/<name>, with passages of the texts beside it
   latent respond <name> --pick 3,7,12             a visitor's choice of pictures, drawn as their latent image (the room runs it)
+  dream cards <prefix>                            16 demo cards drawn from prompts (Kandinsky's prior): workspace/images/<prefix>-who … -where
+  dream drawings <set>   30 demo drawings in one ink style, to train a style on (latent make, latent train)
+  dream deck <name> --who images/<set> --what … --when … --where …   a dream installation's deck, 4 cards a quality: workspace/dreams/<name>/
+  dream guide <name> raw/<text> [uploads/<file>.txt …]   the texts its combinations are interpreted with
+  dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none] [--again] [--chinese]   a combination's interpretation, from the guide texts
+  dream rows <name> <set> [--by qwen3:4b] [--keep]   the readings as training rows for a dream reader of your own
+  dream draw <name> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior] [--style latents/<name>] [--again]   its variations, drawn by Kandinsky
+  dream choose <name> --who n --what n --when n --where n [--dream "…"]   a visitor's combination
+  dream respond <name> [--read-words] [--chinese]           its interpretation and variations, made ahead or now; the room page is #room/<name>
   model get siglip                                a picture encoder for image moods: workspace/tools/siglip/
   mood describe <dataset> --texts raw/<text> …    each mood's prompt and sentences from the texts: data/<dataset>/labels.md
   mood train <name> --data <picture dataset>      a mood classifier, checked on rows set aside: workspace/classifiers/<name>/
@@ -172,6 +182,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'papers') return papersCommand(args, line)
   if (cmd === 'mood') return moodCommand(args, line)
   if (cmd === 'latent') return latentCommand(args, line)
+  if (cmd === 'dream') return dreamCommand(args, line)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)
