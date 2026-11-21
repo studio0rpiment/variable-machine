@@ -62,7 +62,7 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 
 ---
 
-## 2. Dream reader, trained (訓練解夢)
+## 2. Dream reader, trained
 
 **Makes:** the dream reading's installation, with every part made by the student. Same folder, deck and guide texts as card 1 (`workspace/dreams/dream`). A **teacher** model (`qwen3:4b`) reads all 256 combinations; each reading becomes a **row** (the question asked and the teacher's answer, as JSON); a small **reader** model is trained on the rows and exported to Ollama, then reads all 256 again. A **style** trained from someone's drawings (a decoder LoRA for Kandinsky 2.2) draws the variations. Plan: `docs/dream-card-plan.md` §10.
 
@@ -88,7 +88,7 @@ It is a walkthrough like card 1: the schematic adds a training lane (rows → tr
 | 1–5 | models, cards, deck, texts, guide | as card 1 | | done if card 1 is |
 | 6 | the teacher reads | all 256 | `dream interpret dream --all --model qwen3:4b` | The step counts readings by the teacher |
 | 7 | rows | make rows; read and keep them on the Data tab; split | `dream rows dream dream-readings`, `data split dream-readings --valid 0.2` | The Data tab's drafts panel says the rows are readings, offers **make rows** (not the writer), and **keep** moves a row into train.jsonl |
-| 8 | train | train the reader | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072` | The loss falls; the adapter appears |
+| 8 | train | train the reader | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072 --iters 400 --keep best` | The loss falls; the step says which step it kept (the lowest set-aside loss) and the adapter appears |
 | 9 | export | into Ollama | `export dream-reader` | It writes `fused/dream-reader/model.gguf` (Qwen's GGUF with the trained weights) and `ollama list` has dream-reader, 675 MB |
 | 10 | the reader reads | all 256 again | `dream interpret dream --all --again --model dream-reader` | The step's combination shows the reader's reading |
 | 11 | drawings → style | choose the drawings set in the decision (the style is named after it: demo-drawings → demo-style); upload drawings, or draw the demo set; make and train the style | `dream drawings demo-drawings`, `latent make demo-style images/demo-drawings`, `latent train demo-style` | The step shows the drawings; `latents/demo-style/lora.safetensors` exists |

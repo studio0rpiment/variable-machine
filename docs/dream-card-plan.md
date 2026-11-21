@@ -18,7 +18,7 @@ The sources are in [`dream-reading.md`](dream-reading.md). The models are Kandin
 | **combination** | one card of each quality. 4 × 4 × 4 × 4 = 256. Named by its cards' numbers, who-what-when-where: `1-3-2-4` |
 | **guide texts** | the texts the combinations are interpreted with, chosen by the student: dream books, other texts, her own writing |
 | **passage** | a piece of a guide text, about a paragraph; for the *Zhougong jiemeng*, one line (a dream and its omen) |
-| **interpretation** | what a language model writes for a combination, from the passages nearest its four cards, in English and Traditional Chinese |
+| **interpretation** | what a language model writes for a combination, from the passages nearest its four cards, in English (and in Traditional Chinese with `--chinese`) |
 | **variation** | a picture a diffusion model draws for a combination |
 | **the room** | the full-screen page the installation shows |
 
@@ -84,8 +84,8 @@ Nothing is trained. The interpretation is **retrieval and reading**:
 1. **The *Zhougong jiemeng*** (周公解夢, 988 lines, public domain) is looked up through the glossary: for each card, the book's lines whose dream holds that card's characters. 蛇入門主得財: "a snake comes in at the gate: you will gain wealth".
 2. **Every other guide text** is cut into passages and measured by an embedding model in Ollama (`nomic-embed-text`, Apache 2.0, 274 MB). A combination's four cards, in words, find the nearest passages: two from each text, eight in all.
 3. **A language model** (`qwen3:4b`, Apache 2.0) is given the four cards and the numbered passages, and writes:
-   - five sentences in English, reading the four cards together as one dream and saying which text each idea comes from;
-   - the same in Traditional Chinese (left out if it comes back partly in English, as it did once in testing);
+   - one sentence for each guide text, on what its passages say about the dream (`by_text`), and one joining them (`together`), in English;
+   - with `--chinese`, the same in Traditional Chinese (a sentence that comes back partly in English is left out). Off by default since 2026-11-21: the project is for the States, so the readings and the room are in English;
    - one **picture sentence**, for the drawing;
    - the numbers of the passages it used.
 4. Each combination's page prints all of it: the cards, the variations, the interpretation, and every passage, the ones used marked.
@@ -146,6 +146,7 @@ What testing changed:
 - the dream book's lines took every place for passages (two a card); now one a card, so the other texts are heard;
 - diffusers' `interpolate` takes a tensor as a picture's pixels, not as Kandinsky's numbers, so the mix with the sentence is done in `dream.py`;
 - a Chinese sentence with English words in it is left out, not the whole reading;
+- qwen3:4b gave `by_text` as an object keyed by the texts' names, not the list the prompt asks for, in 163 of 256 English readings; those readings had lost every sentence but the last. `dream.py` now turns either form into the list, and `dream interpret --all` mends readings made before (without asking the model again);
 - a card with a title is described by its title alone: SigLIP's second and third words can be wrong (an ox for the snake), and the model repeated them.
 
 **Not built:** a LoRA on her cards; a server that keeps Kandinsky loaded between visitors (each response loads it, about 25 s); editing an interpretation by hand in the page (she can edit `interpretation.json`, and the room shows it).
@@ -156,7 +157,7 @@ Added 2026-11-20, on Kevin's brief after seeing the room:
 
 > I love that we have a version of the final, and the Kandinsky model is awesome. But we want the user to be able to make all the combinations themselves, as well as making the choices about which models to use, how to train them with the texts we have, and the different diffusion models as well. Then maybe providing possible output styles from someone's own drawings.
 
-The first card (*dream reading*) stays as it is: it is the installation made with ready-made models. The second card, **dream reader, trained · 訓練解夢**, makes the same installation with models the student trains, through Variable Machine's own tabs, as the research bot's card does. It shares the dream folder, the deck and the guide texts with the first card.
+The first card (*dream reading*) stays as it is: it is the installation made with ready-made models. The second card, **dream reader, trained**, makes the same installation with models the student trains, through Variable Machine's own tabs, as the research bot's card does. It shares the dream folder, the deck and the guide texts with the first card.
 
 **The words it adds.**
 - The **teacher** is the ready-made language model (qwen3:4b by default) that interprets every combination first.
