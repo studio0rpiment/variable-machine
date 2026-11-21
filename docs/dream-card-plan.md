@@ -18,7 +18,7 @@ The sources are in [`dream-reading.md`](dream-reading.md). The models are Kandin
 | **combination** | one card of each quality. 4 × 4 × 4 × 4 = 256. Named by its cards' numbers, who-what-when-where: `1-3-2-4` |
 | **guide texts** | the texts the combinations are interpreted with, chosen by the student: dream books, other texts, her own writing |
 | **passage** | a piece of a guide text, about a paragraph; for the *Zhougong jiemeng*, one line (a dream and its omen) |
-| **interpretation** | what a language model writes for a combination, from the passages nearest its four cards, in English and Traditional Chinese |
+| **interpretation** | what a language model writes for a combination, from the passages nearest its four cards, in English (and in Traditional Chinese with `--chinese`) |
 | **variation** | a picture a diffusion model draws for a combination |
 | **the room** | the full-screen page the installation shows |
 
@@ -84,8 +84,8 @@ Nothing is trained. The interpretation is **retrieval and reading**:
 1. **The *Zhougong jiemeng*** (周公解夢, 988 lines, public domain) is looked up through the glossary: for each card, the book's lines whose dream holds that card's characters. 蛇入門主得財: "a snake comes in at the gate: you will gain wealth".
 2. **Every other guide text** is cut into passages and measured by an embedding model in Ollama (`nomic-embed-text`, Apache 2.0, 274 MB). A combination's four cards, in words, find the nearest passages: two from each text, eight in all.
 3. **A language model** (`qwen3:4b`, Apache 2.0) is given the four cards and the numbered passages, and writes:
-   - five sentences in English, reading the four cards together as one dream and saying which text each idea comes from;
-   - the same in Traditional Chinese (left out if it comes back partly in English, as it did once in testing);
+   - one sentence for each guide text, on what its passages say about the dream (`by_text`), and one joining them (`together`), in English;
+   - with `--chinese`, the same in Traditional Chinese (a sentence that comes back partly in English is left out). Off by default since 2026-11-21: the project is for the States, so the readings and the room are in English;
    - one **picture sentence**, for the drawing;
    - the numbers of the passages it used.
 4. Each combination's page prints all of it: the cards, the variations, the interpretation, and every passage, the ones used marked.
@@ -146,6 +146,7 @@ What testing changed:
 - the dream book's lines took every place for passages (two a card); now one a card, so the other texts are heard;
 - diffusers' `interpolate` takes a tensor as a picture's pixels, not as Kandinsky's numbers, so the mix with the sentence is done in `dream.py`;
 - a Chinese sentence with English words in it is left out, not the whole reading;
+- qwen3:4b gave `by_text` as an object keyed by the texts' names, not the list the prompt asks for, in 163 of 256 English readings; those readings had lost every sentence but the last. `dream.py` now turns either form into the list, and `dream interpret --all` mends readings made before (without asking the model again);
 - a card with a title is described by its title alone: SigLIP's second and third words can be wrong (an ox for the snake), and the model repeated them.
 
 **Not built:** a LoRA on her cards; a server that keeps Kandinsky loaded between visitors (each response loads it, about 25 s); editing an interpretation by hand in the page (she can edit `interpretation.json`, and the room shows it).
@@ -156,7 +157,7 @@ Added 2026-11-20, on Kevin's brief after seeing the room:
 
 > I love that we have a version of the final, and the Kandinsky model is awesome. But we want the user to be able to make all the combinations themselves, as well as making the choices about which models to use, how to train them with the texts we have, and the different diffusion models as well. Then maybe providing possible output styles from someone's own drawings.
 
-The first card (*dream reading*) stays as it is: it is the installation made with ready-made models. The second card, **dream reader, trained · 訓練解夢**, makes the same installation with models the student trains, through Variable Machine's own tabs, as the research bot's card does. It shares the dream folder, the deck and the guide texts with the first card.
+The first card (*dream reading*) stays as it is: it is the installation made with ready-made models. The second card, **dream reader, trained**, makes the same installation with models the student trains, through Variable Machine's own tabs, as the research bot's card does. It shares the dream folder, the deck and the guide texts with the first card.
 
 **The words it adds.**
 - The **teacher** is the ready-made language model (qwen3:4b by default) that interprets every combination first.
@@ -171,7 +172,7 @@ The first card (*dream reading*) stays as it is: it is the installation made wit
 | 1–5 | models, cards, deck, guide texts, passages | the first card's own | the deck and the guide texts |
 | 6 | interpret | `dream interpret dream --all --model qwen3:4b` | all 256 readings by the teacher, each keeping its question and answer |
 | 7 | rows | `dream rows dream dream-readings [--keep]`, `data split dream-readings --valid 0.2` | the readings as drafts to keep, edit or reject on the Data tab (or, with `--keep`, kept unread) |
-| 8 | train | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072` | the reader (a LoRA on the base) |
+| 8 | train | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072 --iters 200 --keep best` | the reader (a LoRA on the base) |
 | 9 | export | `export dream-reader` | the reader in Ollama |
 | 10 | interpret | `dream interpret dream --all --again --model dream-reader` | all 256 readings again, by her reader |
 | 11 | drawings | `[dream drawings demo-drawings]`, `latent make her-style images/her-drawings`, `latent train her-style` | the style |
@@ -181,7 +182,9 @@ The first card (*dream reading*) stays as it is: it is the installation made wit
 
 **The decisions it adds:** the teacher (qwen3:4b or qwen3:1.7b); the reader's base; whether every row is read before it is kept; which diffusion model draws; whose style.
 
-**The reader's base.** Variable Machine trained SmolLM2 only, which writes English. The reading is in English and Chinese, so two Apache 2.0 bases that write Chinese were added to the training bases (`helper/src/shared/library.ts`): Qwen2.5 0.5B Instruct (the default) and 1.5B Instruct. Qwen2.5 3B is under the Qwen Research licence, so it is not offered. `--max-seq 3072`: a row is about 2,000 tokens (4,700 characters of question, with the Chinese answer).
+**The reader's base.** Variable Machine trained SmolLM2 only, which writes English. When the reading was in English and Chinese, two Apache 2.0 bases that write Chinese were added to the training bases (`helper/src/shared/library.ts`): Qwen2.5 0.5B Instruct and 1.5B Instruct. Qwen2.5 3B is under the Qwen Research licence, so it is not offered. The card offers Qwen2.5 0.5B (the default) and SmolLM2 360M; the 1.5B is left out (see Tested, 2026-11-21). `--max-seq 3072`: a row is about 2,000 tokens.
+
+**How long to train.** `--keep best` (in `train`, for language models) saves the adapter at every set-aside check and keeps the step where the set-aside rows' loss is lowest. Kevin's rule for the number of steps: the steps that make the most convincing reader. In three runs of the 0.5B the set-aside loss was lowest at step 100 (about two passes over 205 rows) and rose after it, so the card trains 200 steps and keeps the best.
 
 **The diffusion models.** Kandinsky 2.2 is the one that can be trained here (`latent train`), from the cards or with the prior. Stable Diffusion 1.5 (CreativeML OpenRAIL-M, words only) and FLUX.1 schnell (Apache 2.0, 12 billion weights) are listed as choices with why they are not offered yet: the first needs its own drawing and style training; the second is too big to train a style on with 32 GB.
 
@@ -200,4 +203,13 @@ The first card (*dream reading*) stays as it is: it is the installation made wit
 - The style: 30 demo drawings (8 min), `latent make` 1 min, `latent train` 600 steps 22 min. Drawing in the style keeps the cards' colour and composition and adds the drawings' pen hatching: a decoder LoRA changes how a picture is rendered, not what is in it.
 - The trained room (2-3-2-4, no words): read live by the reader and drawn in the style in about 80 s.
 - Found and fixed: the style's name now follows the drawings set (`demo-drawings` → `demo-style`), so the room no longer asked for a style not trained; the room says when a reading fails; a dream set's drafts panel offers `dream rows` in place of the writer; step 14 zips instead of `package`.
+
+**Tested again, in English,** 2026-11-21 (Kevin: "we don't have to use Chinese unless crucial; this is for a project in the States"; and for the steps, "the steps that are required to create the most convincing outcome"):
+- The teacher's 256 readings in English: about 25 s each. qwen3:4b gave `by_text` as an object in 163 of them, so those readings had lost their sentence for each text; mended (§9) and the rows made again, every answer in one form.
+- Rows: 256, split 205 / 51.
+- **Qwen2.5 0.5B**, batch 4, 200 steps: about 35 minutes. Set-aside loss 2.20 → 1.22 (50) → **1.11 (100)** → 1.26 (150) → 1.42 (200); step 100 kept.
+- **Qwen2.5 1.5B**: batch 4 ran out of memory (32 GB). At batch 1, 600 steps (about 75 minutes), it diverged: 1.86 at the start, 6.11 at step 50, its best 2.52 (step 550), still worse than untrained. A lower learning rate might train it; not tried. Left out of the card.
+- Compared with the teacher on the 51 set-aside combinations (the reader's answer to the question the teacher was asked): the 0.5B answered in valid JSON, in the teacher's form, naming every text, 51 of 51, in 2.7 s a reading (the teacher about 25 s); its joining sentence 25 words (the teacher's 26). The 1.5B: 39 of 51 valid JSON, 1 naming every text, none with a picture sentence, 27 s a reading.
+- Read beside the teacher, the 0.5B keeps to the cards and the texts' names and writes in the teacher's manner; it repeats itself more ("careful preparation and inner harmony" twice in one reading) and is less specific about each text's passages.
+- Interrupted twice: a restart at step 45, and macOS stopping the GPU job at step 150 ("Impacting Interactivity", when the screen needed it). A stopped `train` keeps its saved steps; train again under a new name or move the folder to the Trash.
 

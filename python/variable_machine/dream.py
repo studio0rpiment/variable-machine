@@ -197,6 +197,25 @@ def text_of(v, sep: str = " ") -> str:
     return sep.join(str(x) for x in v) if isinstance(v, list) else str(v or "")
 
 
+def by_text_of(v) -> list[dict]:
+    """The answer's by_text as the prompt asks, a list of {text, sentence}. qwen3:4b gave an object keyed by the
+    texts' names in 163 of 256 English readings (2026-11-21); those sentences were lost from the reading."""
+    if isinstance(v, dict):
+        v = [{"text": x.get("text") or k, "sentence": x.get("sentence", "")} if isinstance(x, dict) else {"text": k, "sentence": x} for k, x in v.items()]
+    return [{"text": text_of(x.get("text", "")), "sentence": text_of(x.get("sentence", ""))} for x in v if isinstance(x, dict)] if isinstance(v, list) else []
+
+
+def mend(r: dict) -> bool:
+    """An interpretation made before by_text_of: its answer and reading made again from what the model said. True if changed."""
+    a = r.get("answer")
+    if not a or isinstance(a.get("by_text"), list):
+        return False
+    a["by_text"] = by_text_of(a.get("by_text"))
+    parts = [x["sentence"] for x in a["by_text"]] + [text_of(a.get("together", ""))]
+    r["reading"] = " ".join(dict.fromkeys(p.strip() for p in parts if p.strip()))
+    return True
+
+
 def chinese(text: str) -> str:
     """The Chinese reading, sentence by sentence: a small model sometimes leaves English words in it. A sentence with
     English in it is left out; if most of it was English, all of it is."""
@@ -530,9 +549,10 @@ def interpret_one(out: Path, d: dict, g: dict, c: dict[str, int], model: str, wo
         )
         said = ask(model, asked)
     if said:
-        # the question and the model's own answer, as they were: dream rows makes training rows of them
+        # the question and the model's own answer (by_text as a list): dream rows makes training rows of them
+        said["by_text"] = by_text_of(said.get("by_text"))
         answer = {k: v for k, v in said.items() if k != "reading"}
-        parts = [text_of(x.get("sentence", "")) for x in said.get("by_text", []) if isinstance(x, dict)] + [text_of(said.get("together", ""))]
+        parts = [x["sentence"] for x in said["by_text"]] + [text_of(said.get("together", ""))]
         said["reading"] = " ".join(dict.fromkeys(p.strip() for p in parts if p.strip()))
     return {
         "combination": key_of(c),
@@ -569,8 +589,16 @@ def interpret(out: Path, key: str | None, every: bool, model: str, again: bool =
     combos = chosen(d, key, every)
     made = [c for c in combos if every and not again and (out / "combinations" / key_of(c) / "interpretation.json").exists()]
     combos = [c for c in combos if c not in made]
+    mended = 0
+    for c in made:
+        cdir = out / "combinations" / key_of(c)
+        r = json.loads((cdir / "interpretation.json").read_text(encoding="utf-8"))
+        if mend(r):
+            (cdir / "interpretation.json").write_text(json.dumps(r, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+            write_page(out, cdir)
+            mended += 1
     if made:
-        say(f"  {len(made)} interpreted already, kept; {len(combos)} to go")
+        say(f"  {len(made)} interpreted already, kept{f' ({mended} had by_text as an object: their reading is made again from it)' if mended else ''}; {len(combos)} to go")
     t0 = time.time()
     for k, c in enumerate(combos, 1):
         cdir = out / "combinations" / key_of(c)

@@ -62,21 +62,21 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 
 ---
 
-## 2. Dream reader, trained (訓練解夢)
+## 2. Dream reader, trained
 
 **Makes:** the dream reading's installation, with every part made by the student. Same folder, deck and guide texts as card 1 (`workspace/dreams/dream`). A **teacher** model (`qwen3:4b`) reads all 256 combinations; each reading becomes a **row** (the question asked and the teacher's answer, as JSON); a small **reader** model is trained on the rows and exported to Ollama, then reads all 256 again. A **style** trained from someone's drawings (a decoder LoRA for Kandinsky 2.2) draws the variations. Plan: `docs/dream-card-plan.md` §10.
 
 It is a walkthrough like card 1: the schematic adds a training lane (rows → train → export → share) and the drawings → style boxes.
 
-- **Time:** on top of card 1's steps: the teacher's 256 readings about 107 minutes; training the 0.5B reader about 40 minutes; the reader's 256 readings about 45 minutes; 30 demo drawings 8 minutes; the style 22 minutes; all 256 drawn again about 3 hours.
-- **Disk:** card 1's, plus the base model from Hugging Face (Qwen2.5 0.5B, 1 GB; 1.5B, 3 GB) and the exported reader in Ollama.
+- **Time:** on top of card 1's steps: the teacher's 256 readings about 107 minutes; training the 0.5B reader about 35 minutes; the reader's 256 readings about 45 minutes; 30 demo drawings 8 minutes; the style 22 minutes; all 256 drawn again about 3 hours.
+- **Disk:** card 1's, plus the base model from Hugging Face (Qwen2.5 0.5B, 1 GB) and the exported reader in Ollama.
 
 **The decisions** (besides card 1's):
 
 | Decision | Try | Check |
 |---|---|---|
 | the teacher | `olmo2:7b` | Step 6 and step 7's `dream rows` add `--by olmo2:7b` |
-| the reader's base | Qwen2.5 1.5B | Step 8's `--base Qwen/Qwen2.5-1.5B-Instruct` |
+| the reader's base | SmolLM2 360M | Step 8's `--base HuggingFaceTB/SmolLM2-360M-Instruct` (Qwen2.5 1.5B is not offered: it diverged at the batch that fits 32 GB) |
 | the rows | keep at once | Step 7's `dream rows` adds `--keep`; with *read*, the drafts wait on the Data tab |
 | the diffusion model | the cards and the prior | Kandinsky only; SD 1.5 and FLUX.1 schnell show as choices that are off, with why |
 | the style | from drawings | Step 11 appears, with a set picker; step 12 adds `--style latents/<style>` |
@@ -88,7 +88,7 @@ It is a walkthrough like card 1: the schematic adds a training lane (rows → tr
 | 1–5 | models, cards, deck, texts, guide | as card 1 | | done if card 1 is |
 | 6 | the teacher reads | all 256 | `dream interpret dream --all --model qwen3:4b` | The step counts readings by the teacher |
 | 7 | rows | make rows; read and keep them on the Data tab; split | `dream rows dream dream-readings`, `data split dream-readings --valid 0.2` | The Data tab's drafts panel says the rows are readings, offers **make rows** (not the writer), and **keep** moves a row into train.jsonl |
-| 8 | train | train the reader | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072` | The loss falls; the adapter appears |
+| 8 | train | train the reader | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072 --iters 200 --keep best` | The loss falls; the step says which step it kept (the lowest set-aside loss) and the adapter appears |
 | 9 | export | into Ollama | `export dream-reader` | It writes `fused/dream-reader/model.gguf` (Qwen's GGUF with the trained weights) and `ollama list` has dream-reader, 675 MB |
 | 10 | the reader reads | all 256 again | `dream interpret dream --all --again --model dream-reader` | The step's combination shows the reader's reading |
 | 11 | drawings → style | choose the drawings set in the decision (the style is named after it: demo-drawings → demo-style); upload drawings, or draw the demo set; make and train the style | `dream drawings demo-drawings`, `latent make demo-style images/demo-drawings`, `latent train demo-style` | The step shows the drawings; `latents/demo-style/lora.safetensors` exists |
@@ -97,6 +97,8 @@ It is a walkthrough like card 1: the schematic adds a training lane (rows → tr
 | 14 | share | zip the reader and its rows | `zip adapters/dream-reader`, `zip data/dream-readings` | Both zips in workspace/shared, each with its manifest |
 
 **Tested** on port 4843 on 2026-11-20 and 21, every step through the tool: 246 rows (25 kept on the Data tab), split 197 / 49; the 0.5B reader trained 200 iterations in about 40 minutes (the set-aside loss lowest at 100: 1.24, then rising to 1.48, so 100 iterations is enough for this many rows); exported through the GGUF route; a reading in about 10 s against the teacher's 25; the demo style trained in 22 minutes; the trained room read 2-3-2-4 live and drew it in the style in about 80 s. The Projects card said 12 of 14 steps done before the two runs over all 256.
+
+**Tested again, in English,** 2026-11-21: 256 rows, split 205 / 51; the 0.5B trained 200 steps in about 35 minutes and kept step 100 (set-aside loss 1.11, 1.42 at the end); on the 51 set-aside combinations it answered in the teacher's form, naming every text, 51 of 51, in 2.7 s a reading. The 1.5B ran out of memory at batch 4 and diverged at batch 1, so the card doesn't offer it.
 
 ---
 

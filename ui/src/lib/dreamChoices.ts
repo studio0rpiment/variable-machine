@@ -26,7 +26,9 @@ export const WRITERS = ['qwen3:4b', 'qwen3:1.7b', 'none']
 /** The models that can find a combination's nearest passages. */
 export const EMBEDDERS = ['nomic-embed-text', 'mxbai-embed-large']
 /** The trained dream reader: the bases it can be trained from (all Apache 2.0); the Qwen2.5 bases write Chinese, SmolLM2 English only. */
-export const READER_BASES = ['Qwen/Qwen2.5-0.5B-Instruct', 'Qwen/Qwen2.5-1.5B-Instruct', 'HuggingFaceTB/SmolLM2-360M-Instruct']
+// Qwen2.5 1.5B is left out (2026-11-21): at batch 1, the only size that fits 32 GB with these rows, it diverged
+// (set-aside loss 1.86 → 6.1 by step 50) and wrote no usable reading. It is in the training bases for other uses
+export const READER_BASES = ['Qwen/Qwen2.5-0.5B-Instruct', 'HuggingFaceTB/SmolLM2-360M-Instruct']
 /** How the trained reader's rows are read: each one read on the Data tab first, or all kept unread. */
 export type Rows = 'read' | 'keep'
 /** The style of the variations: Kandinsky as it is, or with a LoRA trained on someone's own drawings. */

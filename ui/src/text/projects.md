@@ -963,7 +963,7 @@ the reader
 ### The base, what it does
 `projects.dreamTrained.base.does`
 
-the small model you train: all three write English; Qwen2.5 writes Chinese too
+the small model you train: both write English; Qwen2.5 writes Chinese too
 
 ### A base, on hover
 `projects.dreamTrained.base.title`
