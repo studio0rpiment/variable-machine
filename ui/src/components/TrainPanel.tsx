@@ -160,6 +160,12 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
               {kind === 'text' ? ' · learns to write rows like the table\'s: what it writes are invented records, never real ones' : ''}
             </span>
           )}
+          {sees && !!chosen?.mood && (
+            <span className="label label--muted">
+              these rows are moods: or train a mood classifier on them instead, quicker and on any Mac (the image moods project) ·{' '}
+              <CommandPreview command={joinWords(['mood', 'train', `${chosen.name}-siglip`, '--data', chosen.name])} onRun={() => void runCommand(joinWords(['mood', 'train', `${chosen.name}-siglip`, '--data', chosen.name]))} label="train a mood classifier" />
+            </span>
+          )}
           <label className="field">
             <span className="label label--muted">data</span>
             <Explained id="train.data">

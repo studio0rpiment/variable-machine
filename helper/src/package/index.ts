@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { build } from 'esbuild'
-import { WORKSPACE } from '../config.ts'
+import { ROOT, WORKSPACE } from '../config.ts'
 import { print } from '../hub.ts'
 import { formatBytes } from '../run.ts'
 import type { DatasetManifest } from '../shared/manifest.ts'
@@ -11,6 +11,7 @@ import { demoHtml, readme, researchReadme, type PackageInfo } from './pages.ts'
 import { finalOf, type Decision, type ResearchManifest, type Seen } from '../shared/research.ts'
 import { EMBED, WRITER } from '../papers.ts'
 import type { ResearchConfig } from './research.ts'
+import { ENCODER_MODELS } from '../shared/kinds.ts'
 
 /**
  * `package <model>`: a folder to take a trained "ask the table" model into
@@ -126,12 +127,96 @@ async function researchPackage(model: string, mf: string, adapter: Adapter, data
   return true
 }
 
+/**
+ * `package <classifier>`: a mood classifier (mood train) as a folder: the
+ * classifier, its labels.md and check, mood.py and classify.py, and
+ * get-encoder.sh, which fetches SigLIP (about 214 MB) once, so the zip stays
+ * small. It runs with Python and four packages, no Variable Machine.
+ */
+async function classifierPackage(name: string, line: string): Promise<boolean> {
+  const from = ws('classifiers', name)
+  const m = await readJson<{ license: string; data: string; labels: string[]; check?: { setAside: number; accuracy: number; macroF1: number; commonest: number; commonestLabel?: string; textsAlone: number; labelsAlone: number } }>(path.join(from, 'manifest.json'))
+  if (!m) return print(`package: workspace/classifiers/${name} has no manifest`), false
+  const dir = ws('packages', name)
+  if (await fs.access(dir).then(() => true, () => false)) return print(`package: workspace/packages/${name} already exists; trash packages/${name} first to make it again`), false
+  const enc = ENCODER_MODELS[0]
+  await fs.mkdir(path.join(dir, 'classifier'), { recursive: true })
+  for (const f of ['classifier.npz', 'passages.json', 'passages.npz', 'labels.md', 'check.json', 'manifest.json']) await fs.copyFile(path.join(from, f), path.join(dir, 'classifier', f))
+  await fs.copyFile(path.join(ROOT, 'python', 'variable_machine', 'mood.py'), path.join(dir, 'mood.py'))
+  await fs.writeFile(path.join(dir, 'classify.py'), CLASSIFY_PY)
+  await fs.writeFile(
+    path.join(dir, 'get-encoder.sh'),
+    `#!/bin/sh\n# SigLIP base (${enc.original}, ${enc.license}) as ONNX (${enc.repo}): about ${enc.mb} MB, once.\nset -e\ncd "$(dirname "$0")"\n${enc.files.map((f) => `curl -fL --create-dirs -o encoder/${f} https://huggingface.co/${enc.repo}/resolve/main/${f}`).join('\n')}\n`,
+    { mode: 0o755 },
+  )
+  const c = m.check
+  const pc = (x: number) => `${Math.round(x * 100)}%`
+  await fs.writeFile(
+    path.join(dir, 'README.md'),
+    `# ${name}: picture moods
+
+Sorts pictures into ${m.labels.join(', ')}: what a picture conveys by its look (colour, light, what is in it). It can't tell what anyone in a picture feels, and isn't meant to.
+
+- **How it works:** SigLIP (${enc.original}, ${enc.license}) turns each picture into 768 numbers; a small classifier (\`classifier/classifier.npz\`, numpy) trained on ${m.data} gives each mood a share of 100%. Each mood started from its sentences in \`classifier/labels.md\`, from the texts it was given.${c ? `\n- **How often it's right:** on ${c.setAside} pictures set aside, never trained on, ${pc(c.accuracy)} (balanced F1 ${c.macroF1.toFixed(2)}). Always guessing the commonest mood${c.commonestLabel ? ` (${c.commonestLabel})` : ''}: ${pc(c.commonest)}. The texts alone: ${pc(c.textsAlone)}. Pictures unlike its training pictures do worse.` : ''}
+- **The reason** each picture gets is what was measured in its colours, then the sentence from labels.md nearest the picture among that mood's sentences. The sentence is found by nearness, not written, and isn't why it chose.
+- **License:** ${m.license}. The texts' sentences in labels.md keep their own licenses (a Wikipedia sentence is CC BY-SA 4.0: credit the article).
+
+## Use it
+
+Once, in this folder (about ${enc.mb} MB):
+
+\`\`\`bash
+sh get-encoder.sh
+\`\`\`
+
+Then, with [uv](https://docs.astral.sh/uv/):
+
+\`\`\`bash
+uv run --with onnxruntime --with pillow --with tokenizers --with numpy python classify.py path/to/pictures
+\`\`\`
+
+or with pip: \`pip install onnxruntime pillow tokenizers numpy\`, then \`python classify.py path/to/pictures\`.
+
+It writes \`moods/gallery.html\` (a contact sheet), \`moods/moods.csv\` and \`moods/moods.json\`: for each picture its mood, confidence, every mood's share, the reason, and the colour measurements. Read \`moods.json\` from TouchDesigner, Max, p5.js or a web page.
+
+Made by Variable Machine: \`${line}\`
+`,
+  )
+  await fs.writeFile(
+    path.join(dir, 'manifest.json'),
+    JSON.stringify({ name, kind: 'package', created: new Date().toISOString(), license: m.license, inputs: [`workspace/classifiers/${name}`, `https://huggingface.co/${enc.repo}`], command: [line], classifier: name }, null, 2) + '\n',
+  )
+  print(`  ◂ workspace/packages/${name}: classifier/, mood.py, classify.py, get-encoder.sh, README.md`)
+  print(`  try it: sh workspace/packages/${name}/get-encoder.sh, then classify.py on a folder   ·   next: zip packages/${name}`)
+  return true
+}
+
+const CLASSIFY_PY = `"""Sort a folder of pictures by mood with the classifier in ./classifier.
+
+    python classify.py <folder of pictures> [<out folder>]
+
+Writes <out folder>/gallery.html, moods.csv and moods.json (default: ./moods).
+Needs the encoder once: sh get-encoder.sh. See README.md.
+"""
+import sys
+from pathlib import Path
+
+import mood
+
+here = Path(__file__).resolve().parent
+mood.ENCODER = here / "encoder"
+if len(sys.argv) not in (2, 3):
+    sys.exit(__doc__)
+mood.gallery(here / "classifier", Path(sys.argv[1]), Path(sys.argv[2] if len(sys.argv) == 3 else "moods"))
+`
+
 export async function packageCommand(args: string[], line: string): Promise<boolean> {
   const model = (args[0] ?? '').replace(/:latest$/, '')
   if (!NAME.test(model) || args.length !== 1) {
-    print('usage: package <model>   a trained "ask the table" model, or a relevance judge, as a folder to use in another project (then: zip packages/<model>)')
+    print('usage: package <model>   a trained "ask the table" model, a relevance judge or a mood classifier, as a folder to use in another project (then: zip packages/<model>)')
     return false
   }
+  if (await fs.access(ws('classifiers', model, 'classifier.npz')).then(() => true, () => false)) return classifierPackage(model, line)
   // the chain: Modelfile → adapter → dataset → table
   const mf = await fs.readFile(ws('modelfiles', `${model}.Modelfile`), 'utf8').catch(() => '')
   const adapterName = /made by Variable Machine from adapter (\S+)/.exec(mf)?.[1]

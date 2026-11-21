@@ -7,13 +7,13 @@ import { spawnStreamed } from './run.ts'
 
 /**
  * Sharing (plan §3: "sharing an artifact = zipping its folder").
- *   zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research>/<name>   → workspace/shared/<kind>-<name>.zip
+ *   zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>   → workspace/shared/<kind>-<name>.zip
  *   unzip <file.zip in workspace/shared>           → back into the right folder, by its manifest
  * macOS's own `ditto` does the zipping, so there is nothing to install.
  */
 
 /** What a manifest's kind means for where the folder lives. */
-const HOME_OF: Record<string, string> = { dataset: 'data', adapter: 'adapters', merge: 'merges', run: 'runs', fused: 'fused', images: 'images', audio: 'audio', gesture: 'gestures', package: 'packages', research: 'research' }
+const HOME_OF: Record<string, string> = { dataset: 'data', adapter: 'adapters', merge: 'merges', run: 'runs', fused: 'fused', images: 'images', audio: 'audio', gesture: 'gestures', package: 'packages', research: 'research', classifier: 'classifiers', latent: 'latents' }
 const SHAREABLE = new Set(Object.values(HOME_OF))
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/i
 const ZIP = /^[\w.-]+\.zip$/
@@ -36,7 +36,7 @@ export async function zipCommand(args: string[]): Promise<boolean> {
   const [target] = args
   const [kind, name] = (target ?? '').replace(/^workspace\//, '').split('/')
   if (!SHAREABLE.has(kind) || !name || !NAME.test(name) || args.length !== 1) {
-    print('usage: zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research>/<name>')
+    print('usage: zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>')
     return false
   }
   const folder = path.join(WORKSPACE, kind, name)
@@ -44,6 +44,11 @@ export async function zipCommand(args: string[]): Promise<boolean> {
     await fs.access(path.join(folder, 'manifest.json'))
   } catch {
     print(`zip: workspace/${kind}/${name} has no manifest.json, so it isn't an artifact this app can share`)
+    return false
+  }
+  const m = JSON.parse(await fs.readFile(path.join(folder, 'manifest.json'), 'utf8').catch(() => '{}')) as { private?: boolean; license?: string }
+  if (m.private) {
+    print(`zip: refused. workspace/${kind}/${name} is private (${m.license ?? 'its manifest says so'}). It stays on this computer; show its pictures in person, or make it again from pictures you may share`)
     return false
   }
   const mb = (await size(folder)) / 2 ** 20

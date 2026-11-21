@@ -19,6 +19,8 @@ import { gestureCommand, oscCommand } from './gestures.ts'
 import { askCommand } from './table.ts'
 import { packageCommand } from './package/index.ts'
 import { papersCommand } from './papers.ts'
+import { moodCommand } from './mood.ts'
+import { latentCommand } from './latent.ts'
 
 export { stopRunning } from './run.ts'
 
@@ -42,9 +44,9 @@ const HELP = `commands
   package <model>                                  an "ask the table" model, or a relevance judge, as a folder for another project: workspace/packages/<model>
   papers search | screen | decide | add | summarise | list | check | pool | judge <name> …, papers keys   the research bot: papers, archives, newspapers and patents on a topic   (papers help)
   ls | cat | head | tail | wc <path>                   inside workspace/ only
-  zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
+  zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
-  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research>/<name>  move it to the Trash, to start over
+  trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research|classifiers|latents>/<name>  move it to the Trash, to start over
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -59,10 +61,26 @@ const HELP = `commands
   model get <smolvlm-256m|smolvlm-500m>           a model that sees: its GGUFs into workspace/tools/, then ollama create
   look <cutout|depth|select> images/<set>/<photo> [--point x,y]… [--not x,y]…   runs in the page; into workspace/outputs/
   look example classic-cv                         the example photos: duck, teapot, bunny
+  look museum "<search>" <set> [--limit 40]       public-domain artworks (CC0) from the Art Institute of Chicago
 
   speak <name> "<text>" [--voice <voice>]          a model reads it aloud: workspace/audio/spoken/<name>.wav
                                                    voices: soprano robot baritone (Soprano), aiden ryan serena vivian (Qwen3-TTS)
   listen audio/<set>/<file>.wav [--language English]   a speech model writes down what it hears
+
+  model get kandinsky                             Kandinsky 2.2, a picture encoder and decoder for the latent image (9 GB): workspace/tools/kandinsky/
+  latent example <set>                            a made-up person's photo roll, three screenshots drawn from prompts, to try the card
+  latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
+  latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
+  latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
+  latent ways <name>                              the composite and the average in the decoder's codes, beside the drawing and the pixel average
+  latent themes <name> [--themes 5]               what recurs in the set: groups, each with a composite, its centre drawn and words
+  latent walk <name> --to theme-1|picture-12|words|"a sentence"   an animation out from the latent image
+  latent room <name> [<text> …]                   the installation's page, #latent-room/<name>, with passages of the texts beside it
+  latent respond <name> --pick 3,7,12             a visitor's choice of pictures, drawn as their latent image (the room runs it)
+  model get siglip                                a picture encoder for image moods: workspace/tools/siglip/
+  mood describe <dataset> --texts raw/<text> …    each mood's prompt and sentences from the texts: data/<dataset>/labels.md
+  mood train <name> --data <picture dataset>      a mood classifier, checked on rows set aside: workspace/classifiers/<name>/
+  mood gallery <classifier> images/<set>          each picture's mood, confidence and reason: workspace/outputs/<set>-<classifier>/
 
   model get hands | model get body                the trackers that find points on a hand or a body (gesture tab)
   gesture new <name> --tracker hands|body          a set of your gestures (hands: one hand or two): workspace/gestures/<name>/
@@ -152,6 +170,8 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'ask') return askCommand(args)
   if (cmd === 'package') return packageCommand(args, line)
   if (cmd === 'papers') return papersCommand(args, line)
+  if (cmd === 'mood') return moodCommand(args, line)
+  if (cmd === 'latent') return latentCommand(args, line)
   if (cmd === 'zip') return zipCommand(args)
   if (cmd === 'trash') return trashCommand(args)
   if (cmd === 'unzip') return unzipCommand(args)

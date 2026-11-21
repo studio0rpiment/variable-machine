@@ -173,7 +173,7 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 
 server.listen(PORT, HOST, () => {
   const url = `http://localhost:${PORT}`
-  console.log(`Variable Machine → ${url}`)
+  console.log(`Variable Machine → ${url}${status.project ? ` (one project: ${status.project})` : ''}`)
   if (process.env.VARIABLE_MACHINE_OPEN === '1') {
     import('node:child_process').then(({ spawn }) => spawn('open', [url], { stdio: 'ignore', detached: true }).unref())
   }

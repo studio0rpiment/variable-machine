@@ -7,6 +7,7 @@ import { scopePath, setRunning } from './run.ts'
 import { toolPresent } from './tools.ts'
 import { IMAGE_EXT, KINDS, toolModel, type LookTask } from './shared/kinds.ts'
 import type { PageOutput } from './shared/events.ts'
+import { museumCommand } from './museum.ts'
 
 /**
  * Commands that run in the page. The image tools are onnxruntime-web models,
@@ -153,6 +154,7 @@ async function lookExample(set: string | undefined): Promise<boolean> {
 export async function lookCommand(args: string[], line: string): Promise<boolean> {
   const [task, image, ...rest] = args
   if (task === 'example') return lookExample(image)
+  if (task === 'museum') return museumCommand(args.slice(1), line)
   const usage = () => (print(`usage: look <${TASKS.join('|')}> images/<set>/<photo> [--point x,y]… [--not x,y]…   (${KINDS.looks.id}: ${KINDS.looks.what})`), false)
   if (!TASKS.includes(task as LookTask) || !image) return usage()
   const t = toolModel(task)!

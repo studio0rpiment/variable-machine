@@ -7,6 +7,7 @@ import { onLook, type LookState } from '../look/runner'
 import ToolCard, { KindLine } from './ToolCard'
 import CommandPreview from './CommandPreview'
 import { Explained } from '../explain/Explained'
+import { Part } from '../lib/parts'
 
 interface ImageSet {
   folder: string
@@ -26,7 +27,7 @@ const outputOf = (set: string, file: string, task: LookTask) => `outputs/${set}-
  * back to this page, which runs the model and saves the picture into
  * workspace/outputs/ with a record of what it was made from.
  */
-export default function LookPanel() {
+export default function LookPanel({ start }: { start?: { set: string; license?: string; make?: boolean; n: number } } = {}) {
   const [here, setHere] = useState<Record<string, boolean>>({})
   const [sets, setSets] = useState<ImageSet[]>([])
   const [set, setSet] = useState('')
@@ -41,6 +42,14 @@ export default function LookPanel() {
   const [note, setNote] = useState('')
   const [camera, setCamera] = useState(false)
   const file = useRef<HTMLInputElement>(null)
+  // a project's step opens the set it is about: that set if it is here, or, for a step that makes it, a new one by its name
+  useEffect(() => {
+    if (!start) return
+    if (sets.some((x) => x.folder === start.set)) setSet(start.set)
+    else if (start.make) (setSet(''), setNewSet(start.set))
+    if (start.license) setLicense(start.license)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start?.n, start?.set, sets.length])
 
   const loadTools = useCallback(async () => {
     const m = await readManifests<{ name: string }>('tools')
@@ -119,8 +128,11 @@ export default function LookPanel() {
     setBusy('')
   }
 
+  // a project's step about a set its command will make: nothing to show until it is made
+  const missing = !!start && !start.make && !sets.some((x) => x.folder === start.set)
   return (
     <section className="panel" aria-label="look">
+      <Part id="look.tools">
       <h2 className="panel__title label">tools</h2>
       <p className="models-intro">
         <KindLine kind="looks" />
@@ -131,7 +143,13 @@ export default function LookPanel() {
         ))}
       </div>
 
+      </Part>
+      <Part id="look.sets">
       <h2 className="panel__title label">photos · workspace/images</h2>
+      {missing ? (
+        <p className="label label--muted">{`no set called ${start.set} yet: the step's command makes it`}</p>
+      ) : (
+      <>
       <div className="look-sets">
         <Explained id="look.set">
           <label className="field">
@@ -179,7 +197,7 @@ export default function LookPanel() {
             {camera ? 'close the camera' : 'take a photo'}
           </button>
         </Explained>
-        {!sets.some((x) => x.folder === 'classic-cv') && (
+        {!start && !sets.some((x) => x.folder === 'classic-cv') && (
           <Explained id="look.example">
             <CommandPreview command="look example classic-cv" onRun={() => void run('example', 'look example classic-cv').then(() => setSet('classic-cv'))} running={busy === 'example'} label="add the example photos" />
           </Explained>
@@ -187,8 +205,10 @@ export default function LookPanel() {
         {note && <span className="label label--muted">{note}</span>}
       </div>
       {camera && <Camera onShot={(b) => void upload(b, `camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`)} />}
+      </>
+      )}
 
-      {photos.length > 0 && (
+      {!missing && set && photos.length > 0 && (
         <div className="look-strip" role="listbox" aria-label="photos in this set">
           {photos.map((p) => (
             <button key={p} type="button" role="option" aria-selected={p === photo} className={`look-thumb ${p === photo ? 'is-active' : ''}`.trim()} onClick={() => setPhoto(p)}>
@@ -198,6 +218,8 @@ export default function LookPanel() {
         </div>
       )}
 
+      </Part>
+      <Part id="look.work">
       {rel && (
         <>
           <h2 className="panel__title label">{photo.toUpperCase()}</h2>
@@ -260,6 +282,7 @@ export default function LookPanel() {
         </>
       )}
       {sets.length === 0 && photos.length === 0 && <p className="label label--muted">no photos yet: add the example photos, or name a set and add your own</p>}
+      </Part>
     </section>
   )
 }

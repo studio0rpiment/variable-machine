@@ -11,6 +11,7 @@ import { trackerOf, type Tracker } from '@shared/gesture'
 import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
 import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
+import { EXAMPLE_SET, MEDIA_TEXTS, useLatentChoices, walkSlug, walkTarget, type LatentChoices } from '../lib/latentChoices'
 import { listModels } from '../lib/ollama'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
@@ -29,6 +30,8 @@ export interface Fill {
   prefer?: { data: string; model: string }
   /** the Chat tab: the models to put in its columns, in order; null leaves a column as it is */
   chat?: { models: (string | null)[] }
+  /** the image segmentation tab: the set to open (a new one by that name, if it isn't there yet), and whose pictures they are */
+  look?: { set: string; license?: string; make?: boolean }
 }
 
 /** One note of a step's walkthrough: the control it points at (its flag's id, or a data-guide marker) and what it says. */
@@ -44,11 +47,15 @@ export interface Step {
   commands: string[]
   done: boolean
   /** not built yet */
+  /** about how long its command takes, in seconds, for the wait shown while it runs */
+  about?: number
   soon?: boolean
   /** the start of a second way: its steps take the place of the ones above */
   or?: boolean
   /** what it found, once it has run */
   result?: string
+  /** a file it made, to open: a workspace path */
+  link?: { path: string; label: string }
   fill?: Fill
   /** the walkthrough on its tab, a note at a time; a step without notes shows its commands in the guide bar */
   notes?: Note[]
@@ -56,6 +63,8 @@ export interface Step {
   node?: string
   /** project mode: the parts of its tab it uses (lib/parts.tsx); the tab's other marked parts hide. Unset: the whole tab */
   parts?: string[]
+  /** pictures it made, shown on the step: workspace paths */
+  show?: { path: string; label: string }[]
 }
 
 /** What the gesture controller's schematic shows beside its steps: the set, and the decisions as the workspace has them. */
@@ -86,6 +95,19 @@ export interface Project {
   voice?: VoiceFacts
   /** the research bot, followed as a project: the route the decisions draw */
   research?: ResearchFacts
+  /** the latent image, followed as a project: the route the decisions draw */
+  latent?: LatentFacts
+}
+
+/** What the latent image's schematic shows: the route's steps, and what the decisions can choose from. */
+export interface LatentFacts {
+  steps: Step[]
+  /** the picture sets there are, to measure against the latent image */
+  sets: string[]
+  /** the set the latent image is made from */
+  collection: string
+  /** your own texts brought in (data raw file), by name */
+  own: string[]
 }
 
 /** What the research bot's schematic shows: the route's steps, and what the decisions can choose from. */
@@ -176,10 +198,18 @@ interface Have {
   merges: { folder: string; created?: string; a: string; b: string; base: string }[]
   /** days of chat log, each a file in workspace/chat */
   chatLogs: number
+  /** mood classifiers, with their check on the pictures set aside */
+  classifiers: { folder: string; created?: string; data: string; check?: { setAside: number; accuracy: number; macroF1: number; commonest: number; commonestLabel: string; textsAlone: number; labelsAlone: number } }[]
+  /** picture datasets that have a labels.md (mood describe has run) */
+  described: string[]
+  /** each image set's manifest: what it is, and where it came from */
+  imageSets: { folder: string; created?: string; about?: string; private?: boolean; crop?: { from: string; grid: boolean }; command?: string | string[] }[]
+  /** latent images, with the set each was made from, its check and its training */
+  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null; room?: { texts: string[] }; ways?: boolean; themes?: { words: string[]; list: { n: number; size: number; words: string[]; composite: string; drawn: string }[] } | null; walks?: string[] }[]
 }
 
 async function readHave(): Promise<Have> {
-  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, uploads, exampleGestures] = await Promise.all([
+  const [raw, data, adapters, mfs, packages, tools, images, outputs, gestures, research, uploads, exampleGestures, classifiers, imageSets, latents] = await Promise.all([
     readManifests<Raw>('raw'),
     readManifests<DatasetManifest>('data'),
     readManifests<Adapter>('adapters'),
@@ -192,6 +222,9 @@ async function readHave(): Promise<Have> {
     readManifests<{ created?: string; runs?: unknown[]; pooled?: string[] }>('research'),
     listDir('uploads'),
     readManifests<Gesture>('examples/gestures'),
+    readManifests<Have['classifiers'][number]>('classifiers'),
+    readManifests<Have['imageSets'][number]>('images'),
+    readManifests<Have['latents'][number]>('latents'),
   ])
   const [ollama, merges, chat] = await Promise.all([
     listModels().catch(() => []),
@@ -212,6 +245,8 @@ async function readHave(): Promise<Have> {
       const m = /^check-(.+)\.json$/.exec(f.name)
       if (m) checks.add(`${d.folder}/${m[1]}`)
     }
+  const described: string[] = []
+  for (const d of data.filter((x) => x.format === 'picture')) if ((await listDir(`data/${d.folder}`)).some((f) => f.name === 'labels.md')) described.push(d.folder)
   const sets = images.filter((i) => i.dir).map((i) => i.name)
   const set = sets.includes('classic-cv') || !sets.length ? 'classic-cv' : sets[0]
   const photo = (await listDir(`images/${set}`)).find((f) => /\.(jpe?g|png|webp)$/i.test(f.name))?.name ?? null
@@ -227,6 +262,10 @@ async function readHave(): Promise<Have> {
     photo: photo && `images/${set}/${photo}`,
     outputs,
     gestures,
+    classifiers,
+    described,
+    imageSets,
+    latents,
     exampleGestures,
     ollama: ollama.map((m) => ({ name: m.name, size: m.size })),
     merges,
@@ -624,7 +663,193 @@ function researchRoute(h: Have, c: ResearchChoices): ResearchFacts {
   return { steps, folder, folders: h.research.map((r) => r.folder), ollama: h.ollama, view: model }
 }
 
-function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices): Project[] {
+/**
+ * The latent image as a route: the steps the decisions draw, each on its box
+ * of the latent image's schematic (LatentMode). The diffusion model first (a
+ * 9 GB download), then the pictures, the texts that frame it, the latent image
+ * itself, the decoder trained on the set's look if chosen, and the gallery
+ * page, where the route ends: every picture measured against the latent image,
+ * with the media theory beside each part.
+ */
+function latentRoute(h: Have, c: LatentChoices): LatentFacts {
+  const example = c.pictures === 'example'
+  const shots = example ? EXAMPLE_SET : c.set || 'screenshots'
+  const museum = c.pictures === 'museum'
+  const collection = museum ? 'hiroshige' : `${shots}-pictures`
+  const has = (set: string) => h.imageSets.find((s) => s.folder === set)
+  const latent = h.latents.find((l) => l.folder === collection)
+  const against = c.against || collection
+  const measured = h.outputs.find((o) => o.folder === `${against}-${collection}`)
+  const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
+  const own = h.raw.filter((r) => r.source === 'file').map((r) => r.folder)
+  const texts = MEDIA_TEXTS.filter((t) => c.texts.includes(t.id))
+  const lat = (f: string) => `latents/${collection}/${f}`
+  const steps: Step[] = [
+    c.diffusion === 'kandinsky'
+      ? {
+          name: example ? say('projects.latent.mode.modelPrior') : say('projects.latent.mode.model'),
+          tab: 'models',
+          node: 'made-images',
+          // the example is drawn from words: Kandinsky's prior too
+          commands: example ? ['model get kandinsky', 'model get kandinsky-prior'] : ['model get kandinsky'],
+          done: h.tools.includes('kandinsky') && (!example || h.tools.includes('kandinsky-prior')),
+          parts: [],
+        }
+      : { name: say('projects.latent.mode.taesd'), tab: 'models', node: 'made-images', commands: [], done: false, soon: true, parts: [] },
+    example
+      ? {
+          name: say('projects.latent.mode.example'),
+          tab: 'segmentation',
+          node: 'photos',
+          commands: [joinWords(['latent', 'example', EXAMPLE_SET])],
+          about: 25 * 60,
+          done: !!has(EXAMPLE_SET),
+          fill: { look: { set: EXAMPLE_SET } },
+          parts: ['look.sets'],
+        }
+      : museum
+      ? {
+          name: say('projects.latent.mode.museum'),
+          tab: 'segmentation',
+          node: 'photos',
+          commands: [joinWords(['look', 'museum', 'Utagawa Hiroshige', 'hiroshige', '--limit', '100'])],
+          done: !!has('hiroshige'),
+          fill: { look: { set: 'hiroshige' } },
+          parts: ['look.sets'],
+        }
+      : {
+          name: c.pictures === 'grid' ? say('projects.latent.mode.uploadGrid', { set: shots }) : say('projects.latent.mode.uploadSingle', { set: shots }),
+          tab: 'segmentation',
+          node: 'photos',
+          commands: [],
+          done: !!has(shots),
+          fill: { look: { set: shots, license: say('projects.latent.mode.license'), make: true } },
+          parts: ['look.sets'],
+        },
+  ]
+  if (!museum)
+    steps.push({
+      name: say('projects.latent.mode.crop'),
+      tab: 'segmentation',
+      node: 'crop',
+      commands: [joinWords(['latent', 'crop', `images/${shots}`, collection, ...(c.pictures !== 'single' ? ['--grid'] : [])])],
+      about: 15,
+      done: !!has(collection)?.crop,
+      result: has(collection)?.about,
+      // the screenshots until they are cut; then the pictures cut from them
+      fill: { look: { set: has(collection) ? collection : shots } },
+      parts: ['look.sets'],
+    })
+  steps.push({
+    name: say('projects.latent.mode.texts'),
+    tab: 'data',
+    node: 'words',
+    commands: texts.map((t) => joinWords(['data', 'raw', ...t.args, t.name])),
+    done: texts.every((t) => h.raw.some((r) => r.folder === t.name)),
+    result: texts.length ? say('projects.latent.mode.textsHere', { n: texts.filter((t) => h.raw.some((r) => r.folder === t.name)).length, of: texts.length }) : say('projects.latent.mode.noTexts'),
+    fill: { data: { pick: 'new' } },
+    parts: ['data.raw'],
+  })
+  if (c.own)
+    steps.push({
+      name: say('projects.latent.mode.own'),
+      tab: 'data',
+      node: 'words',
+      commands: [joinWords(['data', 'raw', 'file', 'uploads/<file>', '<name>', '--license', say('data.rawFile.mine')])],
+      done: own.length > 0,
+      result: own.length ? own.join(' · ') : undefined,
+      fill: { data: { pick: 'new' } },
+      parts: ['data.rawFile'],
+    })
+  steps.push({
+    name: say('projects.latent.mode.make'),
+    tab: 'segmentation',
+    node: 'latent',
+    commands: [joinWords(['latent', 'make', collection, `images/${collection}`])],
+    about: 4 * 60,
+    done: !!latent,
+    result: latent?.check
+      ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
+      : undefined,
+    // four ways to make the set's picture: drawn from its centre, the pixel average, the composite of the nearest, the average in the decoder's codes
+    show: latent
+      ? [
+          { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') },
+          { path: lat('pixel-average.png'), label: say('projects.latent.mode.showPixels') },
+          ...(latent.ways ? [{ path: lat('composite.png'), label: say('projects.latent.mode.showComposite') }, { path: lat('codes-average.png'), label: say('projects.latent.mode.showCodes') }] : []),
+        ]
+      : undefined,
+    fill: { look: { set: collection } },
+    parts: ['look.sets'],
+  })
+  if (c.look === 'set')
+    steps.push({
+      name: say('projects.latent.mode.train'),
+      tab: 'segmentation',
+      node: 'decoder',
+      commands: [joinWords(['latent', 'train', collection])],
+      about: 30 * 60,
+      done: !!latent?.trained,
+      result: latent?.trained ? say('projects.latent.trainedIn', { steps: latent.trained.steps, minutes: latent.trained.minutes }) : undefined,
+      show: latent?.trained ? [{ path: lat('latent-trained.png'), label: say('projects.latent.mode.showTrained') }, { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') }] : undefined,
+      parts: [],
+    })
+  // what recurs in the set, then the walk out to it (or to words, a sentence, a picture)
+  const themeList = latent?.themes?.list ?? []
+  steps.push({
+    name: say('projects.latent.mode.themes'),
+    tab: 'segmentation',
+    node: 'latent',
+    commands: [joinWords(['latent', 'themes', collection])],
+    about: 2 * 60,
+    done: !!latent?.themes,
+    result: latent?.themes ? say('projects.latent.mode.themesHere', { n: themeList.length, words: latent.themes.words.join(', ') || '–' }) : undefined,
+    show: themeList.slice(0, 4).flatMap((t) => [
+      { path: t.composite, label: say('projects.latent.mode.themeComposite', { n: t.n, size: t.size, words: t.words.join(', ') || '–' }) },
+      { path: t.drawn, label: say('projects.latent.mode.themeDrawn', { n: t.n }) },
+    ]),
+    parts: [],
+  })
+  const to = walkTarget(c)
+  const walked = latent?.walks?.includes(walkSlug(to))
+  steps.push({
+    name: say('projects.latent.mode.walk'),
+    tab: 'segmentation',
+    node: 'latent',
+    commands: [joinWords(['latent', 'walk', collection, '--to', to])],
+    about: (latent?.trained ? 20 : 10) * 24,
+    done: !!walked,
+    show: walked ? [{ path: lat(`walks/${walkSlug(to)}.webp`), label: say('projects.latent.mode.showWalk', { to }) }] : undefined,
+    parts: [],
+  })
+  steps.push({
+    name: say('projects.latent.mode.gallery'),
+    tab: 'segmentation',
+    node: 'gallery',
+    commands: [joinWords(['latent', 'gallery', collection, `images/${against}`])],
+    about: 3 * 60,
+    done: !!measured,
+    link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
+    fill: { look: { set: against } },
+    parts: ['look.sets'],
+  })
+  // the room: the installation's own page; it reads the texts brought in, and your own writing if chosen
+  const reads = [...texts.map((t) => t.name), ...(c.own ? own : [])]
+  steps.push({
+    name: say('projects.latent.mode.room'),
+    tab: 'segmentation',
+    node: 'room',
+    commands: [joinWords(['latent', 'room', collection, ...reads])],
+    about: 75,
+    done: !!latent?.room,
+    result: latent?.room ? say('projects.latent.mode.roomTexts', { n: latent.room.texts.length, texts: latent.room.texts.join(' · ') || '–' }) : undefined,
+    link: latent?.room ? { path: `#latent-room/${collection}`, label: say('projects.latent.openRoom') } : undefined,
+    parts: [],
+  })
+  return { steps, sets: h.imageSets.map((s) => s.folder).filter((f) => f !== collection && !f.startsWith('classic-cv')), collection, own }
+}
+
+function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research: ResearchChoices, latentC: LatentChoices): Project[] {
   // ask a table: table → question set → adapter → model → check → package, following the chain as far as it goes
   const tables = h.raw.filter((r) => r.columns?.length)
   const askSets = h.data.filter((d) => d.ask)
@@ -675,7 +900,129 @@ function projects(h: Have, choice: GestureChoices, voice: VoiceChoices, research
   const judge = last(judges)?.folder ?? `${judgeSet}-360m`
   const judgeModel = last(judgeModels)?.model ?? judge
 
+  // image moods: encoder → rated pictures → texts → split → labels.md → classifier → a gallery set → its moods → package
+  const moodSets = h.data.filter((d) => d.format === 'picture' && (d.mood || h.described.includes(d.folder)))
+  const moodSet = last(moodSets)?.folder ?? 'oasis-moods'
+  const moodTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia|txt/.test(String(r.source ?? '')))
+  const texts = (last(moodSets.filter((d) => Array.isArray(d.texts)))?.texts as string[] | undefined) ?? (moodTexts.length ? moodTexts.map((r) => `raw/${r.folder}`) : ['raw/goethe-colours', 'raw/colour-psychology'])
+  const clfs = h.classifiers.filter((c) => moodSets.some((d) => d.folder === c.data))
+  const clf = last(clfs)
+  const clfName = clf?.folder ?? `${moodSet}-siglip`
+  // a set to sort: one that isn't the training pictures, the newest
+  const gallerySet = last(h.imageSets.filter((s) => !s.folder.startsWith('classic-cv')))?.folder
+  const sorted = h.outputs.filter((o) => o.items?.some((i) => i.tool === 'mood'))
+  const lastSorted = last(sorted)
+  const pcm = (x: number) => Math.round(x * 100)
+
+  // latent image: model → screenshots → crop them → texts (framing) → make → train the decoder → measure the pictures against it
+  const latentTexts = h.raw.filter((r) => !r.columns?.length && /gutenberg|wikipedia|txt/.test(String(r.source ?? '')))
+  const latent = last(h.latents)
+  const ownSets = h.imageSets.filter((s) => !s.folder.startsWith('classic-cv'))
+  const cropped = ownSets.filter((s) => s.crop)
+  // the screenshots: the newest uploaded set not cropped yet, else the last one cropped
+  const uploaded = ownSets.filter((s) => String(s.command ?? '').startsWith('uploaded'))
+  const shots = last(uploaded.filter((s) => !cropped.some((c) => c.crop?.from === s.folder)))?.folder ?? last(cropped)?.crop?.from ?? 'screenshots'
+  const collection = latent?.set ?? last(cropped)?.folder ?? `${shots}-pictures`
+  const latentName = latent?.folder ?? collection
+  const measureSet = collection
+  const measured = last(h.outputs.filter((o) => o.items?.some((i) => i.tool === 'latent')))
+  const holds = (ok: boolean) => (ok ? say('projects.latent.stable') : say('projects.latent.unstable'))
+
   return [
+    {
+      id: 'latent',
+      title: say('projects.latent.title'),
+      does: say('projects.latent.does'),
+      get: say('projects.latent.get'),
+      limits: say('projects.latent.limits'),
+      steps: [
+        { name: say('projects.latent.model'), tab: 'models', commands: ['model get kandinsky'], done: h.tools.includes('kandinsky') },
+        { name: say('projects.latent.screenshots'), tab: 'segmentation', commands: [], done: uploaded.length > 0 },
+        { name: say('projects.latent.pictures'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'Utagawa Hiroshige', 'hiroshige', '--limit', '100'])], done: ownSets.some((s) => s.folder === 'hiroshige'), or: true },
+        {
+          name: say('projects.latent.crop'),
+          tab: 'segmentation',
+          commands: [joinWords(['latent', 'crop', `images/${shots}`, `${shots}-pictures`])],
+          done: cropped.length > 0,
+          result: last(cropped)?.about,
+        },
+        {
+          name: say('projects.latent.texts'),
+          tab: 'data',
+          commands: [
+            joinWords(['data', 'raw', 'wikipedia', 'The_Work_of_Art_in_the_Age_of_Mechanical_Reproduction', 'benjamin-work-of-art']),
+            joinWords(['data', 'raw', 'wikipedia', 'Camera_Lucida_(book)', 'barthes-camera-lucida']),
+            joinWords(['data', 'raw', 'wikipedia', 'Simulacra_and_Simulation', 'baudrillard-simulacra']),
+            joinWords(['data', 'raw', 'wikipedia', 'Mirror_stage', 'lacan-mirror-stage']),
+            joinWords(['data', 'raw', 'gutenberg', '11751', 'holmes-stereograph']),
+            joinWords(['data', 'raw', 'gutenberg', '1735', 'plato-sophist']),
+          ],
+          done: latentTexts.length > 0,
+        },
+        {
+          name: say('projects.latent.make'),
+          tab: 'segmentation',
+          commands: [joinWords(['latent', 'make', latentName, `images/${collection}`])],
+          done: h.latents.length > 0,
+          result: latent?.check
+            ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
+            : undefined,
+          link: latent ? { path: `latents/${latent.folder}/latent.png`, label: say('projects.latent.see') } : undefined,
+        },
+        {
+          name: say('projects.latent.train'),
+          tab: 'train',
+          commands: [joinWords(['latent', 'train', latentName])],
+          done: h.latents.some((l) => !!l.trained),
+          result: latent?.trained ? say('projects.latent.trainedIn', { steps: latent.trained.steps, minutes: latent.trained.minutes }) : undefined,
+        },
+        {
+          name: say('projects.latent.measure'),
+          tab: 'segmentation',
+          commands: [joinWords(['latent', 'gallery', latentName, `images/${measureSet}`])],
+          done: !!measured,
+          link: measured ? { path: `outputs/${measured.folder}/gallery.html`, label: say('projects.latent.open') } : undefined,
+        },
+      ],
+      latent: latentRoute(h, latentC),
+    },
+    {
+      id: 'mood',
+      title: say('projects.mood.title'),
+      does: say('projects.mood.does'),
+      get: say('projects.mood.get'),
+      limits: say('projects.mood.limits'),
+      steps: [
+        { name: say('projects.mood.encoder'), tab: 'models', commands: ['model get siglip'], done: h.tools.includes('siglip') },
+        { name: say('projects.mood.pictures'), tab: 'data', commands: [joinWords(['data', 'import', 'oasis', moodSet])], done: moodSets.length > 0 },
+        {
+          name: say('projects.mood.texts'),
+          tab: 'data',
+          commands: [joinWords(['data', 'raw', 'gutenberg', '50572', 'goethe-colours']), joinWords(['data', 'raw', 'wikipedia', 'Color_psychology', 'colour-psychology'])],
+          done: moodTexts.length > 0,
+        },
+        { name: say('projects.mood.split'), tab: 'data', commands: [joinWords(['data', 'split', moodSet, '--valid', '0.2']), joinWords(['data', 'validate', moodSet])], done: moodSets.some((d) => d.split) },
+        { name: say('projects.mood.describe'), tab: 'data', commands: [joinWords(['mood', 'describe', moodSet, '--texts', ...texts]), joinWords(['cat', `data/${moodSet}/labels.md`])], done: moodSets.some((d) => h.described.includes(d.folder)) },
+        {
+          name: say('projects.mood.train'),
+          tab: 'train',
+          commands: [joinWords(['mood', 'train', clfName, '--data', moodSet])],
+          done: clfs.length > 0,
+          result: clf?.check
+            ? say('projects.mood.checked', { n: clf.check.setAside, right: pcm(clf.check.accuracy), f1: clf.check.macroF1.toFixed(2), texts: pcm(clf.check.textsAlone), labels: pcm(clf.check.labelsAlone), common: clf.check.commonestLabel, commonest: pcm(clf.check.commonest) })
+            : undefined,
+        },
+        { name: say('projects.mood.gallery'), tab: 'segmentation', commands: [joinWords(['look', 'museum', 'landscape', 'aic-landscapes', '--limit', '40'])], done: !!gallerySet },
+        {
+          name: say('projects.mood.sort'),
+          tab: 'segmentation',
+          commands: [joinWords(['mood', 'gallery', clfName, `images/${gallerySet ?? 'aic-landscapes'}`])],
+          done: sorted.length > 0,
+          link: lastSorted ? { path: `outputs/${lastSorted.folder}/gallery.html`, label: say('projects.mood.open') } : undefined,
+        },
+        { name: say('projects.mood.package'), tab: 'share', commands: [joinWords(['package', clfName]), joinWords(['zip', `packages/${clfName}`])], done: clfs.some((c) => h.packages.includes(c.folder)) },
+      ],
+    },
     {
       id: 'ask',
       title: say('projects.ask.title'),
@@ -790,17 +1137,18 @@ export function useProjects(): Project[] | null {
   const choice = useGestureChoices()
   const voice = useVoiceChoices()
   const research = useResearchChoices()
+  const latentC = useLatentChoices()
   const load = useCallback(() => void readHave().then(setHave), [])
   useEffect(load, [load])
   useHelperEvent(
     'workspace.changed',
-    useCallback((e) => (e.path.endsWith('manifest.json') || /^research\/[^/]+\/(screen\.json|reading-list\.md)$/.test(e.path) || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
+    useCallback((e) => (e.path.endsWith('manifest.json') || /^research\/[^/]+\/(screen\.json|reading-list\.md)$/.test(e.path) || e.path.startsWith('chat/') || e.path.startsWith('modelfiles/') || e.path.startsWith('uploads/') || /^data\/[^/]+\/check-/.test(e.path) || e.path.endsWith('labels.md') || e.kind === 'addDir' || e.kind === 'unlinkDir') && load(), [load]),
   )
-  return have && projects(have, choice, voice, research)
+  return have && projects(have, choice, voice, research, latentC)
 }
 
 /** The steps a project follows in project mode: its route, where its decisions draw one; else its card's steps. */
-export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.steps
+export const routeOf = (p: Project): Step[] => p.voice?.steps ?? p.research?.steps ?? p.latent?.steps ?? p.steps
 
 /** A step's number on its card, and how many steps its way has: a second way counts from its own first step. */
 export function stepNumber(steps: Step[], i: number) {
@@ -900,6 +1248,11 @@ export default function ProjectsPanel() {
                               <CommandPreview key={c} command={c} onRun={() => void run([c])} disabled={c.includes('<')} running={busy === c} label={say('projects.step.run')} />
                             ))}
                           {s.result && <span className="label label--muted project-step__result">{s.result}</span>}
+                          {s.link && (
+                            <a className="text-link project-step__result" href={s.link.path.startsWith('#') ? s.link.path : `/api/workspace/file?path=${encodeURIComponent(s.link.path)}`} target="_blank" rel="noreferrer">
+                              {s.link.label}
+                            </a>
+                          )}
                         </span>
                       </li>
                     )

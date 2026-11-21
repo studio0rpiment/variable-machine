@@ -122,8 +122,10 @@ export const SMOLTALK = {
 /** Raw material for cross-domain sets: chunks a generator can be asked to write examples from. */
 export const RAW_SOURCES = {
   gutenberg: { about: 'a public-domain book from Project Gutenberg, by its number (e.g. 1342 for Pride and Prejudice)', license: 'public domain in the USA (Project Gutenberg; check the laws of your country)' },
+  wikipedia: { about: 'a Wikipedia article as plain text, by its title (e.g. Color_psychology); CC BY-SA 4.0, so what is made from it credits the article and shares alike', license: 'CC BY-SA 4.0 (Wikipedia: credit the article and its authors, share alike)' },
   csv: { about: 'a CSV from a URL, e.g. DDOT traffic counts from Open Data DC; give the license the source states' },
   txt: { about: 'a plain-text file from a URL; give the license the source states' },
   jsonl: { about: 'a table written as JSON lines (one {"column": value} object per line) from a URL, e.g. a dataset file on Hugging Face; give the license the source states' },
   arcgis: { about: 'a table read straight from an ArcGIS map service (how DC Open Data serves its tables), by its layer address; give the license the source states' },
+  file: { about: 'your own writing, or a PDF, uploaded from this computer (.txt, .md or .pdf); give its terms ("my own writing", or what the PDF states). It is marked private and stays on this computer: zip never shares raw texts' },
 }

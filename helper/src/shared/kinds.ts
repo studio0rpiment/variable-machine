@@ -7,7 +7,7 @@
  * map all say the same thing about it.
  */
 
-export type KindId = 'writes' | 'sees' | 'looks' | 'moves' | 'speaks' | 'listens'
+export type KindId = 'writes' | 'sees' | 'sorts' | 'looks' | 'moves' | 'speaks' | 'listens'
 
 export interface KindInfo {
   id: KindId
@@ -24,6 +24,7 @@ export interface KindInfo {
 export const KINDS: Record<KindId, KindInfo> = {
   writes: { id: 'writes', what: 'text generation', io: 'text in, text out', tabs: ['modelfile', 'train', 'prefer', 'merge', 'chat'] },
   sees: { id: 'sees', what: 'image description', io: 'a picture in, words about it out', tabs: ['chat', 'data', 'train'] },
+  sorts: { id: 'sorts', what: 'image classification', io: 'a picture in, one of a few labels out, and how sure', tabs: ['data', 'projects'] },
   looks: { id: 'looks', what: 'image tools: cut something out, distance between blobs, select a blob', io: 'a photo in, a picture made from it out', tabs: ['image segmentation'] },
   moves: { id: 'moves', what: 'gesture and pose tracking', io: 'the camera in, points on your body out', tabs: ['gesture'] },
   speaks: { id: 'speaks', what: 'voice generation', io: 'text in, a spoken voice out', tabs: ['speech'] },
@@ -100,6 +101,105 @@ export const TOOL_MODELS: ToolModel[] = [
 ]
 
 export const toolModel = (name: string) => TOOL_MODELS.find((t) => t.name === name)
+
+/**
+ * A picture encoder (the sorts kind): it turns a picture, and a sentence, into
+ * numbers in one shared space, so a small classifier trained on top can sort
+ * pictures into a few labels (python/variable_machine/mood.py). Run by
+ * onnxruntime in the python project's `mood` extra, not in the page.
+ *
+ * Checked 2026-11-04 (onnxruntime 1.31.1): the 8-bit vision and text files
+ * give the same nearest captions as the full ones on the example photos; 16
+ * pictures take about a second on an M1 Pro, on the CPU.
+ *
+ * Kandinsky 2.2 (the looks kind here: a picture in, a picture made from it
+ * out) is an encoder with a decoder, for the latent image
+ * (python/variable_machine/latent.py), run by torch on the Mac's GPU in the
+ * `latent` extra. Checked 2026-11-05 (torch 2.15, diffusers 0.42.1, M1 Pro,
+ * 32 GB): 99 pictures encode in 44 s; a 512 px picture decodes in about 16 s;
+ * the encoder peaks at about 8 GB, training the decoder's LoRA at 9 GB.
+ */
+export interface EncoderModel {
+  name: string
+  kind: 'sorts' | 'looks'
+  repo: string
+  /** where the weights come from: the repo above is its ONNX conversion */
+  original: string
+  license: string
+  maker: string
+  builtFor: string
+  files: string[]
+  mb: number
+  /** files from more than one repo: the first folder of each file's path names its repo here (prior/… from one, decoder/… from another) */
+  repos?: Record<string, string>
+  /** what runs it */
+  runsIn?: string
+}
+
+export const ENCODER_MODELS: EncoderModel[] = [
+  {
+    name: 'siglip',
+    kind: 'sorts',
+    repo: 'Xenova/siglip-base-patch16-224',
+    original: 'google/siglip-base-patch16-224',
+    license: 'Apache 2.0',
+    maker: 'Google (SigLIP), 2023; ONNX by Xenova',
+    builtFor: 'Puts a picture and a sentence into the same space of 768 numbers, so a picture lands near the words that describe it. Trained by Google on pictures and their captions from the web. It sorts nothing by itself: a classifier trained on your labels does that, on top.',
+    files: ['config.json', 'preprocessor_config.json', 'tokenizer.json', 'tokenizer_config.json', 'special_tokens_map.json', 'onnx/vision_model_quantized.onnx', 'onnx/text_model_quantized.onnx'],
+    mb: 214,
+  },
+  {
+    name: 'kandinsky',
+    kind: 'looks',
+    repo: 'kandinsky-community/kandinsky-2-2-decoder',
+    original: 'kandinsky-community/kandinsky-2-2-decoder and -prior',
+    license: 'Apache 2.0',
+    maker: 'Sber AI (Kandinsky 2.2), 2023',
+    builtFor:
+      'A picture encoder and a decoder that turns its numbers back into a picture. The encoder (CLIP ViT-bigG/14, from LAION) puts a picture into 1280 numbers: what it shows and how it looks. The decoder (a diffusion model, 1.2 billion weights) draws a picture from any 1280 numbers, so the centre of a collection can be seen. 9 GB, on a Mac with 16 GB of memory or more. Used for the latent image, on the projects tab.',
+    files: [
+      'prior/image_encoder/config.json',
+      'prior/image_encoder/model.safetensors',
+      'prior/image_processor/preprocessor_config.json',
+      'decoder/model_index.json',
+      'decoder/scheduler/scheduler_config.json',
+      'decoder/movq/config.json',
+      'decoder/movq/diffusion_pytorch_model.safetensors',
+      'decoder/unet/config.json',
+      'decoder/unet/diffusion_pytorch_model.safetensors',
+    ],
+    mb: 8975,
+    repos: { prior: 'kandinsky-community/kandinsky-2-2-prior', decoder: 'kandinsky-community/kandinsky-2-2-decoder' },
+    runsIn: 'python (torch, diffusers), in the latent extra',
+  },
+  {
+    name: 'kandinsky-prior',
+    kind: 'looks',
+    repo: 'kandinsky-community/kandinsky-2-2-prior',
+    original: 'kandinsky-community/kandinsky-2-2-prior',
+    license: 'Apache 2.0',
+    maker: 'Sber AI (Kandinsky 2.2), 2023; text encoder CLIP ViT-bigG/14 from LAION',
+    builtFor:
+      "Kandinsky 2.2's way in from words: a text encoder (CLIP ViT-bigG/14's text half) and a diffusion prior that turns a sentence into the same 1280 numbers the picture encoder makes, so the decoder can draw from a sentence, or from pictures and a sentence mixed. 6.9 GB more, beside kandinsky (which it needs). Used by the dream reading card to draw a combination of cards with its interpretation.",
+    files: [
+      'prior/model_index.json',
+      'prior/scheduler/scheduler_config.json',
+      'prior/prior/config.json',
+      'prior/prior/diffusion_pytorch_model.safetensors',
+      'prior/text_encoder/config.json',
+      'prior/text_encoder/model.safetensors',
+      'prior/tokenizer/merges.txt',
+      'prior/tokenizer/special_tokens_map.json',
+      'prior/tokenizer/tokenizer_config.json',
+      'prior/tokenizer/vocab.json',
+    ],
+    mb: 6890,
+    repos: { prior: 'kandinsky-community/kandinsky-2-2-prior' },
+    runsIn: 'python (torch, diffusers), in the latent extra',
+  },
+]
+
+export const encoderModel = (name: string) => ENCODER_MODELS.find((e) => e.name === name)
 
 /** The photos the image tools take: what an image set may hold. */
 export const IMAGE_EXT = /\.(jpe?g|png|webp)$/i

@@ -21,7 +21,7 @@ The build checks this file against the page, and stops with a message naming the
 ### Projects
 `panel.projects` flag
 
-Finished work you make by putting parts of Variable Machine together: a model that answers questions from a table, a gesture controller for your patch, a cut-out tool, a character's voice. Each card lists the steps in order; each step opens the tab that does it, shows its command, and is marked done when your workspace has what that step makes.
+Finished work you make by putting parts of Variable Machine together: a classifier that sorts pictures by mood, a model that answers questions from a table, a gesture controller for your patch, a cut-out tool, a character's voice. Each card lists the steps in order; each step opens the tab that does it, shows its command, and is marked done when your workspace has what that step makes.
 
 ### The tab, for a screen reader
 `projects.label`
@@ -119,6 +119,179 @@ done on the {tab} tab, in the page: no command
 
 run this step
 
+### A step's command, while it runs
+`projects.step.running`
+
+running {command}; the terminal below shows each line
+
+## Latent image
+
+### Name
+`projects.latent.title`
+
+latent image
+
+### What it does
+`projects.latent.does`
+
+Makes the latent image of what a person keeps: screenshots of their photo roll, or of their Instagram saved posts, stories and reels, cut down to the pictures in them. The latent image is the picture the set holds without any one of them showing it. A large picture encoder measures every picture; the set's centre is fitted to those measures; a decoder turns the centre back into a picture. Then each picture is measured against it: how near it is, and what it brings that the rest lack. Each result is set beside the media theory it is like: Benjamin on mechanical reproduction, Barthes's studium, punctum and "that-has-been", Baudrillard's simulacra, and Lacan's mirror stage.
+
+### What you get
+`projects.latent.get`
+
+the latent image beside the pixel average, and its axes once there are 30 pictures; a decoder trained on the set's look; a gallery page, with the media theory each part is like, and a JSON of every picture's distance and what it brings. All of it stays on this computer: zip refuses sets made from screenshots
+
+### What it can't do
+`projects.latent.limits`
+
+It is a mean and a few directions of spread, measured in a model's numbers: a picture made from copies, of no picture. The texts frame it and don't change it. The model learned from pictures on the web, so the latent image is drawn in that model's terms. It needs 12 pictures at the least, 30 before it draws axes and about 100 before they hold still, and a Mac with 16 GB of memory. The theory is a likeness, not a finding: the statistics don't do what Benjamin, Barthes, Baudrillard or Lacan describe; they give a place to argue from. The screenshots show a person's own photographs or other people's posts, so the work is a student project only. Saved posts were chosen from what the app's recommender offered, so that set is the person's and the app's together.
+
+### Step: get the model
+`projects.latent.model`
+
+get the picture encoder and decoder (Kandinsky 2.2, 9 GB)
+
+### Step: the screenshots
+`projects.latent.screenshots`
+
+upload 15 or more screenshots into a new image set: of a photo roll, or of Instagram saved posts, stories or reels (one post a screenshot, or screenshots of a grid: the Saved grid, or the photo roll zoomed to 3 or 5 columns; a zoomed-out view's thumbnails are too small to cut)
+
+### Step: a public-domain set instead
+`projects.latent.pictures`
+
+to try the card first: a public-domain body of work (then crop nothing, and make it from images/hiroshige)
+
+### Step: crop the screenshots
+`projects.latent.crop`
+
+cut each screenshot down to its picture, so the app's header, buttons and captions don't become part of the latent image (add --grid for screenshots of a grid: the Saved grid or the photo roll). Both sets are marked private
+
+### Step: the texts
+`projects.latent.texts`
+
+bring in media theory as framing: the Wikipedia articles on Benjamin's "The Work of Art in the Age of Mechanical Reproduction", Barthes's Camera Lucida, Baudrillard's Simulacra and Simulation and Lacan's mirror stage, and two public-domain texts: Holmes on the stereograph (1859), and Plato's Sophist, where the copy without an original starts. The works themselves are in copyright: read them through the library (docs/latent-image-reading.md). They are read beside the latent image, not trained on
+
+### Step: make it
+`projects.latent.make`
+
+make the latent image and the pixel average (and the axes, from 30 pictures), and check the centre holds across halves of the set
+
+### Step: train the decoder
+`projects.latent.train`
+
+train the decoder on the set, so the latent image is drawn in its own look (20 steps a picture, up to 800: about 8 minutes for 15 pictures)
+
+### Step: measure it
+`projects.latent.measure`
+
+measure each picture against the latent image (or another set: another month's, another person's), with the media theory beside each part
+
+### The check, on the make step
+`projects.latent.checked`
+
+{n} images · centre across halves {centre} ({centreSays}) · axis 1 across halves {axis} ({axisSays})
+
+### When it holds
+`projects.latent.stable`
+
+stable
+
+### When it doesn't
+`projects.latent.unstable`
+
+not yet stable
+
+### The training, on the train step
+`projects.latent.trainedIn`
+
+{steps} steps in {minutes} min
+
+### The link to the latent image
+`projects.latent.see`
+
+see the latent image
+
+### The link to the gallery page
+`projects.latent.open`
+
+open the gallery
+
+## Image moods
+
+### Name
+`projects.mood.title`
+
+image moods
+
+### What it does
+`projects.mood.does`
+
+Learns what a picture conveys, its mood (calm, lively, tense or sombre), from pictures people have rated, and from texts on colour and perception: Goethe, William James, Wikipedia. Then it sorts a gallery: each picture gets a mood, how sure it is, and a one-line reason.
+
+### What you end up with
+`projects.mood.get`
+
+a mood classifier (SigLIP, a picture encoder, with a small classifier on top), its score on pictures set aside, and a gallery page with a CSV and JSON of every picture's mood
+
+### What it can't do
+`projects.mood.limits`
+
+It judges what a picture conveys by its look: colour, light, what is in it. It can't tell what anyone in a picture feels or is like, and it isn't trained to: reading feelings from faces is unreliable, and the EU AI Act bans it in workplaces and schools. The training pictures have no people in them. The reason's passage is found by nearness, not written: it isn't why the classifier chose.
+
+### Step: encoder
+`projects.mood.encoder`
+
+get the picture encoder
+
+### Step: pictures
+`projects.mood.pictures`
+
+bring in pictures rated for their mood, as a picture dataset
+
+### Step: texts
+`projects.mood.texts`
+
+bring in texts on colour and perception
+
+### Step: split
+`projects.mood.split`
+
+set pictures aside for checking
+
+### Step: describe
+`projects.mood.describe`
+
+pick each mood's sentences from the texts, into labels.md; read it, and cut what doesn't fit
+
+### Step: train
+`projects.mood.train`
+
+train the classifier, and check it on the pictures set aside
+
+### Step: gallery pictures
+`projects.mood.gallery`
+
+bring in a gallery to sort: public-domain artworks, or your own photos
+
+### Step: sort
+`projects.mood.sort`
+
+sort the gallery: each picture's mood, how sure, and why
+
+### Step: package
+`projects.mood.package`
+
+package it with classify.py, to sort pictures in another project
+
+### The check
+`projects.mood.checked`
+
+on {n} pictures set aside: {right}% right (balanced F1 {f1}); the texts alone {texts}%, the labels alone {labels}%, always "{common}" {commonest}%
+
+### The gallery
+`projects.mood.open`
+
+open the gallery
 ## The guide bar
 
 A step on a card opens its tab with this bar above it: the project is being followed. It stays on every tab until it is closed. On the tab, a walkthrough points at one control at a time.
@@ -1934,3 +2107,724 @@ package it with research.js, and zip it
 `projects.research.mode.use`
 
 use it: search again, and your point of view screens what's new
+
+## Project mode: the latent image
+
+### The decisions, for a screen reader
+`projects.latent.decisions`
+
+the latent image's decisions
+
+### Not built yet
+`projects.latent.notBuilt`
+
+not built yet
+
+### Where the walk goes
+`projects.latent.decision.walk`
+
+where the walk goes
+
+### Walk: to a theme
+`projects.latent.walk.theme`
+
+to a theme
+
+### Walk: to a theme, about
+`projects.latent.walk.theme.about`
+
+to the centre of something that recurs in the set: 1 is the largest theme, the subject the person keeps most. A walk from what the set shares to what it keeps coming back to.
+
+### Walk: to the set's words
+`projects.latent.walk.words`
+
+to the set's own words
+
+### Walk: to the set's words, about
+`projects.latent.walk.words.about`
+
+to the words Kandinsky's text encoder reads in the set (the themes step finds them), drawn back into a picture: the set described, then the description drawn. Needs Kandinsky's prior.
+
+### Walk: to a sentence
+`projects.latent.walk.sentence`
+
+to a sentence
+
+### Walk: to a sentence, about
+`projects.latent.walk.sentence.about`
+
+to a sentence you write: what you think the set is about, or what it lacks. Needs Kandinsky's prior, which turns words into the encoder's numbers.
+
+### Walk: to a picture
+`projects.latent.walk.picture`
+
+to one picture
+
+### Walk: to a picture, about
+`projects.latent.walk.picture.about`
+
+to one picture of the set, by its number: from the picture no one took to one that was taken.
+
+### Walk: which theme
+`projects.latent.walk.themeField`
+
+theme
+
+### Walk: the sentence
+`projects.latent.walk.sentenceField`
+
+the sentence
+
+### Walk: the sentence, before it is written
+`projects.latent.walk.sentencePlaceholder`
+
+a photo of a day by the sea
+
+### Walk: which picture
+`projects.latent.walk.pictureField`
+
+picture number
+
+### Walk: a note
+`projects.latent.walk.note`
+
+24 frames, about 20 seconds each with the trained decoder (10 without): about 8 minutes. Every frame is drawn from the same noise, so only the numbers change along the way, and the picture moves rather than flickers.
+
+### Which pictures
+`projects.latent.decision.pictures`
+
+which pictures
+
+### The example
+`projects.latent.pictures.example`
+
+the example: a made-up photo roll
+
+### The example: its tab
+`projects.latent.pictures.example.tab`
+
+to try the card first, as the dream reading has its demo deck · image segmentation
+
+### The example: time
+`projects.latent.pictures.example.time`
+
+about 25 minutes to draw 45 pictures (28 s each on a 32 GB Mac)
+
+### The example: disk
+`projects.latent.pictures.example.disk`
+
+7 GB more for Kandinsky's prior, which draws from words; 10 MB for the screenshots
+
+### The example: needs
+`projects.latent.pictures.example.needs`
+
+Kandinsky's prior (Apache 2.0); nobody's pictures: 45 written prompts for one made-up person's roll (a grey cat, coffee, the sea, concerts), drawn and laid out as three photo roll screenshots
+
+### The example: changes
+`projects.latent.pictures.example.changes`
+
+the whole route runs as it will on real screenshots, crop included; nothing private: the sets can be zipped and shared
+
+### Screenshots of a grid
+`projects.latent.pictures.grid`
+
+screenshots of a grid
+
+### Screenshots of a grid: its tab
+`projects.latent.pictures.grid.tab`
+
+a photo roll, or Instagram's Saved grid · image segmentation
+
+### Screenshots of a grid: time
+`projects.latent.pictures.grid.time`
+
+a few minutes on the phone; the crop takes seconds
+
+### Screenshots of a grid: disk
+`projects.latent.pictures.grid.disk`
+
+a few MB
+
+### Screenshots of a grid: needs
+`projects.latent.pictures.grid.needs`
+
+screenshots zoomed to 3 or 5 columns; each gives 12 to 40 pictures
+
+### Screenshots of a grid: changes
+`projects.latent.pictures.grid.changes`
+
+adds a crop step: latent crop --grid cuts each thumbnail out
+
+### Screenshots of single posts
+`projects.latent.pictures.single`
+
+screenshots, one picture each
+
+### Screenshots of single posts: its tab
+`projects.latent.pictures.single.tab`
+
+posts, stories or reels · image segmentation
+
+### Screenshots of single posts: time
+`projects.latent.pictures.single.time`
+
+a minute a picture on the phone
+
+### Screenshots of single posts: disk
+`projects.latent.pictures.single.disk`
+
+a few MB
+
+### Screenshots of single posts: needs
+`projects.latent.pictures.single.needs`
+
+15 screenshots or more; tested on mock-ups only
+
+### Screenshots of single posts: changes
+`projects.latent.pictures.single.changes`
+
+adds a crop step: each screenshot cut down to its picture
+
+### A public-domain set
+`projects.latent.pictures.museum`
+
+a public-domain body of work
+
+### A public-domain set: its tab
+`projects.latent.pictures.museum.tab`
+
+to try the card first · image segmentation
+
+### A public-domain set: time
+`projects.latent.pictures.museum.time`
+
+about a minute to download
+
+### A public-domain set: disk
+`projects.latent.pictures.museum.disk`
+
+about 30 MB for 100 pictures
+
+### A public-domain set: needs
+`projects.latent.pictures.museum.needs`
+
+the internet; Hiroshige's prints from the Art Institute of Chicago, CC0
+
+### A public-domain set: changes
+`projects.latent.pictures.museum.changes`
+
+no crop step, and nothing private: the set can be zipped and shared
+
+### That screenshots stay here
+`projects.latent.pictures.private`
+
+Screenshots show a person's own photographs or other people's posts. Both sets, the latent image and the gallery are marked private: zip refuses them, so they stay on this computer. Student project only.
+
+### The screenshots' set
+`projects.latent.decision.set`
+
+the set they go into
+
+### The set's name
+`projects.latent.set.name`
+
+set name
+
+### Where the screenshots and the crop go
+`projects.latent.set.about`
+
+The screenshots go into workspace/images/{set}; the pictures cut from them into workspace/images/{set}-pictures.
+
+### Which diffusion model
+`projects.latent.decision.diffusion`
+
+which diffusion model draws it
+
+### Kandinsky 2.2
+`projects.latent.diffusion.kandinsky`
+
+Kandinsky 2.2
+
+### Kandinsky 2.2, about
+`projects.latent.diffusion.kandinsky.about`
+
+A picture encoder (CLIP ViT-bigG/14) gives each picture 1,280 numbers; a diffusion decoder turns numbers back into a picture, starting from noise and taking it away over 30 steps. Apache 2.0, by Sber AI. A 9 GB download; it needs a Mac with 16 GB of memory.
+
+### Kandinsky 2.2, too big
+`projects.latent.diffusion.tooSmall`
+
+this Mac has {memory} GB: too little
+
+### TAESD
+`projects.latent.diffusion.taesd`
+
+TAESD, for an 8 GB Mac
+
+### TAESD, about
+`projects.latent.diffusion.taesd.about`
+
+A 10 MB autoencoder: it averages the pictures' codes and decodes the average. Its latent image is closer to a blur than a picture. Planned, not built.
+
+### Which texts
+`projects.latent.decision.texts`
+
+which texts frame it
+
+### Benjamin
+`projects.latent.text.benjamin`
+
+Benjamin, on mechanical reproduction
+
+### Benjamin, about
+`projects.latent.text.benjamin.about`
+
+the Wikipedia article on "The Work of Art in the Age of Mechanical Reproduction" (CC BY-SA); the essay itself is read through the library
+
+### Barthes
+`projects.latent.text.barthes`
+
+Barthes, Camera Lucida
+
+### Barthes, about
+`projects.latent.text.barthes.about`
+
+the Wikipedia article (CC BY-SA): studium, punctum and the that-has-been; the book through the library
+
+### Baudrillard
+`projects.latent.text.baudrillard`
+
+Baudrillard, Simulacra and Simulation
+
+### Baudrillard, about
+`projects.latent.text.baudrillard.about`
+
+the Wikipedia article (CC BY-SA): the copy without an original; the book through the library
+
+### Lacan
+`projects.latent.text.lacan`
+
+Lacan, the mirror stage
+
+### Lacan, about
+`projects.latent.text.lacan.about`
+
+the Wikipedia article (CC BY-SA): the self formed on an image of unity; the essay through the library
+
+### Holmes
+`projects.latent.text.holmes`
+
+Holmes, on the stereograph (1859)
+
+### Holmes, about
+`projects.latent.text.holmes.about`
+
+public domain: the whole June 1859 Atlantic Monthly from Project Gutenberg, with "form is henceforth divorced from matter"
+
+### Plato
+`projects.latent.text.plato`
+
+Plato, Sophist
+
+### Plato, about
+`projects.latent.text.plato.about`
+
+public domain (Jowett's translation, Gutenberg): likeness-making and the "phantastic", where the copy without an original starts
+
+### Your own writing
+`projects.latent.text.own`
+
+your own writing, or PDFs
+
+### Your own writing, about
+`projects.latent.text.own.about`
+
+Upload a .txt, .md or .pdf: your notes, an essay, or a chapter or article you have as a PDF. It is read into workspace/raw beside the others and marked private, so it stays on this computer.
+
+### Your own writing, already here
+`projects.latent.text.own.here`
+
+here: {names}
+
+### The texts and the library
+`projects.latent.texts.library`
+
+The texts frame the latent image; they don't change it. The works by Benjamin, Barthes, Baudrillard and Lacan are in copyright: read them through the library (docs/latent-image-reading.md) and quote short passages with their source.
+
+### Whose look
+`projects.latent.decision.look`
+
+whose look it is drawn in
+
+### The web's look
+`projects.latent.look.web`
+
+the model's look
+
+### The web's look, about
+`projects.latent.look.web.about`
+
+Drawn by the decoder as it came: in the look of the two billion pictures from the web it learned from. Nothing to train.
+
+### The set's look
+`projects.latent.look.set`
+
+the set's own look
+
+### The set's look, about
+`projects.latent.look.set.about`
+
+The decoder learns the set first (LoRA: small added weights), so the latent image is drawn in the set's own look. 20 steps a picture: about 6 minutes for 15 pictures, and 9 GB of memory while it trains.
+
+### Measured against
+`projects.latent.decision.against`
+
+what is measured against it
+
+### The set itself
+`projects.latent.against.itself`
+
+the set it is made from: how near each picture is to the centre, and what it brings that the rest lack
+
+### Another set
+`projects.latent.against.other`
+
+another set: another month's, another person's
+
+### Step: the model
+`projects.latent.mode.model`
+
+get the diffusion model: Kandinsky 2.2's picture encoder and decoder (9 GB)
+
+### Step: TAESD
+`projects.latent.mode.taesd`
+
+get TAESD, for an 8 GB Mac
+
+### Step: the model, and its prior
+`projects.latent.mode.modelPrior`
+
+get the diffusion model: Kandinsky 2.2's picture encoder and decoder (9 GB), and its prior, which turns written words into its numbers, so the example can be drawn (7 GB)
+
+### Step: the example
+`projects.latent.mode.example`
+
+draw the example: 45 pictures of a made-up person's photo roll, from written prompts, laid out as three screenshots of the roll
+
+### Step: the public-domain set
+`projects.latent.mode.museum`
+
+bring in Hiroshige's prints, a public-domain body of work
+
+### Step: upload a grid
+`projects.latent.mode.uploadGrid`
+
+upload the screenshots of the grid into the set {set}: name the set, then add photos
+
+### Step: upload single screenshots
+`projects.latent.mode.uploadSingle`
+
+upload the screenshots, one picture each, into the set {set}: name the set, then add photos
+
+### Step: whose pictures
+`projects.latent.mode.license`
+
+screenshots: student project only, private
+
+### Step: crop
+`projects.latent.mode.crop`
+
+cut the screenshots down to their pictures, so the app's header, buttons and captions don't become part of the latent image
+
+### Step: the texts
+`projects.latent.mode.texts`
+
+bring in the texts that frame it
+
+### Step: the texts, counted
+`projects.latent.mode.textsHere`
+
+{n} of {of} here
+
+### Step: no texts
+`projects.latent.mode.noTexts`
+
+no texts chosen: the latent image doesn't need them
+
+### Step: your own writing
+`projects.latent.mode.own`
+
+bring in your own writing, or a PDF: choose the file, name it, and say its terms
+
+### Step: make
+`projects.latent.mode.make`
+
+make the latent image: the encoder measures every picture, and the diffusion decoder draws their centre
+
+### Step: the latent image, shown
+`projects.latent.mode.showLatent`
+
+the latent image
+
+### Step: the pixel average, shown
+`projects.latent.mode.showPixels`
+
+the pixel average
+
+
+### Step: the composite, shown
+`projects.latent.mode.showComposite`
+
+the composite: the pixel average of the 10 pictures nearest the centre
+
+### Step: the average in the decoder's codes, shown
+`projects.latent.mode.showCodes`
+
+the average in the decoder's own codes, decoded
+
+### Step: the themes
+`projects.latent.mode.themes`
+
+find what recurs in the set: its pictures sorted into themes by their numbers, each with a composite of its pictures, its centre drawn, and words for it
+
+### Step: the themes, found
+`projects.latent.mode.themesHere`
+
+{n} themes; the set's own words: {words}
+
+### Step: a theme's composite, shown
+`projects.latent.mode.themeComposite`
+
+theme {n}, {size} pictures, composited · {words}
+
+### Step: a theme's centre, shown
+`projects.latent.mode.themeDrawn`
+
+theme {n}, its centre drawn
+
+### Step: the walk
+`projects.latent.mode.walk`
+
+walk out from the latent image: frames drawn along the way to where the walk goes, as an animation that loops out and back
+
+### Step: the walk, shown
+`projects.latent.mode.showWalk`
+
+the walk to {to}
+
+### Step: train the decoder
+`projects.latent.mode.train`
+
+train the decoder on the set, so the latent image is drawn in the set's own look
+
+### Step: the trained latent image, shown
+`projects.latent.mode.showTrained`
+
+drawn by the trained decoder
+
+### Step: the gallery
+`projects.latent.mode.gallery`
+
+measure the pictures against the latent image, with the media theory beside each part, and open the gallery page
+
+### Step: the room
+`projects.latent.mode.room`
+
+make the room ready: the installation's own page, where a visitor touches the pictures they would keep and sees the latent image of those, with the media theory and the passages of your texts nearest it
+
+### Step: the room, for the texts it reads
+`projects.latent.mode.roomTexts`
+
+reads {n} texts: {texts}
+
+### Link: open the room
+`projects.latent.openRoom`
+
+open the room (full screen: the browser's full-screen key)
+
+### Box: crop
+`projects.latent.mode.boxCrop`
+
+crop
+
+### Box: the latent image
+`projects.latent.mode.boxLatent`
+
+latent image
+
+### Box: the gallery
+`projects.latent.mode.boxGallery`
+
+gallery
+
+### Box: the room
+`projects.latent.mode.boxRoom`
+
+room
+
+### Box: the decoder
+`projects.latent.mode.boxDecoder`
+
+train
+
+### Caption: your photos
+`projects.latent.mode.capPhotos`
+
+the screenshots
+
+### Caption: crop
+`projects.latent.mode.capCrop`
+
+down to the pictures
+
+### Caption: the model
+`projects.latent.mode.capModel`
+
+Kandinsky 2.2, a diffusion model
+
+### Caption: the latent image
+`projects.latent.mode.capLatent`
+
+the centre, drawn
+
+### Caption: the gallery
+`projects.latent.mode.capGallery`
+
+every picture against it
+
+### Caption: the room
+`projects.latent.mode.capRoom`
+
+a visitor's choice, drawn
+
+### Caption: your words
+`projects.latent.mode.capWords`
+
+media theory, and your writing
+
+### Caption: the decoder
+`projects.latent.mode.capDecoder`
+
+on the set's look
+
+### Wire: encode
+`projects.latent.mode.wireEncode`
+
+1,280 numbers each
+
+### Wire: decode
+`projects.latent.mode.wireDecode`
+
+decoded
+
+
+### Wire: measure
+`projects.latent.mode.wireMeasure`
+
+measured
+
+### Wire: read beside
+`projects.latent.mode.wireBeside`
+
+passages, beside a visitor's choice
+
+### A box the project adds
+`projects.latent.mode.newBox`
+
+new
+
+## The latent image's room (#latent-room/<name>), the installation's own page
+
+### The room, for a screen reader
+`projects.latent.room.label`
+
+the latent image room
+
+### No room yet
+`projects.latent.room.none`
+
+No room for {name} yet: latent room {name} makes it ready, on the card's last step.
+
+### What the visitor is asked
+`projects.latent.room.ask`
+
+Touch the pictures you would keep: {n} or more.
+
+### The pictures, for a screen reader
+`projects.latent.room.pictures`
+
+the pictures
+
+### The set's latent image
+`projects.latent.room.theirs`
+
+the latent image of all {n}: their centre, drawn. No single picture shows it.
+
+### The visitor's latent image
+`projects.latent.room.yours`
+
+the latent image of the {n} you chose
+
+### Choose more
+`projects.latent.room.pickMore`
+
+choose {n} more
+
+### Draw
+`projects.latent.room.draw`
+
+draw the picture these {n} hold
+
+### Drawing
+`projects.latent.room.waiting`
+
+drawing the centre of the pictures you chose
+
+### It didn't draw
+`projects.latent.room.failed`
+
+it didn't draw: the terminal on the card says why
+
+### How near
+`projects.latent.room.near`
+
+Their centre is {d} spreads from the centre of all of them (1 is a typical picture's distance): nearer than {pct} of random choices of {k} pictures.
+
+### How far
+`projects.latent.room.far`
+
+Their centre is {d} spreads from the centre of all of them (1 is a typical picture's distance): further out than {pct} of random choices of {k} pictures.
+
+### Heading: Lacan
+`projects.latent.room.lineMirror`
+
+Lacan, the mirror stage
+
+### Heading: the studium
+`projects.latent.room.lineStudium`
+
+Barthes, the studium: near the centre
+
+### Heading: the punctum
+`projects.latent.room.linePunctum`
+
+Barthes, the punctum: away from the centre
+
+### Heading: Baudrillard
+`projects.latent.room.lineSimulacrum`
+
+Baudrillard, the phases of the image
+
+### Heading: the trained decoder
+`projects.latent.room.lineTrained`
+
+Baudrillard, the simulacrum: drawn in the set's own look
+
+### The note under the reading
+`projects.latent.room.note`
+
+A mean of 1,280 numbers for each picture, decoded by Kandinsky 2.2. The theory is a likeness, not a finding: the numbers don't do what it describes. The passages are the ones nearest each line, measured by an embedding model.
+
+### Again
+`projects.latent.room.again`
+
+again

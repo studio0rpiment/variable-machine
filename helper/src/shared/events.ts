@@ -10,6 +10,8 @@ export interface Status {
   memoryGB: number
   tier: Tier
   arch: string
+  /** Started for one project (VARIABLE_MACHINE_PROJECT=latent, Latent Image.command): the page opens straight into that project's walkthrough and leaves out the rest of the app. */
+  project?: string
 }
 
 /** A file a page run made: where it went, what it was made from, which tool made it. */

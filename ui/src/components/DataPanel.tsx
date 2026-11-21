@@ -12,6 +12,7 @@ import DataGenerator from './DataGenerator'
 import DataDrafts from './DataDrafts'
 import ImportCard from './ImportCard'
 import RawCard from './RawCard'
+import RawFileCard from './RawFileCard'
 import PreferenceBuilder from './PreferenceBuilder'
 import PictureRows from './PictureRows'
 import { Explained } from '../explain/Explained'
@@ -324,6 +325,13 @@ export default function DataPanel({ onUse, pick }: { onUse?: (dataset: string, w
                   <h2 className="panel__title label mf-lead-plain">{MAKE.raw.title}</h2>
                   <p className="mf-next">{MAKE.raw.when}</p>
                   <RawCard busy={busy === 'raw'} onRun={(line) => void run('raw', line)} />
+                </div>
+</Part>
+                <Part id="data.rawFile">
+<div className="data-way">
+                  <h2 className="panel__title label mf-lead-plain">{say('data.rawFile.title')}</h2>
+                  <p className="mf-next">{say('data.rawFile.when')}</p>
+                  <RawFileCard busy={busy === 'rawFile'} onRun={(line) => void run('rawFile', line)} />
                 </div>
 </Part>
                 <Part id="data.empty">

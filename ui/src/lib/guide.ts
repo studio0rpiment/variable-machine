@@ -17,7 +17,7 @@ export interface Guide {
 }
 
 /** The cards with a schematic, so project mode can open on them: the gesture controller first. */
-export const SCHEMATICS = new Set(['gesture', 'voice', 'research'])
+export const SCHEMATICS = new Set(['gesture', 'voice', 'research', 'latent'])
 
 const EVENT = 'variable-machine:guide'
 

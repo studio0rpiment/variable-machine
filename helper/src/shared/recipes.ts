@@ -44,6 +44,10 @@ export const UV = ['uv', 'run', '--project', 'python']
 export const UV_SEES = [...UV, '--extra', 'sees']
 /** The same, with mlx-audio for the speech tab (helper/src/voice.ts). */
 export const UV_VOICE = [...UV, '--extra', 'voice']
+/** The same, with onnxruntime and Pillow for image moods (helper/src/mood.ts). */
+export const UV_MOOD = [...UV, '--extra', 'mood']
+/** The same, with torch and diffusers for the latent image (helper/src/latent.ts). */
+export const UV_LATENT = [...UV, '--extra', 'latent']
 
 /**
  * Training a model that sees on a picture dataset (mlx-vlm 0.7.10, through

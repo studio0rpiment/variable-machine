@@ -478,7 +478,7 @@ async function decideCommand(name: string, key: string, decision: string, reason
 /* ---------- your own copies: PDFs, read in full ---------- */
 
 /** A PDF's text, page by page: pypdf, in a throwaway environment uv keeps in its cache (nothing installed in the project). */
-function pdfPages(file: string): Promise<{ title: string; author: string; pages: string[] }> {
+export function pdfPages(file: string): Promise<{ title: string; author: string; pages: string[] }> {
   return new Promise((resolve, reject) =>
     execFile('uv', ['run', '--no-project', '--quiet', '--with', 'pypdf>=5', 'python', path.join(ROOT, 'python', 'variable_machine', 'pdf_text.py'), file], { cwd: ROOT, maxBuffer: 256 * 1024 * 1024, timeout: 300_000 }, (err, out, errOut) => {
       if (err) return reject(new Error(`reading the PDF: ${(errOut || err.message).trim().split('\n').at(-1)}`))

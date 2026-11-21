@@ -14,7 +14,7 @@ import { receiveExamples } from './gestures.ts'
  *   GET /api/workspace/manifests?dir=hf        → every <dir>/*\/manifest.json, parsed
  *   GET /api/workspace/file?path=shared/x.zip&download=1 → the same, as a download
  *   POST /api/workspace/upload?name=x.zip     → a zip into workspace/shared
- *   POST /api/workspace/upload?name=x.csv      → a .csv, .jsonl or .json into workspace/uploads (for data import file), or a .txt or .md (for data draft --from)
+ *   POST /api/workspace/upload?name=x.csv      → a .csv, .jsonl or .json into workspace/uploads (for data import file), or a .txt or .md (for data draft --from), or a .txt, .md or .pdf (for data raw file, papers add)
  *   POST /api/workspace/upload?name=x.jpg&set=s → a photo into workspace/images/<set>/ (the set's manifest lists it)
  *   POST /api/workspace/output?path=outputs/s/x.png → a picture a page run made (look …); the run records it
  *   POST /api/workspace/upload?name=x.wav&audio=s → a recording from the page into workspace/audio/<set>/ (the set's manifest lists it)
@@ -48,6 +48,8 @@ const TYPES: Record<string, string> = {
   '.onnx': 'application/octet-stream',
   '.task': 'application/octet-stream',
   '.json': 'application/json',
+  // a gallery page (mood gallery): shown, but sandboxed below, so a page in the workspace can't run code as this app
+  '.html': 'text/html; charset=utf-8',
 }
 
 function json(res: http.ServerResponse, code: number, body: unknown) {
@@ -156,8 +158,8 @@ async function upload(req: http.IncomingMessage, res: http.ServerResponse, name:
     return uploadPhoto(req, res, name, set, license?.trim() || 'your own work')
   }
   // A zip is something shared (unzip puts it back); a table or JSON file is data to bring in.
-  const kind = name && /^[\w.-]+\.zip$/.test(name) ? 'shared' : name && /^[\w.-]+\.(csv|jsonl|json|txt|md)$/.test(name) ? 'uploads' : null
-  if (req.method !== 'POST' || !name || !kind) return json(res, 400, { error: 'POST a .zip, .csv, .jsonl, .json, .txt or .md with ?name=<file>, or a photo with ?name=<file>&set=<set>' })
+  const kind = name && /^[\w.-]+\.zip$/.test(name) ? 'shared' : name && /^[\w.-]+\.(csv|jsonl|json|txt|md|pdf)$/i.test(name) ? 'uploads' : null
+  if (req.method !== 'POST' || !name || !kind) return json(res, 400, { error: 'POST a .zip, .csv, .jsonl, .json, .txt, .md or .pdf with ?name=<file>, or a photo with ?name=<file>&set=<set>' })
   const dest = path.join(WORKSPACE, kind, name)
   await fs.mkdir(path.dirname(dest), { recursive: true })
   try {
@@ -188,7 +190,8 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
           .filter((e) => !e.name.startsWith('.'))
           .map(async (e) => {
             const st = await fs.stat(path.join(target, e.name))
-            return { name: e.name, dir: e.isDirectory(), size: st.size, modified: st.mtime.toISOString() }
+            // fs.stat follows a link: a model folder linked from another drive (KP 512) is a folder
+            return { name: e.name, dir: st.isDirectory(), size: st.size, modified: st.mtime.toISOString() }
           }),
       )
       return json(res, 200, rows)
@@ -212,6 +215,7 @@ export async function serveWorkspaceApi(req: http.IncomingMessage, res: http.Ser
         'content-type': TYPES[path.extname(target).toLowerCase()] ?? 'text/plain; charset=utf-8',
         'content-length': String(st.size),
         'cache-control': 'no-store',
+        ...(path.extname(target).toLowerCase() === '.html' && { 'content-security-policy': "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'" }),
         ...(download ? { 'content-disposition': `attachment; filename="${path.basename(target)}"` } : {}),
       })
       createReadStream(target).pipe(res)

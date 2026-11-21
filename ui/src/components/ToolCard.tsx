@@ -1,4 +1,4 @@
-import { KINDS, type KindId, type ToolModel } from '@shared/kinds'
+import { KINDS, type EncoderModel, type KindId, type ToolModel } from '@shared/kinds'
 import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import { DownloadWait } from './Loading'
@@ -34,6 +34,28 @@ export default function ToolCard({ tool, here, busy, onGet }: { tool: ToolModel;
     >
       <p className="model-about">{tool.builtFor}</p>
       <span className="label label--muted">{KINDS[tool.kind].io}</span>
+    </Manifest>
+  )
+}
+
+/** A picture encoder (the sorts kind): what it does, its license and size, and `model get` until it is here. */
+export function EncoderCard({ e, here, busy, onGet }: { e: EncoderModel; here: boolean; busy: boolean; onGet: () => void }) {
+  return (
+    <Manifest
+      name={e.name}
+      badges={<Badge>{e.kind}</Badge>}
+      lines={[`${e.maker} · ${e.license}`, `${e.repo}, from ${e.original} · about ${e.mb} MB`, here ? 'in workspace/tools' : 'not downloaded yet']}
+      actions={
+        !here &&
+        (busy ? (
+          <DownloadWait name={e.name} label={`downloading ${e.name}`} />
+        ) : (
+          <CommandPreview command={`model get ${e.name}`} onRun={onGet} running={busy} label={`download ${e.name}`} />
+        ))
+      }
+    >
+      <p className="model-about">{e.builtFor}</p>
+      <span className="label label--muted">{KINDS[e.kind].io}</span>
     </Manifest>
   )
 }
