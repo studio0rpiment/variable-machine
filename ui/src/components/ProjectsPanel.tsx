@@ -155,6 +155,9 @@ interface Adapter {
   base: string
   /** lora, dora, full, or dpo for a Prefer run */
   method?: string
+  iters?: number
+  /** train --keep best: the step kept, where the set-aside rows' loss was lowest */
+  kept?: { iter: number; valLoss: number }
 }
 interface Gesture {
   folder: string
@@ -572,7 +575,7 @@ function dreamRoute(h: Have, c: DreamChoices): DreamFacts {
       name: say('projects.dream.mode.one'),
       tab: 'segmentation',
       node: 'interpret',
-      commands: [joinWords(['dream', 'interpret', name, '--combination', key, ...flag('--model', c.writer, 'qwen3:4b')]), joinWords(['dream', 'draw', name, '--combination', key, ...drawFlags])],
+      commands: [joinWords(['dream', 'interpret', name, '--combination', key, ...flag('--model', c.writer, 'qwen3:4b'), ...(c.chinese ? ['--chinese'] : [])]), joinWords(['dream', 'draw', name, '--combination', key, ...drawFlags])],
       done: (folder?.drawn ?? 0) > 0 && (folder?.interpreted ?? 0) > 0,
       view: 'dream-combination',
     },
@@ -582,7 +585,7 @@ function dreamRoute(h: Have, c: DreamChoices): DreamFacts {
             name: say('projects.dream.mode.all'),
             tab: 'segmentation' as const,
             node: 'draw',
-            commands: [joinWords(['dream', 'interpret', name, '--all', ...flag('--model', c.writer, 'qwen3:4b')]), joinWords(['dream', 'draw', name, '--all', ...drawFlags])],
+            commands: [joinWords(['dream', 'interpret', name, '--all', ...flag('--model', c.writer, 'qwen3:4b'), ...(c.chinese ? ['--chinese'] : [])]), joinWords(['dream', 'draw', name, '--all', ...drawFlags])],
             done: !!folder && (folder.interpreted ?? 0) >= total && (folder.drawn ?? 0) >= total,
             result: folder ? say('projects.dream.mode.allResult', { interpreted: folder.interpreted ?? 0, drawn: folder.drawn ?? 0, total }) : undefined,
           },
@@ -592,7 +595,7 @@ function dreamRoute(h: Have, c: DreamChoices): DreamFacts {
       name: say('projects.dream.mode.room'),
       tab: 'segmentation',
       node: 'room',
-      commands: [joinWords(['dream', 'choose', name, '--who', '1', '--what', '2', '--when', '3', '--where', '4']), joinWords(['dream', 'respond', name, ...flag('--model', c.writer, 'qwen3:4b'), ...drawFlags, ...(c.readWords ? ['--read-words'] : [])])],
+      commands: [joinWords(['dream', 'choose', name, '--who', '1', '--what', '2', '--when', '3', '--where', '4']), joinWords(['dream', 'respond', name, ...flag('--model', c.writer, 'qwen3:4b'), ...drawFlags, ...(c.readWords ? ['--read-words'] : []), ...(c.chinese ? ['--chinese'] : [])])],
       done: !!h.dreamState[name]?.response,
       link: folder ? { path: `#room/${name}`, label: say('projects.dream.open') } : undefined,
       view: 'dream-room',
@@ -640,7 +643,7 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
     name: say('projects.dreamTrained.mode.teacher', { teacher: c.teacher }),
     tab: 'segmentation',
     node: 'interpret',
-    commands: [joinWords(['dream', 'interpret', name, '--all', '--model', c.teacher])],
+    commands: [joinWords(['dream', 'interpret', name, '--all', '--model', c.teacher, ...(c.chinese ? ['--chinese'] : [])])],
     done: (by[c.teacher] ?? 0) + (by[c.reader] ?? 0) >= total,
     result: folder ? say('projects.dreamTrained.mode.teacherResult', { n: by[c.teacher] ?? 0, total, teacher: c.teacher }) : undefined,
     view: 'dream-combination',
@@ -659,8 +662,9 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
     name: say('projects.dreamTrained.mode.train'),
     tab: 'train',
     node: 'train',
-    commands: [joinWords(['train', c.reader, '--data', c.readerSet, '--base', c.base, '--max-seq', '3072'])],
+    commands: [joinWords(['train', c.reader, '--data', c.readerSet, '--base', c.base, '--max-seq', '3072', '--iters', '400', '--keep', 'best'])],
     done: !!adapter,
+    result: adapter?.kept ? say('projects.dreamTrained.mode.trainKept', { iter: adapter.kept.iter, iters: adapter.iters ?? 0, loss: adapter.kept.valLoss }) : undefined,
     fill: { train: { data: c.readerSet, name: c.reader, base: c.base } },
     parts: [],
   })
@@ -669,7 +673,7 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
     name: say('projects.dreamTrained.mode.again', { reader: c.reader }),
     tab: 'segmentation',
     node: 'interpret',
-    commands: [joinWords(['dream', 'interpret', name, '--all', '--again', '--model', c.reader])],
+    commands: [joinWords(['dream', 'interpret', name, '--all', '--again', '--model', c.reader, ...(c.chinese ? ['--chinese'] : [])])],
     done: (by[c.reader] ?? 0) >= total,
     result: folder && exported ? say('projects.dreamTrained.mode.againResult', { n: by[c.reader] ?? 0, total, reader: c.reader }) : undefined,
     view: 'dream-combination',
@@ -699,7 +703,7 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
     name: say('projects.dream.mode.room'),
     tab: 'segmentation',
     node: 'room',
-    commands: [joinWords(['dream', 'choose', name, '--who', '1', '--what', '2', '--when', '3', '--where', '4']), joinWords(['dream', 'respond', name, '--model', exported ? c.reader : c.teacher, ...drawFlags, ...(c.readWords ? ['--read-words'] : [])])],
+    commands: [joinWords(['dream', 'choose', name, '--who', '1', '--what', '2', '--when', '3', '--where', '4']), joinWords(['dream', 'respond', name, '--model', exported ? c.reader : c.teacher, ...drawFlags, ...(c.readWords ? ['--read-words'] : []), ...(c.chinese ? ['--chinese'] : [])])],
     done: !!h.dreamState[name]?.response && (by[c.reader] ?? 0) > 0,
     link: folder ? { path: `#room/${name}/trained`, label: say('projects.dream.open') } : undefined,
     view: 'dream-room',

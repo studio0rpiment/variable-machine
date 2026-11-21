@@ -3,7 +3,7 @@ import { NODES, WIRES, W, H } from './FlowMap'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
-import { chooseDream, chooseSet, EMBEDDERS, LIBRARY, QUALITIES, READER_BASES, toggleText, useDreamChoices, WRITERS, ZH, type LibraryText } from '../lib/dreamChoices'
+import { chooseDream, chooseSet, EMBEDDERS, LIBRARY, QUALITIES, qualityLabel, READER_BASES, toggleText, useDreamChoices, WRITERS, type LibraryText } from '../lib/dreamChoices'
 import { say } from '../text/say'
 import type { Project, Step } from './ProjectsPanel'
 
@@ -395,7 +395,7 @@ export function DreamDecisions({ project }: { project: Project }) {
             <div className="dream-sets">
               {QUALITIES.map((q) => (
                 <label key={q} className="dream-sets__row">
-                  <span className="label">{`${ZH[q]} ${q}`}</span>
+                  <span className="label">{qualityLabel(q, c)}</span>
                   <select value={c.sets[q]} onChange={(e) => chooseSet(q, e.target.value)}>
                     <option value="">{say('projects.dream.cards.pick')}</option>
                     {setsBig.map((s) => (
@@ -509,6 +509,14 @@ export function DreamDecisions({ project }: { project: Project }) {
           </Choice>
         </Decision>
         )}
+        <Decision box="interpret" q={say('projects.dream.decision.language')}>
+          <Choice on={!c.chinese} onPick={() => chooseDream('chinese', false)} name={say('projects.dream.language.en')}>
+            {say('projects.dream.language.en.about')}
+          </Choice>
+          <Choice on={c.chinese} onPick={() => chooseDream('chinese', true)} name={say('projects.dream.language.zh')}>
+            {say('projects.dream.language.zh.about')}
+          </Choice>
+        </Decision>
         <Decision box="room" q={say('projects.dream.decision.words')}>
           <Choice on={!c.readWords} onPick={() => chooseDream('readWords', false)} name={say('projects.dream.words.keep')}>
             {say('projects.dream.words.keep.about')}

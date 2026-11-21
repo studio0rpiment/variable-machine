@@ -28,6 +28,8 @@ export interface TrainParams {
   batch: number
   maxSeq: number
   evalEvery: number
+  /** best: save at every check against the set-aside rows and keep the step where their loss is lowest; last (the default): the last step */
+  keep?: 'best' | 'last'
 }
 
 /** Plan §11. */
@@ -97,7 +99,7 @@ export function seesTrainArgs(p: TrainParams): string[] {
 
 /** The `train` line for a picture dataset: the same command, without the settings mlx-vlm doesn't take. */
 export function seesTrainLine(p: TrainParams): string[] {
-  return ['train', p.name, '--base', p.base, '--data', p.data, '--rank', String(p.rank), '--lr', String(p.lr), '--iters', String(p.iters), '--batch', String(p.batch), '--max-seq', String(p.maxSeq), '--eval-every', String(p.evalEvery)]
+  return ['train', p.name, '--base', p.base, '--data', p.data, '--rank', String(p.rank), '--lr', String(p.lr), '--iters', String(p.iters), '--batch', String(p.batch), '--max-seq', String(p.maxSeq), '--eval-every', String(p.evalEvery), ...(p.keep === 'best' ? ['--keep', 'best'] : [])]
 }
 
 export const runConfigYaml = (p: TrainParams) =>
@@ -118,6 +120,7 @@ export function trainArgs(p: TrainParams, runDir: string, text = false): string[
     '--max-seq-length', String(p.maxSeq),
     '--steps-per-report', '5',
     '--steps-per-eval', String(p.evalEvery),
+    ...(p.keep === 'best' ? ['--save-every', String(p.evalEvery)] : []),
     '--adapter-path', `workspace/adapters/${p.name}`,
     ...(text ? [] : ['--mask-prompt']),
     '--config', `${runDir}/config.yaml`,

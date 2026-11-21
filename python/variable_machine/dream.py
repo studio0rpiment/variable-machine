@@ -4,9 +4,9 @@
     python python/variable_machine/dream.py drawings <image set>
     python python/variable_machine/dream.py deck <dream folder> --who <folder> --what <folder> --when <folder> --where <folder>
     python python/variable_machine/dream.py guide <dream folder> <text> [<text> …] [--embed nomic-embed-text]
-    python python/variable_machine/dream.py interpret <dream folder> (--combination 1-2-3-4 | --all) [--model qwen3:4b] [--again]
+    python python/variable_machine/dream.py interpret <dream folder> (--combination 1-2-3-4 | --all) [--model qwen3:4b] [--again] [--chinese]
     python python/variable_machine/dream.py draw <dream folder> (--combination 1-2-3-4 | --all) [--variations 2] [--with cards|prior] [--style <latent folder>] [--again]
-    python python/variable_machine/dream.py respond <dream folder> [--model qwen3:4b] [--with cards|prior] [--variations 2] [--read-words] [--style <latent folder>]
+    python python/variable_machine/dream.py respond <dream folder> [--model qwen3:4b] [--with cards|prior] [--variations 2] [--read-words] [--style <latent folder>] [--chinese]
 
 All paths are relative to the repo root. Nothing here downloads anything.
 
@@ -40,7 +40,7 @@ The models, each a choice:
 - **An embedding model in Ollama** (nomic-embed-text, Apache 2.0, by default):
   finds the passages of the other guide texts nearest a combination.
 - **A language model in Ollama** (qwen3:4b, Apache 2.0, by default; --model
-  none for no reading) writes the interpretation, in English and Chinese.
+  none for no reading) writes the interpretation, in English (and Traditional Chinese with --chinese).
   Each interpretation keeps the question asked and the answer given, so
   dream rows can make training rows of them: a small model trained on them
   (train, export) is then named with --model, and --again interprets every
@@ -483,13 +483,17 @@ Passages from the guide texts, numbered, with the text each is from:
 Answer in JSON with these keys:
 - "by_text": one entry for each of these texts: {texts}. Each is {{"text": its name, "sentence": one sentence to the visitor ("you") on what that text's passages say about this dream as a whole}}. Begin each sentence with the text's name ("The Zhougong jiemeng says …", "Wang Fu writes …", "In the Liezi …").
 - "together": one sentence joining them: what the four cards mean together, as these texts read them. Say it is what the texts say, not what will happen.
-- "reading_zh": all of those sentences, in order, translated into Traditional Chinese (繁體中文): every word in Chinese, no English.
-- "picture": one sentence, under 35 words, describing a single dream picture that holds the four cards and the reading, for a painter. No names of texts.
+{chinese}- "picture": one sentence, under 35 words, describing a single dream picture that holds the four cards and the reading, for a painter. No names of texts.
 - "used": the numbers of the passages you used.
 Use only the passages; don't add omens or ideas that aren't in them."""
 
 
-def interpret_one(out: Path, d: dict, g: dict, c: dict[str, int], model: str, words: str = "") -> dict:
+# --chinese: the reading also in Traditional Chinese. Off by default: the installation reads in English
+CHINESE = """- "reading_zh": all of those sentences, in order, translated into Traditional Chinese (繁體中文): every word in Chinese, no English.
+"""
+
+
+def interpret_one(out: Path, d: dict, g: dict, c: dict[str, int], model: str, words: str = "", zh: bool = False) -> dict:
     cards_ = {q: d["qualities"][q]["cards"][c[q] - 1] for q in QUALITIES}
     found = []
     if g.get("book"):
@@ -518,7 +522,8 @@ def interpret_one(out: Path, d: dict, g: dict, c: dict[str, int], model: str, wo
     if model != "none" and found:
         named = list(dict.fromkeys(title_of(f["from"]) for f in found))
         asked = PROMPT.format(
-            cards="\n".join(f"- {q} ({ZH[q]}): {describe(cards_[q])}" for q in QUALITIES),
+            cards="\n".join(f"- {q}{f' ({ZH[q]})' if zh else ''}: {describe(cards_[q])}" for q in QUALITIES),
+            chinese=CHINESE if zh else "",
             dream=f'\nThey said of their dream: "{words}"' if words else "",
             passages="\n".join(f"[{i + 1}] ({title_of(f['from'])}) {f['text']}" for i, f in enumerate(found)),
             texts=", ".join(named),
@@ -559,7 +564,7 @@ def chosen(d: dict, key: str | None, every: bool) -> list[dict[str, int]]:
     return [c]
 
 
-def interpret(out: Path, key: str | None, every: bool, model: str, again: bool = False) -> None:
+def interpret(out: Path, key: str | None, every: bool, model: str, again: bool = False, zh: bool = False) -> None:
     d, g = read(out)
     combos = chosen(d, key, every)
     made = [c for c in combos if every and not again and (out / "combinations" / key_of(c) / "interpretation.json").exists()]
@@ -570,7 +575,7 @@ def interpret(out: Path, key: str | None, every: bool, model: str, again: bool =
     for k, c in enumerate(combos, 1):
         cdir = out / "combinations" / key_of(c)
         t = time.time()
-        r = interpret_one(out, d, g, c, model)
+        r = interpret_one(out, d, g, c, model, zh=zh)
         cdir.mkdir(parents=True, exist_ok=True)
         (cdir / "interpretation.json").write_text(json.dumps(r, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         write_page(out, cdir)
@@ -666,7 +671,7 @@ def draw(out: Path, key: str | None, every: bool, variations: int, way: str, sty
 # ---------------------------------------------------------------- respond
 
 
-def respond(out: Path, model: str, way: str, variations: int, read_words: bool, style: Path | None = None) -> None:
+def respond(out: Path, model: str, way: str, variations: int, read_words: bool, style: Path | None = None, zh: bool = False) -> None:
     choice = json.loads((out / "choice.json").read_text(encoding="utf-8"))
     d, g = read(out)
     c = {q: int(choice[q]) for q in QUALITIES}
@@ -680,7 +685,7 @@ def respond(out: Path, model: str, way: str, variations: int, read_words: bool, 
         r = json.loads(ip.read_text(encoding="utf-8"))
     else:
         say(f"  {key}: interpreting now" + (" (with the visitor's words)" if live_reading else ""))
-        r = interpret_one(out, d, g, c, model, words if live_reading else "")
+        r = interpret_one(out, d, g, c, model, words if live_reading else "", zh)
         if not live_reading:
             cdir.mkdir(parents=True, exist_ok=True)
             ip.write_text(json.dumps(r, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
@@ -713,7 +718,8 @@ def write_page(out: Path, cdir: Path) -> None:
     meta = json.loads((cdir / "variations.json").read_text()) if (cdir / "variations.json").exists() else {"variations": []}
     e = html.escape
     img = lambda p, size=320: f'<img src="{thumb(open_image(p), size)}" alt="">' if p.exists() else ""  # noqa: E731
-    cards_ = "".join(f'<figure>{img(ws(r["cards"][q]["file"]))}<figcaption><b>{q} {ZH[q]} · {r["cards"][q]["n"]}</b> {e(r["cards"][q].get("title") or "")} <span class=c>{e(", ".join(w["en"] + " " + w["zh"] for w in r["cards"][q]["words"]))}</span></figcaption></figure>' for q in QUALITIES)
+    zh = bool(r.get("reading_zh"))  # Chinese on the page only when the reading was made with --chinese
+    cards_ = "".join(f'<figure>{img(ws(r["cards"][q]["file"]))}<figcaption><b>{q}{" " + ZH[q] if zh else ""} · {r["cards"][q]["n"]}</b> {e(r["cards"][q].get("title") or "")} <span class=c>{e(", ".join(w["en"] + (" " + w["zh"] if zh else "") for w in r["cards"][q]["words"]))}</span></figcaption></figure>' for q in QUALITIES)
     vars_ = "".join(f'<figure>{img(cdir / v["file"], 512)}<figcaption>{e(v["file"])} · led by {e(v["leads"])} · {e(v["with"])}{" · with the sentence (" + str(int(v["sentenceWeight"] * 100)) + "%)" if v.get("sentence") else ""}{" · in the style of " + e(v["style"]) if v.get("style") else ""}</figcaption></figure>' for v in meta["variations"])
     used = set(r.get("used") or [])
     ps = "".join(f'<li class="{"u" if (i + 1) in used else ""}"><b>[{i + 1}] {e(ws(p["from"]).name)}</b> <span class=c>{e(p["about"])}</span><br>{e(p["text"][:600])}</li>' for i, p in enumerate(r["passages"]))
@@ -734,7 +740,7 @@ h1,h2{{font-size:1rem;font-weight:500;color:#5CF25C;margin:1.25rem 0 .5rem}} p,l
 <h2>the interpretation</h2>
 {f'<p>The dream, in the visitor\'s words: {e(r["dream"])}</p>' if r.get('dream') else ''}
 <p class="reading">{e(r.get('reading', ''))}</p>
-<p class="reading" lang="zh-Hant">{e(r.get('reading_zh', ''))}</p>
+{f'<p class="reading" lang="zh-Hant">{e(r["reading_zh"])}</p>' if zh else ''}
 <p class="c">{who} The guide texts are the artist's choice: {e(', '.join(r.get('guide', [])))}. It is what they say, not what will happen.</p>
 <h2>the passages</h2>
 <ol>{ps}</ol>
@@ -762,11 +768,11 @@ def main(argv: list[str]) -> None:
     elif cmd == "guide" and len(pos) >= 3:
         guide(Path(pos[1]), pos[2:], opt("--embed", EMBED))
     elif cmd == "interpret" and len(pos) == 2:
-        interpret(Path(pos[1]), opt("--combination"), "--all" in argv, opt("--model", "qwen3:4b"), "--again" in argv)
+        interpret(Path(pos[1]), opt("--combination"), "--all" in argv, opt("--model", "qwen3:4b"), "--again" in argv, "--chinese" in argv)
     elif cmd == "draw" and len(pos) == 2:
         draw(Path(pos[1]), opt("--combination"), "--all" in argv, int(opt("--variations", "2")), way, style, "--again" in argv)
     elif cmd == "respond" and len(pos) == 2:
-        respond(Path(pos[1]), opt("--model", "qwen3:4b"), way, int(opt("--variations", "2")), "--read-words" in argv, style)
+        respond(Path(pos[1]), opt("--model", "qwen3:4b"), way, int(opt("--variations", "2")), "--read-words" in argv, style, "--chinese" in argv)
     else:
         sys.exit(__doc__.split("\n\n")[1])
 

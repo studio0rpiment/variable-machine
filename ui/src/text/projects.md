@@ -221,7 +221,7 @@ dream reading · who, what, when, where
 ### What it does
 `projects.dream.does`
 
-An installation for a dream. The deck is sixteen cards: four for each quality of a dream, who (誰), what (什麼), when (何時) and where (何地). A visitor chooses one card of each, a combination: there are 256. Each combination is interpreted from the guide texts the artist chose (the Zhougong jiemeng, Wang Fu, the Liezi, her own writing, or others she uploads): a language model reads the passages nearest the four cards and writes the interpretation, in English and Chinese. A diffusion model, Kandinsky 2.2, draws variations of the combination. All 256 can be made before the show, read and redone; any not made yet is made in the room.
+An installation for a dream. The deck is sixteen cards: four for each quality of a dream: who, what, when and where. A visitor chooses one card of each, a combination: there are 256. Each combination is interpreted from the guide texts the artist chose (the Zhougong jiemeng, Wang Fu, the Liezi, her own writing, or others she uploads): a language model reads the passages nearest the four cards and writes the interpretation, in English (in Traditional Chinese too, if chosen). A diffusion model, Kandinsky 2.2, draws variations of the combination. All 256 can be made before the show, read and redone; any not made yet is made in the room.
 
 ### What you get
 `projects.dream.get`
@@ -391,7 +391,7 @@ which models read
 ### The writer, what it does
 `projects.dream.writer.does`
 
-writes each interpretation from the passages, in English and Chinese
+writes each interpretation from the passages
 
 ### No writer
 `projects.dream.writer.none`
@@ -477,6 +477,31 @@ Nothing is made ahead: each visitor waits about a minute for their combination, 
 `projects.dream.decision.words`
 
 the visitor's own words
+
+### Decision: the reading's language
+`projects.dream.decision.language`
+
+the language of the reading
+
+### English
+`projects.dream.language.en`
+
+English
+
+### English, about
+`projects.dream.language.en.about`
+
+The reading is in English. The guide texts stay as they are: the Zhougong jiemeng's lines are read in Chinese, through its glossary, and the reading says what they mean in English.
+
+### English and Chinese
+`projects.dream.language.zh`
+
+English and Traditional Chinese
+
+### English and Chinese, about
+`projects.dream.language.zh.about`
+
+The reading is also translated into Traditional Chinese (繁體中文), and the room shows both. Each reading takes a few seconds longer, and a small trained reader's Chinese slips into English.
 
 ### Keep them
 `projects.dream.words.keep`
@@ -763,7 +788,7 @@ open the room
 ### Name
 `projects.dreamTrained.title`
 
-dream reader, trained · 訓練解夢
+dream reader, trained
 
 ### What it does
 `projects.dreamTrained.does`
@@ -804,6 +829,11 @@ the readings become rows; keep the ones to train on
 `projects.dreamTrained.mode.train`
 
 train the dream reader on the rows
+
+### Train, the step kept
+`projects.dreamTrained.mode.trainKept`
+
+kept step {iter} of {iters}: there the reader was closest to the teacher on the rows set aside (loss {loss}). Training on past it learns the rows by heart and reads new combinations worse.
 
 ### Export the reader
 `projects.dreamTrained.mode.export`
@@ -928,7 +958,7 @@ the reader
 ### The base, what it does
 `projects.dreamTrained.base.does`
 
-the small model you train; Qwen2.5 writes Chinese and English, SmolLM2 English only
+the small model you train: all three write English; Qwen2.5 writes Chinese too
 
 ### A base, on hover
 `projects.dreamTrained.base.title`

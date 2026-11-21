@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { joinWords } from '@shared/quote'
 import { runCommand } from '../lib/helper'
 import { readFile } from '../lib/workspace'
-import { dreamChoices, QUALITIES, styleName, ZH, type Quality } from '../lib/dreamChoices'
+import { dreamChoices, QUALITIES, qualityLabel, styleName, ZH, type Quality } from '../lib/dreamChoices'
 import { say } from '../text/say'
 import type { Deck } from './DreamViews'
 
@@ -45,7 +45,7 @@ export default function DreamRoom({ name, trained = false }: { name: string; tra
     const flag = (k: string, v: string | number, fallback: string | number) => (v === fallback ? [] : [k, String(v)])
     const ok =
       (await runCommand(joinWords(['dream', 'choose', name, ...QUALITIES.flatMap((q) => [`--${q}`, String(pick[q])]), ...(words.trim() ? ['--dream', words.trim()] : [])]))) &&
-      (await runCommand(joinWords(['dream', 'respond', name, ...(trained ? ['--model', c.reader] : flag('--model', c.writer, 'qwen3:4b')), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(trained && c.style === 'drawings' ? ['--style', `latents/${styleName(c)}`] : []), ...(c.readWords ? ['--read-words'] : [])])))
+      (await runCommand(joinWords(['dream', 'respond', name, ...(trained ? ['--model', c.reader] : flag('--model', c.writer, 'qwen3:4b')), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(trained && c.style === 'drawings' ? ['--style', `latents/${styleName(c)}`] : []), ...(c.readWords ? ['--read-words'] : []), ...(c.chinese ? ['--chinese'] : [])])))
     const latest = ok ? (JSON.parse((await readFile(`dreams/${name}/latest.json`)) ?? 'null') as { response: string } | null) : null
     const r = latest ? (JSON.parse((await readFile(latest.response)) ?? 'null') as Response | null) : null
     setBusy(false)
@@ -75,7 +75,7 @@ export default function DreamRoom({ name, trained = false }: { name: string; tra
             {QUALITIES.map((q) => (
               <figure key={q}>
                 <img src={src(card(q, pick[q]!).file)} alt="" />
-                <figcaption>{`${ZH[q]} · ${q}`}</figcaption>
+                <figcaption>{qualityLabel(q, dreamChoices())}</figcaption>
               </figure>
             ))}
           </div>
@@ -105,8 +105,12 @@ export default function DreamRoom({ name, trained = false }: { name: string; tra
             {QUALITIES.map((q) => (
               <div key={q} className="room__row" role="radiogroup" aria-label={q}>
                 <span className="room__q">
-                  {ZH[q]}
-                  <br />
+                  {dreamChoices().chinese && (
+                    <>
+                      {ZH[q]}
+                      <br />
+                    </>
+                  )}
                   {q}
                 </span>
                 {deck.qualities[q].cards.map((c) => (

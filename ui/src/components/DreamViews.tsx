@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useHelperEvent } from '../hooks/useHelper'
 import { listDir, readFile } from '../lib/workspace'
-import { chooseDream, chooseSet, QUALITIES, toggleText, useDreamChoices, ZH, type Quality } from '../lib/dreamChoices'
+import { chooseDream, chooseSet, dreamChoices, QUALITIES, qualityLabel, toggleText, useDreamChoices, type Quality } from '../lib/dreamChoices'
 import { say } from '../text/say'
 import type { Step } from './ProjectsPanel'
 
@@ -104,7 +104,7 @@ function CardsRow({ q, set, own }: { q: Quality; set: string; own: boolean }) {
   }
   return (
     <div className="dream-row">
-      <span className="label dream-row__q">{`${ZH[q]} ${q}`}</span>
+      <span className="label dream-row__q">{qualityLabel(q, dreamChoices())}</span>
       <div className="dream-row__cards">
         {[0, 1, 2, 3].map((i) => (
           <figure key={i} className="dream-card">
@@ -166,7 +166,7 @@ function DeckView() {
     <div className="dream-view">
       {QUALITIES.map((q) => (
         <div key={q} className="dream-row">
-          <span className="label dream-row__q">{`${ZH[q]} ${q}`}</span>
+          <span className="label dream-row__q">{qualityLabel(q, c)}</span>
           <div className="dream-row__cards">
             {deck.qualities[q].cards.map((card) => (
               <figure key={card.n} className="dream-card">
@@ -239,7 +239,7 @@ function CombinationView() {
       <p className="label label--muted">{say('projects.dream.view.pick', { key })}</p>
       {QUALITIES.map((q) => (
         <div key={q} className="dream-row dream-row--small" role="radiogroup" aria-label={q}>
-          <span className="label dream-row__q">{`${ZH[q]} ${q}`}</span>
+          <span className="label dream-row__q">{qualityLabel(q, c)}</span>
           <div className="dream-row__cards">
             {deck.qualities[q].cards.map((card) => (
               <button key={card.n} type="button" role="radio" aria-checked={pick[q] === card.n} className={`dream-card dream-card--pick ${pick[q] === card.n ? 'is-on' : ''}`.trim()} onClick={() => setPick({ ...pick, [q]: card.n })}>

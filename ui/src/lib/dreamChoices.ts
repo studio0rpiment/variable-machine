@@ -51,6 +51,8 @@ export interface DreamChoices {
   ahead: Ahead
   /** in the room, the visitor's own words are read into a new interpretation (a minute's wait), or only kept */
   readWords: boolean
+  /** the reading in Traditional Chinese too (--chinese); off: the installation reads in English */
+  chinese: boolean
   /** the combination the one-combination step makes and shows, who-what-when-where */
   combination: Record<Quality, number>
   /** the trained reader: the model whose readings it learns from (the teacher), the base it is trained from, its rows' set, and its name */
@@ -81,6 +83,7 @@ const DEFAULTS: DreamChoices = {
   variations: 2,
   ahead: 'all',
   readWords: false,
+  chinese: false,
   combination: { who: 1, what: 1, when: 1, where: 1 },
   teacher: 'qwen3:4b',
   base: 'Qwen/Qwen2.5-0.5B-Instruct',
@@ -125,3 +128,6 @@ export function toggleText(k: 'library' | 'own', v: string) {
 export function chooseSet(q: Quality, set: string) {
   chooseDream('sets', { ...choices.sets, [q]: set })
 }
+
+/** A quality's label: its Chinese name too only when the reading is in Chinese. */
+export const qualityLabel = (q: Quality, c: Pick<DreamChoices, 'chinese'>) => (c.chinese ? `${ZH[q]} ${q}` : q)

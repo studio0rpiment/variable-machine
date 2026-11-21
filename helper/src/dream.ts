@@ -253,11 +253,11 @@ function combo(opts: Record<string, string>, usage: string): { argv: string[]; l
 
 /** `dream interpret <name> (--combination 1-2-3-4 | --all) [--model qwen3:4b|none]`. */
 async function interpret(args: string[], line: string): Promise<boolean> {
-  const { pos, opts } = flags(args, ['all', 'again'])
+  const { pos, opts } = flags(args, ['all', 'again', 'chinese'])
   const [name] = pos
-  const usage = `usage: dream interpret <name> (--combination 1-2-3-4 | --all) [--model ${DREAM_MODEL}|none] [--again]   (who-what-when-where card numbers; --all: every combination not interpreted yet, about 25 s each; --again: every one again, with this model)`
+  const usage = `usage: dream interpret <name> (--combination 1-2-3-4 | --all) [--model ${DREAM_MODEL}|none] [--again] [--chinese]   (who-what-when-where card numbers; --all: every combination not interpreted yet, about 25 s each; --again: every one again, with this model; --chinese: the reading in Traditional Chinese too)`
   const model = opts.model ?? DREAM_MODEL
-  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['all', 'again', 'combination', 'model'].includes(o)) || !/^[\w.:/-]+$/.test(model)) return print(usage), false
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['all', 'again', 'chinese', 'combination', 'model'].includes(o)) || !/^[\w.:/-]+$/.test(model)) return print(usage), false
   const c = combo(opts, usage)
   if (!c) return false
   if (!(await exists(ws('dreams', name, 'guide.json')))) return print(`dream interpret: no guide texts for ${name}; dream guide ${name} raw/<text> … first`), false
@@ -270,7 +270,7 @@ async function interpret(args: string[], line: string): Promise<boolean> {
         : `  ${n} combinations at about 25 s each: up to ${Math.round((n * 25) / 60)} minutes. Those interpreted already are kept; stop it any time and run it again to go on`,
     )
   }
-  const argv = [...UV_DREAM, 'python', SCRIPT, 'interpret', `workspace/dreams/${name}`, ...c.argv, '--model', model, ...(opts.again ? ['--again'] : [])]
+  const argv = [...UV_DREAM, 'python', SCRIPT, 'interpret', `workspace/dreams/${name}`, ...c.argv, '--model', model, ...(opts.again ? ['--again'] : []), ...(opts.chinese ? ['--chinese'] : [])]
   return run('dream-interpret', name, argv, line, [], { name, combination: c.label, model, again: !!opts.again }, async () => {
     if (!opts.all) print(`  open it: http://localhost:${port()}/api/workspace/file?path=${encodeURIComponent(`dreams/${name}/combinations/${opts.combination}/page.html`)}`)
   })
@@ -407,13 +407,13 @@ async function choose(args: string[]): Promise<boolean> {
 
 /** `dream respond <name>`: the last choice's interpretation and variations, made ahead of time or made now. */
 async function respond(args: string[], line: string): Promise<boolean> {
-  const { pos, opts } = flags(args, ['read-words'])
+  const { pos, opts } = flags(args, ['read-words', 'chinese'])
   const [name] = pos
   const model = opts.model ?? DREAM_MODEL
   const variations = opts.variations === undefined ? 2 : Number(opts.variations)
   const way = opts.with ?? 'cards'
-  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['model', 'with', 'variations', 'read-words', 'style'].includes(o)) || !/^[\w.:/-]+$/.test(model) || !['cards', 'prior'].includes(way) || !Number.isInteger(variations) || variations < 1 || variations > 8) {
-    print(`usage: dream respond <name> [--model ${DREAM_MODEL}|none] [--with cards|prior] [--variations 2] [--read-words] [--style latents/<name>]   (what was made ahead of time is shown at once; the rest is made now. --read-words: the visitor's words are read into a new interpretation)`)
+  if (!name || !NAME.test(name) || pos.length !== 1 || Object.keys(opts).some((o) => !['model', 'with', 'variations', 'read-words', 'style', 'chinese'].includes(o)) || !/^[\w.:/-]+$/.test(model) || !['cards', 'prior'].includes(way) || !Number.isInteger(variations) || variations < 1 || variations > 8) {
+    print(`usage: dream respond <name> [--model ${DREAM_MODEL}|none] [--with cards|prior] [--variations 2] [--read-words] [--style latents/<name>] [--chinese]   (what was made ahead of time is shown at once; the rest is made now. --read-words: the visitor's words are read into a new interpretation)`)
     return false
   }
   const style = await styleOf(opts.style, 'dream respond')
@@ -422,7 +422,7 @@ async function respond(args: string[], line: string): Promise<boolean> {
   if (!(await need('kandinsky', ...(way === 'prior' ? ['kandinsky-prior'] : [])))) return false
   if (model !== 'none' && !(await hasModel(model))) print(`  ${model} isn't in Ollama, so a combination not interpreted ahead gets the passages alone: ollama pull ${model}`)
   const out = `workspace/dreams/${name}`
-  const argv = [...UV_DREAM, 'python', SCRIPT, 'respond', out, '--model', model, '--with', way, '--variations', String(variations), ...(opts['read-words'] ? ['--read-words'] : []), ...(style ? ['--style', `workspace/${style}`] : [])]
+  const argv = [...UV_DREAM, 'python', SCRIPT, 'respond', out, '--model', model, '--with', way, '--variations', String(variations), ...(opts['read-words'] ? ['--read-words'] : []), ...(style ? ['--style', `workspace/${style}`] : []), ...(opts.chinese ? ['--chinese'] : [])]
   return run('dream-respond', name, argv, line, [`${out}/latest.json`], { name, model, with: way }, async () => {
     const latest = await readJson<{ response: string }>(ws('dreams', name, 'latest.json'))
     const r = latest && (await readJson<{ page: string }>(ws(latest.response)))
