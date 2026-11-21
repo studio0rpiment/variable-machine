@@ -179,7 +179,9 @@
     .then((r) => (r.ok ? r.json() : []))
     .then(([latest]) => {
       if (!latest || !latest.tag_name) return
-      document.getElementById('download').href = `https://github.com/studio0rpiment/variable-machine/archive/refs/tags/${latest.tag_name}.zip`
+      // the zip attached to the release, whose downloads GitHub counts; else GitHub's source zip
+      const zip = (latest.assets || []).find((a) => a.name.endsWith('.zip'))
+      document.getElementById('download').href = zip ? zip.browser_download_url : `https://github.com/studio0rpiment/variable-machine/archive/refs/tags/${latest.tag_name}.zip`
       for (const v of document.querySelectorAll('.version')) v.textContent = latest.tag_name
     })
     .catch(() => {})
