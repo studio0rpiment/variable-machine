@@ -2,6 +2,44 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.5.0: two modes, project walkthroughs, latent image and dream cards (2026-11-21)
+
+**Two modes in place of the row of tabs**
+- **Projects** holds the finished work, one box per project. Following one opens its walkthrough: the Start map with the project's route lit, which folds into a strip of its boxes as the page scrolls. The open step's box is green, and FULL / ZOOM shows the whole route or zooms in on the open step.
+- **Make Your Own** is the free mode: the Start map is how you get around. On a wide screen every map keeps its boxes the same size, and the wires between the columns get longer to fill the width.
+- **Walkthroughs** for a character's voice, the research bot, latent image and both dream cards. Your decisions draw each route.
+
+**One project on its own**
+- `Latent Image.command`, `Research Bot.command` and `Dream Cards.command` start Variable Machine with just that project and its walkthrough, so a student sees one thing at a time. `Dream Cards` opens both dream cards: the trained example, and the one where you train the reader yourself.
+- `VARIABLE_MACHINE_PROJECT` takes one project or a comma-separated list. To install just one project's app: `curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash -s latent` (or `research`, `dream`).
+
+**Latent image (new card)**
+- Kandinsky 2.2 draws the centre of a collection of your pictures: your photos, or Instagram and iPhone Photos screenshots cut to their pictures with `latent crop` (12 pictures will do). It also has ways from a pixel average to a decoder trained on the collection, a walk out from the centre, and a gallery measured against it.
+- A full-screen room (`#latent-room/<name>`): a visitor touches the pictures they would keep, and the room draws their centre.
+- The gallery page sets each part beside media theory (Benjamin, Barthes, Baudrillard, Lacan, Flusser, Steyerl and others), not psychology. There is a reading list and a worked example: a made-up person's photo roll.
+
+**Dream cards (new)**
+- **Dream reading:** four cards each for who, what, when and where. Every combination is read from the guide texts the student chooses and drawn as variations. A full-screen room (`#room/<name>`) lets a visitor choose and get a reading.
+- **Dream reader, trained:** the student trains a small reader (Qwen2.5 0.5B) on the teacher's readings, exports it to Ollama, and reads again. On 51 combinations set aside, it answered in the teacher's form and named every text in all 51, in 2.7 s a reading (the teacher takes about 25 s). They can also train a Kandinsky style from someone's drawings. The readings are in English by default, and `--chinese` adds Traditional Chinese.
+
+**Image moods (new card)**
+- A SigLIP classifier sorts pictures by mood, informed by texts. On OASIS pictures set aside it was right 71% of the time.
+
+**Research bot**
+- New sources: archives, newspapers and US patents. Every item can be checked, and there is your own library, a second screener, summaries from the full text, and a class's pooled point of view.
+
+**Data tab**
+- `data draft`: a model drafts rows into drafts.jsonl, and you keep, edit or reject each one.
+
+**Moved out**
+- The multi-agent studio card and its reader models moved to the agent harness (`components/agent-training`).
+
+**Downloads**
+- Each release has its zip attached, so GitHub counts the downloads. The download page and install.sh use the attached zip.
+
+**License**
+- From this release the code is under PolyForm Noncommercial 1.0.0, and `docs/` under CC BY-NC-SA 4.0. It is free for teaching, study, research and personal use. Commercial use needs a license from Kevin Patton. v0.3.0 and earlier stay MIT.
+
 ## v0.3.0: the Projects tab, a research bot, models for a multi-agent studio (2026-11-11)
 
 **Projects tab (new)**
