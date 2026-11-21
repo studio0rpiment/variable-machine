@@ -170,10 +170,10 @@ export const CHATML_TEMPLATE = `{{- if .Messages }}
 {{ end }}<|im_start|>assistant
 {{ end }}{{ .Response }}{{ if .Response }}<|im_end|>{{ end }}`
 
-export function registerModelfile(o: { fused: string; template?: 'chatml' | 'raw'; system?: string; license: string; base: string; adapter: string }) {
+export function registerModelfile(o: { fused: string; gguf?: boolean; template?: 'chatml' | 'raw'; system?: string; license: string; base: string; adapter: string }) {
   return [
     `# made by Variable Machine from adapter ${o.adapter} on ${o.base}`,
-    `FROM ../fused/${o.fused}`,
+    `FROM ../fused/${o.fused}${o.gguf ? '/model.gguf' : ''}`,
     ...(o.template === 'chatml' ? [`TEMPLATE """${CHATML_TEMPLATE}"""`, 'PARAMETER stop "<|im_start|>"', 'PARAMETER stop "<|im_end|>"'] : []),
     // trained on rows as plain text (data rows): the prompt is the start of a row, continued as written
     ...(o.template === 'raw' ? ['TEMPLATE """{{ .Prompt }}"""', 'PARAMETER stop "<|endoftext|>"', 'PARAMETER stop "<|im_end|>"'] : []),

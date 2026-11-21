@@ -13,7 +13,7 @@ import { useGestureChoices, type GestureChoices } from '../lib/gestureChoices'
 import { useVoiceChoices, type Approach, type VoiceChoices } from '../lib/voiceChoices'
 import { FIELD_LIST, SOURCE_FLAG, useResearchChoices, type ResearchChoices } from '../lib/researchChoices'
 import { listModels } from '../lib/ollama'
-import { QUALITIES, useDreamChoices, type DreamChoices, type LibraryText, type Quality } from '../lib/dreamChoices'
+import { QUALITIES, styleName, useDreamChoices, type DreamChoices, type LibraryText, type Quality } from '../lib/dreamChoices'
 
 /** The tabs a step can open, by id, and what the top bar calls them. */
 export const TAB_NAME = { models: 'models', merge: 'merge', data: 'data', train: 'train', prefer: 'prefer', adapters: 'adapters', chat: 'chat', share: 'share', modelfile: 'modelfile', gesture: 'gesture', segmentation: 'image segmentation' } as const
@@ -216,6 +216,8 @@ interface Have {
   dreamState: Record<string, { chosen: boolean; response: string | null }>
   /** each image set's number of pictures */
   setSizes: Record<string, number>
+  /** the zips in workspace/shared */
+  zips: string[]
 }
 
 async function readHave(): Promise<Have> {
@@ -237,10 +239,11 @@ async function readHave(): Promise<Have> {
     readManifests<Have['latents'][number]>('latents'),
     readManifests<Have['dreams'][number]>('dreams'),
   ])
-  const [ollama, merges, chat] = await Promise.all([
+  const [ollama, merges, chat, shared] = await Promise.all([
     listModels().catch(() => []),
     readManifests<Have['merges'][number]>('merges'),
     listDir('chat'),
+    listDir('shared'),
   ])
   const setSizes: Have['setSizes'] = {}
   for (const i of images.filter((x) => x.dir)) setSizes[i.name] = (await listDir(`images/${i.name}`)).filter((f) => /\.(jpe?g|png|webp)$/i.test(f.name)).length
@@ -282,6 +285,7 @@ async function readHave(): Promise<Have> {
     checks,
     readerChecks,
     packages: packages.map((p) => p.folder),
+    zips: shared.filter((f) => f.name.endsWith('.zip')).map((f) => f.name),
     tools: tools.filter((t) => t.dir).map((t) => t.name),
     images: sets,
     photo: photo && `images/${set}/${photo}`,
@@ -626,10 +630,10 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
   const target = Math.min(KEEP.dream, total)
   const adapter = h.adapters.find((a) => a.folder === c.reader)
   const exported = !!adapter && here(c.reader)
-  const latent = h.latents.find((l) => l.folder === c.styleName)
+  const latent = h.latents.find((l) => l.folder === styleName(c))
   const styleOn = c.style === 'drawings'
   const drawnBefore = (folder?.drawn ?? 0) > 0
-  const drawFlags = [...(c.variations === 2 ? [] : ['--variations', String(c.variations)]), ...(c.drawWith === 'cards' ? [] : ['--with', c.drawWith]), ...(styleOn ? ['--style', `latents/${c.styleName}`] : [])]
+  const drawFlags = [...(c.variations === 2 ? [] : ['--variations', String(c.variations)]), ...(c.drawWith === 'cards' ? [] : ['--with', c.drawWith]), ...(styleOn ? ['--style', `latents/${styleName(c)}`] : [])]
   // models, cards, deck, texts and guide are the ready-made card's own steps
   const steps: Step[] = [...ready.steps.slice(0, 5)]
   steps.push({
@@ -676,7 +680,7 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
       tab: 'segmentation',
       node: 'drawings',
       // a demo set (demo-…) is drawn by dream drawings; someone's own drawings are uploaded in the step
-      commands: [...(c.drawings.startsWith('demo') && !(h.setSizes[c.drawings] ?? 0) ? [joinWords(['dream', 'drawings', c.drawings])] : []), joinWords(['latent', 'make', c.styleName, `images/${c.drawings}`]), joinWords(['latent', 'train', c.styleName])],
+      commands: [...(c.drawings.startsWith('demo') && !(h.setSizes[c.drawings] ?? 0) ? [joinWords(['dream', 'drawings', c.drawings])] : []), joinWords(['latent', 'make', styleName(c), `images/${c.drawings}`]), joinWords(['latent', 'train', styleName(c)])],
       done: !!latent?.trained,
       result: latent?.check ? say('projects.dreamTrained.mode.drawingsResult', { n: latent.check.pictures, trained: latent.trained ? say('projects.dreamTrained.mode.trainedYes') : say('projects.dreamTrained.mode.trainedNo') }) : say('projects.dreamTrained.mode.drawingsNeed', { n: h.setSizes[c.drawings] ?? 0 }),
       view: 'dream-drawings',
@@ -700,7 +704,8 @@ function trainedRoute(h: Have, c: DreamChoices): DreamFacts {
     link: folder ? { path: `#room/${name}/trained`, label: say('projects.dream.open') } : undefined,
     view: 'dream-room',
   })
-  steps.push({ name: say('projects.dreamTrained.mode.package'), tab: 'share', node: 'share', commands: [joinWords(['package', c.reader]), joinWords(['zip', `packages/${c.reader}`])], done: h.packages.includes(c.reader), parts: [] })
+  // the reader goes as its adapter and its rows, each zipped with its record and licence (package is for tables and judges)
+  steps.push({ name: say('projects.dreamTrained.mode.package'), tab: 'share', node: 'share', commands: [joinWords(['zip', `adapters/${c.reader}`]), joinWords(['zip', `data/${c.readerSet}`])], done: h.zips.includes(`adapters-${c.reader}.zip`), parts: [] })
   return { ...ready, steps, trained: true }
 }
 

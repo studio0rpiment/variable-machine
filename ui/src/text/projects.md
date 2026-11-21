@@ -768,7 +768,7 @@ dream reader, trained · 訓練解夢
 ### What it does
 `projects.dreamTrained.does`
 
-The same dream installation, made with models the student trains. A ready-made language model, the teacher, interprets all 256 combinations from the guide texts she chose. Its readings become training rows, which she reads, edits or rejects on the Data tab. A small model of her choosing is trained on the rows she keeps, exported to Ollama, and reads every combination again: the dream reader is now hers. Kandinsky 2.2 draws the variations, and someone's own drawings, made into a latent image and trained (a LoRA, a small set of added weights), give them that person's style. The room uses both, and the reader can be packaged to share.
+The same dream installation, made with models the student trains. A ready-made language model, the teacher, interprets all 256 combinations from the guide texts she chose. Its readings become training rows, which she reads, edits or rejects on the Data tab. A small model of her choosing is trained on the rows she keeps, exported to Ollama, and reads every combination again: the dream reader is now hers. Kandinsky 2.2 draws the variations, and someone's own drawings, made into a latent image and trained (a LoRA, a small set of added weights), give them that person's style. The room uses both, and the reader and its rows can be zipped to share.
 
 ### What you end up with
 `projects.dreamTrained.get`
@@ -858,7 +858,7 @@ draw every combination
 ### Package the reader
 `projects.dreamTrained.mode.package`
 
-package the reader to share
+zip the reader and its rows to share
 
 ### The schematic: the teacher
 `projects.dreamTrained.box.roleTeacher`
@@ -1036,6 +1036,11 @@ Upload the drawings at the drawings step, into this set. Photographs of drawings
 {n} drawings in images/{set}: 12 at the least, 30 or more and the latent image has axes too.
 
 ## The dream room
+
+### The room, when a reading fails
+`projects.dream.failed`
+
+The reading didn't come back. The terminal on the Projects tab says why: a model or a style may not be made yet.
 
 ### The room, for a screen reader
 `projects.dream.roomLabel`

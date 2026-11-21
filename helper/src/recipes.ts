@@ -515,8 +515,15 @@ function fuseStep(adapter: AdapterManifest, out: string, line: string): Step[] {
 }
 
 function registerSteps(o: { fused: string; model: string; quantize: Quantize; system?: string; base: string; adapter: string; license: string }): Step[] {
-  const template = HF_BASES.find((b) => b.id === o.base)?.template
+  const hf = HF_BASES.find((b) => b.id === o.base)
+  const template = hf?.template
+  // Ollama's safetensors import refuses some architectures (qwen2): their weights go into a copy of the makers' GGUF, already Q8_0
+  const gguf = hf?.gguf
+  if (gguf && o.quantize !== 'int8') print(`  note: ${o.base} goes to Ollama as its makers' Q8_0 GGUF; --quantize isn't used`)
   return [
+    ...(gguf
+      ? [{ kind: 'spawn' as const, argv: [...UV_SEES, 'python', 'python/variable_machine/gguf_export.py', '--fused', `workspace/fused/${o.fused}`, '--repo', gguf.repo, '--file', gguf.file, '--out', `workspace/fused/${o.fused}/model.gguf`], env: PY_ENV }]
+      : []),
     {
       kind: 'do',
       display: `write workspace/modelfiles/${o.model}.Modelfile`,
@@ -525,10 +532,10 @@ function registerSteps(o: { fused: string; model: string; quantize: Quantize; sy
         // a model trained on plain text continues what it's given: no chat template around the prompt
         const data = (await readJson<{ data?: string }>(ws('adapters', o.adapter, 'manifest.json')))?.data
         const text = data && (await readJson<DatasetManifest>(ws('data', data, 'manifest.json')))?.format === 'text'
-        await fs.writeFile(ws('modelfiles', `${o.model}.Modelfile`), registerModelfile({ ...o, template: text ? 'raw' : template }))
+        await fs.writeFile(ws('modelfiles', `${o.model}.Modelfile`), registerModelfile({ ...o, gguf: !!gguf, template: text ? 'raw' : template }))
       },
     },
-    { kind: 'spawn', argv: createArgs(o.model, o.quantize), env: { OLLAMA_HOST: OLLAMA_URL.origin } },
+    { kind: 'spawn', argv: createArgs(o.model, gguf ? 'none' : o.quantize), env: { OLLAMA_HOST: OLLAMA_URL.origin } },
     {
       kind: 'do',
       display: `ollama list  (refresh the runs-on inventory)`,
@@ -674,7 +681,7 @@ async function exportRecipe(args: string[], line: string) {
     })
   }
   const base = HF_BASES.find((b) => b.id === adapter.base)
-  if (base && base.architecture !== 'llama') print(`  note: ${adapter.base} is ${base.architecture}; Ollama's safetensors import may not support it`)
+  if (base && base.architecture !== 'llama' && !base.gguf) print(`  note: ${adapter.base} is ${base.architecture}; Ollama's safetensors import may not support it`)
   return runRecipe({
     recipe: 'export',
     params: { adapter: adapter.name, model, quantize },

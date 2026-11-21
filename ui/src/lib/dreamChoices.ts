@@ -62,8 +62,10 @@ export interface DreamChoices {
   /** the style: none, or drawings (an image set) made into a latent image and trained */
   style: Style
   drawings: string
-  styleName: string
 }
+
+/** The style's name follows the drawings it is made from: her-drawings → her-style, demo-drawings → demo-style. */
+export const styleName = (c: Pick<DreamChoices, 'drawings'>) => `${c.drawings.replace(/-drawings$/, '')}-style`
 
 const KEY = 'variable-machine.dream'
 const DEFAULTS: DreamChoices = {
@@ -87,7 +89,6 @@ const DEFAULTS: DreamChoices = {
   reader: 'dream-reader',
   style: 'drawings',
   drawings: 'her-drawings',
-  styleName: 'her-style',
 }
 
 let choices: DreamChoices = DEFAULTS

@@ -62,7 +62,45 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 
 ---
 
-## 2. Latent image
+## 2. Dream reader, trained (訓練解夢)
+
+**Makes:** the dream reading's installation, with every part made by the student. Same folder, deck and guide texts as card 1 (`workspace/dreams/dream`). A **teacher** model (`qwen3:4b`) reads all 256 combinations; each reading becomes a **row** (the question asked and the teacher's answer, as JSON); a small **reader** model is trained on the rows and exported to Ollama, then reads all 256 again. A **style** trained from someone's drawings (a decoder LoRA for Kandinsky 2.2) draws the variations. Plan: `docs/dream-card-plan.md` §10.
+
+It is a walkthrough like card 1: the schematic adds a training lane (rows → train → export → share) and the drawings → style boxes.
+
+- **Time:** on top of card 1's steps: the teacher's 256 readings about 107 minutes; training the 0.5B reader about 40 minutes; the reader's 256 readings about 45 minutes; 30 demo drawings 8 minutes; the style 22 minutes; all 256 drawn again about 3 hours.
+- **Disk:** card 1's, plus the base model from Hugging Face (Qwen2.5 0.5B, 1 GB; 1.5B, 3 GB) and the exported reader in Ollama.
+
+**The decisions** (besides card 1's):
+
+| Decision | Try | Check |
+|---|---|---|
+| the teacher | `olmo2:7b` | Step 6 and step 7's `dream rows` add `--by olmo2:7b` |
+| the reader's base | Qwen2.5 1.5B | Step 8's `--base Qwen/Qwen2.5-1.5B-Instruct` |
+| the rows | keep at once | Step 7's `dream rows` adds `--keep`; with *read*, the drafts wait on the Data tab |
+| the diffusion model | the cards and the prior | Kandinsky only; SD 1.5 and FLUX.1 schnell show as choices that are off, with why |
+| the style | from drawings | Step 11 appears, with a set picker; step 12 adds `--style latents/<style>` |
+
+**The steps** (the default decisions; the drawings set `demo-drawings`):
+
+| # | Box | Do | Command | Check |
+|---|---|---|---|---|
+| 1–5 | models, cards, deck, texts, guide | as card 1 | | done if card 1 is |
+| 6 | the teacher reads | all 256 | `dream interpret dream --all --model qwen3:4b` | The step counts readings by the teacher |
+| 7 | rows | make rows; read and keep them on the Data tab; split | `dream rows dream dream-readings`, `data split dream-readings --valid 0.2` | The Data tab's drafts panel says the rows are readings, offers **make rows** (not the writer), and **keep** moves a row into train.jsonl |
+| 8 | train | train the reader | `train dream-reader --data dream-readings --base Qwen/Qwen2.5-0.5B-Instruct --max-seq 3072` | The loss falls; the adapter appears |
+| 9 | export | into Ollama | `export dream-reader` | It writes `fused/dream-reader/model.gguf` (Qwen's GGUF with the trained weights) and `ollama list` has dream-reader, 675 MB |
+| 10 | the reader reads | all 256 again | `dream interpret dream --all --again --model dream-reader` | The step's combination shows the reader's reading |
+| 11 | drawings → style | choose the drawings set in the decision (the style is named after it: demo-drawings → demo-style); upload drawings, or draw the demo set; make and train the style | `dream drawings demo-drawings`, `latent make demo-style images/demo-drawings`, `latent train demo-style` | The step shows the drawings; `latents/demo-style/lora.safetensors` exists |
+| 12 | variations | draw again in the style | `dream draw dream --all --style latents/demo-style --again` | The page says *in the style of* |
+| 13 | the room | open **#room/dream/trained** | `dream respond dream --model dream-reader --style latents/demo-style` | A live reading comes from the reader and is drawn in the style |
+| 14 | share | zip the reader and its rows | `zip adapters/dream-reader`, `zip data/dream-readings` | Both zips in workspace/shared, each with its manifest |
+
+**Tested** on port 4843 on 2026-11-20 and 21, every step through the tool: 246 rows (25 kept on the Data tab), split 197 / 49; the 0.5B reader trained 200 iterations in about 40 minutes (the set-aside loss lowest at 100: 1.24, then rising to 1.48, so 100 iterations is enough for this many rows); exported through the GGUF route; a reading in about 10 s against the teacher's 25; the demo style trained in 22 minutes; the trained room read 2-3-2-4 live and drew it in the style in about 80 s. The Projects card said 12 of 14 steps done before the two runs over all 256.
+
+---
+
+## 3. Latent image
 
 **Makes:** the latent image of what a person saves on Instagram (the picture their last 15 stories, reels or saved posts hold without any one showing it), beside the pixel average; a decoder trained on the set; and a gallery page that sets each part beside the psychology it is like, with JSON of every picture's distance and what it brings.
 
@@ -82,7 +120,7 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 | 7 | Image segmentation | Measure the pictures; press **open the gallery** on the card | `latent gallery instagram-pictures images/instagram-pictures` | The page shows the latent image (before and after training) and the pixel average, each with its line of psychology; a list "what the psychology says it is like", with the line on saved posts and the recommender; "no axes"; then every picture, nearest first, with what it brings. On the mocks: 0.86 to 1.31 spreads |
 | 8 | Share | Try to zip it | `zip latents/instagram-pictures` | Refused: it says the set is private and stays on this computer |
 
-## 3. Image moods
+## 4. Image moods
 
 **Makes:** a mood classifier (calm, lively, tense, sombre) for what a picture conveys, its score on pictures set aside, and a gallery page with CSV and JSON. **Time:** about 10 minutes, 2 of them embedding the texts. **Disk:** about 360 MB (encoder 204 MB, OASIS 88 MB zip plus 51 MB dataset). **Note:** OASIS includes unpleasant photos (a carcass, a crash); its licence is research use, so the results are for student projects only.
 
@@ -98,7 +136,7 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 | 8 | Image segmentation | Sort the gallery; press **open the gallery** on the card | `mood gallery oasis-moods-siglip images/aic-landscapes` | The page shows each picture's mood, confidence and reason; the passages differ from picture to picture; `moods.csv` and `moods.json` are beside it |
 | 9 | Share | Package and zip; in the unzipped folder, `sh get-encoder.sh`, then classify.py on a folder | `package oasis-moods-siglip`, `zip packages/oasis-moods-siglip` | A zip of about 120 KB; `classify.py` writes `moods/gallery.html` |
 
-## 4. Ask a table
+## 5. Ask a table
 
 **Makes:** a small model that turns a question into a query; the answer is counted from the table. **Time:** about 20 minutes, 9 of them training.
 
@@ -112,7 +150,7 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 | 6 | Chat | Ask three questions of your own, one with a place not in the table | — | The query and SQL show; the unknown place is refused with a list of real places, never answered with 0 |
 | 7 | Share | Package, then zip | `package <model>`, `zip packages/<model>` | The folder has `ask.js`, `demo.html` and the README; `node ask.js "how many …"` answers |
 
-## 5. Gesture controller
+## 6. Gesture controller
 
 **Makes:** a model trained on your own gestures, sent as OSC. **Time:** about 10 minutes. **Needs:** a camera, and TouchDesigner, Max or Pure Data listening on port 9000, or any OSC monitor.
 
@@ -124,7 +162,7 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 | 4 | Gesture | Train | `gesture train <set>` | Set-aside examples are mostly named right |
 | 5 | Gesture | Send | `gesture send <set> --port 9000` | The patch receives the gesture names |
 
-## 6. Cut-out tool
+## 7. Cut-out tool
 
 **Makes:** PNGs with a transparent background, each with a record. **Time:** about 5 minutes.
 
@@ -134,7 +172,7 @@ It is a **walkthrough**: on the Projects tab, the dream reading's box opens proj
 | 2 | Look → segmentation | Bring in the example photos (or your own) | `look example classic-cv` | The photos show |
 | 3 | Look → segmentation | Cut one out | `look cutout images/classic-cv/<photo>` | A transparent PNG appears in outputs with its record |
 
-## 7. A character's voice
+## 8. A character's voice
 
 Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 
@@ -153,7 +191,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 3 | Train | Train on SmolLM2 | `train <adapter> --data <rows> --base <small>` | The run ends without an error |
 | 4 | Adapters → Chat | Export, then talk to it | `export <adapter>` | It sounds like the writer, and more than the base model does |
 
-## 8. Research bot
+## 9. Research bot
 
 **Makes:** a reading list, BibTeX, a library of what's been seen, and later a judge trained on your decisions. **Time:** about 15 minutes to the reading list; training adds about 10 minutes and needs about 2.2 GB of disk.
 
@@ -168,7 +206,7 @@ Two ways. **A** takes 5 minutes. **B** takes about 30 minutes.
 | 7 | Data | Measure it: `papers check` | — | It agrees with your decisions more often than the stock screen (70%) and than keeping everything |
 | 8 | Share | Package; run `node research.js` in the folder | `package <judge>`, `zip packages/<judge>` | A rerun shows only new items |
 
-## 9. Models for a multi-agent studio
+## 10. Models for a multi-agent studio
 
 **Makes:** one reader model per job (`studio-mail`, `studio-invoice`, …), each returning fixed JSON fields. **Time:** about 20 minutes per reader. Test one reader, `studio-mail`, first.
 

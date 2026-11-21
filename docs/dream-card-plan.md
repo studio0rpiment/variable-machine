@@ -177,7 +177,7 @@ The first card (*dream reading*) stays as it is: it is the installation made wit
 | 11 | drawings | `[dream drawings demo-drawings]`, `latent make her-style images/her-drawings`, `latent train her-style` | the style |
 | 12 | variations | `dream draw dream --all --style latents/her-style [--again]` | every combination drawn in the style |
 | 13 | the room | `dream choose …`, `dream respond dream --model dream-reader --style latents/her-style` | `#room/dream/trained`: the room with her reader and style |
-| 14 | package | `package dream-reader`, `zip packages/dream-reader` | the reader, its rows and their sources, to share |
+| 14 | share | `zip adapters/dream-reader`, `zip data/dream-readings` | the reader's adapter and its rows, each with its record and licence (`package` is for table and judge models) |
 
 **The decisions it adds:** the teacher (qwen3:4b or qwen3:1.7b); the reader's base; whether every row is read before it is kept; which diffusion model draws; whose style.
 
@@ -188,3 +188,16 @@ The first card (*dream reading*) stays as it is: it is the installation made wit
 **The demo drawings.** `dream drawings demo-drawings` draws 30 drawings in one ink line style with Kandinsky (Apache 2.0 output), standing in for someone's own until theirs are uploaded at step 11. Thirty, so the latent image has its axes. A style trained on Kandinsky's own pictures is a test of the route, not of a style: it should be made from a person's drawings.
 
 **New:** `dream rows`, `dream drawings`, `--again` (interpret and draw), `--style` (draw and respond), the readings' `asked` and `answer`, the manifest's `byModel` and `styled`; `trainedRoute` in `ProjectsPanel.tsx`; the trained boxes, wires and decisions in `DreamMode.tsx`; the drawings view in `DreamViews.tsx`; the trained room (`#room/<name>/trained`).
+
+**Export of a Qwen2 reader.** Ollama 0.40's safetensors import refuses Qwen2 (`unsupported MLX architecture: Qwen2ForCausalLM`). For a base that lists its makers' GGUF (`gguf` in `library.ts`: Qwen's own Q8_0 files, Apache 2.0), `export` and `register` now copy that GGUF and write the fused weights into it (`python/variable_machine/gguf_export.py`; qwen2 keeps q and k unpermuted), then `ollama create` from `model.gguf`. Already Q8_0, so `--quantize` isn't used. SmolLM2 exports as before.
+
+**Tested** on port 4843, 2026-11-20 and 21, every step through the tool:
+- The teacher's 256 readings: about 25 s each. 10 written before readings kept their question and answer were left out of the rows.
+- Rows: 25 drafts kept on the Data tab (its **keep** button, then the same command by script), 221 with `--keep`: 246 rows, split 197 / 49.
+- Train, Qwen2.5 0.5B, 200 iterations, batch 4, max seq 3072: about 40 min. The set-aside loss went 2.29 → 1.28 (50) → 1.24 (100) → 1.37 (150) → 1.48 (200): it overfits after about 100 iterations, so 100 is enough for 200 rows.
+- Export: through the GGUF route, 675 MB in Ollama.
+- The reader: a reading in about 10 s (the teacher about 25 s), valid JSON, the passages cited. Its Chinese slips into English more than the teacher's: the filter left out 2 sentences of 1-1-3-2.
+- The style: 30 demo drawings (8 min), `latent make` 1 min, `latent train` 600 steps 22 min. Drawing in the style keeps the cards' colour and composition and adds the drawings' pen hatching: a decoder LoRA changes how a picture is rendered, not what is in it.
+- The trained room (2-3-2-4, no words): read live by the reader and drawn in the style in about 80 s.
+- Found and fixed: the style's name now follows the drawings set (`demo-drawings` → `demo-style`), so the room no longer asked for a style not trained; the room says when a reading fails; a dream set's drafts panel offers `dream rows` in place of the writer; step 14 zips instead of `package`.
+

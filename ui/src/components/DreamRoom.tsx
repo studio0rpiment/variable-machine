@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { joinWords } from '@shared/quote'
 import { runCommand } from '../lib/helper'
 import { readFile } from '../lib/workspace'
-import { dreamChoices, QUALITIES, ZH, type Quality } from '../lib/dreamChoices'
+import { dreamChoices, QUALITIES, styleName, ZH, type Quality } from '../lib/dreamChoices'
 import { say } from '../text/say'
 import type { Deck } from './DreamViews'
 
@@ -29,6 +29,8 @@ export default function DreamRoom({ name, trained = false }: { name: string; tra
   const [pick, setPick] = useState<Partial<Record<Quality, number>>>({})
   const [words, setWords] = useState('')
   const [busy, setBusy] = useState(false)
+  // the reading didn't come back: the terminal says why (a model or style not made yet)
+  const [failed, setFailed] = useState(false)
   const [response, setResponse] = useState<Response | null>(null)
 
   useEffect(() => {
@@ -43,10 +45,11 @@ export default function DreamRoom({ name, trained = false }: { name: string; tra
     const flag = (k: string, v: string | number, fallback: string | number) => (v === fallback ? [] : [k, String(v)])
     const ok =
       (await runCommand(joinWords(['dream', 'choose', name, ...QUALITIES.flatMap((q) => [`--${q}`, String(pick[q])]), ...(words.trim() ? ['--dream', words.trim()] : [])]))) &&
-      (await runCommand(joinWords(['dream', 'respond', name, ...(trained ? ['--model', c.reader] : flag('--model', c.writer, 'qwen3:4b')), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(trained && c.style === 'drawings' ? ['--style', `latents/${c.styleName}`] : []), ...(c.readWords ? ['--read-words'] : [])])))
+      (await runCommand(joinWords(['dream', 'respond', name, ...(trained ? ['--model', c.reader] : flag('--model', c.writer, 'qwen3:4b')), ...flag('--variations', c.variations, 2), ...flag('--with', c.drawWith, 'cards'), ...(trained && c.style === 'drawings' ? ['--style', `latents/${styleName(c)}`] : []), ...(c.readWords ? ['--read-words'] : [])])))
     const latest = ok ? (JSON.parse((await readFile(`dreams/${name}/latest.json`)) ?? 'null') as { response: string } | null) : null
     const r = latest ? (JSON.parse((await readFile(latest.response)) ?? 'null') as Response | null) : null
     setBusy(false)
+    setFailed(!r)
     setResponse(r)
   }
   const again = () => {
@@ -130,6 +133,7 @@ export default function DreamRoom({ name, trained = false }: { name: string; tra
               <button type="button" className="room__again" onClick={() => void read()} disabled={!ready}>
                 {ready ? say('projects.dream.read') : say('projects.dream.pickAll')}
               </button>
+              {failed && <p className="room__wait">{say('projects.dream.failed')}</p>}
             </div>
           )}
         </>
