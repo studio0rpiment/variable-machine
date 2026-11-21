@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "description": "A localhost instrument for changing small language models on a Mac.",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "engines": {
     "node": ">=22"
   },
