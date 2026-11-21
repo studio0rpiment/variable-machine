@@ -12,11 +12,12 @@ import Manifest, { Badge } from './Manifest'
 import CommandPreview from './CommandPreview'
 import ConfirmButton from './ConfirmButton'
 import { Explained } from '../explain/Explained'
-import { KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, VOICE_MODELS } from '@shared/kinds'
+import { ENCODER_MODELS, KINDS, SEE_MODELS, TOOL_MODELS, TRACKER_MODELS, VOICE_MODELS } from '@shared/kinds'
 import { TrackerCard } from './MovePanel'
 import { VoiceCard } from './VoicePanel'
-import ToolCard, { KindLine } from './ToolCard'
+import ToolCard, { EncoderCard, KindLine } from './ToolCard'
 import Loading, { DownloadWait } from './Loading'
+import { Part } from '../lib/parts'
 
 interface Progress {
   status: string
@@ -400,6 +401,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
 
   return (
     <section className="panel" aria-label="models">
+      <Part id="models">
       <h2 className="panel__title label">start with these four</h2>
       <p className="models-intro">
         <KindLine kind="writes" />
@@ -488,6 +490,16 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
         ))}
       </div>
 
+      <h2 className="panel__title label">picture encoders · for the latent image and image moods, on the projects tab</h2>
+      <p className="models-intro">
+        <KindLine kind="sorts" />
+      </p>
+      <div className="cards">
+        {ENCODER_MODELS.map((e) => (
+          <EncoderCard key={e.name} e={e} here={tools.includes(e.name)} busy={getting === e.name} onGet={() => void getTool(e.name)} />
+        ))}
+      </div>
+
       <h2 className="panel__title label">trackers · run in the page, on the gesture tab</h2>
       <p className="models-intro">
         <KindLine kind="moves" />
@@ -510,6 +522,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
           <VoiceCard key={m.name} m={m} />
         ))}
       </div>
+      </Part>
     </section>
   )
 }

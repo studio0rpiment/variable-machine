@@ -5,6 +5,7 @@ import { print } from './hub.ts'
 import { formatBytes, setRunning, write } from './run.ts'
 import { RAW_SOURCES } from './shared/library.ts'
 import { parseCsv } from './shared/rowShapes.ts'
+import { pdfPages } from './papers.ts'
 
 /**
  * Raw sources (plan §8): text or tables that aren't training rows yet. Each
@@ -106,7 +107,7 @@ function tableHead(text: string) {
   return { columns: rows[0] ? Object.keys(rows[0]) : [], sample: rows.slice(0, 3), rows: text.split('\n').filter((l) => l.trim()).length - 1 }
 }
 
-async function save(name: string, ext: string, text: string, chunks: string[], meta: { url: string; license: string; licenseChecked: boolean; line: string; kind: string; about?: string; page?: string }) {
+async function save(name: string, ext: string, text: string, chunks: string[], meta: { url: string; license: string; licenseChecked: boolean; line: string; kind: string; about?: string; page?: string; private?: boolean }) {
   const dir = path.join(WORKSPACE, 'raw', name)
   await fs.mkdir(dir, { recursive: true })
   await fs.writeFile(path.join(dir, `source.${ext}`), text)
@@ -127,6 +128,8 @@ async function save(name: string, ext: string, text: string, chunks: string[], m
         chars: text.length,
         ...(meta.about && { about: meta.about }),
         ...(meta.page && { page: meta.page }),
+        // your own file is marked private; zip never shares raw texts in any case
+        ...(meta.private && { private: true }),
         // A table's columns and first rows, so the template step can offer them without reading the whole file.
         ...(ext === 'csv' && tableHead(text)),
       },
@@ -241,7 +244,7 @@ function jsonlToCsv(text: string): string | null {
 export async function rawCommand(args: string[], opts: Record<string, string>, line: string): Promise<boolean> {
   const [kind, what, name] = args
   if (!kind || !(kind in RAW_SOURCES) || !what || !name || !NAME.test(name)) {
-    print('usage: data raw gutenberg <book number> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw jsonl <url> <name> --license "<…>"   (a table written as JSON lines)\n       data raw txt <url> <name> --license "<what the source states>"')
+    print('usage: data raw gutenberg <book number> <name>\n       data raw wikipedia <Article_title> <name>\n       data raw csv <url> <name> --license "<what the source states>" [--about "<what it is>"] [--page <its page>]\n       data raw arcgis <layer url> <name> --license "<…>" [--about "<…>"] [--page <…>]\n       data raw jsonl <url> <name> --license "<…>"   (a table written as JSON lines)\n       data raw txt <url> <name> --license "<what the source states>"\n       data raw file uploads/<file>.txt|.md|.pdf <name> --license "<its terms, e.g. my own writing>"   (uploaded on the Data tab; marked private)')
     return false
   }
   try {
@@ -266,6 +269,37 @@ export async function rawCommand(args: string[], opts: Record<string, string>, l
       const title = /Title:\s*(.+)/.exec(text)?.[1]?.trim()
       if (title) print(`title: ${title}`)
       await save(name, 'txt', body, chunkText(body), { url, license: RAW_SOURCES.gutenberg.license, licenseChecked: true, line, kind })
+      return true
+    }
+    if (kind === 'wikipedia') {
+      // the article as plain text, from the API's extracts (no markup); its page is the credit
+      const title = what.replace(/ /g, '_')
+      const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&format=json&formatversion=2&redirects=1&titles=${encodeURIComponent(title)}`
+      const json = await fetchText(url, abort)
+      if (!json) return false
+      const page = (JSON.parse(json) as { query?: { pages?: { title?: string; extract?: string; missing?: boolean }[] } }).query?.pages?.[0]
+      if (!page?.extract || page.missing) return print(`data raw wikipedia: no article called ${what}`), false
+      print(`title: ${page.title}`)
+      // drop the reference sections, which are lists of citations, not text
+      const body = page.extract.split(/\n==+ (See also|References|Notes|Further reading|External links|Sources|Bibliography) ==+\n/)[0]
+      const link = `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title!.replace(/ /g, '_'))}`
+      await save(name, 'txt', body, chunkText(body), { url: link, license: `${RAW_SOURCES.wikipedia.license}: ${link}`, licenseChecked: true, line, kind, about: `Wikipedia, "${page.title}"` })
+      return true
+    }
+    if (kind === 'file') {
+      // your own writing or a PDF, already uploaded into workspace/uploads; it stays on this computer
+      if (!/^uploads\/[^/]+\.(txt|md|pdf)$/i.test(what)) return print('data raw file: give an uploaded file, uploads/<file>.txt, .md or .pdf (upload it on the Data tab first)'), false
+      if (!opts.license?.trim()) return print('data raw file: say what its terms are, e.g. --license "my own writing", or what the PDF states'), false
+      const abs = path.join(WORKSPACE, what)
+      let text: string
+      if (/\.pdf$/i.test(what)) {
+        print(`  reading workspace/${what}, every page   (pypdf, through uv)`)
+        const pdf = await pdfPages(abs)
+        text = pdf.pages.join('\n\n')
+        print(`  ${pdf.pages.length} pages`)
+        if (!text.trim()) return print('data raw file: nothing saved. The PDF has no text layer (a scan); nothing here reads pictures of text'), false
+      } else text = await fs.readFile(abs, 'utf8')
+      await save(name, 'txt', text, chunkText(text), { url: `workspace/${what}`, license: `${opts.license.trim()} (as stated at import)`, licenseChecked: false, line, kind, about: opts.about?.trim(), private: true })
       return true
     }
     if (!/^https?:\/\//.test(what)) return print(`data raw ${kind}: give a http(s) URL`), false

@@ -87,14 +87,14 @@
   <h1>Variable Machine</h1>
   <p class="lead">A localhost instrument for changing small language models on an Apple Silicon Mac: try models, change them with words, collect examples, train, blend, compare and share. Every click shows the real command it runs in a terminal at the bottom of the page.</p>
 
-  <p><strong>Install <span class="version">v0.3.0</span>:</strong> open Terminal (cmd-space, type <em>Terminal</em>, press Return), paste this line and press Return. Install Ollama and Node first: <a href="#start">what you need</a>.</p>
+  <p><strong>Install <span class="version">v0.5.0</span>:</strong> open Terminal (cmd-space, type <em>Terminal</em>, press Return), paste this line and press Return. Install Ollama and Node first: <a href="#start">what you need</a>.</p>
   <div class="cmd"><code>curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash</code><button class="copy" type="button">copy</button></div>
   <div class="actions">
-    <a class="button button--main" id="download" href="https://github.com/studio0rpiment/variable-machine/archive/refs/tags/v0.3.0.zip">Download <span class="version">v0.3.0</span> (zip)</a>
+    <a class="button button--main" id="download" href="https://github.com/studio0rpiment/variable-machine/archive/refs/tags/v0.5.0.zip">Download <span class="version">v0.5.0</span> (zip)</a>
     <a class="button" href="https://github.com/studio0rpiment/variable-machine">The code on GitHub</a>
     <a href="https://github.com/studio0rpiment/variable-machine/blob/main/docs/releases.md">What changed in each release</a>
   </div>
-  <p class="note">Free and open source (MIT). It runs entirely on your own Mac: nothing you type or make is sent anywhere.</p>
+  <p class="note">Free for teaching, study and personal use (<a href="https://polyformproject.org/licenses/noncommercial/1.0.0/">PolyForm Noncommercial</a>). It runs entirely on your own Mac: nothing you type or make is sent anywhere.</p>
 
 
   <h2 id="start">Start here</h2>
@@ -146,7 +146,7 @@
   <h2>The tabs</h2>
   <dl class="tabs">
     <dt id="tab-start">start</dt><dd>A clickable map of every tab, read left to right: what you bring, preparing it, how a model learns, making it a model, using it.</dd>
-    <dt id="tab-projects">projects</dt><dd>Finished work made by putting the tabs together, one card each, with its steps in order: ask a table, a gesture controller, a cut-out tool, a character's voice, a research bot, and models for a multi-agent studio. Each step opens the tab that does it, shows its command, and is marked done when your workspace has what it makes.</dd>
+    <dt id="tab-projects">projects</dt><dd>Finished work made by putting the tabs together, one card each, with its steps in order: ask a table, a gesture controller, a cut-out tool, a character's voice and a research bot. Each step opens the tab that does it, shows its command, and is marked done when your workspace has what it makes.</dd>
     <dt id="tab-models">1 models</dt><dd>Four very different starters and a library to download from, each with what it was built for and its license, and SmolVLM, a model that sees.</dd>
     <dt id="tab-modelfile">2 modelfile</dt><dd>Change a model with words, from twelve presets or your own, and hear the original and your variant answer the same question.</dd>
     <dt id="tab-data">3 data</dt><dd>Datasets that come with the app, any dataset on Hugging Face by name, your own file, or a table from DC Open Data or data.gov turned into questions and answers; or photos with what they show, for a model that sees. For a table, see what's in each column and what it means in a question, then make a training set with one button: questions from the table's own values, each with the query that answers it, so the model learns to look things up rather than remember them. Or papers and articles on a topic: search code finds real ones (OpenAlex, Semantic Scholar, arXiv, Crossref, RSS feeds, citations both ways), a model screens them keep or skip, you change what you disagree with, and get a reading list, BibTeX, and a training set for a judge of what's relevant. Every dataset keeps its source and license.</dd>
@@ -170,7 +170,7 @@
   <p>It shows what each step removes and its size, and asks before each one. Most of it goes to the Trash, so empty the Trash to delete it for good. <code>--dry-run</code> only shows what it would remove.</p>
 
   <footer>
-    <p>Variable Machine by <a href="https://orpiment.studio">Studio Orpiment</a> · Kevin Patton. Code: MIT. Hand-drawn icons: hand-icons by Kevin Patton, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Example datasets carry their own licenses (CC0, CC BY 4.0, CC BY-SA 3.0), recorded with each one.</p>
+    <p>Variable Machine by <a href="https://orpiment.studio">Studio Orpiment</a> · Kevin Patton. Code: <a href="https://polyformproject.org/licenses/noncommercial/1.0.0/">PolyForm Noncommercial 1.0.0</a>; commercial use by license. Documents: <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>. Hand-drawn icons: hand-icons by Kevin Patton, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Example datasets carry their own licenses (CC0, CC BY 4.0, CC BY-SA 3.0), recorded with each one.</p>
   </footer>
 </main>
 <script>
@@ -179,7 +179,9 @@
     .then((r) => (r.ok ? r.json() : []))
     .then(([latest]) => {
       if (!latest || !latest.tag_name) return
-      document.getElementById('download').href = `https://github.com/studio0rpiment/variable-machine/archive/refs/tags/${latest.tag_name}.zip`
+      // the zip attached to the release, whose downloads GitHub counts; else GitHub's source zip
+      const zip = (latest.assets || []).find((a) => a.name.endsWith('.zip'))
+      document.getElementById('download').href = zip ? zip.browser_download_url : `https://github.com/studio0rpiment/variable-machine/archive/refs/tags/${latest.tag_name}.zip`
       for (const v of document.querySelectorAll('.version')) v.textContent = latest.tag_name
     })
     .catch(() => {})

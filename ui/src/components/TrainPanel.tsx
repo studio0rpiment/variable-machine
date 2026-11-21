@@ -20,6 +20,7 @@ import PipelineSteps from './PipelineSteps'
 import Manifest, { Badge } from './Manifest'
 import { Choice, Steps } from './Controls'
 import { Explained } from '../explain/Explained'
+import { Part } from '../lib/parts'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
@@ -39,7 +40,7 @@ interface RunManifest {
  * config, command, log, loss and manifest.
  */
 /** withData: set from the Data tab's "use it" (a new n each time, so the same dataset can be sent twice). */
-export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number } }) {
+export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number; params?: Partial<TrainParams> } }) {
   const { status } = useHelperState()
   const tier = status?.tier ?? '16'
   const defaults = TIER_DEFAULTS[tier]
@@ -99,6 +100,12 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
   const kind = sees ? 'sees' : chosen?.ask ? 'ask' : chosen?.format === 'text' ? 'text' : 'chat'
   const kindDefaults = kind === 'sees' ? SEES_DEFAULTS : kind === 'ask' ? ASK_DEFAULTS : kind === 'text' ? TEXT_DEFAULTS : defaults
   useEffect(() => setP((x) => ({ ...x, ...kindDefaults })), [kindDefaults])
+  // a project's step chose the base, name and length: set again after the set's own defaults, while its set is chosen
+  useEffect(() => {
+    if (!withData?.params || p.data !== withData.data) return
+    if (withData.params.name) setTouchedName(true)
+    setP((x) => ({ ...x, ...withData.params }))
+  }, [withData, kindDefaults, p.data === withData?.data])
   const see = sees ? seeModel(p.base) : undefined
   const base = sees ? (see && { params: see.params, license: see.license, architecture: 'vision-language, llama decoder', loraGB: see.loraGB, layers: see.layers }) : HF_BASES.find((b) => b.id === p.base)
   useEffect(() => {
@@ -151,6 +158,12 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
               {sees ? ' · sees: trained with mlx-vlm on your pictures' : ''}
               {kind === 'ask' ? ' · learns to write queries for a table; settings measured for it, small enough for an 8GB Mac' : ''}
               {kind === 'text' ? ' · learns to write rows like the table\'s: what it writes are invented records, never real ones' : ''}
+            </span>
+          )}
+          {sees && !!chosen?.mood && (
+            <span className="label label--muted">
+              these rows are moods: or train a mood classifier on them instead, quicker and on any Mac (the image moods project) ·{' '}
+              <CommandPreview command={joinWords(['mood', 'train', `${chosen.name}-siglip`, '--data', chosen.name])} onRun={() => void runCommand(joinWords(['mood', 'train', `${chosen.name}-siglip`, '--data', chosen.name]))} label="train a mood classifier" />
             </span>
           )}
           <label className="field">
@@ -258,6 +271,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         )
       )}
 
+      <Part id="train.runs">
       <h2 className="panel__title label">runs · workspace/runs</h2>
       <div className="cards">
         {runs.map((r) => (
@@ -281,6 +295,7 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
         ))}
         {runs.length === 0 && <p className="label label--muted">no runs yet</p>}
       </div>
+      </Part>
     </section>
   )
 }

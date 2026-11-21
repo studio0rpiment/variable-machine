@@ -710,3 +710,17 @@ Take the set with you
 `gesture.use.take.how`
 
 Share → `{command}`: the examples and the trained model, to unzip into anyone's Variable Machine.
+
+## In project mode
+
+When a student follows the gesture controller from its card, the tab shows only the parts of the step they are on. Its decisions are on the schematic above the tab.
+
+### Step 1, the tracker
+`gesture.mode.tracker`
+
+The tracker finds the points on your {what} in each picture from the camera. What it follows is a decision on the schematic above: change it there.
+
+### Step 2, a new set's tracker
+`gesture.mode.follows`
+
+it follows {what}: the decision on the first box of the schematic

@@ -231,14 +231,14 @@ export interface ResearchInfo {
   check?: { n: number; agree: number }
 }
 
-/** The README for a relevance judge's package, with research.js. */
+/** The README for a point of view's package (a small model trained on keep/skip decisions), with research.js. */
 export function researchReadme(i: ResearchInfo): string {
   return `# Research bot: ${i.topic}
 
-Finds papers, articles and Substack posts on one topic, and keeps the ones that matter for it. Search code finds every item, in OpenAlex, Semantic Scholar, arXiv, Crossref and the feeds in \`research.json\`, and follows the seeds' citations both ways. The model in this folder only judges: keep or skip, with a line why. It never names a paper, so every item in the reading list exists.
+Finds papers, articles and Substack posts on one topic (and archive texts, newspaper pages and US patents, when \`research.json\` names them in \`more\`), and keeps the ones that matter for it. Search code finds every item, in OpenAlex, Semantic Scholar, arXiv, Crossref and the feeds in \`research.json\`, and follows the seeds' citations both ways. The model in this folder holds a point of view: it only answers keep or skip, with a line why. It never names a paper, so every item in the reading list exists.
 
-- **The judge:** \`${i.model}\`, ${i.base} with a LoRA adapter trained on ${i.dataset}: ${i.rows} keep/skip decisions on this topic, most of them the student's own.${i.check ? `\n- **The stock model, before training:** qwen3:4b agreed with the student on ${i.check.agree} of ${i.check.n} items it read (${Math.round((i.check.agree / i.check.n) * 100)}%).` : ''}
-- **The library:** \`library.jsonl\`, the ${i.seen} items seen when this was packaged, with the decisions so far. Each run adds what is new, so the next run shows only new items.
+- **The point of view:** \`${i.model}\`, ${i.base} with a LoRA adapter trained on ${i.dataset}: ${i.rows} keep/skip decisions on this topic, most of them the student's own.${i.check ? `\n- **The stock model, before training:** qwen3:4b agreed with the student on ${i.check.agree} of ${i.check.n} items it read (${Math.round((i.check.agree / i.check.n) * 100)}%).` : ''}
+- **The library:** \`library.jsonl\`, the ${i.seen} items seen when this was packaged, with the decisions so far. Each run adds what is new, so the next run shows only new items. Each kept item says which search found it, its address and date, so it can be checked outside this folder.
 
 ## What you need
 
@@ -257,20 +257,20 @@ The first reads \`model/weights/\`. The second is the model that compares texts 
 node research.js
 \`\`\`
 
-It searches with the saved searches, drops what the library has seen, ranks the rest by closeness to the seeds and the topic, has the judge read the 40 closest, and writes:
+It searches with the saved searches, drops what the library has seen, ranks the rest by closeness to the seeds and the topic, has the point of view read the 40 closest, and writes:
 
 - \`reading-<date>.md\`: what it kept this time, with why, and where to read it;
 - \`references.bib\`: BibTeX for everything kept so far, from what the sources said (never from a model);
 - \`library.jsonl\`: everything seen, with each decision.
 
-\`node research.js --new-queries\` writes new searches first; \`--top 60\` has the judge read more. Change the topic's seeds and feeds in \`research.json\`. In Node: \`require('./research.js').run(__dirname)\` resolves to the new items, each with its decision.
+\`node research.js --new-queries\` writes new searches first; \`--top 60\` has it read more. Change the topic's seeds and feeds in \`research.json\`. In Node: \`require('./research.js').run(__dirname)\` resolves to the new items, each with its decision.
 
 ## What it can't do
 
 - It reads abstracts, not full text: what is behind a paywall it never sees. Check a paper before you cite it.
 - There is no official Substack search: a Substack or a blog comes in by its feed address (name.substack.com/feed), in \`research.json\`.
-- Without keys, Semantic Scholar often refuses (429) and OpenAlex has a small daily budget per network. \`OPENALEX_API_KEY\` and \`SEMANTIC_SCHOLAR_API_KEY\` in the environment raise both.
-- The judge learned one person's sense of one topic. On another topic, train another.
+- Without keys, Semantic Scholar often refuses (429) and OpenAlex has a small daily budget per network. \`OPENALEX_API_KEY\` and \`SEMANTIC_SCHOLAR_API_KEY\` in the environment raise both; on a Mac, so does Variable Machine's keys file (~/Library/Application Support/Variable Machine/keys.json).
+- The point of view learned one person's (or one class's) sense of one topic. On another topic, train another.
 
 ## License and credit
 

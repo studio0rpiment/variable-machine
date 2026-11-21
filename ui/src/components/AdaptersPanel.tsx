@@ -14,6 +14,7 @@ import PipelineSteps from './PipelineSteps'
 import { Explained } from '../explain/Explained'
 import ConfirmButton from './ConfirmButton'
 import TryTrained from './TryTrained'
+import { Part } from '../lib/parts'
 
 interface AdapterManifest {
   name: string
@@ -91,6 +92,7 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
 
   return (
     <section className="panel" aria-label="adapters">
+      <Part id="adapters">
       <Explained id="adapters.quantize">
         <div className="choice" role="radiogroup" aria-label="quantize on import">
           <span className="label label--muted">ollama imports it as</span>
@@ -225,6 +227,7 @@ export default function AdaptersPanel({ onChatPair }: { onChatPair: (a: string, 
           </div>
         </>
       )}
+      </Part>
     </section>
   )
 }

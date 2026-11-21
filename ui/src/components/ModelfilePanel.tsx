@@ -16,6 +16,7 @@ import AnswerColumn, { EMPTY, type Answer } from './AnswerColumn'
 import CommandPreview from './CommandPreview'
 import ModelSelect from './ModelSelect'
 import Manifest from './Manifest'
+import { Part, useInProject } from '../lib/parts'
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/
 const bare = (tag: string) => tag.replace(/:latest$/, '')
@@ -154,10 +155,12 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
 
   // Bring the top of what just changed into view before the new layout is captured, so cards glide to where they will be seen.
   const topRef = useRef<HTMLDivElement>(null)
+  const inProject = useInProject()
   const chosenKey = chosen === null ? '' : chosen === 'own' ? 'own' : chosen.id
   useLayoutEffect(() => {
     // Once chosen, the intro has done its job: the chosen card goes to the top so the answers below it are in view.
-    topRef.current?.scrollIntoView({ block: chosen ? 'start' : 'nearest' })
+    // in project mode the tab is a section of a long page, which it must not scroll
+    if (!inProject) topRef.current?.scrollIntoView({ block: chosen ? 'start' : 'nearest' })
   }, [chosenKey])
 
   /** The student's own variants: Modelfiles this tab wrote (not the ones Export writes for trained models). */
@@ -411,6 +414,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
               </div>
             </section>
 
+            <Part id="modelfile.diy">
             <section className="mf-part mf-diy" aria-label="do it yourself">
               <h2 className="panel__title label mf-lead-plain">do it yourself</h2>
               <p className="mf-next">
@@ -420,6 +424,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
                 All of it is one text file and one command: "See the Modelfile this makes", at the bottom, shows the file. You can also write one in a text editor, save it in workspace/modelfiles, and type <code>ollama create &lt;name&gt; -f workspace/modelfiles/&lt;name&gt;.Modelfile</code> in the terminal, then <code>ollama run-once &lt;name&gt; "a question"</code> to try it.
               </p>
             </section>
+            </Part>
 
             <section className="mf-part" ref={formRef} aria-label="what it adds">
               <h2 className="panel__title label mf-lead-plain">
@@ -548,6 +553,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
         </details>
       </div>
 
+      <Part id="modelfile.variants">
       {yours.length > 0 && (
         <>
           <h2 className="panel__title label">your variants · workspace/modelfiles</h2>
@@ -580,6 +586,7 @@ export default function ModelfilePanel({ startFrom, onChatPair }: Props) {
           </div>
         </>
       )}
+      </Part>
     </section>
   )
 }

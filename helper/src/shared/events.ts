@@ -10,6 +10,8 @@ export interface Status {
   memoryGB: number
   tier: Tier
   arch: string
+  /** Started for one project, or a few, comma-separated (VARIABLE_MACHINE_PROJECT=latent, Latent Image.command; dream,dream-trained, Dream Cards.command): the page opens straight into the first one's walkthrough and leaves out the rest of the app. */
+  project?: string
 }
 
 /** A file a page run made: where it went, what it was made from, which tool made it. */

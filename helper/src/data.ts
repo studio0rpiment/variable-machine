@@ -11,10 +11,12 @@ import { IMAGE_EXT } from './shared/kinds.ts'
 import { identifyLicense } from './shared/licenses.ts'
 import type { DataSource, DatasetManifest } from './shared/manifest.ts'
 import { DATA_SOURCES, OASST1, SMOLTALK } from './shared/library.ts'
+import { importOasis } from './oasis.ts'
 import { rawCommand } from './rawsources.ts'
 import { detectShape, parseCsv, SHAPES_HELP } from './shared/rowShapes.ts'
 import { describeDataset } from './shared/datasetAbout.ts'
 import { tableCommand } from './table.ts'
+import { draft, markDraft } from './drafts.ts'
 
 /**
  * `data …` (plan §7). A dataset is workspace/data/<name>/ with train.jsonl,
@@ -30,6 +32,7 @@ const HELP = `data new <name> [--format chat|preference|picture]
 data picture <name> images/<set>/<photo> --question "<q>" --answer "<a>"   (a row about a photo; the photo is copied in)
 data import dolly <name> [--limit 300] [--category <c>] [--seed 0]
 data import oasst1 <name> [--limit 300]
+data import oasis <name>   (OASIS: photos rated for valence and arousal, as four moods, people left out; a picture dataset)
 data import smoltalk <name> --subset smol-magpie-ultra|smol-constraints|smol-rewrite|smol-summarize [--limit 300] [--seed 0]
 data import example <example> <name>   (workspace/examples/data)
 data import hf <owner/name> <name> [--config <c>] [--split train] [--limit 300]   (any dataset on huggingface.co/datasets)
@@ -44,11 +47,15 @@ data words raw/<table> <COLUMN> <VALUE> "<word>, <word>"   (what people call a c
 data questions raw/<table> <name> [--rows 600] [--seed 0] [--voice plain|news|caption]   (questions and the queries that answer them, from the roles)
 data rows raw/<table> <name> --as csv|sentence [--limit 1000]   (the rows as they are, for a model that writes invented ones)
 data raw gutenberg <book number> <name>
+data raw wikipedia <Article_title> <name>
 data raw csv|txt <url> <name> --license "<what the source states>"
 data validate <name>
 data split <name> [--valid 0.1] [--seed 0]
 data count <name>
-data append <name> '<row json>' [--source <model or label>] [--from raw/<name>]`
+data append <name> '<row json>' [--source <model or label>] [--from raw/<name>] [--draft <id>]
+data draft <name> --from raw/<name>|uploads/<file>.txt [--fields a,b,c] [--count 200] [--model qwen3:4b]
+    (a model writes rows from the material into drafts.jsonl, marked unreviewed; keep or reject each on the Data tab)
+data reject <name> <draft id>   (a draft not kept: it stays in drafts.jsonl, marked rejected)`
 
 /** Small seeded PRNG (mulberry32), so a split or a sample can be made again exactly. */
 function rng(seed: number) {
@@ -110,7 +117,7 @@ function combinedLicense(sources: DataSource[]) {
   return names.length ? names.join(' + ') : sources.length ? 'generated (see sources)' : 'none yet'
 }
 
-async function writeManifest(m: DatasetManifest) {
+export async function writeManifest(m: DatasetManifest) {
   m.license = combinedLicense(m.sources)
   await fs.writeFile(path.join(dir(m.name), 'manifest.json'), JSON.stringify(m, null, 2) + '\n')
 }
@@ -119,7 +126,7 @@ function recordCommand(m: DatasetManifest, line: string) {
   if (m.command.at(-1) !== line) m.command.push(line)
 }
 
-async function ensureDataset(name: string, line: string, format: DataFormat = 'chat'): Promise<DatasetManifest> {
+export async function ensureDataset(name: string, line: string, format: DataFormat = 'chat'): Promise<DatasetManifest> {
   const existing = await readManifest(name)
   if (existing) return { ...existing, format: existing.format ?? 'chat' }
   await fs.mkdir(dir(name), { recursive: true })
@@ -716,7 +723,7 @@ async function count(name: string, line: string): Promise<boolean> {
 }
 
 /** Model licenses for generated rows, read from Ollama once per model. */
-async function modelLicense(model: string): Promise<{ license: string; checked: boolean }> {
+export async function modelLicense(model: string): Promise<{ license: string; checked: boolean }> {
   try {
     const res = await ollamaPost('/api/show', { model })
     const s = (await res.json()) as { license?: string | string[] }
@@ -745,6 +752,15 @@ async function append(name: string, json: string | undefined, opts: Record<strin
     print(`data append: ${m.format === 'preference' ? 'pair' : 'row'} ${problem}`)
     return false
   }
+  // a draft kept (edited or not): marked kept in drafts.jsonl, so it isn't offered again
+  if (opts.draft !== undefined) {
+    const marked = await markDraft(name, Number(opts.draft), 'kept')
+    if (!marked) {
+      print(`data append: ${name} has no unreviewed draft ${opts.draft}`)
+      return false
+    }
+    m.drafts = marked.drafts
+  }
   await fs.appendFile(path.join(dir(name), 'train.jsonl'), JSON.stringify(row) + '\n')
   m.counts.train += 1
   const id = opts.source ?? 'typed'
@@ -767,7 +783,7 @@ async function append(name: string, json: string | undefined, opts: Record<strin
     }
   }
   // Every appended row is its own command; the manifest keeps the shape of it, not every row.
-  recordCommand(m, `data append ${name} '<row>'${opts.source ? ` --source ${opts.source}` : ''}${opts.from ? ` --from ${opts.from}` : ''}`)
+  recordCommand(m, `data append ${name} '<row>'${opts.source ? ` --source ${opts.source}` : ''}${opts.from ? ` --from ${opts.from}` : ''}${opts.draft !== undefined ? ' --draft <id>' : ''}`)
   await writeManifest(m)
   print(`  ◂ ${name}/train.jsonl · ${m.counts.train} ${m.format === 'preference' ? 'pairs' : 'rows'}`)
   return true
@@ -860,7 +876,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
   if (sub === 'raw') return rawCommand(pos, opts, line)
   if (['profile', 'role', 'words', 'questions', 'rows'].includes(sub)) return tableCommand(sub, pos, opts, line)
   const name = sub === 'import' ? (['example', 'hf', 'file'].includes(pos[0]) ? pos[2] : pos[1]) : sub === 'template' ? pos[1] : pos[0]
-  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe', 'template', 'picture'].includes(sub)) {
+  if (!sub || !['new', 'import', 'validate', 'split', 'count', 'append', 'raw', 'describe', 'template', 'picture', 'draft', 'reject'].includes(sub)) {
     print(HELP)
     return !sub || sub === 'help'
   }
@@ -869,7 +885,7 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     return false
   }
   for (const k of Object.keys(opts)) {
-    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from'], picture: ['question', 'answer'], template: ['question', 'answer', 'limit', 'seed', 'about', 'skip'] }
+    const allowed: Record<string, string[]> = { new: ['format'], import: ['limit', 'category', 'seed', 'subset', 'lang', 'config', 'split', 'license', 'about'], split: ['valid', 'seed'], append: ['source', 'from', 'draft'], draft: ['from', 'fields', 'count', 'model'], picture: ['question', 'answer'], template: ['question', 'answer', 'limit', 'seed', 'about', 'skip'] }
     if (!(allowed[sub] ?? []).includes(k)) {
       print(`data ${sub}: unknown option --${k}`)
       return false
@@ -893,11 +909,12 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
     case 'import':
       if (pos[0] === 'example') return importExample(pos[1] ?? '', name, line)
       if (pos[0] === 'oasst1') return importOasst1(name, opts, line)
+      if (pos[0] === 'oasis') return importOasis(name, line)
       if (pos[0] === 'smoltalk') return importSmoltalk(name, opts, line)
       if (pos[0] === 'hf') return importHf(pos[1], name, opts, line)
       if (pos[0] === 'file') return importFile(pos[1], name, opts, line)
       if (pos[0] !== 'dolly') {
-        print(`data import: sources are dolly, oasst1, smoltalk, example <name>, hf <owner/name>, and file uploads/<file>`)
+        print(`data import: sources are dolly, oasst1, smoltalk, oasis (rated photos, as moods), example <name>, hf <owner/name>, and file uploads/<file>`)
         return false
       }
       return importDolly(name, opts, line)
@@ -915,6 +932,20 @@ export async function dataCommand(args: string[], line: string): Promise<boolean
       return template(pos[0], name, opts, line)
     case 'picture':
       return picture(name, pos[1], opts, line)
+    case 'draft':
+      // a voice's rows set is made by its first draft; a set made by data new is used as it is
+      return draft(name, () => ensureDataset(name, line), opts, line, writeManifest)
+    case 'reject': {
+      const m = await readManifest(name)
+      if (!m) return missing(name)
+      const marked = await markDraft(name, Number(pos[1]), 'rejected')
+      if (!marked) return print(`data reject: ${name} has no unreviewed draft ${pos[1] ?? ''}`.trim()), false
+      m.drafts = marked.drafts
+      recordCommand(m, `data reject ${name} <id>`)
+      await writeManifest(m)
+      print(`  ◂ draft ${pos[1]} rejected · ${m.drafts.unreviewed} to read`)
+      return true
+    }
   }
   return false
 }

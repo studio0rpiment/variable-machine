@@ -75,11 +75,15 @@ export interface HfBase {
   layers: number
   /** the Ollama model of the same weights, untouched: the before in a before/after */
   runsAs: string
+  /** its makers' GGUF, for an architecture Ollama's safetensors import refuses: export writes the trained weights into a copy (gguf_export.py) */
+  gguf?: { repo: string; file: string }
 }
 
 export const HF_BASES: HfBase[] = [
   { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The same tiny assistant as smollm2:360m, in the format training needs. The default starting point: quick to train on any 16GB Mac.', architecture: 'llama', template: 'chatml', params: '360M', loraGB: 2, layers: 32, runsAs: 'smollm2:360m' },
   { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', license: 'Apache 2.0', maker: 'Hugging Face, 2024', builtFor: 'The larger SmolLM2, in the format training needs. Better results, but slower, and it needs more memory.', architecture: 'llama', template: 'chatml', params: '1.7B', loraGB: 8, layers: 24, runsAs: 'smollm2:1.7b' },
+  { id: 'Qwen/Qwen2.5-0.5B-Instruct', license: 'Apache 2.0', maker: 'Alibaba Qwen, 2024', builtFor: 'A tiny assistant that writes Chinese as well as English. For a model that answers in both, as the dream reader does.', architecture: 'qwen2', template: 'chatml', params: '0.5B', loraGB: 3, layers: 24, runsAs: 'qwen2.5:0.5b', gguf: { repo: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF', file: 'qwen2.5-0.5b-instruct-q8_0.gguf' } },
+  { id: 'Qwen/Qwen2.5-1.5B-Instruct', license: 'Apache 2.0', maker: 'Alibaba Qwen, 2024', builtFor: 'The larger of the two Qwen2.5 bases offered (the 3B is under a research licence, so it is not): better Chinese, slower to train.', architecture: 'qwen2', template: 'chatml', params: '1.5B', loraGB: 6, layers: 28, runsAs: 'qwen2.5:1.5b', gguf: { repo: 'Qwen/Qwen2.5-1.5B-Instruct-GGUF', file: 'qwen2.5-1.5b-instruct-q8_0.gguf' } },
 ]
 
 export interface DataSourceInfo {
@@ -122,8 +126,10 @@ export const SMOLTALK = {
 /** Raw material for cross-domain sets: chunks a generator can be asked to write examples from. */
 export const RAW_SOURCES = {
   gutenberg: { about: 'a public-domain book from Project Gutenberg, by its number (e.g. 1342 for Pride and Prejudice)', license: 'public domain in the USA (Project Gutenberg; check the laws of your country)' },
+  wikipedia: { about: 'a Wikipedia article as plain text, by its title (e.g. Color_psychology); CC BY-SA 4.0, so what is made from it credits the article and shares alike', license: 'CC BY-SA 4.0 (Wikipedia: credit the article and its authors, share alike)' },
   csv: { about: 'a CSV from a URL, e.g. DDOT traffic counts from Open Data DC; give the license the source states' },
   txt: { about: 'a plain-text file from a URL; give the license the source states' },
   jsonl: { about: 'a table written as JSON lines (one {"column": value} object per line) from a URL, e.g. a dataset file on Hugging Face; give the license the source states' },
   arcgis: { about: 'a table read straight from an ArcGIS map service (how DC Open Data serves its tables), by its layer address; give the license the source states' },
+  file: { about: 'your own writing, or a PDF, uploaded from this computer (.txt, .md or .pdf); give its terms ("my own writing", or what the PDF states). It is marked private and stays on this computer: zip never shares raw texts' },
 }

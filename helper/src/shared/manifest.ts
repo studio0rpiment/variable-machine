@@ -49,4 +49,23 @@ export interface DatasetManifest extends Manifest {
   voice?: string
   /** a relevance judge's set, from the research bot's decisions: workspace/research/<folder> */
   research?: { folder: string; topic: string }
+  /** a dream reader's set (dream rows): the dream folder its readings came from, workspace/dreams/<name>, and the model that wrote them */
+  dream?: { folder: string; by: string }
+  /** a picture set of moods (data import oasis): its labels and how ratings became them */
+  mood?: { labels: string[]; from: string; pleasantAbove?: number; highArousalAbove?: number; leftOut?: unknown }
+  /** the texts that inform its moods (mood describe): raw/<name> each */
+  texts?: string[]
+  /** rows a model drafted (data draft), in drafts.jsonl: how many wait to be read, and how many were kept or rejected */
+  drafts?: { unreviewed: number; kept: number; rejected: number }
+}
+
+/** One line of a dataset's drafts.jsonl: a row a model wrote, before a person reads it. */
+export interface DraftRow {
+  id: number
+  state: 'unreviewed' | 'kept' | 'rejected'
+  /** the model that wrote it */
+  model: string
+  /** what it was written from: raw/<name> or uploads/<file> */
+  from: string
+  row: { messages: { role: 'system' | 'user' | 'assistant'; content: string }[] }
 }

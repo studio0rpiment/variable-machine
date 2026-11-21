@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { stretcher } from '../lib/mapWidth'
 import { Explained } from '../explain/Explained'
 import type { ExplainId } from '../explain/text'
 
@@ -10,14 +11,14 @@ import type { ExplainId } from '../explain/text'
  * one picture, so the angles stay 45°.
  */
 
-const W = 150 // node width
+export const W = 150 // node width
 /** Everything drawn, in the SVG's units: what "fit" shows. */
 const CONTENT = { x: 40, y: 20, w: 1156, h: 920 } // the bottom 70 are room for the echo
 const MIN_W = 360 // closest zoom, in units across
 const MAX_W = 4000 // furthest
-const H = 44 // node height
+export const H = 44 // node height
 
-interface Node {
+export interface Node {
   id: string
   n?: string
   x: number
@@ -49,10 +50,11 @@ interface Node {
  */
 const COLUMNS: [number, string][] = [[60, 'bring'], [300, 'prepare'], [590, 'how it learns'], [820, 'make it a model'], [1000, 'use it']]
 
-const NODES: Node[] = [
+export const NODES: Node[] = [
   { id: 'models', n: '1', x: 60, y: 80, caption: 'every kind starts here' },
   { id: 'words', name: 'your words', x: 60, y: 190, caption: 'questions and answers', kind: 'input', to: 'data', flag: 'map.words' },
   { id: 'pictures', name: 'photos + words', x: 60, y: 300, caption: 'what each photo shows', kind: 'input', to: 'data', flag: 'map.pictures' },
+  { id: 'papers', name: 'papers', x: 60, y: 400, caption: 'a topic, and its seeds', kind: 'input', to: 'data', flag: 'map.papers' },
   { id: 'modelfile', n: '2', x: 300, y: 80, caption: 'change it with words' },
   { id: 'data', n: '3', x: 300, y: 240, caption: 'what it learns from' },
   { id: 'train', n: '4', x: 590, y: 190, caption: 'imitate' },
@@ -61,6 +63,7 @@ const NODES: Node[] = [
   { id: 'adapters', n: '5', x: 820, y: 270, caption: 'changes become models' },
   { id: 'chat', x: 1000, y: 80, caption: 'language models', dest: true },
   { id: 'share', x: 1000, y: 330, caption: 'pass it on' },
+  { id: 'reading-list', name: 'reading list', x: 1000, y: 190, caption: 'what the research bot finds', to: 'data', flag: 'map.readingList' },
   // image segmentation: your photos, a model its makers trained
   { id: 'photos', name: 'your photos', x: 60, y: 510, caption: 'an image set', kind: 'input', to: 'segmentation', flag: 'map.photos' },
   { id: 'made-images', name: 'ready-made', x: 590, y: 510, caption: 'trained by its makers, on their photos', kind: 'made', to: 'models', flag: 'map.made' },
@@ -78,9 +81,9 @@ const NODES: Node[] = [
 ]
 
 /** The projects, named in their row on the map, in two lines so the echo in the corner never covers them. */
-const PROJECTS = ['ask a table · gesture controller · cut-out tool', 'a character\'s voice · research bot · models for a multi-agent studio']
+const PROJECTS = ['ask a table · gesture controller · cut-out tool', 'a character\'s voice · research bot']
 
-type P = [number, number]
+export type P = [number, number]
 
 /**
  * From a to b: across, one 45° bend, across. When the drop is steeper than the
@@ -99,7 +102,7 @@ function route(a: P, b: P): P[] {
   return [a, [a[0], a[1] + Math.sign(dy) * v], b]
 }
 
-interface Wire {
+export interface Wire {
   from: string
   to: string
   label: string
@@ -111,7 +114,7 @@ interface Wire {
   soon?: boolean
 }
 
-const WIRES: Wire[] = [
+export const WIRES: Wire[] = [
   // the language models: the change loop
   { from: 'models', to: 'chat', label: 'use it as it is', points: [[135, 80], [135, 62], [1075, 62], [1075, 72]], at: [605, 56], anchor: 'middle' },
   { from: 'models', to: 'modelfile', label: 'a model', points: [[210, 102], [300, 102]], at: [218, 96], anchor: 'start' },
@@ -135,6 +138,9 @@ const WIRES: Wire[] = [
     at: [728, 444],
     anchor: 'middle',
   },
+  // the research bot: papers found by search code, read and kept; your keep or skip can become rows
+  { from: 'papers', to: 'reading-list', label: 'kept, with why', points: [[210, 412], [1160, 412], [1160, 212], [1152, 212]], at: [470, 406], anchor: 'start' },
+  { from: 'papers', to: 'data', label: 'your keep / skip', points: [[210, 428], [330, 428], [330, 286]], at: [216, 444], anchor: 'start' },
   // the other kinds, one row each
   { from: 'photos', to: 'made-images', label: 'your photos', points: [[210, 532], [590, 532]], at: [216, 526], anchor: 'start' },
   { from: 'made-images', to: 'segmentation', label: 'a ready-made model, used as it is', points: [[740, 532], [994, 532]], at: [746, 526], anchor: 'start' },
@@ -143,6 +149,19 @@ const WIRES: Wire[] = [
   { from: 'movements', to: 'gesture-train', label: 'the camera, as points', points: [[210, 712], [590, 712]], at: [216, 706], anchor: 'start' },
   { from: 'gesture-train', to: 'gesture', label: 'your gesture model', points: [[740, 712], [994, 712]], at: [746, 706], anchor: 'start' },
 ]
+
+/** A wire on the wider map: one drawn by route() is routed again, so its bend stays at 45°. */
+export function stretchWire(w: Wire, sx: (x: number) => number): Wire {
+  const first = w.points[0]
+  const last = w.points[w.points.length - 1]
+  const routed = route(first, last)
+  const same = routed.length === w.points.length && routed.every((p, i) => p[0] === w.points[i][0] && p[1] === w.points[i][1])
+  return {
+    ...w,
+    points: same ? route([sx(first[0]), first[1]], [sx(last[0]), last[1]]) : w.points.map(([x, y]) => [sx(x), y] as P),
+    at: [sx(w.at[0]), w.at[1]],
+  }
+}
 
 /** What each tab runs, for the corner echo when you point at it. */
 const RUNS: Record<string, string[]> = {
@@ -159,6 +178,8 @@ const RUNS: Record<string, string[]> = {
   speech: ['speak teapot-label "Utah teapot, 1974."', 'listen audio/recorded/rec-2026-10-24.wav'],
   gesture: ['gesture new studio-hands --tracker hands', 'gesture train studio-hands', 'gesture send studio-hands --port 9000'],
   words: ['data import file uploads/my-rows.csv my-rows', 'data append my-rows \'{"messages": […]}\''],
+  papers: ['papers search sound-amps --topic "…" --seed … --seed …', 'papers screen sound-amps', 'papers decide sound-amps <key> keep'],
+  'reading-list': ['papers list sound-amps', '  reading-list.md · references.bib'],
   pictures: ['data picture my-labels images/studio/vase.jpg --question "What is this?" --answer "…"'],
   photos: ['look example classic-cv', '(or add photos on the image segmentation tab)'],
   'voice-in': ['speak label-1 "Your words, read aloud."', '(or record your voice on the speech tab)'],
@@ -182,9 +203,30 @@ interface Props {
   pageScroll?: boolean
   /** what the echo says while nothing is pointed at and the terminal is quiet; the website shows nothing */
   idle?: string[]
+  /**
+   * Make Your Own: the part of the map to show, set from outside (the map
+   * folding into the strip as the page scrolls). It can't be dragged or zoomed
+   * then, a scroll scrolls the page, and the tools and the echo go.
+   */
+  view?: { x: number; y: number; w: number; h: number }
+  /**
+   * Make Your Own: how many units wider than drawn the map is, so it fills a
+   * wide window at the same size; the extra goes into the gaps between the
+   * columns, and the boxes keep their size.
+   */
+  extra?: number
+  /** the box lit solid: the part of the page in view */
+  light?: string | null
+  /** a click on a box, given where it leads (its tab), in place of following its link */
+  onPick?: (to: string) => void
 }
 
-export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'] }: Props) {
+export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScroll = false, idle = ['variable machine', 'point at a tab to see what it runs'], view, extra = 0, light, onPick }: Props) {
+  const held = !!view
+  const sx = useMemo(() => stretcher(extra), [extra])
+  const wires = useMemo(() => (extra > 0 ? WIRES.map((w) => stretchWire(w, sx)) : WIRES), [extra, sx])
+  // Make Your Own has no projects row: Projects is in the top bar
+  const nodes = useMemo(() => NODES.filter((n) => !held || n.id !== 'projects').map((n) => (extra > 0 ? { ...n, x: sx(n.x) } : n)), [extra, sx, held])
   const [hot, setHot] = useState<string | null>(null)
   const echo = hot ? RUNS[hot].map((l) => `▸ ${l}`) : lines.length ? lines : idle
 
@@ -248,6 +290,7 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
   // Wheel: a pinch (or ⌘/ctrl + wheel) zooms; a plain scroll pans. Native listener, so it can stop the page scrolling.
   useEffect(() => {
     const el = svg.current!
+    if (held) return // the page scrolls; the map follows it
     const onWheel = (e: WheelEvent) => {
       if (pageScroll && !e.ctrlKey && !e.metaKey) return // let the page scroll
       e.preventDefault()
@@ -258,12 +301,12 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [zoomAt, pageScroll])
+  }, [zoomAt, pageScroll, held])
 
   // Drag to pan, from anywhere; a drag that started on a node doesn't also open its tab.
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; far: boolean } | null>(null)
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 || held) return
     drag.current = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y, far: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -291,11 +334,11 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
   const wasDrag = useRef(false)
 
   return (
-    <figure className="flow" aria-label="map of the tabs and what flows between them" ref={box}>
+    <figure className={`flow ${held ? 'flow--held' : ''}`.trim()} aria-label="map of the tabs and what flows between them" ref={box}>
       <svg
         ref={svg}
         className="flow__svg"
-        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+        viewBox={view ? `${view.x} ${view.y} ${view.w} ${view.h}` : `${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
         role="img"
         aria-label="The tabs of Variable Machine and what each passes to the next"
         onPointerDown={onPointerDown}
@@ -318,29 +361,30 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
 
         {/* the columns, left to right */}
         {COLUMNS.map(([x, label]) => (
-          <text key={label} x={x} y={36} className="flow__column">
+          <text key={label} x={sx(x)} y={36} className="flow__column">
             {label}
           </text>
         ))}
 
         {/* the three ways: one box, one step number */}
-        <rect x={580} y={170} width={170} height={250} className="flow__group" />
-        <text x={580} y={162} className="flow__group-label">
+        <rect x={sx(580)} y={170} width={sx(750) - sx(580)} height={250} className="flow__group" />
+        <text x={sx(580)} y={162} className="flow__group-label">
           4 · three ways to change the numbers
         </text>
 
         {/* the other kinds, one row each, below the change loop */}
-        <line x1={40} y1={478} x2={1172} y2={478} className="flow__rule" />
+        <line x1={40} y1={478} x2={sx(1172)} y2={478} className="flow__rule" />
 
-        {/* the projects, below everything they are made from */}
-        <line x1={40} y1={762} x2={1172} y2={762} className="flow__rule" />
-        {PROJECTS.map((l, i) => (
-          <text key={l} x={240} y={808 + i * 18} className="flow__caption">
-            {l}
-          </text>
-        ))}
+        {/* the projects, below everything they are made from (not in Make Your Own, where Projects is in the top bar) */}
+        {!held && <line x1={40} y1={762} x2={sx(1172)} y2={762} className="flow__rule" />}
+        {!held &&
+          PROJECTS.map((l, i) => (
+            <text key={l} x={sx(240)} y={808 + i * 18} className="flow__caption">
+              {l}
+            </text>
+          ))}
 
-        {WIRES.map((w) => (
+        {wires.map((w) => (
           <g key={`${w.from}-${w.to}-${w.label}`} className={`flow__wire ${w.soon ? 'is-soon' : ''} ${joined(w) ? 'is-hot' : ''} ${hot && !joined(w) ? 'is-dim' : ''}`.trim()}>
             <polyline points={w.points.map((p) => p.join(',')).join(' ')} markerEnd="url(#flow-end)" />
             <text x={w.at[0]} y={w.at[1]} textAnchor={w.anchor ?? 'start'} className="flow__label">
@@ -349,7 +393,7 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           </g>
         ))}
 
-        {NODES.map((n) => {
+        {nodes.map((n) => {
           // a use and Chat have an outer outline; their wires plug into it
           const out = n.dest || n.kind === 'use' ? 6 : 0
           const box = n.kind === 'input' ? 'flow__box flow__box--input' : n.kind === 'made' ? 'flow__box flow__box--made' : 'flow__box'
@@ -358,7 +402,15 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
             <Explained key={n.id} id={n.flag ?? (`panel.${n.id}` as ExplainId)} svg module=".flow">
               <a
                 href={linkTo(n.to ?? n.id)}
-                className={`flow__node ${n.kind ? `flow__node--${n.kind}` : ''} ${hot === n.id ? 'is-hot' : ''}`.trim()}
+                className={`flow__node ${n.kind ? `flow__node--${n.kind}` : ''} ${hot === n.id ? 'is-hot' : ''} ${light === n.id ? 'is-lit' : ''}`.replace(/\s+/g, ' ').trim()}
+                aria-current={light === n.id ? 'location' : undefined}
+                onClick={
+                  onPick &&
+                  ((e) => {
+                    e.preventDefault()
+                    onPick(n.to ?? n.id)
+                  })
+                }
                 onPointerEnter={() => setHot(n.id)}
                 onPointerLeave={() => setHot(null)}
                 onFocus={() => setHot(n.id)}
@@ -402,6 +454,8 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           )
         })}
       </svg>
+      {!held && (
+      <>
       <div className="flow__tools" role="group" aria-label="view">
         <button type="button" className="text-button" onClick={fit} aria-label="fit the whole map to the space">
           fit
@@ -421,6 +475,8 @@ export default function FlowMap({ lines = [], linkTo = (id) => `#${id}`, pageScr
           </span>
         ))}
       </pre>
+      </>
+      )}
     </figure>
   )
 }
