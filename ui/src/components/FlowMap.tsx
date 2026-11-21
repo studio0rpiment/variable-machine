@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { stretcher } from '../lib/mapWidth'
 import { Explained } from '../explain/Explained'
 import type { ExplainId } from '../explain/text'
 
@@ -149,22 +150,8 @@ export const WIRES: Wire[] = [
   { from: 'gesture-train', to: 'gesture', label: 'your gesture model', points: [[740, 712], [994, 712]], at: [746, 706], anchor: 'start' },
 ]
 
-/**
- * Wider than drawn: the gaps between the columns, in the map's units, where
- * extra width goes. The boxes, and the ports and outlines at their edges,
- * stay as they are; only the wires across a gap get longer.
- */
-const GAPS: P[] = [[215, 295], [455, 570], [752, 815], [975, 985]]
-
-/** x on the map as drawn, to x on a map `extra` units wider, shared equally among the gaps. */
-export function stretcher(extra: number) {
-  if (extra <= 0) return (x: number) => x
-  const share = extra / GAPS.length
-  return (x: number) => GAPS.reduce((at, [a, b]) => at + share * Math.min(1, Math.max(0, (x - a) / (b - a))), x)
-}
-
 /** A wire on the wider map: one drawn by route() is routed again, so its bend stays at 45°. */
-function stretchWire(w: Wire, sx: (x: number) => number): Wire {
+export function stretchWire(w: Wire, sx: (x: number) => number): Wire {
   const first = w.points[0]
   const last = w.points[w.points.length - 1]
   const routed = route(first, last)

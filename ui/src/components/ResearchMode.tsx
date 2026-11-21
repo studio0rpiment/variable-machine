@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { HF_BASES } from '@shared/library'
-import { NODES, WIRES, W, H } from './FlowMap'
+import { NODES, WIRES, W, H, stretchWire } from './FlowMap'
+import { MAX_PX, mapWidth, stripZoom } from '../lib/mapWidth'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
@@ -44,9 +45,8 @@ interface Box {
 const VIEW = { x: 30, y: 30, w: 1170, h: 440 }
 /** the folded strip: two rows, the pipeline and the point of view */
 const F = { h: 30, row1: 38, row2: 82, height: 90 }
-const ZOOM = 820
-/** How much of the map the folded strip shows: 820 units on a 53rem page; on a wider one more of the route, at the same size. */
-const zoomOf = (px: number) => Math.min(VIEW.w, (ZOOM * px) / (53 * 16))
+/** The strip's window on a laptop, in the map's units, and how close in it goes on a narrow screen (as Make Your Own's: lib/mapWidth). */
+const STRIP_ZOOM = { base: 820, min: 520 }
 const at = (id: string): P => {
   const n = NODES.find((x) => x.id === id)!
   return [n.x, n.y]
@@ -155,8 +155,8 @@ export default function ResearchMode({ project, step, onStep, whole, onZoom }: {
   const c = useResearchChoices()
   const view = c.take === 'view'
   const route = drawn(facts, view, c.trainFrom === 'overrides', c.folderOfItsOwn, c.summaries, c.sources)
-  const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / zoomOf(pxRef.current), line: 'voice-mode__line' })
+  const pxRef = useRef(MAX_PX)
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / stripZoom(pxRef.current, STRIP_ZOOM.base, STRIP_ZOOM.min), line: 'voice-mode__line' })
   // the unfolding, from the Start map's band to the research bot's schematic: once when the project opens, and again on asking
   const [u, setU] = useState(0)
   const [played, setPlayed] = useState(0)
@@ -176,24 +176,24 @@ export default function ResearchMode({ project, step, onStep, whole, onZoom }: {
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
   const lightId = focus && route.on.has(focus) ? focus : facts.steps[stepNow - 1]?.node
   const lit = lightId ? B[lightId] : undefined
-  // the map runs the page's whole width
-  const px = width || VIEW.w
-  const zoom = zoomOf(px)
-  const zoomX = Math.min(VIEW.x + VIEW.w - zoom, Math.max(VIEW.x, (lit ? lit.s[0] + W / 2 : VIEW.x) - zoom / 2))
+  // the map runs the window's whole width; wider than MAX_PX, its boxes keep their size and its wires get longer (lib/mapWidth)
+  const px = width || MAX_PX
+  const { w: VW, zoom, sx } = mapWidth(px, VIEW.w, STRIP_ZOOM)
+  const zoomX = Math.min(VIEW.x + VW - zoom, Math.max(VIEW.x, (lit ? sx(lit.s[0]) + W / 2 : VIEW.x) - zoom / 2))
   const zx = useGlide(whole ? VIEW.x : zoomX)
-  const zw = useGlide(whole ? VIEW.w : zoom)
+  const zw = useGlide(whole ? VW : zoom)
   pxRef.current = px
-  const open = (VIEW.h * px) / VIEW.w
+  const open = (VIEW.h * px) / VW
   // each px scrolled takes a px off the map's height (as voice's does)
   const want = Math.max((F.height * px) / zw, open - scroll)
-  const f = clamp((want * VIEW.w - px * VIEW.h) / (px * (F.height - VIEW.h) - want * (zw - VIEW.w)))
-  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VIEW.w, zw, f), h: lerp(VIEW.h, F.height, f) }
+  const f = clamp((want * VW - px * VIEW.h) / (px * (F.height - VIEW.h) - want * (zw - VW)))
+  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VW, zw, f), h: lerp(VIEW.h, F.height, f) }
 
   return (
     <>
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} B={B} route={route} u={u} f={f} view={v} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(DECIDED_AT[box] ?? box) }} />
+          <Schematic project={project} B={B} route={route} u={u} f={f} view={v} sx={sx} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(DECIDED_AT[box] ?? box) }} />
           {f < 0.5 && u === 1 && (
             <button type="button" className="text-button research-band__replay" onClick={() => setPlayed((n) => n + 1)} style={{ opacity: 1 - f * 2 }}>
               {say('projects.research.mode.replay')}
@@ -208,28 +208,30 @@ export default function ResearchMode({ project, step, onStep, whole, onZoom }: {
 
 type Route = ReturnType<typeof drawn>
 
-function Schematic({ project, B, route, u, f, view, light, pick }: { project: Project; B: Record<string, Box>; route: Route; u: number; f: number; view: { x: number; w: number; h: number }; light?: string; pick: (box: string) => void }) {
+function Schematic({ project, B, route, u, f, view, sx, light, pick }: { project: Project; B: Record<string, Box>; route: Route; u: number; f: number; view: { x: number; w: number; h: number }; sx: (x: number) => number; light?: string; pick: (box: string) => void }) {
   const c = useResearchChoices()
   const steps = route.facts.steps
   const kA = ease(clamp(u / 0.45))
   const kB = ease(clamp((u - 0.4) / 0.6))
   const fold = ease(f)
   const boxH = lerp(H, F.h, f)
-  // where a box is: from the Start map to its row (first the route settles, then papers and models open), then into the strip
+  // where a box is: from the Start map to its row (first the route settles, then papers and models open), then into the strip; every x on the wider map (sx)
   const pos = (id: string): P => {
     const b = B[id]
     let p: P
     if (b.from) {
       const q = pos(b.from)
-      const open = (k: number): P => [lerp(q[0], b.b[0], k), lerp(q[1], b.b[1], k)]
+      const open = (k: number): P => [lerp(q[0], sx(b.b[0]), k), lerp(q[1], b.b[1], k)]
       p = open(kB)
-    } else if (!route.on.has(id)) p = b.a ?? b.b
-    else {
+    } else if (!route.on.has(id)) {
+      const [x, y] = b.a ?? b.b
+      p = [sx(x), y]
+    } else {
       const k = id === 'papers' ? kB : kA
-      p = [lerp(b.a![0], b.b[0], k), lerp(b.a![1], b.b[1], k)]
+      p = [lerp(sx(b.a![0]), sx(b.b[0]), k), lerp(b.a![1], b.b[1], k)]
     }
     if (b.from && (b.kind === 'model' || b.source)) return [lerp(p[0], pos(b.from)[0], fold), lerp(p[1], pos(b.from)[1], fold)]
-    return [lerp(p[0], b.s[0], fold), lerp(p[1], b.s[1], fold)]
+    return [lerp(p[0], sx(b.s[0]), fold), lerp(p[1], b.s[1], fold)]
   }
   /** opened-out boxes appear once their parent has moved; those that fold back go as the strip forms */
   const opacity = (id: string) => {
@@ -265,7 +267,7 @@ function Schematic({ project, B, route, u, f, view, light, pick }: { project: Pr
   const wires = []
   for (const s of c.sources) {
     const id = `src-${s}`
-    wires.push(line([R(id), [250, R(id)[1]], [250, L('search')[1]], L('search')], 'voice-band__route', opened * (BUILT_SOURCES.has(s) ? 1 : 0.35), id))
+    wires.push(line([R(id), [sx(250), R(id)[1]], [sx(250), L('search')[1]], L('search')], 'voice-band__route', opened * (BUILT_SOURCES.has(s) ? 1 : 0.35), id))
   }
   wires.push(line([R('papers'), L('search')], 'voice-band__route', stripped, 'papers-search'))
   for (const [a, b] of [['search', 'rank'], ['rank', 'screen'], ['screen', 'you'], ['you', 'list']]) wires.push(line([R(a), L(b)], 'voice-band__route', late, `${a}-${b}`))
@@ -284,7 +286,7 @@ function Schematic({ project, B, route, u, f, view, light, pick }: { project: Pr
     // the point of view becomes the screener
     const ad = pos('adapters')
     const sc = pos('screener')
-    wires.push(line([[ad[0], ad[1] + boxH / 2], [805, ad[1] + boxH / 2], [805, 60], [sc[0] + 110, 60], [sc[0] + 110, sc[1]]], 'voice-band__route research-band__use', opened, 'view-screener'))
+    wires.push(line([[ad[0], ad[1] + boxH / 2], [sx(805), ad[1] + boxH / 2], [sx(805), 60], [sc[0] + 110, 60], [sc[0] + 110, sc[1]]], 'voice-band__route research-band__use', opened, 'view-screener'))
     const sn = pos('screen')
     const m2 = (sn[1] + boxH + ad[1]) / 2
     wires.push(line([[ad[0] + 40, ad[1]], [ad[0] + 40, m2], [sn[0] + 110, m2], [sn[0] + 110, sn[1] + boxH]], 'voice-band__route research-band__use', stripped * late, 'view-screen'))
@@ -300,7 +302,7 @@ function Schematic({ project, B, route, u, f, view, light, pick }: { project: Pr
         </defs>
         {/* the Start map's own wires on the band, the route's lit; they go as it unfolds */}
         {early > 0 &&
-          WIRES.filter((w) => B[w.from === 'reading-list' ? 'list' : w.from] && B[w.to === 'reading-list' ? 'list' : w.to]).map((w) => {
+          WIRES.filter((w) => B[w.from === 'reading-list' ? 'list' : w.from] && B[w.to === 'reading-list' ? 'list' : w.to]).map((w) => stretchWire(w, sx)).map((w) => {
             const on = route.start.some(([a, b]) => a === w.from && b === w.to)
             return (
               <g key={`${w.from}-${w.to}-${w.label}`} className={`voice-band__wire ${on ? 'is-lit' : ''}`.trim()} style={{ opacity: early }}>
@@ -316,18 +318,18 @@ function Schematic({ project, B, route, u, f, view, light, pick }: { project: Pr
         {wires}
         {opened > 0.01 && (
           <g style={{ opacity: opened }} className="research-band__lanes">
-            <text x={300} y={72} className="research-band__lane">
+            <text x={sx(300)} y={72} className="research-band__lane">
               {say('projects.research.mode.laneModels')}
             </text>
-            <text x={300} y={192} className="research-band__lane">
+            <text x={sx(300)} y={192} className="research-band__lane">
               {say('projects.research.mode.lanePapers')}
             </text>
             {view_ && (
               <>
-                <text x={300} y={332} className="research-band__lane">
+                <text x={sx(300)} y={332} className="research-band__lane">
                   {say('projects.research.mode.laneView')}
                 </text>
-                <text x={812} y={56} className="voice-band__label">
+                <text x={sx(812)} y={56} className="voice-band__label">
                   {say('projects.research.mode.becomes')}
                 </text>
               </>

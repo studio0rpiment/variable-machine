@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRoutePage } from '../lib/routePage'
 import { HF_BASES } from '@shared/library'
-import { NODES, WIRES, W, H } from './FlowMap'
+import { NODES, WIRES, W, H, stretchWire } from './FlowMap'
+import { MAX_PX, mapWidth, stripZoom } from '../lib/mapWidth'
 import CommandPreview from './CommandPreview'
 import Loading from './Loading'
 import { Icon } from '../icons'
@@ -83,10 +84,8 @@ const stateOf = (steps: Step[], i: number): State => {
 
 /** Sizes of the folded strip, in units of the Start map's viewBox. */
 const F = { h: 30, gap: 22, pad: 8, level: (k: number) => 7 + 5 * k }
-/** How wide the folded view is, in units of the Start map: the open step's box and its neighbours. */
-const ZOOM = 820
-/** How much of the map the folded strip shows: 820 units on a 53rem page; on a wider one more of the route, at the same size. */
-const zoomOf = (px: number) => Math.min(VIEW.w, (ZOOM * px) / (53 * 16))
+/** The strip's window on a laptop, in the map's units, and how close in it goes on a narrow screen (as Make Your Own's: lib/mapWidth). */
+const STRIP_ZOOM = { base: 820, min: 520 }
 
 /** A number that eases to its target over a third of a second, so the folded view glides from step to step. */
 export function useGlide(target: number) {
@@ -165,33 +164,32 @@ export default function VoiceMode({ project, step, onStep, whole, onZoom }: { pr
   const lit = litWires(facts)
   const fold = foldLayout(facts, lit)
   // the svg's width in px, as last measured: the strip's height in px follows from it
-  const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (fold.height * pxRef.current) / zoomOf(pxRef.current), line: 'voice-mode__line' })
+  const pxRef = useRef(MAX_PX)
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (fold.height * pxRef.current) / stripZoom(pxRef.current, STRIP_ZOOM.base, STRIP_ZOOM.min), line: 'voice-mode__line' })
   // folded, the view closes in on the open step's box and its neighbours; it glides when another step opens
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
   const lightId = focus && fold.order.includes(focus) ? focus : facts.steps[stepNow - 1]?.node
   const node = NODES.find((n) => n.id === lightId)
-  // the map runs the page's whole width
-  const px = width || VIEW.w
-  const zoom = zoomOf(px)
-  const zoomX = Math.min(VIEW.x + VIEW.w - zoom, Math.max(VIEW.x, (node ? node.x + W / 2 : VIEW.x) - zoom / 2))
+  // the map runs the window's whole width; wider than MAX_PX, its boxes keep their size and its wires get longer (lib/mapWidth)
+  const px = width || MAX_PX
+  const { w: VW, zoom, sx } = mapWidth(px, VIEW.w, STRIP_ZOOM)
+  const zoomX = Math.min(VIEW.x + VW - zoom, Math.max(VIEW.x, (node ? sx(node.x) + W / 2 : VIEW.x) - zoom / 2))
   // FULL / ZOOM, in the header: the whole route, or zoomed in on the step
   const zx = useGlide(whole ? VIEW.x : zoomX)
-  const zw = useGlide(whole ? VIEW.w : zoom)
-  // the svg's width in px: the page's, at most 53rem so the open map stays under 20rem tall
+  const zw = useGlide(whole ? VW : zoom)
   pxRef.current = px
-  const open = (VIEW.h * px) / VIEW.w
+  const open = (VIEW.h * px) / VW
   // each px scrolled takes a px off the map's height: solve for how far folded that is, as the view narrows and its height shrinks
   const want = Math.max((fold.height * px) / zw, open - scroll)
-  const t = clamp((want * VIEW.w - px * VIEW.h) / (px * (fold.height - VIEW.h) - want * (zw - VIEW.w)))
-  const view = { x: lerp(VIEW.x, zx, t), w: lerp(VIEW.w, zw, t), h: lerp(VIEW.h, fold.height, t) }
+  const t = clamp((want * VW - px * VIEW.h) / (px * (fold.height - VIEW.h) - want * (zw - VW)))
+  const view = { x: lerp(VIEW.x, zx, t), w: lerp(VW, zw, t), h: lerp(VIEW.h, fold.height, t) }
 
   return (
     <>
       {/* a direct child of the scrolling page, so it stays at the top as the rest scrolls */}
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} open={stepNow} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(box) }} />
+          <Schematic project={project} facts={facts} lit={lit} fold={fold} t={t} view={view} sx={sx} open={stepNow} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(box) }} />
         </div>
       </div>
       {/* holds the open map's place in the page; the map draws over it */}
@@ -208,7 +206,7 @@ type Fold = ReturnType<typeof foldLayout>
  * The Start map's own wires fade out early, and the route's wires, drawn from
  * where the boxes are, take over, so a wire never leaves its boxes.
  */
-function Schematic({ project, facts, lit, fold, t, view, open, light, pick }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; view: { x: number; w: number; h: number }; open: number; light?: string; pick: (box: string) => void }) {
+function Schematic({ project, facts, lit, fold, t, view, sx, open, light, pick }: { project: Project; facts: VoiceFacts; lit: [string, string][]; fold: Fold; t: number; view: { x: number; w: number; h: number }; sx: (x: number) => number; open: number; light?: string; pick: (box: string) => void }) {
   const onRoute = new Set(fold.order)
   const stepsAt = (id: string) => facts.steps.map((s, i) => ({ s, i })).filter((x) => x.s.node === id)
   const nodeState = (id: string): State | null => {
@@ -221,7 +219,7 @@ function Schematic({ project, facts, lit, fold, t, view, open, light, pick }: { 
   const boxH = lerp(H, F.h, t)
   const pos = (id: string) => {
     const n = NODES.find((m) => m.id === id)!
-    return { x: n.x, y: onRoute.has(id) ? lerp(n.y, fold.y[id], t) : n.y }
+    return { x: sx(n.x), y: onRoute.has(id) ? lerp(n.y, fold.y[id], t) : n.y }
   }
   const early = clamp(1 - t * 3)
 
@@ -246,7 +244,7 @@ function Schematic({ project, facts, lit, fold, t, view, open, light, pick }: { 
     }
     const below = fold.row[b] > fold.row[a]
     // across rows: along its own row first, if nothing on that row is in the way
-    const clear = !fold.order.some((o) => o !== a && o !== b && fold.row[o] === fold.row[a] && fold.x(o) > A.x && fold.x(o) < B.x + W / 2)
+    const clear = !fold.order.some((o) => o !== a && o !== b && fold.row[o] === fold.row[a] && sx(fold.x(o)) > A.x && sx(fold.x(o)) < B.x + W / 2)
     if (B.x > A.x + W && clear) return `M${A.x + W},${A.y + h / 2} H${B.x + W / 2 + 14} V${below ? B.y : B.y + h}`
     // otherwise down or up first, entering low on the box's side so it meets no wire along that row
     return `M${A.x + W / 2 - 14},${below ? A.y + h : A.y} V${B.y + h * 0.75} H${B.x > A.x ? B.x : B.x + W}`
@@ -262,7 +260,7 @@ function Schematic({ project, facts, lit, fold, t, view, open, light, pick }: { 
         </defs>
         {/* the Start map's wires, as it draws them; they give way to the route's as the map folds */}
         {early > 0 &&
-          WIRES.filter((w) => BAND.has(w.from) && BAND.has(w.to)).map((w) => {
+          WIRES.filter((w) => BAND.has(w.from) && BAND.has(w.to)).map((w) => stretchWire(w, sx)).map((w) => {
             const on = isLit(w.from, w.to)
             return (
               <g key={`${w.from}-${w.to}-${w.label}`} className={`voice-band__wire ${on ? 'is-lit' : ''}`.trim()} style={{ opacity: early }}>
@@ -324,8 +322,8 @@ function Schematic({ project, facts, lit, fold, t, view, open, light, pick }: { 
         {/* the approach: a fork where the routes leave the models box */}
         {early > 0 && (
           <g className="voice-band__fork" style={{ opacity: early }}>
-            <polygon points="72,146 82,156 72,166 62,156" />
-            <text x={90} y={161}>
+            <polygon points={`${sx(72)},146 ${sx(82)},156 ${sx(72)},166 ${sx(62)},156`} />
+            <text x={sx(90)} y={161}>
               {`◇ ${APPROACH_WORDS[facts.approach]().name}`}
             </text>
           </g>

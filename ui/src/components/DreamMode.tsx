@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { NODES, WIRES, W, H } from './FlowMap'
+import { NODES, WIRES, W, H, stretchWire } from './FlowMap'
+import { MAX_PX, mapWidth, stripZoom } from '../lib/mapWidth'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
@@ -39,7 +40,8 @@ const VIEW = { x: 30, y: 30, w: 1170, h: 540 }
 const F = { h: 30, row1: 38, row2: 82, row3: 126, height: 90 }
 /** the trained card's strip has a third row, for the training lane */
 const stripH = (trained: boolean) => (trained ? 134 : F.height)
-const ZOOM = 820
+/** The strip's window on a laptop, in the map's units, and how close in it goes on a narrow screen (as Make Your Own's: lib/mapWidth). */
+const STRIP_ZOOM = { base: 820, min: 520 }
 const at = (id: string): P => {
   const n = NODES.find((x) => x.id === id)!
   return [n.x, n.y]
@@ -110,8 +112,8 @@ export default function DreamMode({ project, step, onStep, whole, onZoom }: { pr
     ...(c.drawWith === 'prior' || c.cards === 'demo' ? ['prior'] : []),
     ...(trained ? ['rows', 'train', 'adapters', 'share', ...(c.style === 'drawings' ? ['drawings', 'style'] : [])] : []),
   ])
-  const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (stripH(trained) * pxRef.current) / ZOOM, line: 'voice-mode__line' })
+  const pxRef = useRef(MAX_PX)
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (stripH(trained) * pxRef.current) / stripZoom(pxRef.current, STRIP_ZOOM.base, STRIP_ZOOM.min), line: 'voice-mode__line' })
   const [u, setU] = useState(0)
   const [played, setPlayed] = useState(0)
   useEffect(() => {
@@ -129,22 +131,24 @@ export default function DreamMode({ project, step, onStep, whole, onZoom }: { pr
   const B = boxes(trained)
   const lightId = focus && on.has(focus) ? focus : facts.steps[stepNow - 1]?.node
   const lit = lightId ? B[lightId] : undefined
-  const zoomX = Math.min(VIEW.x + VIEW.w - ZOOM, Math.max(VIEW.x, (lit ? lit.s[0] + W / 2 : VIEW.x) - ZOOM / 2))
+  // the map runs the window's whole width; wider than MAX_PX, its boxes keep their size and its wires get longer (lib/mapWidth)
+  const px = width || MAX_PX
+  const { w: VW, zoom, sx } = mapWidth(px, VIEW.w, STRIP_ZOOM)
+  const zoomX = Math.min(VIEW.x + VW - zoom, Math.max(VIEW.x, (lit ? sx(lit.s[0]) + W / 2 : VIEW.x) - zoom / 2))
   const zx = useGlide(whole ? VIEW.x : zoomX)
-  const zw = useGlide(whole ? VIEW.w : ZOOM)
-  const px = Math.min(width, 53 * 16) || VIEW.w
+  const zw = useGlide(whole ? VW : zoom)
   pxRef.current = px
-  const open = (VIEW.h * px) / VIEW.w
+  const open = (VIEW.h * px) / VW
   const FH = stripH(trained)
   const want = Math.max((FH * px) / zw, open - scroll)
-  const f = clamp((want * VIEW.w - px * VIEW.h) / (px * (FH - VIEW.h) - want * (zw - VIEW.w)))
-  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VIEW.w, zw, f), h: lerp(VIEW.h, FH, f) }
+  const f = clamp((want * VW - px * VIEW.h) / (px * (FH - VIEW.h) - want * (zw - VW)))
+  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VW, zw, f), h: lerp(VIEW.h, FH, f) }
 
   return (
     <>
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} B={B} on={on} u={u} f={f} view={v} light={lightId} pick={(box) => { if (whole) onZoom(); pick(DECIDED_AT[box] ?? box) }} />
+          <Schematic project={project} B={B} on={on} u={u} f={f} view={v} sx={sx} light={lightId} pick={(box) => { if (whole) onZoom(); pick(DECIDED_AT[box] ?? box) }} />
           {f < 0.5 && u === 1 && (
             <button type="button" className="text-button research-band__replay" onClick={() => setPlayed((n) => n + 1)} style={{ opacity: 1 - f * 2 }}>
               {say('projects.research.mode.replay')}
@@ -157,7 +161,7 @@ export default function DreamMode({ project, step, onStep, whole, onZoom }: { pr
   )
 }
 
-function Schematic({ project, B, on, u, f, view, light, pick }: { project: Project; B: Record<string, Box>; on: Set<string>; u: number; f: number; view: { x: number; w: number; h: number }; light?: string; pick: (box: string) => void }) {
+function Schematic({ project, B, on, u, f, view, sx, light, pick }: { project: Project; B: Record<string, Box>; on: Set<string>; u: number; f: number; view: { x: number; w: number; h: number }; sx: (x: number) => number; light?: string; pick: (box: string) => void }) {
   const c = useDreamChoices()
   const steps = project.dream!.steps
   const trained = !!project.dream!.trained
@@ -165,16 +169,19 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
   const kB = ease(clamp((u - 0.4) / 0.6))
   const fold = ease(f)
   const boxH = lerp(H, F.h, f)
+  // a point as drawn, on the wider map
+  const X = (p: P): P => [sx(p[0]), p[1]]
   const pos = (id: string): P => {
     const b = B[id]
+    const [a, bb, s] = [b.a && X(b.a), X(b.b), X(b.s)]
     let p: P
     if (b.from) {
       const q = pos(b.from)
-      p = [lerp(q[0], b.b[0], kB), lerp(q[1], b.b[1], kB)]
-    } else if (!on.has(id)) p = b.a ?? b.b
-    else p = [lerp(b.a![0], b.b[0], kA), lerp(b.a![1], b.b[1], kA)]
+      p = [lerp(q[0], bb[0], kB), lerp(q[1], bb[1], kB)]
+    } else if (!on.has(id)) p = a ?? bb
+    else p = [lerp(a![0], bb[0], kA), lerp(a![1], bb[1], kA)]
     if (b.kind === 'model') return [lerp(p[0], pos(b.from!)[0], fold), lerp(p[1], pos(b.from!)[1], fold)]
-    return [lerp(p[0], b.s[0], fold), lerp(p[1], b.s[1], fold)]
+    return [lerp(p[0], s[0], fold), lerp(p[1], s[1], fold)]
   }
   const opacity = (id: string) => {
     const b = B[id]
@@ -204,18 +211,18 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
   const wires = [
     line([R('cards'), L('deck')], 'voice-band__route', late, 'cards-deck'),
     line([R('texts'), L('guide')], 'voice-band__route', late, 'texts-guide'),
-    line(elbow('deck', 'interpret', lerp(475, 470, f)), 'voice-band__route', late, 'deck-interpret'),
-    line(elbow('guide', 'interpret', lerp(490, 490, f)), 'voice-band__route', late, 'guide-interpret'),
+    line(elbow('deck', 'interpret', lerp(sx(475), sx(470), f)), 'voice-band__route', late, 'deck-interpret'),
+    line(elbow('guide', 'interpret', sx(490)), 'voice-band__route', late, 'guide-interpret'),
     line([R('interpret'), L('draw')], 'voice-band__route', late, 'interpret-draw'),
     line([R('draw'), L('room')], 'voice-band__route', late, 'draw-room'),
   ]
   if (trained) {
     // the training lane: the readings become rows, the rows a model, the model reads again; the drawings become the style Kandinsky draws in
-    wires.push(line([[595, pos('interpret')[1] + boxH], [595, pos('rows')[1]]], 'voice-band__route', late * (1 - clamp(f * 2)), 'interpret-rows'))
+    wires.push(line([[pos('interpret')[0] + 75, pos('interpret')[1] + boxH], [pos('interpret')[0] + 75, pos('rows')[1]]], 'voice-band__route', late * (1 - clamp(f * 2)), 'interpret-rows'))
     wires.push(line([R('rows'), L('train')], 'voice-band__route', late, 'rows-train'))
     wires.push(line([R('train'), L('adapters')], 'voice-band__route', late, 'train-adapters'))
     wires.push(line([R('adapters'), L('share')], 'voice-band__route', late, 'adapters-share'))
-    wires.push(line([[pos('adapters')[0] + 75, pos('adapters')[1]], [pos('adapters')[0] + 75, lerp(430, pos('interpret')[1] + boxH + 4, f)], [650, lerp(430, pos('interpret')[1] + boxH + 4, f)], [650, pos('interpret')[1] + boxH]], 'voice-band__route', late * (1 - clamp(f * 2)), 'reader-interpret'))
+    wires.push(line([[pos('adapters')[0] + 75, pos('adapters')[1]], [pos('adapters')[0] + 75, lerp(430, pos('interpret')[1] + boxH + 4, f)], [pos('interpret')[0] + 130, lerp(430, pos('interpret')[1] + boxH + 4, f)], [pos('interpret')[0] + 130, pos('interpret')[1] + boxH]], 'voice-band__route', late * (1 - clamp(f * 2)), 'reader-interpret'))
     if (on.has('style')) {
       wires.push(line([L('drawings'), R('style')], 'voice-band__route', late, 'drawings-style'))
       wires.push(line([[pos('style')[0] + 75, pos('style')[1] + boxH], [pos('style')[0] + 75, pos('draw')[1]]], 'voice-band__route', late * (1 - clamp(f * 2)), 'style-draw'))
@@ -251,7 +258,7 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
         </defs>
         {/* the Start map's own wires, the route's lit: your photos → ready-made models → used as they are; they go as it unfolds */}
         {early > 0 &&
-          WIRES.filter((w) => B[START[w.from] ?? w.from] && B[START[w.to] ?? w.to]).map((w) => {
+          WIRES.filter((w) => B[START[w.from] ?? w.from] && B[START[w.to] ?? w.to]).map((w) => stretchWire(w, sx)).map((w) => {
             const lit = (w.from === 'photos' && w.to === 'made-images') || (w.from === 'made-images' && w.to === 'segmentation')
             return (
               <g key={`${w.from}-${w.to}-${w.label}`} className={`voice-band__wire ${lit ? 'is-lit' : ''}`.trim()} style={{ opacity: early }}>
@@ -267,17 +274,17 @@ function Schematic({ project, B, on, u, f, view, light, pick }: { project: Proje
         {wires}
         {opened > 0.01 && (
           <g style={{ opacity: opened }} className="research-band__lanes">
-            <text x={280} y={52} className="research-band__lane">
+            <text x={sx(280)} y={52} className="research-band__lane">
               {say('projects.dream.box.laneModels')}
             </text>
-            <text x={280} y={252} className="research-band__lane">
+            <text x={sx(280)} y={252} className="research-band__lane">
               {say('projects.dream.box.laneCards')}
             </text>
-            <text x={280} y={412} className="research-band__lane">
+            <text x={sx(280)} y={412} className="research-band__lane">
               {say('projects.dream.box.laneTexts')}
             </text>
             {trained && (
-              <text x={690} y={462} className="research-band__lane">
+              <text x={sx(690)} y={462} className="research-band__lane">
                 {say('projects.dreamTrained.box.laneTrain')}
               </text>
             )}

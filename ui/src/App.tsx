@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TrainParams } from '@shared/recipes'
 import { useTheme } from './hooks/useTheme'
 import Chat from './components/Chat'
@@ -13,7 +13,7 @@ import SharePanel from './components/SharePanel'
 import MakeYourOwn, { PARTS, type Part } from './components/MakeYourOwn'
 import { NODES } from './components/FlowMap'
 import AboutPanel from './components/AboutPanel'
-import ProjectsPanel, { type Fill, type Step } from './components/ProjectsPanel'
+import ProjectsPanel, { type Fill, type Project, type Step } from './components/ProjectsPanel'
 import GuideBar from './components/GuideBar'
 import ProjectMode, { ProjectSim } from './components/ProjectMode'
 import VoiceMode, { VoiceDecisions, VoiceStep, ZoomToggle } from './components/VoiceMode'
@@ -89,17 +89,21 @@ export default function App() {
   const modeStep = followed && (routeOf(followed)[guide!.step - 1] ?? routeOf(followed).at(-1))
   const mode = followed && modeStep ? { project: followed, step: Math.min(guide!.step, routeOf(followed).length) } : null
   const view: View = at.view
-  // started for one project (VARIABLE_MACHINE_PROJECT): its walkthrough is the whole app; anywhere else leads back into it
+  // started for one project, or a few (VARIABLE_MACHINE_PROJECT=latent, or dream,dream-trained): their walkthroughs are the whole app; anywhere else leads back into the first
   const { status } = useHelperState()
-  const only = status?.project && SCHEMATICS.has(status.project) ? status.project : null
-  useEffect(() => {
-    if (!only || (guide?.mode && guide.project === only)) return
-    const p = projects?.find((x) => x.id === only)
-    if (!p) return
+  const onlyKey = (status?.project ?? '').split(',').filter((id) => SCHEMATICS.has(id)).join(',')
+  const only = useMemo(() => (onlyKey ? onlyKey.split(',') : null), [onlyKey])
+  /** Follow a project from its first step not done. */
+  const follow = useCallback((p: Project) => {
     const route = routeOf(p)
     const n = route.findIndex((s) => !s.done) + 1 || route.length
-    startGuide(only, n, route[n - 1].tab, true)
-  }, [only, projects, guide])
+    startGuide(p.id, n, route[n - 1].tab, true)
+  }, [])
+  useEffect(() => {
+    if (!only || (guide?.mode && only.includes(guide.project))) return
+    const p = projects?.find((x) => x.id === only[0])
+    if (p) follow(p)
+  }, [only, projects, guide, follow])
   /** Make Your Own: the part in view (none at the top of the page, on the open map) */
   const [inView, setInView] = useState<string | null>(null)
   /** the tab the guide bar and the panels take as open: a project's step's, or else the part in view */
@@ -190,18 +194,40 @@ export default function App() {
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
           <span className="label label--name">Variable Machine</span>
           <span className="label project-top__name">
-            {!only && <a
-              href="#projects"
-              className="project-top__projects"
-              title={say('projects.mode.projects.about')}
-              onClick={(e) => {
-                e.preventDefault()
-                toProjects()
-              }}
-            >
-              {say('projects.mode.projects')}
-            </a>}{' '}
-            {only ? mode.project.title : say('projects.mode.project', { project: mode.project.title })}
+            {!only && (
+              <a
+                href="#projects"
+                className="project-top__projects"
+                title={say('projects.mode.projects.about')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  toProjects()
+                }}
+              >
+                {say('projects.mode.projects')}
+              </a>
+            )}{' '}
+            {/* started for a few projects: each one's name, the others a way to it */}
+            {only && only.length > 1
+              ? only.map((id, i) => {
+                  const p = projects?.find((x) => x.id === id)
+                  if (!p) return null
+                  return (
+                    <Fragment key={id}>
+                      {i > 0 && ' / '}
+                      {id === mode.project.id ? (
+                        p.title
+                      ) : (
+                        <a href={`#${id}`} className="project-top__projects" onClick={(e) => (e.preventDefault(), follow(p))}>
+                          {p.title}
+                        </a>
+                      )}
+                    </Fragment>
+                  )
+                })
+              : only
+                ? mode.project.title
+                : say('projects.mode.project', { project: mode.project.title })}
           </span>
           <span className="label label--muted">{say('projects.guide.step', { n: longPage ? stepInView : mode.step, of: routeOf(mode.project).length })}</span>
           <span className="project-top__fill" />

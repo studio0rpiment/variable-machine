@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import FlowMap, { H, NODES, W, stretcher } from './FlowMap'
+import { useEffect, useRef, type ReactNode } from 'react'
+import FlowMap, { H, NODES, W } from './FlowMap'
+import { MAX_PX, mapWidth, stripZoom, within } from '../lib/mapWidth'
 import { useGlide } from './VoiceMode'
 import { useRoutePage } from '../lib/routePage'
 import { say } from '../text/say'
@@ -23,35 +24,19 @@ export const isPart = (id: string): id is Part => (PARTS as readonly string[]).i
 const DRAWN = { x: 30, y: 16, w: 1170, h: 750 }
 /** The folded strip: how much of the map it shows, in the map's units. */
 const STRIP = 104
-/** Up to this width, in px, the map scales to fit; wider, it keeps this scale and the wires between its columns get longer. */
-const MAX_PX = 60 * 16
-/** How wide the strip's window is, in the map's units: about 900 on a laptop, closer in on a narrow screen so its boxes stay readable, and on a wider screen as wide as the screen at the laptop's scale. */
-const zoomFor = (px: number) => (px > MAX_PX ? (900 * px) / MAX_PX : within(px * 1.6, 520, 900))
-/** How many units wider than drawn the map is at this width, in px: none up to MAX_PX, then whatever keeps the boxes at their size. */
-const extraFor = (px: number) => Math.max(0, (DRAWN.w * px) / MAX_PX - DRAWN.w)
+/** The strip's window on a laptop, in the map's units, and how close in it goes on a narrow screen. */
+const STRIP_ZOOM = { base: 900, min: 520 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
-const within = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 const noStep = () => {}
 
 export default function MakeYourOwn({ whole, onZoom, onFocus, children }: { whole: boolean; onZoom: () => void; onFocus: (part: string | null) => void; children?: ReactNode }) {
   const pxRef = useRef(MAX_PX)
-  const { space, self, scroll, focus, width, pick } = useRoutePage({ step: 1, project: 'make', onStep: noStep, stripPx: () => (STRIP * pxRef.current) / zoomFor(pxRef.current), line: 'myo__line' })
-  // the map's own width: it runs out past the page's side padding, to the window's edges
-  const [frameW, setFrameW] = useState(0)
-  useEffect(() => {
-    const el = self.current
-    if (!el) return
-    const ro = new ResizeObserver(() => setFrameW(el.clientWidth))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [self])
-  const px = frameW || width || MAX_PX
-  const ZOOM = zoomFor(px)
-  const extra = extraFor(px)
-  const VIEW = { ...DRAWN, w: DRAWN.w + extra }
-  const sx = stretcher(extra)
+  const { space, self, scroll, focus, width, pick } = useRoutePage({ step: 1, project: 'make', onStep: noStep, stripPx: () => (STRIP * pxRef.current) / stripZoom(pxRef.current, STRIP_ZOOM.base, STRIP_ZOOM.min), line: 'myo__line' })
+  const px = width || MAX_PX
+  const { extra, w, zoom: ZOOM, sx } = mapWidth(px, DRAWN.w, STRIP_ZOOM)
+  const VIEW = { ...DRAWN, w }
   useEffect(() => onFocus(focus), [focus, onFocus])
 
   // the address names the part to go to (#data); a link elsewhere on the page that sets it lands there too

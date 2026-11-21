@@ -7,6 +7,13 @@
 # workspace: datasets, sets, adapters, models), makes a Variable Machine app in
 # Applications, and opens it. After that, start it from the app, like any other.
 #
+# For one project on its own, name it after bash -s: the same download, but the
+# app it makes opens only that project (Latent Image, Research Bot, Dream Cards):
+#
+#   curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash -s latent
+#   curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash -s research
+#   curl -fsSL https://variablemachine.orpiment.studio/install.sh | bash -s dream
+#
 # Why not just the zip: macOS won't open a script downloaded in a browser unless
 # Apple has signed it. Files that curl downloads aren't marked as downloaded, so
 # macOS opens them, and the app is made on this Mac, so it opens too.
@@ -21,7 +28,15 @@ main() {
   # The Applications folder; on a Mac where this user can't write there (not an
   # administrator), the Applications folder in their home folder.
   if [ -w /Applications ]; then APPS=/Applications; else APPS="$HOME/Applications"; fi
-  APP="$APPS/Variable Machine.app"
+  # The app to make: Variable Machine, or one project's (its launcher sits beside Variable Machine.command)
+  case "${1:-}" in
+    "") NAME="Variable Machine" ;;
+    latent) NAME="Latent Image" ;;
+    research) NAME="Research Bot" ;;
+    dream) NAME="Dream Cards" ;;
+    *) printf '\n\033[31m✗ There is no project called %s here.\033[0m\n  Try latent, research or dream, or nothing for all of Variable Machine.\n' "$1"; exit 1 ;;
+  esac
+  APP="$APPS/$NAME.app"
 
   bold() { printf '\033[1m%s\033[0m\n' "$1"; }
   say() { printf '%s\n' "$1"; }
@@ -83,14 +98,15 @@ main() {
   echo
 
   # ---- the app ----
-  bold "4. Making the Variable Machine app"
+  bold "4. Making the $NAME app"
+  [ -f "$DEST/$NAME.command" ] || stop "This download has no $NAME.command." "Tell your teacher: the project may be in a newer release."
   mkdir -p "$APPS"
   rm -rf "$APP"
   # an app left in the home folder's Applications by an earlier install
-  [ "$APPS" = /Applications ] && rm -rf "$HOME/Applications/Variable Machine.app"
+  [ "$APPS" = /Applications ] && rm -rf "$HOME/Applications/$NAME.app"
   # The app opens the launcher in Terminal, where its progress and messages can be read.
-  run osacompile -o "$APP" -e "do shell script \"open -a Terminal \" & quoted form of \"$DEST/Variable Machine.command\"" \
-    || stop "The app couldn't be made." "You can still start it: in Finder, open $DEST and double-click Variable Machine.command."
+  run osacompile -o "$APP" -e "do shell script \"open -a Terminal \" & quoted form of \"$DEST/$NAME.command\"" \
+    || stop "The app couldn't be made." "You can still start it: in Finder, open $DEST and double-click $NAME.command."
   if [ -f "$DEST/scripts/app-icon.icns" ]; then
     cp "$DEST/scripts/app-icon.icns" "$APP/Contents/Resources/applet.icns"
     # macOS 26 takes an app's icon from Assets.car when Info.plist names one
@@ -103,9 +119,9 @@ main() {
   say "  $APP"
   echo
 
-  bold "Installed. Starting Variable Machine."
-  say "  Next time, open Variable Machine like any other app: it is in $APPS (the Finder window"
-  say "  that just opened), or press cmd-space and type Variable Machine. You can drag it to the Dock."
+  bold "Installed. Starting $NAME."
+  say "  Next time, open $NAME like any other app: it is in $APPS (the Finder window"
+  say "  that just opened), or press cmd-space and type $NAME. You can drag it to the Dock."
   say "  To update it later, paste the same line again."
   echo
   # show it in Finder, so it is clear where it lives, then start it

@@ -1,5 +1,6 @@
 import { useRef } from 'react'
-import { NODES, WIRES, W, H } from './FlowMap'
+import { NODES, WIRES, W, H, stretchWire } from './FlowMap'
+import { MAX_PX, mapWidth, stripZoom } from '../lib/mapWidth'
 import { Choice, Decision, useGlide } from './VoiceMode'
 import { useHelperState } from '../hooks/useHelper'
 import { useRoutePage } from '../lib/routePage'
@@ -36,9 +37,8 @@ interface Box {
 const VIEW = { x: 30, y: 60, w: 1170, h: 520 }
 /** the folded strip: two rows, the pictures' line and, under it, the texts and the decoder */
 const F = { h: 30, row1: VIEW.y + 8, row2: VIEW.y + 52, height: 90 }
-const ZOOM = 820
-/** How much of the map the folded strip shows: 820 units on a 53rem page; on a wider one more of the route, at the same size. */
-const zoomOf = (px: number) => Math.min(VIEW.w, (ZOOM * px) / (53 * 16))
+/** The strip's window on a laptop, in the map's units, and how close in it goes on a narrow screen (as Make Your Own's: lib/mapWidth). */
+const STRIP_ZOOM = { base: 820, min: 520 }
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const at = (id: string): P => {
@@ -90,29 +90,29 @@ export default function LatentMode({ project, step, onStep, whole, onZoom }: { p
   const facts = project.latent!
   const c = useLatentChoices()
   const route = drawn(facts, c.pictures === 'museum', c.look === 'set')
-  const pxRef = useRef(VIEW.w)
-  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / zoomOf(pxRef.current), line: 'voice-mode__line' })
+  const pxRef = useRef(MAX_PX)
+  const { space, self, scroll, focus, stepNow, width, pick } = useRoutePage({ step, project: project.id, onStep, stripPx: () => (F.height * pxRef.current) / stripZoom(pxRef.current, STRIP_ZOOM.base, STRIP_ZOOM.min), line: 'voice-mode__line' })
   // the box lit and zoomed to: the section in view's, if it is on the route, or else the open step's
   const lightId = focus && route.on.has(focus) ? focus : facts.steps[stepNow - 1]?.node
   const lit = lightId ? ROUTE[lightId] : undefined
-  // the map runs the page's whole width
-  const px = width || VIEW.w
-  const zoom = zoomOf(px)
-  const zoomX = Math.min(VIEW.x + VIEW.w - zoom, Math.max(VIEW.x, (lit ? lit.s[0] + W / 2 : VIEW.x) - zoom / 2))
+  // the map runs the window's whole width; wider than MAX_PX, its boxes keep their size and its wires get longer (lib/mapWidth)
+  const px = width || MAX_PX
+  const { w: VW, zoom, sx } = mapWidth(px, VIEW.w, STRIP_ZOOM)
+  const zoomX = Math.min(VIEW.x + VW - zoom, Math.max(VIEW.x, (lit ? sx(lit.s[0]) + W / 2 : VIEW.x) - zoom / 2))
   const zx = useGlide(whole ? VIEW.x : zoomX)
-  const zw = useGlide(whole ? VIEW.w : zoom)
+  const zw = useGlide(whole ? VW : zoom)
   pxRef.current = px
-  const open = (VIEW.h * px) / VIEW.w
+  const open = (VIEW.h * px) / VW
   // each px scrolled takes a px off the map's height (as voice's does)
   const want = Math.max((F.height * px) / zw, open - scroll)
-  const f = clamp((want * VIEW.w - px * VIEW.h) / (px * (F.height - VIEW.h) - want * (zw - VIEW.w)))
-  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VIEW.w, zw, f), h: lerp(VIEW.h, F.height, f) }
+  const f = clamp((want * VW - px * VIEW.h) / (px * (F.height - VIEW.h) - want * (zw - VW)))
+  const v = { x: lerp(VIEW.x, zx, f), w: lerp(VW, zw, f), h: lerp(VIEW.h, F.height, f) }
 
   return (
     <>
       <div className="voice-mode__line">
         <div ref={self} className="voice-band__frame">
-          <Schematic project={project} facts={facts} route={route} f={f} view={v} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(box) }} />
+          <Schematic project={project} facts={facts} route={route} f={f} view={v} sx={sx} light={lightId} pick={(box) => { if (whole) onZoom() /* FULL closes back to the zoomed strip */; pick(box) }} />
         </div>
       </div>
       <div ref={space} className="voice-mode" style={{ height: `${open / 16}rem` }} />
@@ -122,13 +122,13 @@ export default function LatentMode({ project, step, onStep, whole, onZoom }: { p
 
 type Route = ReturnType<typeof drawn>
 
-function Schematic({ project, facts, route, f, view, light, pick }: { project: Project; facts: LatentFacts; route: Route; f: number; view: { x: number; w: number; h: number }; light?: string; pick: (box: string) => void }) {
+function Schematic({ project, facts, route, f, view, sx, light, pick }: { project: Project; facts: LatentFacts; route: Route; f: number; view: { x: number; w: number; h: number }; sx: (x: number) => number; light?: string; pick: (box: string) => void }) {
   const steps = facts.steps
   const boxH = lerp(H, F.h, f)
   const early = clamp(1 - f * 3)
   const pos = (id: string): P => {
     const b = ROUTE[id]
-    return [lerp(b.a[0], b.s[0], f), lerp(b.a[1], b.s[1], f)]
+    return [lerp(sx(b.a[0]), sx(b.s[0]), f), lerp(b.a[1], b.s[1], f)]
   }
   const stepsAt = (id: string) => steps.map((s, i) => ({ s, i })).filter((x) => x.s.node === id)
   const nodeState = (id: string): State | null => {
@@ -144,7 +144,7 @@ function Schematic({ project, facts, route, f, view, light, pick }: { project: P
     const [ax, ay] = pos(a)
     const [bx, by] = pos(b)
     const down = by > ay
-    if (a === 'words') return `M${ax + W},${ay + boxH / 2} H255 V${corridor} H${bx + W + 20} V${by + boxH / 2} H${bx + W}`
+    if (a === 'words') return `M${ax + W},${ay + boxH / 2} H${sx(255)} V${corridor} H${bx + W + 20} V${by + boxH / 2} H${bx + W}`
     // up a column: at the box's right, clear of the caption under the upper box
     if (Math.abs(ax - bx) < 1) return `M${ax + W - 20},${down ? ay + boxH : ay} V${down ? by : by + boxH}`
     if (Math.abs(ay - by) < 1) return `M${ax + W},${ay + boxH / 2} H${bx}`
@@ -156,7 +156,7 @@ function Schematic({ project, facts, route, f, view, light, pick }: { project: P
   const labelAt = (a: string, b: string): [number, number, 'start' | 'middle' | 'end'] => {
     const [ax, ay] = pos(a)
     const [bx, by] = pos(b)
-    if (a === 'words') return [880, corridor - 6, 'middle']
+    if (a === 'words') return [sx(880), corridor - 6, 'middle']
     if (Math.abs(ax - bx) < 1) return [ax + W - 12, (ay + by + boxH) / 2 + 4, 'start']
     if (Math.abs(ay - by) < 1) return [(ax + W + bx) / 2, ay + boxH / 2 - 7, 'middle']
     return by > ay ? [bx + W / 2 + 8, (ay + by + boxH) / 2 + 4, 'start'] : [bx - 19, (ay + by + boxH) / 2 + 4, 'end']
@@ -172,7 +172,7 @@ function Schematic({ project, facts, route, f, view, light, pick }: { project: P
         </defs>
         {/* the Start map's own wires among the faint boxes; they go as the map folds */}
         {early > 0 &&
-          WIRES.filter((w) => OTHERS.some((n) => n.id === w.from) && OTHERS.some((n) => n.id === w.to)).map((w) => (
+          WIRES.filter((w) => OTHERS.some((n) => n.id === w.from) && OTHERS.some((n) => n.id === w.to)).map((w) => stretchWire(w, sx)).map((w) => (
             <g key={`${w.from}-${w.to}-${w.label}`} className="voice-band__wire" style={{ opacity: early }}>
               <polyline points={w.points.map((p) => p.join(',')).join(' ')} markerEnd="url(#latent-end)" />
             </g>
@@ -180,8 +180,8 @@ function Schematic({ project, facts, route, f, view, light, pick }: { project: P
         {early > 0 &&
           OTHERS.map((n) => (
             <g key={n.id} className="voice-band__node" style={{ opacity: 0.22 * early }}>
-              <rect x={n.x} y={n.y} width={W} height={H} className="voice-band__box" />
-              <text x={n.x + 12} y={n.y + H / 2 + 5} className="voice-band__name">
+              <rect x={sx(n.x)} y={n.y} width={W} height={H} className="voice-band__box" />
+              <text x={sx(n.x) + 12} y={n.y + H / 2 + 5} className="voice-band__name">
                 {n.name ?? n.id}
               </text>
             </g>

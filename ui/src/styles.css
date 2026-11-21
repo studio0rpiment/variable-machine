@@ -1261,9 +1261,10 @@ img.move-view__picture { transform: none; }
 .flow--held .flow__svg { position: static; width: 100%; max-width: 60rem; height: auto; cursor: default; touch-action: auto; }
 .myo__frame.is-whole .flow__svg { max-height: 70vh; }
 /* the map runs the full width of the window: out past the main area's side padding, with no cap on the drawing */
-.myo__frame { margin-inline: -2rem; }
+/* every schematic runs the window's whole width, out past the page's side padding (lib/mapWidth) */
+.myo__frame, .voice-band__frame { margin-inline: -2rem; }
 .myo__frame .flow--held .flow__svg { max-width: none; }
-@media (max-width: 48rem) { .myo__frame { margin-inline: -1rem; } }
+@media (max-width: 48rem) { .myo__frame, .voice-band__frame { margin-inline: -1rem; } }
 .flow__node.is-lit .flow__box, .flow__node.is-lit .flow__dest { fill: var(--act); stroke: var(--act); stroke-dasharray: none; }
 .flow__node.is-lit .flow__name, .flow__node.is-lit .flow__num { fill: var(--bg); }
 .myo__part { flex: none; border-top: 1px solid var(--muted); padding-top: 1rem; margin-top: 1.5rem; }

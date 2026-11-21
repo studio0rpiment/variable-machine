@@ -38,8 +38,10 @@ export function useRoutePage({ step, project, onStep, stripPx, line }: { step: n
       const at = [...main.querySelectorAll<HTMLElement>('[data-step]')].filter((el) => el.getBoundingClientRect().top <= under).pop()
       setStepNow(Number(at?.dataset.step ?? 1))
     }
-    const sized = new ResizeObserver(() => setWidth(el.clientWidth))
-    sized.observe(el)
+    // the schematic's own width: it runs out past the page's side padding, to the window's edges
+    const frame = self.current ?? el
+    const sized = new ResizeObserver(() => setWidth(frame.clientWidth))
+    sized.observe(frame)
     // once the glide ends, the section in view and the step in view are read again (the header's step number follows)
     const onEnd = () => {
       pinned.current = null
