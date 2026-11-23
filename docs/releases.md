@@ -2,6 +2,21 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.5.1: offline, a shared models folder, the version on the app (2026-11-23)
+
+**Offline**
+- Models already downloaded work without the internet. Variable Machine notices when Hugging Face can't be reached, says *offline* in the top line, and runs every command against what is downloaded, without waiting on the network.
+- The Train tab marks the bases that are downloaded; offline, the others can't be chosen.
+- `VARIABLE_MACHINE_OFFLINE=1` makes it act offline with a connection, to try it.
+
+**Where downloaded models are kept**
+- On the Models tab, or with `models folder <path>`: choose one folder, on a drive if you like, for the Hugging Face models and the tool models (Kandinsky, SigLIP, the trackers). This workspace's downloads move there, and every copy on the Mac uses it, so each model is downloaded once. `models folder workspace` goes back.
+- The top line names the folder, and says when the drive isn't plugged in.
+- Ollama already keeps its models in one place for every copy.
+
+**The version**
+- Beside the name at the top of the page, and in the app's name in Applications: *Variable Machine 0.5.1*. Installing a new version replaces the app; if you dragged it to the Dock, drag the new one there too.
+
 ## v0.5.0: two modes, project walkthroughs, latent image and dream cards (2026-11-21)
 
 **Two modes in place of the row of tabs**
