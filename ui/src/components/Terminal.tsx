@@ -135,8 +135,9 @@ export default function Terminal({ theme, folded = false, onFold }: { theme: The
           <TerminalMark size={1} />
           <span className="dock__last">{last ? `▸ ${last}` : say('projects.mode.terminal.none')}</span>
           {busy && (
-            <button type="button" className="icon-button" onClick={() => sendEvent({ type: 'terminal.stop' })} title="stop (ctrl-c)" aria-label="stop">
+            <button type="button" className="stop-button" onClick={() => sendEvent({ type: 'terminal.stop' })} title="stop (ctrl-c)">
               <Stop size={1} />
+              <span className="stop-button__word">stop</span>
             </button>
           )}
           <button type="button" className="text-button" onClick={() => onFold?.(false)}>
@@ -171,8 +172,9 @@ export default function Terminal({ theme, folded = false, onFold }: { theme: The
           aria-label="command"
         />
         {busy && (
-          <button type="button" className="icon-button" onClick={() => sendEvent({ type: 'terminal.stop' })} title="stop (ctrl-c)" aria-label="stop">
+          <button type="button" className="stop-button" onClick={() => sendEvent({ type: 'terminal.stop' })} title="stop (ctrl-c)">
             <Stop size={1} />
+            <span className="stop-button__word">stop</span>
           </button>
         )}
       </div>

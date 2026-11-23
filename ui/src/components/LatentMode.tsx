@@ -7,6 +7,7 @@ import { useRoutePage } from '../lib/routePage'
 import { BUILT_DIFFUSIONS, chooseLatent, DIFFUSIONS, MEDIA_TEXTS, PICTURES, toggleMediaText, useLatentChoices, WALKS, type Diffusion, type MediaText, type Pictures, type Walk } from '../lib/latentChoices'
 import { say } from '../text/say'
 import type { LatentFacts, Project, Step } from './ProjectsPanel'
+import PackedOptions from './PackedOptions'
 
 /**
  * Project mode for the latent image. Its schematic is the Start map, with the
@@ -288,7 +289,7 @@ export function LatentDecisions({ project }: { project: Project }) {
     <section className="voice-decisions" aria-label={say('projects.latent.decisions')}>
       <div className="voice-fork" data-box="photos" role="radiogroup" aria-label={say('projects.latent.decision.pictures')}>
         <h3 className="label voice-decision__q">{`◇ ${say('projects.latent.decision.pictures')}`}</h3>
-        <div className="voice-fork__options">
+        <PackedOptions>
           {PICTURES.map((p) => {
             const w = PICTURE_WORDS[p]()
             return (
@@ -308,11 +309,11 @@ export function LatentDecisions({ project }: { project: Project }) {
               </button>
             )
           })}
-        </div>
+        </PackedOptions>
         {screenshots && <p className="research-note">{say('projects.latent.pictures.private')}</p>}
       </div>
 
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         {screenshots && (
           <Decision box="photos" q={say('projects.latent.decision.set')}>
             <label className="field">
@@ -401,7 +402,7 @@ export function LatentDecisions({ project }: { project: Project }) {
             </Choice>
           ))}
         </Decision>
-      </div>
+      </PackedOptions>
     </section>
   )
 }

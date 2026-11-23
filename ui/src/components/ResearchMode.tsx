@@ -8,6 +8,7 @@ import { useRoutePage } from '../lib/routePage'
 import { BUILT_SOURCES, chooseResearch, FIELD_LIST, LIBRARY_LIST, RANKERS, ROLE_MODELS, SOURCES, toggleIn, toggleSource, useResearchChoices, type Field, type Library, type Source } from '../lib/researchChoices'
 import { say } from '../text/say'
 import type { Project, ResearchFacts, Step } from './ProjectsPanel'
+import PackedOptions from './PackedOptions'
 
 /**
  * Project mode for the research bot. Its schematic is the Start map, opened
@@ -440,7 +441,7 @@ export function ResearchDecisions({ project }: { project: Project }) {
     <section className="voice-decisions" aria-label={say('projects.research.decisions')}>
       <div className="voice-fork" data-box="list" role="radiogroup" aria-label={say('projects.research.decision.take')}>
         <h3 className="label voice-decision__q">{`◇ ${say('projects.research.decision.take')}`}</h3>
-        <div className="voice-fork__options">
+        <PackedOptions>
           {(['list', 'view'] as const).map((t) => {
             const w = TAKE[t]()
             return (
@@ -460,10 +461,10 @@ export function ResearchDecisions({ project }: { project: Project }) {
               </button>
             )
           })}
-        </div>
+        </PackedOptions>
       </div>
 
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         <Decision box="search" q={say('projects.research.decision.folder')}>
           <Choice on={!c.folder} onPick={() => chooseResearch('folder', '')} name={say('projects.research.folder.new')}>
             {say('projects.research.folder.newAbout')}
@@ -474,10 +475,10 @@ export function ResearchDecisions({ project }: { project: Project }) {
             </Choice>
           ))}
         </Decision>
-      </div>
+      </PackedOptions>
 
       <h3 className="label label--muted research-group">{say('projects.research.group.find')}</h3>
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         <Decision box="papers" q={say('projects.research.decision.sources')} many>
           {SOURCES.map((s) => (
             <Choice key={s} many on={c.sources.includes(s)} onPick={() => toggleSource(s)} name={SOURCE_NAME[s]()} off={BUILT_SOURCES.has(s) ? undefined : say('projects.research.notBuilt')}>
@@ -509,10 +510,10 @@ export function ResearchDecisions({ project }: { project: Project }) {
           })}
           <p className="research-note">{say('projects.research.library.never')}</p>
         </Decision>
-      </div>
+      </PackedOptions>
 
       <h3 className="label label--muted research-group">{say('projects.research.group.read')}</h3>
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         <Decision box="models" q={say('projects.research.decision.models')}>
           {modelRow('writer', say('projects.research.role.writer.does'))}
           {modelRow('ranker', say('projects.research.role.ranker.does'), say('projects.research.role.ranker'), RANKERS)}
@@ -547,12 +548,12 @@ export function ResearchDecisions({ project }: { project: Project }) {
             {say('projects.research.summaries.full.about')}
           </Choice>
         </Decision>
-      </div>
+      </PackedOptions>
 
       {view && (
         <>
           <h3 className="label label--muted research-group">{say('projects.research.group.view')}</h3>
-          <div className="voice-subs">
+          <PackedOptions className="voice-subs">
             <Decision box="data" q={say('projects.research.decision.whose')}>
               <Choice on={c.whose === 'mine'} onPick={() => chooseResearch('whose', 'mine')} name={say('projects.research.whose.mine')}>
                 {say('projects.research.whose.mine.about')}
@@ -588,7 +589,7 @@ export function ResearchDecisions({ project }: { project: Project }) {
                 {say('projects.research.runs.folder.about')}
               </Choice>
             </Decision>
-          </div>
+          </PackedOptions>
         </>
       )}
     </section>

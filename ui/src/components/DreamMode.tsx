@@ -7,6 +7,7 @@ import { useRoutePage } from '../lib/routePage'
 import { chooseDream, chooseSet, EMBEDDERS, LIBRARY, QUALITIES, qualityLabel, READER_BASES, toggleText, useDreamChoices, WRITERS, type LibraryText } from '../lib/dreamChoices'
 import { say } from '../text/say'
 import type { Project, Step } from './ProjectsPanel'
+import PackedOptions from './PackedOptions'
 
 /**
  * Project mode for the dream reading. Its schematic is the Start map, opened
@@ -390,7 +391,7 @@ export function DreamDecisions({ project }: { project: Project }) {
 
   return (
     <section className="voice-decisions" aria-label={say('projects.dream.decisions')}>
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         <Decision box="cards" q={say('projects.dream.decision.cards')}>
           <Choice on={c.cards === 'own'} onPick={() => chooseDream('cards', 'own')} name={say('projects.dream.cards.own')}>
             {say('projects.dream.cards.own.about')}
@@ -432,9 +433,9 @@ export function DreamDecisions({ project }: { project: Project }) {
           ))}
           <p className="research-note">{say('projects.dream.texts.note')}</p>
         </Decision>
-      </div>
+      </PackedOptions>
 
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         <Decision box="models" q={say('projects.dream.decision.models')}>
           {trained ? (
             <>
@@ -532,7 +533,7 @@ export function DreamDecisions({ project }: { project: Project }) {
             {say('projects.dream.words.read.about')}
           </Choice>
         </Decision>
-      </div>
+      </PackedOptions>
     </section>
   )
 }

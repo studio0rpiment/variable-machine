@@ -12,6 +12,7 @@ import { useHelperState } from '../hooks/useHelper'
 import { APPROACHES, chooseVoice, toggleText, useVoiceChoices, type Approach } from '../lib/voiceChoices'
 import { say } from '../text/say'
 import type { Project, Step, VoiceFacts } from './ProjectsPanel'
+import PackedOptions from './PackedOptions'
 
 /**
  * Project mode for a character's voice. The schematic is the Start map's top
@@ -353,7 +354,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
     <section className="voice-decisions" aria-label={say('projects.voice.decisions')}>
       <div className="voice-fork" data-box="models" role="radiogroup" aria-label={say('projects.voice.decision.approach')}>
         <h3 className="label voice-decision__q">{`◇ ${say('projects.voice.decision.approach')}`}</h3>
-        <div className="voice-fork__options">
+        <PackedOptions>
           {APPROACHES.map((a) => {
             const w = APPROACH_WORDS[a]()
             return (
@@ -373,10 +374,10 @@ export function VoiceDecisions({ project }: { project: Project }) {
             </button>
             )
           })}
-        </div>
+        </PackedOptions>
       </div>
 
-      <div className="voice-subs">
+      <PackedOptions className="voice-subs">
         <Decision box="models" q={say('projects.voice.decision.base')}>
           {training
             ? HF_BASES.map((b) => {
@@ -433,7 +434,7 @@ export function VoiceDecisions({ project }: { project: Project }) {
             </Choice>
           </Decision>
         )}
-      </div>
+      </PackedOptions>
     </section>
   )
 }
