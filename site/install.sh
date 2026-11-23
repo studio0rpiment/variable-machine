@@ -36,7 +36,6 @@ main() {
     dream) NAME="Dream Cards" ;;
     *) printf '\n\033[31m✗ There is no project called %s here.\033[0m\n  Try latent, research or dream, or nothing for all of Variable Machine.\n' "$1"; exit 1 ;;
   esac
-  APP="$APPS/$NAME.app"
 
   bold() { printf '\033[1m%s\033[0m\n' "$1"; }
   say() { printf '%s\n' "$1"; }
@@ -72,6 +71,9 @@ main() {
   [ -n "$ZIP_URL" ] || ZIP_URL="https://github.com/$REPO/archive/refs/tags/$TAG.zip"
   say "  $TAG"
   echo
+  # The app carries the version in its name (Variable Machine 0.5.0), so it is clear which one is installed.
+  VERSION="${TAG#v}"
+  APP="$APPS/$NAME $VERSION.app"
 
   # ---- download and unpack ----
   bold "2. Downloading it"
@@ -101,9 +103,10 @@ main() {
   bold "4. Making the $NAME app"
   [ -f "$DEST/$NAME.command" ] || stop "This download has no $NAME.command." "Tell your teacher: the project may be in a newer release."
   mkdir -p "$APPS"
-  rm -rf "$APP"
+  # this version's app, an earlier version's (Variable Machine 0.3.0.app) and one from before versions were in the name
+  rm -rf "$APP" "$APPS/$NAME.app" "$APPS/$NAME "[0-9]*.app
   # an app left in the home folder's Applications by an earlier install
-  [ "$APPS" = /Applications ] && rm -rf "$HOME/Applications/$NAME.app"
+  [ "$APPS" = /Applications ] && rm -rf "$HOME/Applications/$NAME.app" "$HOME/Applications/$NAME "[0-9]*.app
   # The app opens the launcher in Terminal, where its progress and messages can be read.
   run osacompile -o "$APP" -e "do shell script \"open -a Terminal \" & quoted form of \"$DEST/$NAME.command\"" \
     || stop "The app couldn't be made." "You can still start it: in Finder, open $DEST and double-click $NAME.command."
@@ -113,16 +116,20 @@ main() {
     # (CFBundleIconName), so osacompile's default icon would win over the spiral.
     rm -f "$APP/Contents/Resources/Assets.car"
     /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APP/Contents/Info.plist" >/dev/null 2>&1
-    codesign --force --sign - "$APP" >/dev/null 2>&1
-    touch "$APP"
   fi
+  # the version in Finder's Get Info too
+  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$APP/Contents/Info.plist" >/dev/null 2>&1 \
+    || /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist" >/dev/null 2>&1
+  codesign --force --sign - "$APP" >/dev/null 2>&1
+  touch "$APP"
   say "  $APP"
   echo
 
   bold "Installed. Starting $NAME."
   say "  Next time, open $NAME like any other app: it is in $APPS (the Finder window"
   say "  that just opened), or press cmd-space and type $NAME. You can drag it to the Dock."
-  say "  To update it later, paste the same line again."
+  say "  To update it later, paste the same line again. The new version's app takes this one's place;"
+  say "  if you dragged this one to the Dock, drag the new one there too."
   echo
   # show it in Finder, so it is clear where it lives, then start it
   open -R "$APP"

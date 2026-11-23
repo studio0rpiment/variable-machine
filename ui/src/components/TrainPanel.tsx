@@ -43,6 +43,8 @@ interface RunManifest {
 export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }: { onAdapters: () => void; onChatPair: (a: string, b: string) => void; onChat: (model: string) => void; withData?: { data: string; n: number; params?: Partial<TrainParams> } }) {
   const { status } = useHelperState()
   const tier = status?.tier ?? '16'
+  const offline = status?.online === false
+  const downloaded = new Set(status?.downloaded ?? [])
   const defaults = TIER_DEFAULTS[tier]
   const [sets, setSets] = useState<DatasetManifest[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
@@ -144,14 +146,19 @@ export default function TrainPanel({ onAdapters, onChatPair, onChat, withData }:
             <span className="label label--muted">base · trains on</span>
             <Explained id="train.base">
               <select value={p.base} onChange={(e) => set('base')(e.target.value)}>
-                {(sees ? SEE_MODELS.map((x) => x.hf) : HF_BASES.map((b) => b.id)).map((id) => (
-                  <option key={id} value={id}>
-                    {id.split('/')[1]}
-                  </option>
-                ))}
+                {(sees ? SEE_MODELS.map((x) => x.hf) : HF_BASES.map((b) => b.id)).map((id) => {
+                  const here = downloaded.has(id)
+                  return (
+                    <option key={id} value={id} disabled={offline && !here}>
+                      {id.split('/')[1]}
+                      {here ? ' · downloaded' : offline ? ' · needs the internet' : ''}
+                    </option>
+                  )
+                })}
               </select>
             </Explained>
           </label>
+          {offline && !downloaded.has(p.base) && <span className="label is-missing">offline: this base isn't downloaded yet; choose one marked downloaded</span>}
           {base && (
             <span className="label label--muted">
               {base.license} · {base.architecture} · about {base.loraGB}GB during LoRA{heavy ? ' · on 16GB use batch 1' : ''}

@@ -22,6 +22,11 @@ export default function StatusLine() {
   return (
     <span className="status">
       {item(status.ollama, status.ollamaVersion ? `ollama ${status.ollamaVersion}` : 'ollama', 'ollama not reachable on 11434')}
+      {status.online === false && (
+        <span className="label is-missing" title="Hugging Face is not reachable: models already downloaded still work, and commands use them without waiting on the network">
+          offline
+        </span>
+      )}
       {item(status.uv, 'uv', 'uv not on PATH')}
       {item(status.mlx, 'mlx-lm', 'run: uv sync --project python')}
       <span className="label label--muted">

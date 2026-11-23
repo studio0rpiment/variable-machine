@@ -192,7 +192,9 @@ export default function App() {
     <div className={`shell ${mode && folded ? 'shell--folded' : ''}`.trim()}>
       {mode ? (
         <header className="shell__top project-top" aria-label={say('projects.mode.label')}>
-          <span className="label label--name">Variable Machine</span>
+          <span className="label label--name">
+          Variable Machine{status?.version && <span className="label--version"> {status.version}</span>}
+        </span>
           <span className="label project-top__name">
             {!only && (
               <a
@@ -241,7 +243,9 @@ export default function App() {
         </header>
       ) : (
       <header className="shell__top">
-        <span className="label label--name">Variable Machine</span>
+        <span className="label label--name">
+          Variable Machine{status?.version && <span className="label--version"> {status.version}</span>}
+        </span>
         <nav className="shell__nav shell__modes" aria-label={say('shared.modes')}>
           <Explained id="panel.projects">
             <a href="#projects" className={`nav-link label ${view === 'projects' ? 'is-active' : ''}`.trim()} aria-current={view === 'projects' ? 'page' : undefined} title={say('shared.mode.projects.about')}>

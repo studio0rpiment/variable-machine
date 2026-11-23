@@ -39,8 +39,12 @@ export const TIER_DEFAULTS: Record<Tier, Omit<TrainParams, 'name' | 'data'>> = {
   '64+': { base: 'HuggingFaceTB/SmolLM2-1.7B-Instruct', type: 'dora', rank: 16, layers: 16, lr: 1e-4, iters: 200, batch: 8, maxSeq: 2048, evalEvery: 50 },
 }
 
-/** Every Python command runs in the python/ project, with Hugging Face downloads landing in the workspace. */
-export const PY_ENV = { HF_HOME: 'workspace/hf' }
+/**
+ * Every Python command runs in the python/ project, with Hugging Face downloads landing in the workspace.
+ * Offline, the helper adds HF_HUB_OFFLINE=1 and UV_OFFLINE=1 (helper/src/status.ts), so models and packages
+ * already downloaded are used at once, without waiting on the network.
+ */
+export const PY_ENV: Record<string, string> = { HF_HOME: 'workspace/hf' }
 export const UV = ['uv', 'run', '--project', 'python']
 /** The same, with the extra packages for models that see (mlx-vlm, gguf); uv installs them on first use. */
 export const UV_SEES = [...UV, '--extra', 'sees']

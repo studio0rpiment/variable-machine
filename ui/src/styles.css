@@ -46,6 +46,7 @@ button {
 }
 .label--name { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
 .label--muted { color: var(--muted); }
+.label--version { color: var(--muted); text-transform: none; letter-spacing: 0.02em; }
 
 /* ---- controls ---- */
 .icon-button {
