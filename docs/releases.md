@@ -2,6 +2,11 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.5.3: decisions that pack, a stop you can read (2026-11-23)
+
+- **A walkthrough's decisions pack.** Each option and decision box is as tall as its own text, and the shorter ones fill in beside each other instead of leaving gaps. One much longer than the rest goes across the full width, with its details side by side. This applies to the voice, research bot, latent image and both dream walkthroughs.
+- **The terminal's stop hand says "stop"** in green beside it while a command runs.
+
 ## v0.5.2: an update restarts the app (2026-11-23)
 
 - **After an update, opening the app starts the new version.** Before, if Variable Machine was still running from before the update, opening the app showed that older version's page. Now the app sees that an older version is running from the same folder, stops it and starts the new one. A copy running from another folder is left alone.
