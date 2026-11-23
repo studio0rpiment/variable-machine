@@ -104,11 +104,24 @@ echo
 
 # ---- 3. already running? ----
 if curl -s --max-time 2 "$URL/" | grep -q '<title>Variable Machine'; then
-  bold "Variable Machine is already running."
-  run open "$URL"
-  say "It runs in another Terminal window; close that one to stop it."
-  sleep 3
-  exit 0
+  # After an update, the copy still running is the older version: stop it, then start this one.
+  # Only when it runs from this folder; another copy on the same port is left alone.
+  INSTALLED="$(cat .vm-version 2>/dev/null)"
+  RUNNING="$(curl -s --max-time 2 "$URL/api/version" | head -c 64)"
+  OLD_PID="$(lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -1)"
+  OLD_DIR="$( [ -n "$OLD_PID" ] && lsof -a -p "$OLD_PID" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+  if [ -n "$INSTALLED" ] && [ "$RUNNING" != "$INSTALLED" ] && [ "$OLD_DIR" = "$PWD" ]; then
+    bold "An older version of Variable Machine is running: stopping it to start $INSTALLED."
+    run kill "$OLD_PID"
+    for _ in 1 2 3 4 5 6 7 8 9 10; do lsof -t -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 || break; sleep 1; done
+    echo
+  else
+    bold "Variable Machine is already running."
+    run open "$URL"
+    say "It runs in another Terminal window; close that one to stop it."
+    sleep 3
+    exit 0
+  fi
 fi
 
 # ---- 4. what the app uses: installed the first time, and again when it changes ----

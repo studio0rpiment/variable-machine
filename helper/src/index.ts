@@ -64,6 +64,11 @@ const server = http.createServer((req, res) => {
     void serveOpenData(req, res)
     return
   }
+  // the launcher asks which version is running, to restart an older one after an update
+  if (req.url === '/api/version') {
+    res.writeHead(200, { 'content-type': 'text/plain' }).end(status.version ?? '')
+    return
+  }
   if (req.url?.startsWith('/api/workspace')) {
     void serveWorkspaceApi(req, res)
     return
