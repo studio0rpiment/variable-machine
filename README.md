@@ -51,6 +51,10 @@ cd variable-machine && npm install && uv sync --project python && npm run dev
 
 **Disk:** smollm2:360m is 725MB and qwen3:4b 2.5GB in Ollama. The first training run downloads its base model into `workspace/hf` (about 700MB for SmolLM2-360M, 3.4GB for the 1.7B). Exporting a trained model keeps a full-size copy in `workspace/fused` until you remove it.
 
+**Where downloaded models are kept:** Ollama keeps its models in one place for every copy (`~/.ollama/models`). Hugging Face models and the tool models (Kandinsky, SigLIP, the trackers) go into the workspace, `workspace/hf/hub` and `workspace/tools`. To keep those on a drive, or share them between copies so each is downloaded once, choose a models folder on the Models tab, or type `models folder "/Volumes/<drive>/variable-machine-models"`: this workspace's downloads move there, and every copy on the Mac uses it. `models folder workspace` goes back.
+
+**Offline:** models already downloaded still work. Variable Machine notices when Hugging Face can't be reached, says *offline* in the top line, and runs every command against what is downloaded, without waiting on the network; the Train tab marks the bases that are downloaded. `VARIABLE_MACHINE_OFFLINE=1` makes it act offline with a connection, to try it.
+
 **To remove everything** (the app, everything made with it, the models, Ollama, uv, and Node if it came from nodejs.org): in Terminal, in the variable-machine folder,
 
 ```bash

@@ -13,6 +13,7 @@ import { recipeCommand } from './recipes.ts'
 import { formatChecks, runDoctor } from './doctor.ts'
 import { unzipCommand, zipCommand } from './share.ts'
 import { modelCommand } from './tools.ts'
+import { modelsCommand } from './modelsFolder.ts'
 import { lookCommand } from './pagerun.ts'
 import { voiceCommand } from './voice.ts'
 import { gestureCommand, oscCommand } from './gestures.ts'
@@ -48,6 +49,7 @@ const HELP = `commands
   zip <data|adapters|merges|runs|fused|images|audio|gestures|packages|research|classifiers|latents>/<name>   share an artifact: workspace/shared/<kind>-<name>.zip
   unzip <file.zip>                                 put a shared artifact back where it belongs
   trash <data|raw|runs|adapters|merges|fused|tools|images|outputs|audio|gestures|packages|research|classifiers|latents|dreams>/<name>  move it to the Trash, to start over
+  models folder [<path>|workspace]   where downloaded models are kept; a folder (a drive) that every copy shares
   status   doctor   help   clear
   ctrl-c stops what is running
 
@@ -173,6 +175,7 @@ async function runLine(line: string, gui: boolean): Promise<boolean> {
   if (cmd === 'data') return dataCommand(args, line)
   if (['train', 'fuse', 'register', 'export', 'merge', 'prefer'].includes(cmd)) return recipeCommand(cmd, args, line)
   if (cmd === 'model') return modelCommand(args)
+  if (cmd === 'models') return modelsCommand(args)
   if (cmd === 'look') return lookCommand(args, line)
   if (cmd === 'speak' || cmd === 'listen') return voiceCommand(cmd, args, line)
   if (cmd === 'gesture') return gestureCommand(args, line)

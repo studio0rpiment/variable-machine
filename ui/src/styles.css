@@ -46,6 +46,9 @@ button {
 }
 .label--name { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
 .label--muted { color: var(--muted); }
+.models-folder { margin: 1rem 0; display: grid; gap: 0.4rem; }
+.models-folder__form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+.models-folder__form input { flex: 1 1 20rem; min-width: 0; }
 .label--version { color: var(--muted); text-transform: none; letter-spacing: 0.02em; }
 
 /* ---- controls ---- */

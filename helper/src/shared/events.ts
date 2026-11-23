@@ -18,6 +18,9 @@ export interface Status {
   online?: boolean
   /** Hugging Face models already in workspace/hf, with their weights: these work offline. */
   downloaded?: string[]
+  /** The models folder every copy shares (models folder <path>), if one is chosen, and whether it is there now (a drive can be unplugged). */
+  modelsFolder?: string
+  modelsFolderOk?: boolean
 }
 
 /** A file a page run made: where it went, what it was made from, which tool made it. */

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { OLLAMA_URL, PYTHON_PROJECT, ROOT, WORKSPACE } from './config.ts'
 import { broadcast } from './hub.ts'
 import { PY_ENV } from './shared/recipes.ts'
+import { modelsFolder, modelsFolderReachable } from './modelsFolder.ts'
 import type { Status, Tier } from './shared/events.ts'
 
 function run(cmd: string, args: string[]): Promise<{ ok: boolean; out: string }> {
@@ -124,7 +125,8 @@ export async function probeNetwork() {
     PY_ENV.HF_HUB_OFFLINE = '1'
     PY_ENV.UV_OFFLINE = '1'
   }
-  update({ online, downloaded: await readDownloaded() })
+  const folder = modelsFolder()
+  update({ online, downloaded: await readDownloaded(), modelsFolder: folder, modelsFolderOk: folder ? modelsFolderReachable() : undefined })
 }
 
 export async function probeVersion() {

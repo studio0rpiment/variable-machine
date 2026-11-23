@@ -9,6 +9,7 @@ import { proxyOllama } from './proxy.ts'
 import { serveStatic } from './static.ts'
 import { watchBuild, watchWorkspace } from './watcher.ts'
 import { sweepConflicts } from './conflicts.ts'
+import { linkModelsFolder } from './modelsFolder.ts'
 import { handleCommand, handleLine, saveModelfile, stopRunning } from './terminal.ts'
 import { serveWorkspaceApi } from './workspace.ts'
 import { serveOpenData } from './opendata.ts'
@@ -19,7 +20,15 @@ import { keep, sweep } from './temporary.ts'
 import { addRunner, pageDone } from './pagerun.ts'
 import { gestureLive } from './gestures.ts'
 
-for (const dir of WORKSPACE_DIRS) fs.mkdirSync(path.join(WORKSPACE, dir), { recursive: true })
+// with a models folder chosen, workspace/hf/hub and workspace/tools lead there (modelsFolder.ts)
+linkModelsFolder()
+for (const dir of WORKSPACE_DIRS) {
+  try {
+    fs.mkdirSync(path.join(WORKSPACE, dir), { recursive: true })
+  } catch {
+    // a link to a models folder on a drive that isn't plugged in: linkModelsFolder has said so
+  }
+}
 
 const ORIGINS = new Set([`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`])
 

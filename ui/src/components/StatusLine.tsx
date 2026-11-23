@@ -27,6 +27,11 @@ export default function StatusLine() {
           offline
         </span>
       )}
+      {status.modelsFolder && (
+        <span className={`label ${status.modelsFolderOk === false ? 'is-missing' : 'label--muted'}`} title={status.modelsFolderOk === false ? `${status.modelsFolder} isn't there: is the drive plugged in?` : `downloaded models are kept in ${status.modelsFolder}`}>
+          models: {status.modelsFolder.startsWith('/Volumes/') ? status.modelsFolder.split('/')[2] : status.modelsFolder.split('/').pop()}
+        </span>
+      )}
       {item(status.uv, 'uv', 'uv not on PATH')}
       {item(status.mlx, 'mlx-lm', 'run: uv sync --project python')}
       <span className="label label--muted">

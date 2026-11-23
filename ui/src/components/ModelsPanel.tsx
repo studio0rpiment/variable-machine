@@ -132,6 +132,50 @@ function Variation({ model, about, onChat, onModelfile }: { model: OllamaModel; 
   )
 }
 
+/**
+ * Where downloaded models are kept (models folder, helper/src/modelsFolder.ts):
+ * this workspace, or one folder, on a drive if you like, that every copy of
+ * Variable Machine on this Mac shares, so each model is downloaded once.
+ */
+function ModelsFolder() {
+  const { status } = useHelperState()
+  const [path, setPath] = useState('')
+  const now = status?.modelsFolder
+  const line = joinWords(['models', 'folder', path.trim()])
+  return (
+    <div className="models-folder">
+      <p className="label label--muted">
+        downloaded models are kept in{' '}
+        {now ? (
+          <span className={status?.modelsFolderOk === false ? 'is-missing' : ''} title={status?.modelsFolderOk === false ? 'not there now: is the drive plugged in?' : undefined}>
+            {now}
+          </span>
+        ) : (
+          'this workspace'
+        )}{' '}
+        · Ollama keeps its own in one place for every copy
+      </p>
+      <form
+        className="models-folder__form"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (path.trim()) void runCommand(line)
+        }}
+      >
+        <input type="text" value={path} onChange={(e) => setPath(e.target.value)} placeholder="/Volumes/your drive/variable-machine-models" aria-label="models folder" spellCheck={false} />
+        <button type="submit" className="text-button" disabled={!path.trim()} title="This workspace's downloads move there, and every copy on this Mac uses it">
+          {path.trim() ? line : 'keep them in a folder every copy shares'}
+        </button>
+        {now && (
+          <button type="button" className="text-button" onClick={() => void runCommand('models folder workspace')} title="The models in the folder stay there">
+            back to this workspace
+          </button>
+        )}
+      </form>
+    </div>
+  )
+}
+
 /** "What kinds of models are there?": the general map, folded away until opened. */
 function KindsOfModels() {
   return (
@@ -413,6 +457,7 @@ export default function ModelsPanel({ onChat, onModelfile }: Props) {
         <KindsOfModels />
         <CardKey />
       </div>
+      <ModelsFolder />
       {error && <p className="label label--muted">{error} — is the Ollama app running?</p>}
       <div className="cards">{featured.map(card)}</div>
 

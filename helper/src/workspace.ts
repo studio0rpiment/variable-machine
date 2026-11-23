@@ -6,6 +6,7 @@ import type http from 'node:http'
 import { WORKSPACE } from './config.ts'
 import { readAudioSet, writeAudioSet } from './voice.ts'
 import { receiveExamples } from './gestures.ts'
+import { asWorkspacePath } from './modelsFolder.ts'
 
 /**
  * Read-only access to workspace/ for the UI, which renders from these files:
@@ -31,7 +32,9 @@ function inside(rel: string): string | null {
   if (!within(p, WORKSPACE)) return null
   // and where it really leads: a link inside the workspace mustn't reach outside it
   try {
-    return within(realpathSync(p), realpathSync(WORKSPACE)) ? p : null
+    const real = realpathSync(p)
+    // or into the models folder a shared workspace folder leads to (modelsFolder.ts)
+    return within(real, realpathSync(WORKSPACE)) || asWorkspacePath(real) ? p : null
   } catch {
     return p // doesn't exist (yet): nothing to follow
   }

@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { ROOT, WORKSPACE } from './config.ts'
 import { broadcast, print } from './hub.ts'
+import { asWorkspacePath } from './modelsFolder.ts'
 
 /** What is running in the terminal right now, so ctrl-c can stop it. */
 let running: { child?: ChildProcess; abort?: AbortController } | null = null
@@ -45,6 +46,9 @@ export function scopePath(arg: string): string | null {
     }
     const rel = path.relative(ws, p)
     if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) return path.relative(ROOT, path.join(WORKSPACE, rel)) || '.'
+    // inside the models folder a shared workspace folder leads to (modelsFolder.ts)
+    const shared = asWorkspacePath(p)
+    if (shared) return path.relative(ROOT, shared)
   }
   return null
 }
