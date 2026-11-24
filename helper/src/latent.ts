@@ -19,7 +19,7 @@ import { joinWords } from './shared/quote.ts'
  *
  *   latent example <set>                         a made-up person's photo roll, as three screenshots, to try the card: images/<set>/
  *   latent crop images/<screenshots> <set> [--grid]   screenshots cut down to the pictures in them: images/<set>/
- *   latent make <name> images/<set>              the latent image, its axes, the pixel average and the check: latents/<name>/
+ *   latent make <name> images/<set> [--with taesd]   the latent image, its axes, the pixel average and the check: latents/<name>/
  *   latent train <name> [--steps 800]            the decoder learns the collection (LoRA), and draws the latent image again
  *   latent gallery <name> images/<set> [--brings 4]   every picture measured against it: outputs/<set>-<name>/
  *   latent ways <name>                           the composite and the average in the decoder's codes (make runs it too)
@@ -27,6 +27,11 @@ import { joinWords } from './shared/quote.ts'
  *   latent walk <name> --to theme-1|picture-12|words|"a sentence" [--frames 24]   an animation out from the latent image
  *   latent room <name> [<text> …]                the installation's page made ready, with passages of the texts: latents/<name>/room/
  *   latent respond <name> --pick 3,7,12          a visitor's choice of pictures, drawn: latents/<name>/room/responses/
+ *
+ * With --with taesd, make uses TAESD (10 MB, MIT) instead, for an 8 GB Mac:
+ * its latent image is a soft blur, not a picture. The latent folder keeps
+ * which model made it, and every later command uses the same one; train and
+ * walks to words are Kandinsky's only.
  *
  * A mean and a few directions of spread is all it is. "Subconscious" is the
  * project's frame; the card's texts give that frame its history.
@@ -67,7 +72,21 @@ function flags(words: string[]) {
   return { pos, opts }
 }
 
-async function ready(): Promise<boolean> {
+/** The model a latent image is made with: Kandinsky 2.2 (16 GB), or TAESD (any Mac). */
+export type LatentModel = 'kandinsky' | 'taesd'
+
+/** Which model made workspace/latents/<name>: its manifest says; one made before TAESD was built is Kandinsky's. */
+async function modelOf(name: string): Promise<LatentModel> {
+  const m = await readJson<{ model?: LatentModel }>(ws('latents', name, 'manifest.json'))
+  return m?.model === 'taesd' ? 'taesd' : 'kandinsky'
+}
+
+async function ready(model: LatentModel = 'kandinsky'): Promise<boolean> {
+  if (model === 'taesd') {
+    const t = encoderModel('taesd')!
+    if (!(await encoderPresent(t))) return print(`latent needs TAESD first: model get taesd (${t.license}, about ${t.mb} MB)`), false
+    return true
+  }
   const k = encoderModel('kandinsky')!
   if (!(await encoderPresent(k))) {
     print(`latent needs Kandinsky 2.2 first: model get kandinsky (${k.license}, about ${(k.mb / 1000).toFixed(1)} GB)`)
@@ -75,7 +94,7 @@ async function ready(): Promise<boolean> {
   }
   const gb = os.totalmem() / 2 ** 30
   if (gb < 15) {
-    print(`latent: this Mac has ${gb.toFixed(0)} GB of memory; Kandinsky needs 16 GB or more (it peaks at about 8 GB, 9 GB to train)`)
+    print(`latent: this Mac has ${gb.toFixed(0)} GB of memory; Kandinsky needs 16 GB or more (it peaks at about 8 GB, 9 GB to train). On this Mac, make it with TAESD: model get taesd, then latent make <name> images/<set> --with taesd`)
     return false
   }
   return true
@@ -189,22 +208,23 @@ async function cropShots(args: string[], line: string): Promise<boolean> {
   })
 }
 
-/** `latent make <name> images/<set>`: the collection's latent image, axes, pixel average and check, into workspace/latents/<name>/. */
+/** `latent make <name> images/<set> [--with taesd]`: the collection's latent image, axes, pixel average and check, into workspace/latents/<name>/. */
 async function make(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
   const [name, folder] = pos
   const set = SET.exec(folder ?? '')?.[1]
-  if (!name || !NAME.test(name) || !set || pos.length !== 2 || Object.keys(opts).length) {
-    print('usage: latent make <name> images/<set>   (the latent image of the pictures in workspace/images/<set>, into workspace/latents/<name>/)')
+  const model = (opts.with ?? 'kandinsky') as LatentModel
+  if (!name || !NAME.test(name) || !set || pos.length !== 2 || Object.keys(opts).some((o) => o !== 'with') || !['kandinsky', 'taesd'].includes(model)) {
+    print('usage: latent make <name> images/<set> [--with taesd]   (the latent image of the pictures in workspace/images/<set>, into workspace/latents/<name>/; --with taesd for a Mac with less than 16 GB)')
     return false
   }
   const n = (await images(set)).length
   if (n < 12) return print(`latent make: workspace/images/${set} has ${n} pictures; a latent image needs 12 at the least (15 screenshots will do), and 30 before it draws its axes`), false
   if (await exists(ws('latents', name))) return print(`latent make: workspace/latents/${name} exists; choose another name, or trash latents/${name}`), false
-  if (!(await ready())) return false
+  if (!(await ready(model))) return false
   const out = `workspace/latents/${name}`
-  const argv = [...UV_LATENT, 'python', SCRIPT, 'make', `workspace/images/${set}`, out]
-  const k = encoderModel('kandinsky')!
+  const argv = [...UV_LATENT, 'python', SCRIPT, 'make', `workspace/images/${set}`, out, ...(model === 'taesd' ? ['--with', 'taesd'] : [])]
+  const k = encoderModel(model)!
   return runRecipe({
     recipe: 'latent-make',
     params: { name, set },
@@ -222,9 +242,10 @@ async function make(args: string[], line: string): Promise<boolean> {
             kind: 'latent',
             created: new Date().toISOString(),
             license: `pictures: ${setM?.license ?? 'as the pictures it came from'} · model ${k.repos ? Object.values(k.repos).join(' and ') : k.repo} (${k.license})`,
-            inputs: [`workspace/images/${set}`, 'workspace/tools/kandinsky'],
+            inputs: [`workspace/images/${set}`, `workspace/tools/${model}`],
             command: [line, shown(argv)],
             set,
+            model,
             pictures: n,
             check,
             ways: true,
@@ -234,7 +255,8 @@ async function make(args: string[], line: string): Promise<boolean> {
           broadcast({ type: 'workspace.changed', path: `latents/${name}/manifest.json`, kind: 'add' })
           if (n < 30) print(`  ${n} pictures: the centre and what each picture brings, but no axes; they need 30 pictures or more`)
           else if (check && !check.axesStable) print(`  axis 1 changes with the half of the collection (${check.axis1AcrossHalves.toFixed(2)}; stable at 0.7): read the axes as a sketch until there are about 100 pictures`)
-          print(`  next: latent gallery ${name} images/${set}, or latent train ${name} (about ${Math.max(1, Math.round((Math.min(800, n * 20) * 1.5) / 60))} min) so the decoder learns the collection's look`)
+          if (model === 'taesd') print(`  next: latent gallery ${name} images/${set}`)
+          else print(`  next: latent gallery ${name} images/${set}, or latent train ${name} (about ${Math.max(1, Math.round((Math.min(800, n * 20) * 1.5) / 60))} min) so the decoder learns the collection's look`)
         },
       },
     ],
@@ -255,6 +277,7 @@ async function train(args: string[], line: string): Promise<boolean> {
   const steps = opts.steps === undefined ? Math.min(800, Math.max(50, (m.pictures ?? 40) * 20)) : Number(opts.steps)
   if (!Number.isInteger(steps) || steps < 50 || steps > 5000) return print('latent train: --steps is 50 to 5000'), false
   if (await exists(ws('latents', name, 'lora.safetensors'))) return print(`latent train: ${name} is trained already; make the latent image again under a new name to train it again`), false
+  if ((await modelOf(name)) === 'taesd') return print(`latent train: ${name} was made with TAESD, which has no decoder to train here; training is Kandinsky's (16 GB or more)`), false
   if (!(await ready())) return false
   print(`  about ${Math.round((steps * 1.5) / 60)} minutes for ${steps} steps, and 9 GB of memory`)
   const out = `workspace/latents/${name}`
@@ -292,7 +315,7 @@ async function gallery(args: string[], line: string): Promise<boolean> {
   }
   if (!(await exists(ws('latents', name, 'stats.npz')))) return print(`latent gallery: no latent image workspace/latents/${name}; make one with latent make ${name} images/<set>`), false
   if (!(await images(set)).length) return print(`latent gallery: no pictures in workspace/images/${set}`), false
-  if (!(await ready())) return false
+  if (!(await ready(await modelOf(name)))) return false
   const outName = `${set}-${name}`
   const out = `workspace/outputs/${outName}`
   const argv = [...UV_LATENT, 'python', SCRIPT, 'gallery', `workspace/latents/${name}`, `workspace/images/${set}`, out, '--brings', String(brings)]
@@ -350,7 +373,7 @@ async function moreWays(args: string[], line: string): Promise<boolean> {
   if (pos.length !== 1 || Object.keys(opts).length) return print('usage: latent ways <name>   (the composite and the average in the decoder\'s codes, beside the drawing and the pixel average)'), false
   const name = pos[0]
   const m = await latentOf(name, 'ways')
-  if (!m || !(await ready())) return false
+  if (!m || !(await ready(await modelOf(name)))) return false
   const argv = [...UV_LATENT, 'python', SCRIPT, 'ways', `workspace/latents/${name}`, `workspace/images/${m.set}`]
   return runRecipe({
     recipe: 'latent-ways',
@@ -373,8 +396,10 @@ async function themes(args: string[], line: string): Promise<boolean> {
   }
   const name = pos[0]
   const m = await latentOf(name, 'themes')
-  if (!m || !(await ready())) return false
-  if (!(await encoderPresent(encoderModel('kandinsky-prior')!))) print("  no words for the themes without Kandinsky's prior, which reads them: model get kandinsky-prior")
+  const model = await modelOf(name)
+  if (!m || !(await ready(model))) return false
+  // with TAESD, latent.py says why there are no words
+  if (model === 'kandinsky' && !(await encoderPresent(encoderModel('kandinsky-prior')!))) print("  no words for the themes without Kandinsky's prior, which reads them: model get kandinsky-prior")
   const argv = [...UV_LATENT, 'python', SCRIPT, 'themes', `workspace/latents/${name}`, `workspace/images/${m.set}`, ...(n ? ['--themes', String(n)] : [])]
   return runRecipe({
     recipe: 'latent-themes',
@@ -408,11 +433,13 @@ async function walk(args: string[], line: string): Promise<boolean> {
   const m = await latentOf(name, 'walk')
   if (!m) return false
   const named = /^(theme|picture)-\d+$/.test(to)
+  const model = await modelOf(name)
+  if (model === 'taesd' && !named) return print(`latent walk: ${name} was made with TAESD, so it walks to a theme or a picture (--to theme-1, --to picture-12); walks to words are Kandinsky's`), false
   if ((to === 'words' || /^theme-/.test(to)) && !(await exists(ws('latents', name, 'themes', 'themes.json')))) return print(`latent walk: ${to} comes from the themes; make them first with latent themes ${name}`), false
   if (!named && !(await encoderPresent(encoderModel('kandinsky-prior')!))) return print("latent walk: walking to words needs Kandinsky's prior, which turns them into the encoder's numbers: model get kandinsky-prior"), false
-  if (!(await ready())) return false
+  if (!(await ready(model))) return false
   const trained = await exists(ws('latents', name, 'lora.safetensors'))
-  print(`  ${frames} frames, about ${Math.round((frames * (trained ? 20 : 10)) / 60)} min`)
+  if (model === 'kandinsky') print(`  ${frames} frames, about ${Math.round((frames * (trained ? 20 : 10)) / 60)} min`)
   const slug = to.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'walk'
   const argv = [...UV_LATENT, 'python', SCRIPT, 'walk', `workspace/latents/${name}`, '--to', to, '--frames', String(frames)]
   return runRecipe({
@@ -481,7 +508,7 @@ async function respond(args: string[]): Promise<boolean> {
   if (picks.some((p) => p > room.pictures.length)) return print(`latent respond: the pictures are numbered 1 to ${room.pictures.length}`), false
   const key = [...new Set(picks)].sort((a, b) => a - b).join('-')
   const made = await exists(ws('latents', name, 'room', 'responses', `${key}.json`))
-  if (!made && !(await ready())) return false
+  if (!made && !(await ready(await modelOf(name)))) return false
   const argv = [...UV_LATENT, 'python', SCRIPT, 'respond', `workspace/latents/${name}`, '--pick', key.split('-').join(',')]
   return runRecipe({
     recipe: 'latent-respond',
@@ -503,6 +530,6 @@ export async function latentCommand(args: string[], line: string): Promise<boole
   if (sub === 'walk') return walk(rest, line)
   if (sub === 'room') return makeRoom(rest, line)
   if (sub === 'respond') return respond(rest)
-  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4] | latent ways <name> | latent themes <name> [--themes 5] | latent walk <name> --to theme-1 | latent room <name> [<text> …] | latent respond <name> --pick 3,7,12')
+  print('usage: latent crop images/<screenshots> <set> [--grid] | latent make <name> images/<set> [--with taesd] | latent train <name> [--steps 800] | latent gallery <name> images/<set> [--brings 4] | latent ways <name> | latent themes <name> [--themes 5] | latent walk <name> --to theme-1 | latent room <name> [<text> …] | latent respond <name> --pick 3,7,12')
   return false
 }

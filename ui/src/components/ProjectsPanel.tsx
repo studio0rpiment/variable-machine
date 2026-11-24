@@ -229,7 +229,7 @@ interface Have {
   /** each image set's manifest: what it is, and where it came from */
   imageSets: { folder: string; created?: string; about?: string; private?: boolean; crop?: { from: string; grid: boolean }; command?: string | string[] }[]
   /** latent images, with the set each was made from, its check and its training */
-  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null; room?: { texts: string[] }; ways?: boolean; themes?: { words: string[]; list: { n: number; size: number; words: string[]; composite: string; drawn: string }[] } | null; walks?: string[] }[]
+  latents: { folder: string; created?: string; set: string; check?: { pictures: number; centreAcrossHalves: number; axis1AcrossHalves: number; centreStable: boolean; axesStable: boolean }; trained?: { steps: number; minutes: number } | null; room?: { texts: string[] }; ways?: boolean; model?: 'kandinsky' | 'taesd'; themes?: { words: string[]; list: { n: number; size: number; words: string[]; composite: string; drawn: string }[] } | null; walks?: string[] }[]
   /** dream installations, with the four sets each was made from, and how many responses it has given */
   dreams: { folder: string; created?: string; sets?: Record<'who' | 'what' | 'when' | 'where', string>; combinations?: number; guide?: string[]; interpreted?: number; drawn?: number; byModel?: Record<string, number>; styled?: number }[]
   /** the last choice and response of each dream installation */
@@ -947,6 +947,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
   const own = h.raw.filter((r) => r.source === 'file').map((r) => r.folder)
   const texts = MEDIA_TEXTS.filter((t) => c.texts.includes(t.id))
   const lat = (f: string) => `latents/${collection}/${f}`
+  const taesd = c.diffusion === 'taesd'
   const steps: Step[] = [
     c.diffusion === 'kandinsky'
       ? {
@@ -958,7 +959,7 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
           done: h.tools.includes('kandinsky') && (!example || h.tools.includes('kandinsky-prior')),
           parts: [],
         }
-      : { name: say('projects.latent.mode.taesd'), tab: 'models', node: 'made-images', commands: [], done: false, soon: true, parts: [] },
+      : { name: say('projects.latent.mode.taesd'), tab: 'models', node: 'made-images', commands: ['model get taesd'], done: h.tools.includes('taesd'), parts: [] },
     example
       ? {
           name: say('projects.latent.mode.example'),
@@ -1028,8 +1029,8 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     name: say('projects.latent.mode.make'),
     tab: 'segmentation',
     node: 'latent',
-    commands: [joinWords(['latent', 'make', collection, `images/${collection}`])],
-    about: 4 * 60,
+    commands: [joinWords(['latent', 'make', collection, `images/${collection}`, ...(taesd ? ['--with', 'taesd'] : [])])],
+    about: taesd ? 30 : 4 * 60,
     done: !!latent,
     result: latent?.check
       ? say('projects.latent.checked', { n: latent.check.pictures, centre: latent.check.centreAcrossHalves.toFixed(3), centreSays: holds(latent.check.centreStable), axis: latent.check.axis1AcrossHalves.toFixed(2), axisSays: holds(latent.check.axesStable) })
@@ -1038,14 +1039,17 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     show: latent
       ? [
           { path: lat('latent.png'), label: say('projects.latent.mode.showLatent') },
+          ...(latent.model === 'taesd' ? [{ path: lat('latent-median.png'), label: say('projects.latent.mode.showMedian') }] : []),
           { path: lat('pixel-average.png'), label: say('projects.latent.mode.showPixels') },
-          ...(latent.ways ? [{ path: lat('composite.png'), label: say('projects.latent.mode.showComposite') }, { path: lat('codes-average.png'), label: say('projects.latent.mode.showCodes') }] : []),
+          ...(latent.ways ? [{ path: lat('composite.png'), label: say('projects.latent.mode.showComposite') }] : []),
+          // with TAESD the latent image is already the average of the codes, decoded
+          ...(latent.ways && latent.model !== 'taesd' ? [{ path: lat('codes-average.png'), label: say('projects.latent.mode.showCodes') }] : []),
         ]
       : undefined,
     fill: { look: { set: collection } },
     parts: ['look.sets'],
   })
-  if (c.look === 'set')
+  if (c.look === 'set' && !taesd)
     steps.push({
       name: say('projects.latent.mode.train'),
       tab: 'segmentation',
@@ -1075,12 +1079,14 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
   })
   const to = walkTarget(c)
   const walked = latent?.walks?.includes(walkSlug(to))
+  // TAESD walks to a theme or a picture; words and sentences are read in Kandinsky's numbers
+  if (!taesd || c.walk === 'theme' || c.walk === 'picture')
   steps.push({
     name: say('projects.latent.mode.walk'),
     tab: 'segmentation',
     node: 'latent',
     commands: [joinWords(['latent', 'walk', collection, '--to', to])],
-    about: (latent?.trained ? 20 : 10) * 24,
+    about: taesd ? 10 : (latent?.trained ? 20 : 10) * 24,
     done: !!walked,
     show: walked ? [{ path: lat(`walks/${walkSlug(to)}.webp`), label: say('projects.latent.mode.showWalk', { to }) }] : undefined,
     parts: [],

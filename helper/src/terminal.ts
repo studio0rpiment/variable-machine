@@ -72,7 +72,8 @@ const HELP = `commands
 
   model get kandinsky                             Kandinsky 2.2, a picture encoder and decoder for the latent image (9 GB): workspace/tools/kandinsky/
   latent example <set>                            a made-up person's photo roll, three screenshots drawn from prompts, to try the card
-  latent make <name> images/<set>                 a collection's latent image, its axes and its check: workspace/latents/<name>/
+  model get taesd                                 TAESD, a tiny autoencoder for the latent image on an 8 GB Mac (10 MB): workspace/tools/taesd/
+  latent make <name> images/<set> [--with taesd]  a collection's latent image, its axes and its check: workspace/latents/<name>/
   latent train <name> [--steps 800]               the decoder learns the collection (LoRA, about 20 min), and draws it again
   latent gallery <name> images/<set> [--brings 4] each picture measured against the latent image: workspace/outputs/<set>-<name>/
   latent ways <name>                              the composite and the average in the decoder's codes, beside the drawing and the pixel average

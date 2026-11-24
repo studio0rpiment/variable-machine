@@ -14,7 +14,7 @@ This replaces the image-mood plan. That card, its commands and its result are on
 - **Memory:** it needs a 16 GB Mac (it peaks at about 8 GB, 9 GB to train), not 8 GB. The helper refuses below 15 GB and says why.
 - **Install:** torch and diffusers, about 1 GB in the python project's `latent` extra.
 
-TAESD, (2) below, stays in this plan as the way to do it on an 8 GB Mac; it isn't built.
+TAESD, (2) below, is the way to do it on an 8 GB Mac. It was built on 2026-11-24: `latent make <name> images/<set> --with taesd` (section 3, (2), says what it does).
 
 ## 1. What the latent image is not
 
@@ -79,6 +79,9 @@ A **VAE** (variational autoencoder) is a model that squeezes an image into a sho
   - The first axis holds 15–17% of the spread; the next ones 4–7% each.
 - **What it means:** the centre of the collection in a space a model learned from millions of images. It is still an average, so it blurs. The more varied the collection, the more it blurs.
 - **Cost:** 10 MB, seconds, any Mac.
+- **Built (2026-11-24):** `model get taesd`, then `latent make <name> images/<set> --with taesd`. It runs in torch with diffusers' `AutoencoderTiny`, in the same `latent` extra as Kandinsky, not MLX. Each picture is cropped to a square at 256 px and encoded to 32 × 32 × 4 numbers. The latent image is the mean, decoded; `latent-median.png` is the median, decoded; the axes are the first three principal components at ±2 spreads. The latent folder keeps which model made it, so the gallery, themes and walks use the same one. Themes have no words (words are read in Kandinsky's numbers), walks go to a theme or a picture in a straight line, and the decoder isn't trained.
+  - **Measured on 100 Hiroshige prints (CC0), M1 Pro, 32 GB:** the 100 pictures encode in about 3 s; the whole `latent make` (with the pixel average, the composite and Python starting) takes about 60 s; the gallery 15 s; a walk of 12 frames 12 s.
+  - **What it looks like:** a warm paper-coloured blur, lighter at the top. The axes run from pale to dark, and from light sky over dark ground to the reverse. The check says the centre is not quite stable across halves (0.946; stable at 0.95) and axis 1 is not (0.60): TAESD's numbers describe where light falls, and a hundred prints differ a great deal in that.
 
 ### (3) Embedding statistics (SigLIP, Apache 2.0, already in the tool)
 
@@ -163,7 +166,7 @@ So the centre of a collection, which no single picture has, can be drawn. That i
 - It is the only way that gives a picture a reader recognises as the collection's, for a mixed collection as well as a coherent one.
 - The statistics are fitted to the person's images, and the decoder then learns their look: that is "train on a person's images and make the latent image from what the model learned".
 - **Beside it:** (1), the pixel average, as the baseline, on the same page.
-- **(2), TAESD,** is the way to do it on an 8 GB Mac. It isn't built.
+- **(2), TAESD,** is the way to do it on an 8 GB Mac. Built on 2026-11-24 (below, under (2)).
 - **(4)** is not built: (5)'s training step does what it was for, better.
 
 ## 4. The texts

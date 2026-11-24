@@ -2,7 +2,7 @@
 
     python python/variable_machine/latent.py example <out folder>
     python python/variable_machine/latent.py crop <screenshot folder> <out folder> [--grid]
-    python python/variable_machine/latent.py make <image folder> <out folder>
+    python python/variable_machine/latent.py make <image folder> <out folder> [--with taesd]
     python python/variable_machine/latent.py train <latent folder> <image folder> [--steps 800]
     python python/variable_machine/latent.py gallery <latent folder> <image folder> <out folder> [--brings 4]
     python python/variable_machine/latent.py ways <latent folder> <image folder>
@@ -16,6 +16,16 @@ All paths are relative to the repo root. The model is Kandinsky 2.2
 ViT-bigG/14, from the prior repo) and its decoder (a diffusion U-Net and the
 MoVQ autoencoder). It runs in torch on the Mac's GPU (MPS). Nothing here
 downloads anything.
+
+With --with taesd, make uses TAESD instead (madebyollin/taesd, MIT, 10 MB,
+in workspace/tools/taesd/), for a Mac with 8 GB: a tiny autoencoder that
+squeezes a 256 px picture into 32 x 32 x 4 numbers (4,096) and back. Its
+numbers are about where light and colour fall, not what a picture shows,
+and its decoder doesn't draw a whole picture, it only undoes the encoder:
+the centre of a varied set decodes as a soft blur. The latent folder
+remembers which model made it, and gallery, themes, walk and respond use
+the same one. train, the composite's codes average and words for themes
+are Kandinsky's only.
 
 What each part does:
 
@@ -87,6 +97,8 @@ import torch
 from PIL import Image, ImageOps
 
 MODEL = Path("workspace/tools/kandinsky")
+TAESD = Path("workspace/tools/taesd")
+TAESD_PX = 256  # TAESD's pictures: 256 px in, a code of 32 x 32 x 4 out
 EXT = {".jpg", ".jpeg", ".png", ".webp"}
 AXES = 5  # measured in the gallery
 SHOWN = 3  # axes decoded into pictures
@@ -189,6 +201,66 @@ def draw(pipe, v: np.ndarray, length: float, grey: np.ndarray, seed: int = 0, si
         height=size, width=size, num_inference_steps=STEPS, guidance_scale=GUIDANCE,
         generator=torch.Generator("cpu").manual_seed(seed),
     ).images[0]
+
+
+def taesd():
+    from diffusers import AutoencoderTiny
+
+    return AutoencoderTiny.from_pretrained(TAESD, dtype=torch.float32).to(DEV).eval()
+
+
+def taesd_encode(files: list[Path]) -> np.ndarray:
+    """Each picture's TAESD code, 32 x 32 x 4, as one row of 4,096 numbers. Each is cropped to a square first."""
+    vae = taesd()
+    out = []
+    t = time.time()
+    with torch.no_grad():
+        for i in range(0, len(files), 16):
+            x = np.stack([np.asarray(ImageOps.fit(open_image(f), (TAESD_PX, TAESD_PX)), dtype=np.float32) for f in files[i : i + 16]])
+            x = torch.tensor(x, device=DEV).permute(0, 3, 1, 2) / 127.5 - 1
+            out.append(vae.encode(x).latents.reshape(len(x), -1).cpu().numpy())
+            print(f"  encoded {min(i + 16, len(files))}/{len(files)}", flush=True)
+    del vae
+    print(f"  {len(files)} pictures in {time.time() - t:.0f}s", flush=True)
+    return np.concatenate(out)
+
+
+def taesd_draw(vae, v: np.ndarray) -> Image.Image:
+    with torch.no_grad():
+        im = vae.decode(torch.tensor(v.reshape(1, 4, TAESD_PX // 8, TAESD_PX // 8), dtype=torch.float32, device=DEV)).sample
+    return Image.fromarray(((im[0].permute(1, 2, 0).cpu().numpy() + 1) * 127.5).clip(0, 255).astype(np.uint8))
+
+
+def model_of(latent: Path) -> str:
+    """Which model made a latent folder: kandinsky, or taesd. Folders made before TAESD was built are Kandinsky's."""
+    z = np.load(latent / "stats.npz")
+    return str(z["model"]) if "model" in z.files else "kandinsky"
+
+
+def drawer(latent: Path, z, dtype=None):
+    """A function from numbers to a picture, for the model that made the latent folder (and its trained decoder, if any)."""
+    if model_of(latent) == "taesd":
+        vae = taesd()
+        return lambda v, seed=0: taesd_draw(vae, v)
+    lora = latent / "lora.safetensors"
+    pipe = decoder(dtype or (torch.float32 if lora.exists() else torch.float16), lora if lora.exists() else None)
+    length, grey = float(z["length"]), z["grey"]
+
+    def d(v, seed=0):
+        with torch.no_grad():
+            return draw(pipe, v, length, grey, seed)
+
+    return d
+
+
+def embed_pictures(latent: Path, files: list[Path]) -> np.ndarray:
+    """New pictures in the numbers of the model that made the latent folder."""
+    return taesd_encode(files) if model_of(latent) == "taesd" else encode(files)[0]
+
+
+def only_kandinsky(latent: Path, what: str) -> None:
+    if model_of(latent) == "taesd":
+        sys.exit(f"latent: {latent.name} was made with TAESD, and {what} is Kandinsky's only. Make it again with Kandinsky (16 GB or more): latent make <name> images/<set>")
 
 
 # ---------------------------------------------------------------- statistics
@@ -396,16 +468,20 @@ def crop(folder: Path, out: Path, grid: bool) -> None:
 # ---------------------------------------------------------------- commands
 
 
-def make(folder: Path, out: Path) -> None:
+def make(folder: Path, out: Path, model: str = "kandinsky") -> None:
     files = pictures(folder)
     if len(files) < 12:
         sys.exit(f"latent make: {len(files)} pictures; a latent image needs 12 at the least, 30 before it draws its axes, and about 100 for them to hold still")
     out.mkdir(parents=True, exist_ok=True)
-    print(f"  {len(files)} pictures from {folder}; encoder: CLIP ViT-bigG/14 (Kandinsky 2.2's), on {DEV}", flush=True)
-    E, grey = encode(files, [Image.new("RGB", (224, 224), (128, 128, 128))])
+    if model == "taesd":
+        print(f"  {len(files)} pictures from {folder}; encoder: TAESD (a tiny autoencoder, {TAESD_PX} px, 4,096 numbers a picture), on {DEV}", flush=True)
+        E, grey = taesd_encode(files), np.zeros((1, 0))
+    else:
+        print(f"  {len(files)} pictures from {folder}; encoder: CLIP ViT-bigG/14 (Kandinsky 2.2's), on {DEV}", flush=True)
+        E, grey = encode(files, [Image.new("RGB", (224, 224), (128, 128, 128))])
     mean, V, sd, share = fit(E)
     length = float(np.linalg.norm(E, axis=1).mean())
-    np.savez(out / "stats.npz", embeddings=E, mean=mean, axes=V, spreads=sd, share=share, length=length, grey=grey[0])
+    np.savez(out / "stats.npz", embeddings=E, mean=mean, axes=V, spreads=sd, share=share, length=length, grey=grey[0], model=model)
     (out / "files.json").write_text(json.dumps([f.name for f in files], indent=0) + "\n")
     c = check(E)
     c["axisShares"] = [round(float(s), 3) for s in share]
@@ -415,14 +491,18 @@ def make(folder: Path, out: Path) -> None:
 
     pixel_average(files).save(out / "pixel-average.png")
     print("  ◂ pixel-average.png", flush=True)
-    pipe = decoder()
+    paint = drawer(out, np.load(out / "stats.npz"))
     t = time.time()
-    for seed in range(3):
-        draw(pipe, mean, length, grey[0], seed).save(out / ("latent.png" if seed == 0 else f"latent-{seed + 1}.png"))
+    # Kandinsky's decoder draws a different picture from each seed; TAESD's draws the same one, so it draws one
+    for seed in range(3 if model == "kandinsky" else 1):
+        paint(mean, seed).save(out / ("latent.png" if seed == 0 else f"latent-{seed + 1}.png"))
         print(f"  ◂ {'latent.png' if seed == 0 else f'latent-{seed + 1}.png'} ({time.time() - t:.0f}s)", flush=True)
+    if model == "taesd":
+        paint(np.median(E, axis=0)).save(out / "latent-median.png")
+        print("  ◂ latent-median.png: the median of the codes, which a few unlike pictures move less than the mean", flush=True)
     for a in range(SHOWN if len(files) >= AXES_FROM else 0):
         for sign, tag in ((-2, "minus"), (2, "plus")):
-            draw(pipe, mean + sign * sd[a] * V[a], length, grey[0]).save(out / f"axis-{a + 1}-{tag}.png")
+            paint(mean + sign * sd[a] * V[a]).save(out / f"axis-{a + 1}-{tag}.png")
         print(f"  ◂ axis-{a + 1}-minus.png, axis-{a + 1}-plus.png", flush=True)
     if len(files) < AXES_FROM:
         print(f"  no axis pictures: {len(files)} pictures is too few for the ways they differ to mean anything ({AXES_FROM} or more draws them)", flush=True)
@@ -430,15 +510,16 @@ def make(folder: Path, out: Path) -> None:
     d = np.linalg.norm(C, axis=1)
     near = [files[i].name for i in np.argsort(d)[:5]]
     ends = {f"axis{a + 1}": {"minus": [files[i].name for i in np.argsort(C @ V[a])[:3]], "plus": [files[i].name for i in np.argsort(C @ V[a])[-3:][::-1]]} for a in range(SHOWN)}
-    (out / "latent.json").write_text(json.dumps({"pictures": len(files), "nearest": near, "axisEnds": ends, "check": c}, indent=1) + "\n")
+    (out / "latent.json").write_text(json.dumps({"pictures": len(files), "model": model, "nearest": near, "axisEnds": ends, "check": c}, indent=1) + "\n")
     print(f"  nearest the centre: {', '.join(near[:3])}")
-    del pipe
+    del paint
     if DEV == "mps":
         torch.mps.empty_cache()
     ways(out, folder)
 
 
 def train(latent: Path, folder: Path, steps: int) -> None:
+    only_kandinsky(latent, "training the decoder")
     from diffusers import DDPMScheduler
     from peft import LoraConfig, get_peft_model_state_dict
     from safetensors.torch import save_file
@@ -515,7 +596,7 @@ def gallery(latent: Path, folder: Path, out: Path, brings: int) -> None:
     m = folder / "manifest.json"
     if m.exists():
         credits = {c["file"]: c for c in json.loads(m.read_text()).get("credits", [])}
-    E, _ = encode(files)
+    E = embed_pictures(latent, files)
     C = E - mean
     coords = C @ V.T / sd
     dist = np.linalg.norm(C, axis=1) / typical
@@ -536,15 +617,14 @@ def gallery(latent: Path, folder: Path, out: Path, brings: int) -> None:
     trained = latent / "lora.safetensors"
     top = list(np.argsort(-share)[:brings]) if brings else []
     if top:
-        pipe = decoder(torch.float32 if trained.exists() else torch.float16, trained if trained.exists() else None)
+        paint = drawer(latent, z)
         for i in top:
             resid = C[i] - C[i] @ V.T @ V
             name = f"brings-{Path(files[i].name).stem}.png"
-            with torch.no_grad():
-                draw(pipe, mean + resid, length, grey).save(out / name)
+            paint(mean + resid).save(out / name)
             items[i]["bringsPicture"] = name
             print(f"  ◂ {name}: what {files[i].name} brings", flush=True)
-    for name in ["latent.png", "latent-trained.png", "pixel-average.png"] + [f"axis-{a + 1}-{s}{t}.png" for a in range(SHOWN) for s in ("minus", "plus") for t in ("", "-trained")]:
+    for name in ["latent.png", "latent-median.png", "latent-trained.png", "pixel-average.png"] + [f"axis-{a + 1}-{s}{t}.png" for a in range(SHOWN) for s in ("minus", "plus") for t in ("", "-trained")]:
         if (latent / name).exists():
             (out / name).write_bytes((latent / name).read_bytes())
     (out / "latent.json").write_text(json.dumps({"latent": latent.name, "folder": folder.name, "axes": AXES, "check": check_, "pictures": sorted(items, key=lambda x: x["distance"])}, indent=1) + "\n")
@@ -553,17 +633,36 @@ def gallery(latent: Path, folder: Path, out: Path, brings: int) -> None:
     print(f"  wrote {out}/gallery.html, latent.json")
 
 
+# Any picture on a gallery page opens large when clicked, and a second click closes it. The helper serves these pages
+# with scripts off, so it is done with a hidden checkbox and CSS alone. The drawn pictures are kept at their full size
+# (512 px from Kandinsky, 256 px from TAESD) and the set's own photos at 640 px, for this.
+ZOOM_CSS = ".z{display:contents;cursor:zoom-in}.z input{display:none}.z input:checked+img{position:fixed;inset:0;z-index:9;width:100vw!important;height:100vh!important;max-width:none;padding:1.5rem;box-sizing:border-box;object-fit:contain;background:rgba(17,17,17,.94);border:0;cursor:zoom-out}"
+
+
+def zoomable(page: str) -> str:
+    """Every picture on a page, made to open large on a click (ZOOM_CSS)."""
+    page = re.sub(r"(<img [^>]*>)", r'<label class="z"><input type="checkbox">\1</label>', page)
+    return page.replace("</style>", ZOOM_CSS + "\n</style>", 1)
+
+
 def write_html(path: Path, items: list[dict], files: list[Path], latent: Path, out: Path, folder: Path, check_: dict) -> None:
     e = html.escape
 
     def img(name: str, alt: str) -> str:
         p = out / name
-        return f'<img src="{thumb(Image.open(p), 384)}" alt="{e(alt)}">' if p.exists() else ""
+        return f'<img src="{thumb(Image.open(p), 512)}" alt="{e(alt)}">' if p.exists() else ""
 
     trained = (out / "latent-trained.png").exists()
+    how = (
+        f"in TAESD's codes (a tiny autoencoder: {TAESD_PX} px, 4,096 numbers a picture, about where light and colour fall), decoded by TAESD, so it is a soft blur rather than a picture"
+        if model_of(latent) == "taesd"
+        else "as a large picture encoder measures them (CLIP ViT-bigG/14), decoded into a picture by Kandinsky 2.2"
+    )
     head = [f'<figure>{img("latent.png", "the latent image")}<figcaption><b>the latent image</b> the centre of {e(latent.name)}, decoded. {PSY["latent"]}</figcaption></figure>']
     if trained:
         head.append(f'<figure>{img("latent-trained.png", "the latent image, trained decoder")}<figcaption><b>drawn by the trained decoder</b> the same centre, by a decoder that learned the collection. {PSY["trained"]}</figcaption></figure>')
+    if (out / "latent-median.png").exists():
+        head.append(f'<figure>{img("latent-median.png", "the median of the codes")}<figcaption><b>the median</b> the median of the codes, decoded: a few unlike pictures move it less than the mean.</figcaption></figure>')
     head.append(f'<figure>{img("pixel-average.png", "pixel average")}<figcaption><b>pixel average</b> every pixel averaged: the baseline. {PSY["pixels"]}</figcaption></figure>')
     t = "-trained" if trained else ""
     axes = "".join(
@@ -585,7 +684,7 @@ def write_html(path: Path, items: list[dict], files: list[Path], latent: Path, o
         credit = " · ".join(x for x in [i.get("title", ""), i.get("author", ""), i.get("license", "")] if x)
         bring = f'<span class="r">what it brings:</span>{img(i["bringsPicture"], "what it brings")}' if i.get("bringsPicture") else ""
         cards.append(
-            f'<figure><img src="{thumb(open_image(by[i["file"]]))}" alt="{e(i.get("title", i["file"]))}"><figcaption>'
+            f'<figure><img src="{thumb(open_image(by[i["file"]]), 640)}" alt="{e(i.get("title", i["file"]))}"><figcaption>'
             f'<b>{i["distance"]:.2f}</b><span class="c">spreads from the centre</span>'
             f'<span class="c">brings {i["brings"]:.0%} · near in subject {i["nearInSubject"]:.2f}</span>'
             f'<span class="bars">{bars}</span><span class="c">axes 1–{AXES}: {" ".join(f"{v:+.1f}" for v in i["axes"])}</span>{bring}'
@@ -593,7 +692,7 @@ def write_html(path: Path, items: list[dict], files: list[Path], latent: Path, o
         )
     stable = "stable" if check_["centreStable"] else "not stable: too few pictures, or too mixed"
     axes_ok = "" if check_["axesStable"] or check_["pictures"] < AXES_FROM else f' Axis 1 changes with the half ({check_["axis1AcrossHalves"]:.2f}; stable at 0.7): read the axes as a sketch until the collection has about 100 pictures.'
-    path.write_text(f"""<!doctype html>
+    path.write_text(zoomable(f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>latent image · {e(folder.name)}</title>
 <style>
 body{{font:0.875rem/1.45 ui-monospace,Menlo,monospace;background:#111;color:#ddd;margin:1.5rem}}
@@ -609,7 +708,7 @@ figcaption{{padding:.5rem .625rem;display:flex;flex-wrap:wrap;gap:.25rem .5rem}}
 .bars u{{position:absolute;top:0;width:.25rem;height:.5rem;background:#5CF25C;margin-left:-.125rem}}
 </style></head><body>
 <h1>the latent image of {e(latent.name)} · {len(items)} pictures from {e(folder.name)} measured against it</h1>
-<p>The latent image is the centre of the collection's pictures as a large picture encoder measures them (CLIP ViT-bigG/14), decoded into a picture by Kandinsky 2.2. It is a mean of copies: no single picture shows it. The centre is {stable} across halves of the collection ({check_["centreAcrossHalves"]:.3f}; stable at 0.95).{axes_ok}</p>
+<p>The latent image is the centre of the collection's pictures {how}. It is a mean of copies: no single picture shows it. The centre is {stable} across halves of the collection ({check_["centreAcrossHalves"]:.3f}; stable at 0.95).{axes_ok}</p>
 <div class="top">{"".join(head)}</div>
 <h2>what media theory says it is like</h2>
 <ul>{psy}</ul>
@@ -617,7 +716,7 @@ figcaption{{padding:.5rem .625rem;display:flex;flex-wrap:wrap;gap:.25rem .5rem}}
 <h2>the pictures, nearest the centre first</h2>
 <p>Distance is in the collection's own spreads: 1 is a typical picture of it. The bars are each picture's place on axes 1–{AXES} (centre line 0, ends ±3). "Brings" is the share of how a picture differs from the centre that the axes don't explain: high means it brings something the collection mostly lacks. "Near in subject" is the cosine between the picture and the centre (1 is the same direction). {PSY["brings"]}</p>
 <main>{"".join(cards)}</main></body></html>
-""")
+"""))
 
 
 # ---------------------------------------------------------------- the example: a made-up person's photo roll
@@ -758,6 +857,9 @@ def ways(latent: Path, folder: Path) -> None:
     near = [files[i] for i in np.argsort(np.linalg.norm(C, axis=1))[:COMPOSITE]]
     pixel_average(near).save(latent / "composite.png")
     print(f"  ◂ composite.png: the pixel average of the {len(near)} pictures nearest the centre", flush=True)
+    if model_of(latent) == "taesd":
+        print("  no codes-average.png: with TAESD the latent image is already the average of the codes, decoded", flush=True)
+        return
     pipe = decoder(torch.float32)
     t = time.time()
     with torch.no_grad():
@@ -863,14 +965,14 @@ def themes(latent: Path, folder: Path, k: int | None) -> None:
     else:
         lab = kmeans(U, k)
     groups = sorted(range(k), key=lambda j: -(lab == j).sum())
-    te = text_encoder()
+    # words are read in Kandinsky's numbers; TAESD's are about light and colour, so its themes have none
+    te = text_encoder() if model_of(latent) == "kandinsky" else None
     T = vocab_vectors(te) if te else None
     if te:
         del te
     out = latent / "themes"
     out.mkdir(exist_ok=True)
-    lora = latent / "lora.safetensors"
-    pipe = decoder(torch.float32 if lora.exists() else torch.float16, lora if lora.exists() else None)
+    paint = drawer(latent, z)
     setU = unit(U.mean(0))
     made = []
     for n, j in enumerate(groups, start=1):
@@ -878,15 +980,16 @@ def themes(latent: Path, folder: Path, k: int | None) -> None:
         centre = unit(U[idx].mean(0))
         idx = idx[np.argsort(-(U[idx] @ centre))]
         pixel_average([files[i] for i in idx]).save(out / f"theme-{n}-composite.png")
-        with torch.no_grad():
-            draw(pipe, E[idx].mean(0), length, grey).save(out / f"theme-{n}-drawn.png")
+        paint(E[idx].mean(0)).save(out / f"theme-{n}-drawn.png")
         # words that name this theme more than they name the set as a whole
         words = [VOCAB[w].replace("-", " ") for w in np.argsort(-(T @ centre - 0.5 * (T @ setU)))[:4]] if T is not None else []
         made.append({"n": n, "pictures": [int(i) + 1 for i in idx], "files": [names[i] for i in idx], "size": len(idx), "words": words, "composite": rel(out / f"theme-{n}-composite.png"), "drawn": rel(out / f"theme-{n}-drawn.png")})
         print(f"  ◂ theme {n}: {len(idx)} pictures{' · ' + ', '.join(words) if words else ''}", flush=True)
     set_words = [VOCAB[w].replace("-", " ") for w in np.argsort(-(T @ setU))[:5]] if T is not None else []
     (out / "themes.json").write_text(json.dumps({"themes": made, "words": set_words, "k": k, "byText": T is not None}, indent=1) + "\n")
-    if T is None:
+    if T is None and model_of(latent) == "taesd":
+        print("  no words: TAESD's numbers are about light and colour, and words are read in Kandinsky's", flush=True)
+    elif T is None:
         print("  no words: they need Kandinsky's prior, whose text encoder reads them (model get kandinsky-prior)", flush=True)
     else:
         print(f"  the set's own words: {', '.join(set_words)}", flush=True)
@@ -915,6 +1018,7 @@ def walk(latent: Path, to: str, frames: int) -> None:
         target = E[int(m[1]) - 1]
         what = f"picture {m[1]}"
     else:
+        only_kandinsky(latent, "a walk to words or a sentence")
         sentence = to
         if to == "words":
             w = json.loads((latent / "themes" / "themes.json").read_text())["words"]
@@ -932,14 +1036,16 @@ def walk(latent: Path, to: str, frames: int) -> None:
     out = latent / "walks"
     (out / slug).mkdir(parents=True, exist_ok=True)
     lora = latent / "lora.safetensors"
-    pipe = decoder(torch.float32 if lora.exists() else torch.float16, lora if lora.exists() else None)
+    paint = drawer(latent, z)
+    taesd_ = model_of(latent) == "taesd"
     t0 = time.time()
     ims = []
     with torch.no_grad():
         for i in range(frames):
             t = i / (frames - 1)
-            # the same noise every frame, so only the numbers change and the picture moves rather than flickers
-            im = draw(pipe, slerp(mean, target, t), length, grey, seed=0)
+            # the same noise every frame, so only the numbers change and the picture moves rather than flickers;
+            # TAESD's codes are a picture's own numbers, so the way there is a straight line, not an arc
+            im = paint((1 - t) * mean + t * target if taesd_ else slerp(mean, target, t), 0)
             im.save(out / slug / f"{i + 1:03d}.png")
             ims.append(im.resize((384, 384)))
             print(f"  frame {i + 1}/{frames} ({time.time() - t0:.0f}s)", flush=True)
@@ -1073,13 +1179,13 @@ def respond(latent: Path, picks: list[int]) -> None:
     nearer = float((rand > d).mean())
     lora = latent / "lora.safetensors"
     t = time.time()
-    pipe = decoder(torch.float32 if lora.exists() else torch.float16, lora if lora.exists() else None)
+    paint = drawer(latent, z)
     print(f"  the decoder loaded in {time.time() - t:.0f}s{', trained on the set' if lora.exists() else ''}", flush=True)
     made = []
     with torch.no_grad():
-        for seed in range(2):
+        for seed in range(2 if model_of(latent) == "kandinsky" else 1):
             name = f"{key}-{seed + 1}.png"
-            draw(pipe, m, length, grey, seed).save(resp / name)
+            paint(m, seed).save(resp / name)
             made.append(rel(resp / name))
             print(f"  ◂ {name} ({time.time() - t:.0f}s)", flush=True)
     lines = ["mirror", "studium" if nearer >= 0.5 else "punctum"] + (["trained"] if lora.exists() else ["simulacrum"])
@@ -1102,7 +1208,10 @@ def main(argv: list[str]) -> None:
 
     pos = [a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or not argv[i - 1].startswith("--"))]
     if len(pos) == 3 and pos[0] == "make":
-        make(Path(pos[1]), Path(pos[2]))
+        model = argv[argv.index("--with") + 1] if "--with" in argv else "kandinsky"
+        if model not in ("kandinsky", "taesd"):
+            sys.exit("latent make: --with kandinsky or --with taesd")
+        make(Path(pos[1]), Path(pos[2]), model)
     elif len(pos) == 3 and pos[0] == "train":
         train(Path(pos[1]), Path(pos[2]), opt("--steps", 800))
     elif len(pos) == 2 and pos[0] == "example":

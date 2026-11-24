@@ -3026,6 +3026,11 @@ the latent image's decisions
 
 not built yet
 
+### Kandinsky only
+`projects.latent.kandinskyOnly`
+
+Kandinsky 2.2 only, not TAESD
+
 ### Where the walk goes
 `projects.latent.decision.walk`
 
@@ -3269,7 +3274,7 @@ TAESD, for an 8 GB Mac
 ### TAESD, about
 `projects.latent.diffusion.taesd.about`
 
-A 10 MB autoencoder: it averages the pictures' codes and decodes the average. Its latent image is closer to a blur than a picture. Planned, not built.
+A 10 MB autoencoder (MIT, by Ollin Boer Bohan): it squeezes each picture to 256 px and 4,096 numbers, averages the numbers and turns the average back into a picture. Its numbers are about where light and colour fall, not what a picture shows, so its latent image is closer to a blur than a picture. Any Mac, 8 GB included. The decoder can't be trained on the set, and the walk goes to a theme or a picture only.
 
 ### Which texts
 `projects.latent.decision.texts`
@@ -3404,7 +3409,7 @@ get the diffusion model: Kandinsky 2.2's picture encoder and decoder (9 GB)
 ### Step: TAESD
 `projects.latent.mode.taesd`
 
-get TAESD, for an 8 GB Mac
+get TAESD, for an 8 GB Mac (10 MB)
 
 ### Step: the model, and its prior
 `projects.latent.mode.modelPrior`
@@ -3470,6 +3475,11 @@ make the latent image: the encoder measures every picture, and the diffusion dec
 `projects.latent.mode.showLatent`
 
 the latent image
+
+### Step: the median, shown
+`projects.latent.mode.showMedian`
+
+the median of the codes, decoded
 
 ### Step: the pixel average, shown
 `projects.latent.mode.showPixels`

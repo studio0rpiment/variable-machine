@@ -13,10 +13,10 @@ export type Pictures = 'example' | 'grid' | 'single' | 'museum'
 export const PICTURES: Pictures[] = ['example', 'grid', 'single', 'museum']
 /** the example's screenshots: images/example-roll; its pictures, cropped: images/example-roll-pictures */
 export const EXAMPLE_SET = 'example-roll'
-/** The diffusion model that draws the latent image. Kandinsky 2.2 is built; TAESD, for an 8 GB Mac, is planned. */
+/** The model that draws the latent image: Kandinsky 2.2 (16 GB or more), or TAESD, a tiny autoencoder for an 8 GB Mac. */
 export type Diffusion = 'kandinsky' | 'taesd'
 export const DIFFUSIONS: Diffusion[] = ['kandinsky', 'taesd']
-export const BUILT_DIFFUSIONS = new Set<Diffusion>(['kandinsky'])
+export const BUILT_DIFFUSIONS = new Set<Diffusion>(['kandinsky', 'taesd'])
 /** Whose look the latent image is drawn in: the model's, learned from the web, or the set's own (the decoder trained on it). */
 export type Look = 'web' | 'set'
 /** Where the walk goes, out from the latent image: the set's largest theme, its own words, a sentence, or one picture. */

@@ -197,6 +197,19 @@ export const ENCODER_MODELS: EncoderModel[] = [
     repos: { prior: 'kandinsky-community/kandinsky-2-2-prior' },
     runsIn: 'python (torch, diffusers), in the latent extra',
   },
+  {
+    name: 'taesd',
+    kind: 'looks',
+    repo: 'madebyollin/taesd',
+    original: 'madebyollin/taesd',
+    license: 'MIT',
+    maker: 'Ollin Boer Bohan (TAESD), 2023',
+    builtFor:
+      "A tiny autoencoder: it squeezes a 256 px picture into 4,096 numbers (32 × 32 × 4, Stable Diffusion's code space) and back. Its numbers are about where light and colour fall, not what a picture shows, so a collection's centre decodes as a soft blur, not a picture. 10 MB, on any Mac, 8 GB included. Used for the latent image on a Mac too small for Kandinsky.",
+    files: ['config.json', 'diffusion_pytorch_model.safetensors'],
+    mb: 10,
+    runsIn: 'python (torch, diffusers), in the latent extra',
+  },
 ]
 
 export const encoderModel = (name: string) => ENCODER_MODELS.find((e) => e.name === name)

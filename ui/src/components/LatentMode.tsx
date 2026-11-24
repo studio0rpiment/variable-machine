@@ -357,7 +357,7 @@ export function LatentDecisions({ project }: { project: Project }) {
           <Choice on={c.look === 'web'} onPick={() => chooseLatent('look', 'web')} name={say('projects.latent.look.web')}>
             {say('projects.latent.look.web.about')}
           </Choice>
-          <Choice on={c.look === 'set'} onPick={() => chooseLatent('look', 'set')} name={say('projects.latent.look.set')}>
+          <Choice on={c.look === 'set'} onPick={() => chooseLatent('look', 'set')} name={say('projects.latent.look.set')} off={c.diffusion === 'taesd' ? say('projects.latent.kandinskyOnly') : undefined}>
             {say('projects.latent.look.set.about')}
           </Choice>
         </Decision>
@@ -366,7 +366,7 @@ export function LatentDecisions({ project }: { project: Project }) {
           {WALKS.map((w) => {
             const [name, about] = WALK_WORDS[w]()
             return (
-              <Choice key={w} on={c.walk === w} onPick={() => chooseLatent('walk', w)} name={name}>
+              <Choice key={w} on={c.walk === w} onPick={() => chooseLatent('walk', w)} name={name} off={c.diffusion === 'taesd' && (w === 'words' || w === 'sentence') ? say('projects.latent.kandinskyOnly') : undefined}>
                 {about}
               </Choice>
             )

@@ -186,7 +186,7 @@ export const encoderPresent = async (e: EncoderModel) => (await exists(path.join
 /** A picture encoder: SigLIP for image moods (ONNX, onnxruntime, mood.py), or Kandinsky 2.2 for the latent image (torch, latent.py). */
 async function getEncoder(e: EncoderModel): Promise<boolean> {
   if (await encoderPresent(e)) return print(`  already here: workspace/tools/${e.name}`), true
-  print(`  ${e.name}: ${e.repos ? Object.values(e.repos).join(' and ') : `${e.repo} (from ${e.original})`} · ${e.license} · about ${e.mb} MB · ${e.repos ? (e.runsIn ?? '') : `${KINDS[e.kind].id} (${KINDS[e.kind].what})`}`)
+  print(`  ${e.name}: ${e.repos ? Object.values(e.repos).join(' and ') : `${e.repo} (from ${e.original})`} · ${e.license} · about ${e.mb} MB · ${e.runsIn ?? `${KINDS[e.kind].id} (${KINDS[e.kind].what})`}`)
   if (e.repos) {
     // files from more than one repo: each file's first folder names its repo
     const need = e.mb * 1e6 * 1.1
@@ -199,7 +199,7 @@ async function getEncoder(e: EncoderModel): Promise<boolean> {
       if (!(await fetchFiles({ name: path.join(e.name, top), repo }, e.files.filter((f) => f.startsWith(`${top}/`)).map((f) => f.slice(top.length + 1))))) return false
   } else if (!(await fetchFiles(e, e.files))) return false
   const declared = e.repos ? ((await Promise.all(Object.values(e.repos).map(hubLicense))).every((l) => l === 'apache-2.0') ? 'apache-2.0' : null) : ((await hubLicense(e.original)) ?? (await hubLicense(e.repo)))
-  const license = declared === 'apache-2.0' ? 'Apache 2.0' : (declared ?? e.license)
+  const license = declared === 'apache-2.0' ? 'Apache 2.0' : declared === 'mit' ? 'MIT' : (declared ?? e.license)
   const manifest = {
     name: e.name,
     kind: 'tool-model',
