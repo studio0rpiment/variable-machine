@@ -2,6 +2,20 @@
 
 Every release of Variable Machine, newest first. Downloads are on the [releases page](https://github.com/studio0rpiment/variable-machine/releases).
 
+## v0.5.4: latent image on a smaller Mac, pictures open large, a terminal you can resize (2026-11-24)
+
+**Latent image on a Mac with less than 16 GB**
+- **TAESD** is a second model for the latent image card: about 10 MB (MIT), against Kandinsky's several gigabytes. `model get taesd`, then `latent make <name> images/<set> --with taesd`. It draws at 256 × 256 px, and its latent image is a soft blur by design. The gallery, themes, the walk and the room all use the model that made the set. Training the decoder and walks to words or a sentence work with Kandinsky only.
+- **The room reads the texts you brought in.** Before, if a chosen text wasn't in the workspace, `latent room` stopped. Now it leaves that text out and says so. The room step lists the missing texts with their `data raw` commands, so you can bring them in first.
+
+**Every picture opens large**
+- In the app, a click on any picture shows it as large as the window allows, with its size in pixels. A picture you click to choose (a set, a card) opens on a double-click. A click or Esc closes it.
+- On the gallery and dream pages the pictures are now embedded at full size (512 px drawings, 640 px photos), and a click opens one large.
+
+**The terminal**
+- Drag the line along its top to make it taller or shorter. A double-click puts it back. It is never shorter than its header and command line.
+- In a small or narrow window, *open the terminal* stays on screen.
+
 ## v0.5.3: decisions that pack, a stop you can read (2026-11-23)
 
 - **A walkthrough's decisions pack.** Each option and decision box is as tall as its own text, and the shorter ones fill in beside each other instead of leaving gaps. One much longer than the rest goes across the full width, with its details side by side. This applies to the voice, research bot, latent image and both dream walkthroughs.
