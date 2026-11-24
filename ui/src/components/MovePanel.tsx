@@ -692,7 +692,7 @@ export default function MovePanel({ active, only }: { active: boolean; only?: nu
 
               <figure className="move-view" hidden={only === 4}>
                 <div className="move-view__frame">
-                  {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} />}
+                  {source === 'camera' ? <video ref={video} muted playsInline className="move-view__picture" /> : photo && <img ref={img} src={`/api/workspace/file?path=${encodeURIComponent(photo)}`} alt={photo} className="move-view__picture" onLoad={() => void onPhoto()} data-no-zoom />}
                   <canvas ref={canvas} className="move-view__points" />
                   {/* the count and the recording, on the picture: where you look when you're standing back from the computer */}
                   {recording && (

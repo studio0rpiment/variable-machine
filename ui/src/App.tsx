@@ -30,6 +30,7 @@ import LookPanel from './components/LookPanel'
 import VoicePanel from './components/VoicePanel'
 import MovePanel from './components/MovePanel'
 import Terminal from './components/Terminal'
+import PictureZoom from './components/PictureZoom'
 import ThemeToggle from './components/ThemeToggle'
 import { setPref, usePref } from './lib/viewPrefs'
 import StatusLine from './components/StatusLine'
@@ -402,6 +403,7 @@ export default function App() {
         )}
       </main>
       <Terminal theme={theme} folded={!!mode && folded} onFold={mode ? setFolded : undefined} />
+      <PictureZoom />
     </div>
   )
 }

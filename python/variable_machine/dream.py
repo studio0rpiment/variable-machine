@@ -740,19 +740,19 @@ def respond(out: Path, model: str, way: str, variations: int, read_words: bool, 
 
 def write_page(out: Path, cdir: Path) -> None:
     """One combination's page: its four cards, its variations, its interpretation and the passages it was written from."""
-    from latent import open_image, thumb
+    from latent import open_image, thumb, zoomable
 
     r = json.loads((cdir / "interpretation.json").read_text(encoding="utf-8"))
     meta = json.loads((cdir / "variations.json").read_text()) if (cdir / "variations.json").exists() else {"variations": []}
     e = html.escape
-    img = lambda p, size=320: f'<img src="{thumb(open_image(p), size)}" alt="">' if p.exists() else ""  # noqa: E731
+    img = lambda p, size=512: f'<img src="{thumb(open_image(p), size)}" alt="">' if p.exists() else ""  # noqa: E731
     zh = bool(r.get("reading_zh"))  # Chinese on the page only when the reading was made with --chinese
     cards_ = "".join(f'<figure>{img(ws(r["cards"][q]["file"]))}<figcaption><b>{q}{" " + ZH[q] if zh else ""} · {r["cards"][q]["n"]}</b> {e(r["cards"][q].get("title") or "")} <span class=c>{e(", ".join(w["en"] + (" " + w["zh"] if zh else "") for w in r["cards"][q]["words"]))}</span></figcaption></figure>' for q in QUALITIES)
     vars_ = "".join(f'<figure>{img(cdir / v["file"], 512)}<figcaption>{e(v["file"])} · led by {e(v["leads"])} · {e(v["with"])}{" · with the sentence (" + str(int(v["sentenceWeight"] * 100)) + "%)" if v.get("sentence") else ""}{" · in the style of " + e(v["style"]) if v.get("style") else ""}</figcaption></figure>' for v in meta["variations"])
     used = set(r.get("used") or [])
     ps = "".join(f'<li class="{"u" if (i + 1) in used else ""}"><b>[{i + 1}] {e(ws(p["from"]).name)}</b> <span class=c>{e(p["about"])}</span><br>{e(p["text"][:600])}</li>' for i, p in enumerate(r["passages"]))
     who = f"Written by {e(r['model'])}, a language model, from the passages below and nothing else; the passages it used are marked." if r.get("model") else "No reading: no language model was chosen, or it didn't answer. The passages stand alone."
-    (cdir / "page.html").write_text(f"""<!doctype html>
+    (cdir / "page.html").write_text(zoomable(f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>dream · {e(r['combination'])}</title>
 <style>
 body{{font:0.875rem/1.5 ui-monospace,Menlo,monospace;background:#111;color:#ddd;margin:1.5rem;max-width:72rem}}
@@ -773,7 +773,7 @@ h1,h2{{font-size:1rem;font-weight:500;color:#5CF25C;margin:1.25rem 0 .5rem}} p,l
 <h2>the passages</h2>
 <ol>{ps}</ol>
 </body></html>
-""", encoding="utf-8")
+"""), encoding="utf-8")
 
 
 def main(argv: list[str]) -> None:

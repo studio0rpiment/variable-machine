@@ -227,7 +227,7 @@ export default function LookPanel({ start }: { start?: { set: string; license?: 
             <figure className="look-figure">
               <div className="look-photo">
                 <Explained id="look.click">
-                  <img src={fileUrl(rel)} alt={photo} onClick={addPoint} />
+                  <img src={fileUrl(rel)} alt={photo} onClick={addPoint} data-no-zoom />
                 </Explained>
                 {points.map(([x, y, l], i) => (
                   <PointMark key={i} x={x} y={y} positive={!!l} photo={rel} />
