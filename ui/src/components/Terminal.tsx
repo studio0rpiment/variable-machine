@@ -130,6 +130,7 @@ export default function Terminal({ theme, folded = false, onFold }: { theme: The
 
   return (
     <section className={`dock ${folded ? 'dock--folded' : ''}`.trim()} aria-label="terminal">
+      {!folded && <ResizeLine />}
       {folded && (
         <div className="dock__folded">
           <TerminalMark size={1} />
@@ -153,7 +154,7 @@ export default function Terminal({ theme, folded = false, onFold }: { theme: The
             {say('projects.mode.terminal.fold')}
           </button>
         )}
-        <button type="button" className="text-button terminal__size" onClick={() => setPref('tallTerminal', !tall)} aria-pressed={tall}>
+        <button type="button" className="text-button terminal__size" onClick={() => (setPref('terminalRem', null), setPref('tallTerminal', !tall))} aria-pressed={tall}>
           {tall ? 'smaller ▾' : 'taller ▴'}
         </button>
       </header>
@@ -179,5 +180,49 @@ export default function Terminal({ theme, folded = false, onFold }: { theme: The
         )}
       </div>
     </section>
+  )
+}
+
+/**
+ * The line along the terminal's top: drag it up or down to set the
+ * terminal's height, kept in rem; double-click it to go back to the short
+ * strip. It stops short of the header above and the terminal's own header,
+ * line and command line below (--terminal-min).
+ */
+function ResizeLine() {
+  const [dragging, setDragging] = useState(false)
+  // a ref as well: pointer moves arrive before React has drawn the dragging state
+  const active = useRef(false)
+  const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize)
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    active.current = true
+    setDragging(true)
+  }
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!active.current) return
+    const r = rem()
+    const h = (window.innerHeight - e.clientY) / r
+    setPref('terminalRem', Math.round(Math.min(window.innerHeight / r - 6, Math.max(7.5, h)) * 4) / 4)
+  }
+  const up = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    active.current = false
+    setDragging(false)
+  }
+  return (
+    <div
+      className={`dock__resize${dragging ? ' is-dragging' : ''}`}
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="terminal height: drag to change, double-click to reset"
+      title="drag to make the terminal taller or shorter · double-click: back to the short strip"
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onDoubleClick={() => (setPref('terminalRem', null), setPref('tallTerminal', false))}
+    />
   )
 }

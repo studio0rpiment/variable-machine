@@ -10,7 +10,8 @@
   --muted: color-mix(in srgb, var(--line) 55%, var(--bg));
   --overlay: color-mix(in srgb, var(--bg) 92%, transparent);
   --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --terminal-height: 15vh; /* the terminal: a short strip, or half the window (taller ▴ in its header) */
+  --terminal-height: 15vh; /* the terminal: a short strip, or half the window (taller ▴ in its header), or as tall as its top line is dragged */
+  --terminal-min: 7.5rem; /* never shorter than its header, one line of output and its command line */
 }
 
 * { box-sizing: border-box; }
@@ -104,7 +105,7 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
 .shell {
   height: 100vh;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) var(--terminal-height);
+  grid-template-rows: auto minmax(0, 1fr) max(var(--terminal-min), min(var(--terminal-height), calc(100vh - 6rem)));
   /* never wider than the window: a long strip of photos scrolls inside itself */
   grid-template-columns: minmax(0, 1fr);
 }
@@ -271,13 +272,19 @@ select option { background: var(--bg); color: var(--line); text-transform: none;
 
 /* ---- terminal dock (not .terminal: xterm uses that class for its own element) ---- */
 .dock {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr); /* never wider than the window, however long its last command */
   border-top: 1px solid var(--line);
   padding: 0 1rem 0.5rem 2rem;
   min-height: 0;
 }
 .terminal__screen { min-height: 0; }
+/* the line along the terminal's top: drag it to make the terminal taller or shorter; double-click puts it back */
+.dock__resize { position: absolute; top: -0.3rem; left: 0; right: 0; height: 0.6rem; cursor: row-resize; z-index: 5; touch-action: none; }
+.dock__resize:hover, .dock__resize.is-dragging { background: linear-gradient(var(--act), var(--act)) center / 100% 1px no-repeat; }
+.dock .panel-head { flex-wrap: wrap; row-gap: 0.25rem; }
 .terminal__screen .xterm { height: 100%; }
 .terminal__screen .xterm-viewport { background: transparent !important; }
 .terminal__screen .xterm .xterm-scrollable-element > .scrollbar > .slider { background: var(--muted) !important; opacity: 0.4; }
@@ -781,7 +788,7 @@ a.text-button { text-decoration: none; }
 .data-example .command-preview { margin-top: 0.4rem; margin-left: -0.4rem; }
 
 :root[data-terminal="tall"] { --terminal-height: 50vh; }
-.dock { min-height: 7.5rem; }
+.dock { min-height: var(--terminal-min); }
 .terminal__size { margin-left: auto; color: var(--muted); }
 .terminal__size:hover { color: var(--line); }
 /* on: terminal green, like everything that is live; off: grey */
@@ -1164,7 +1171,9 @@ img.move-view__picture { transform: none; }
 .sim__result { margin: 0.6rem 0 0; }
 .dock--folded { min-height: 0; grid-template-rows: auto; padding-top: 0.35rem; padding-bottom: 0.35rem; }
 .dock__folded { display: flex; align-items: center; gap: 0.75rem; }
-.dock__last { flex: 1; color: var(--act); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock__last { flex: 1; min-width: 0; color: var(--act); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the buttons keep their width, so open the terminal ▴ never runs off a narrow window; the last command shortens instead */
+.dock__folded > button { flex: none; }
 .dock [hidden] { display: none; }
 .project__mode { margin-left: auto; }
 .move-layout--step4 .move-view, .move-layout--step4 .move-camera-off { display: none; }

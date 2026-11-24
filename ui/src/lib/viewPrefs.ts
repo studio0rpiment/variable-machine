@@ -1,14 +1,15 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Two view preferences kept per viewer, in this browser: whether the
- * explanation flags open, and how tall the terminal is. Remembered in
+ * View preferences kept per viewer, in this browser: whether the
+ * explanation flags open, and how tall the terminal is (short or tall, or a
+ * height in rem dragged with the line along its top). Remembered in
  * localStorage when the browser allows; if it doesn't, they reset on reload.
  */
-type Prefs = { flags: boolean; tallTerminal: boolean }
+type Prefs = { flags: boolean; tallTerminal: boolean; terminalRem: number | null }
 const KEY = 'variable-machine.view'
 
-let prefs: Prefs = { flags: true, tallTerminal: false }
+let prefs: Prefs = { flags: true, tallTerminal: false, terminalRem: null }
 try {
   prefs = { ...prefs, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
 } catch {
@@ -19,6 +20,8 @@ const listeners = new Set<() => void>()
 function apply() {
   document.documentElement.dataset.terminal = prefs.tallTerminal ? 'tall' : 'short'
   document.documentElement.dataset.flags = prefs.flags ? 'on' : 'off'
+  if (prefs.terminalRem) document.documentElement.style.setProperty('--terminal-height', `${prefs.terminalRem}rem`)
+  else document.documentElement.style.removeProperty('--terminal-height')
 }
 apply()
 
