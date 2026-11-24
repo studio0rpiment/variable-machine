@@ -707,6 +707,7 @@ export const WORDS = {
   "projects.latent.mode.gallery": "measure the pictures against the latent image, with the media theory beside each part, and open the gallery page",
   "projects.latent.mode.room": "make the room ready: the installation's own page, where a visitor touches the pictures they would keep and sees the latent image of those, with the media theory and the passages of your texts nearest it",
   "projects.latent.mode.roomTexts": "reads {n} texts: {texts}",
+  "projects.latent.mode.roomMissing": "not brought in yet, so the room reads without them: {texts}. To read them too, run their data raw commands below first, then make the room (again).",
   "projects.latent.openRoom": "open the room (full screen: the browser's full-screen key)",
   "projects.latent.mode.boxCrop": "crop",
   "projects.latent.mode.boxLatent": "latent image",

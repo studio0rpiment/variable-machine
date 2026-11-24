@@ -1103,15 +1103,23 @@ function latentRoute(h: Have, c: LatentChoices): LatentFacts {
     parts: ['look.sets'],
   })
   // the room: the installation's own page; it reads the texts brought in, and your own writing if chosen
-  const reads = [...texts.map((t) => t.name), ...(c.own ? own : [])]
+  // only the texts brought in: one chosen but not in workspace/raw would stop the command
+  const broughtIn = (n: string) => h.raw.some((r) => r.folder === n)
+  const notIn = texts.filter((t) => !broughtIn(t.name))
+  const missing = notIn.map((t) => t.name)
+  const reads = [...texts.map((t) => t.name).filter(broughtIn), ...(c.own ? own : [])]
   steps.push({
     name: say('projects.latent.mode.room'),
     tab: 'segmentation',
     node: 'room',
-    commands: [joinWords(['latent', 'room', collection, ...reads])],
+    // a text not brought in yet can be, from here, before the room is made
+    commands: [...notIn.map((t) => joinWords(['data', 'raw', ...t.args, t.name])), joinWords(['latent', 'room', collection, ...reads])],
     about: 75,
     done: !!latent?.room,
-    result: latent?.room ? say('projects.latent.mode.roomTexts', { n: latent.room.texts.length, texts: latent.room.texts.join(' · ') || '–' }) : undefined,
+    result: [
+      latent?.room ? say('projects.latent.mode.roomTexts', { n: latent.room.texts.length, texts: latent.room.texts.join(' · ') || '–' }) : '',
+      missing.length ? say('projects.latent.mode.roomMissing', { texts: missing.join(' · ') }) : '',
+    ].filter(Boolean).join(' · ') || undefined,
     link: latent?.room ? { path: `#latent-room/${collection}`, label: say('projects.latent.openRoom') } : undefined,
     parts: [],
   })

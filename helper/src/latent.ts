@@ -460,14 +460,20 @@ async function walk(args: string[], line: string): Promise<boolean> {
 /** `latent room <name> [<text> …]`: the room (#latent-room/<name>) made ready: the pictures' measures, and the passages of the texts (workspace/raw/<text>) nearest each media-theory line. */
 async function makeRoom(args: string[], line: string): Promise<boolean> {
   const { pos, opts } = flags(args)
-  const [name, ...texts] = pos
+  let [name, ...texts] = pos
   if (!name || !NAME.test(name) || texts.some((t) => !NAME.test(t)) || texts.length > 24 || Object.keys(opts).some((o) => o !== 'embed') || (opts.embed !== undefined && !NAME.test(opts.embed.replace(':', '-')))) {
     print('usage: latent room <name> [<text> …] [--embed nomic-embed-text]   (the room for workspace/latents/<name>; each text is a folder in workspace/raw, brought in with data raw)')
     return false
   }
   const m = await readJson<{ set: string; private?: boolean }>(ws('latents', name, 'manifest.json'))
   if (!m || !(await exists(ws('latents', name, 'stats.npz')))) return print(`latent room: no latent image workspace/latents/${name}; make it first with latent make ${name} images/<set>`), false
-  for (const t of texts) if (!(await exists(ws('raw', t, 'chunks.jsonl')))) return print(`latent room: no text workspace/raw/${t}; bring it in first with data raw`), false
+  // a text not brought in is left out, with a line saying so, rather than stopping the room
+  const here: string[] = []
+  for (const t of texts) {
+    if (await exists(ws('raw', t, 'chunks.jsonl'))) here.push(t)
+    else print(`latent room: no text workspace/raw/${t}, so the room reads without it; bring it in with data raw, then make the room again`)
+  }
+  texts = here
   const out = `workspace/latents/${name}/room`
   const argv = [...UV_LATENT, 'python', SCRIPT, 'room', `workspace/latents/${name}`, `workspace/images/${m.set}`, ...texts.map((t) => `workspace/raw/${t}`), ...(opts.embed ? ['--embed', opts.embed] : [])]
   return runRecipe({

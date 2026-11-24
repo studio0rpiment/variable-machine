@@ -3552,6 +3552,11 @@ make the room ready: the installation's own page, where a visitor touches the pi
 
 reads {n} texts: {texts}
 
+### Step: the room, texts not brought in
+`projects.latent.mode.roomMissing`
+
+not brought in yet, so the room reads without them: {texts}. To read them too, run their data raw commands below first, then make the room (again).
+
 ### Link: open the room
 `projects.latent.openRoom`
 
