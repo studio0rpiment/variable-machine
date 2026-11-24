@@ -1,30 +1,34 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Click a picture from the workspace (a drawn latent image, an axis, a dream
- * card's drawing, a photo in a set) and it opens large, as big as the window
- * allows, with its size in pixels. A click anywhere or Escape closes it.
- *
- * Pictures that are controls keep their own click: one inside a button, link
- * or label, or marked data-no-zoom (the photo you click points on).
+ * Every picture in the app opens large, as big as the window allows, with its
+ * size in pixels: a click on it, or a double-click when the picture is itself a
+ * control (inside a button, link or label: a click there chooses it). A click
+ * anywhere or Escape closes it. Only a picture marked data-no-zoom, whose
+ * clicks do something else (the photo you click points on), never opens.
+ * Kevin, 24 November 2026: this is how every picture behaves, anywhere in the app.
  */
 export default function PictureZoom() {
   const [open, setOpen] = useState<{ src: string; alt: string } | null>(null)
   const [size, setSize] = useState('')
 
   useEffect(() => {
-    const click = (e: MouseEvent) => {
+    const zoom = (e: MouseEvent, inControl: boolean) => {
       const img = e.target instanceof HTMLImageElement ? e.target : null
-      if (!img || !img.src.includes('/api/workspace/file') || img.closest('button, a, label, [data-no-zoom], .picture-zoom')) return
+      if (!img || !img.src || img.closest('[data-no-zoom], .picture-zoom') || !!img.closest('button, a, label') !== inControl) return
       e.preventDefault()
       setSize(`${img.naturalWidth} × ${img.naturalHeight} px`)
       setOpen({ src: img.src, alt: img.alt })
     }
+    const click = (e: MouseEvent) => zoom(e, false)
+    const dblclick = (e: MouseEvent) => zoom(e, true)
     const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(null)
     document.addEventListener('click', click)
+    document.addEventListener('dblclick', dblclick)
     document.addEventListener('keydown', key)
     return () => {
       document.removeEventListener('click', click)
+      document.removeEventListener('dblclick', dblclick)
       document.removeEventListener('keydown', key)
     }
   }, [])
